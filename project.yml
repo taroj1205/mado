@@ -1,0 +1,75 @@
+name: Mado
+options:
+  bundleIdPrefix: com.taroj1205
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  AppCore:
+    path: Packages/AppCore
+  GlassUI:
+    path: Packages/GlassUI
+  InputKit:
+    path: Packages/InputKit
+  WindowKit:
+    path: Packages/WindowKit
+  SearchKit:
+    path: Packages/SearchKit
+  ClipboardKit:
+    path: Packages/ClipboardKit
+
+targets:
+  Mado:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: AppCore
+      - package: GlassUI
+      - package: InputKit
+      - package: WindowKit
+      - package: SearchKit
+      - package: ClipboardKit
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Mado
+        CFBundleDisplayName: Mado
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.taroj1205.mado
+        SWIFT_VERSION: "6.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        # Ad-hoc signing for now. M0-02 replaces this with a fixed signing identity.
+        CODE_SIGN_IDENTITY: "-"
+
+  MadoTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests/MadoTests]
+    dependencies:
+      - package: AppCore
+      - package: GlassUI
+      - package: InputKit
+      - package: WindowKit
+      - package: SearchKit
+      - package: ClipboardKit
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+
+schemes:
+  Mado:
+    build:
+      targets:
+        Mado: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [MadoTests]
