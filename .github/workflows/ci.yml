@@ -24,3 +24,13 @@ jobs:
             -scheme Mado \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO
+      - name: Launch smoke test
+        run: |
+          xcodebuild build \
+            -project Mado.xcodeproj \
+            -scheme Mado \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+          scripts/smoke-launch.sh build/Build/Products/Debug/Mado.app
