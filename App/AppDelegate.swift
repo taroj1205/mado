@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
+    private var usage = Usage()
     private var hotKeys: HotKeyRegistry?
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
+        usage = loadUsage()
         NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
         launcher = makeLauncher()
@@ -124,6 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    private func loadUsage() -> Usage {
+        do {
+            return try Usage.load(from: modules)
+        } catch {
+            logger.error("Usage failed to load: \(error, privacy: .public)")
+            return Usage()
+        }
+    }
+
     private func makeHotKeys() -> HotKeyRegistry? {
         #if DEBUG
             if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
@@ -159,29 +170,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             search: { [weak self] query in
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
-                    let commands = Fuzzy.rank(modules?.commands.all ?? [], by: query) { command in
-                        [command.name] + command.keywords
-                    }
-                    let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    let matches = typed ? apps.apps(matching: query) : []
-                    let panes = typed ? Fuzzy.rank(SettingsPane.all, by: query, keys: \.keys) : []
-                    return [
-                        ResultList.Section(
-                            title: typed ? "Results" : "Commands",
-                            items: matches.map { app in
-                                ResultList.Item(
-                                    id: app.url.path, title: app.name, subtitle: app.folder,
-                                    kind: "Application", symbol: "",
-                                    icon: apps.icon(for: app))
-                            }
-                                + panes.map(\.item)
-                                + commands.map { command in
-                                    ResultList.Item(
-                                        id: command.id, title: command.name, subtitle: "",
-                                        kind: "Command",
-                                        symbol: command.icon)
-                                })
-                    ]
+                    LauncherResult.sections(
+                        for: query, apps: apps, commands: modules?.commands.all ?? [],
+                        usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
@@ -190,13 +181,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
-        let actions = actions(for: item.id)
+        let actions = LauncherResult.actions(
+            for: item.id, query: launcherView.field.stringValue, apps: apps,
+            commands: modules?.commands.all ?? [])
         guard actions.indices.contains(index) else { return }
         launcher?.orderOut(nil)
         let action = actions[index]
-        Task { [logger] in
+        Task { [weak self, logger] in
             do {
                 try await action.perform()
+                if !Fallback.all.contains(where: { $0.item.id == item.id }) {
+                    self?.recordUse(of: item.id)
+                }
+            } catch CocoaError.userCancelled {
+                logger.debug("Result \(item.id, privacy: .public) was canceled")
             } catch {
                 logger.error(
                     "Result \(item.id, privacy: .public) failed: \(error, privacy: .public)")
@@ -204,17 +202,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func actions(for id: String) -> [CommandAction] {
-        if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
-        guard let app = apps.apps.first(where: { $0.url.path == id }) else {
-            return modules?.commands.command(id: id)?.actions ?? []
+    private func recordUse(of id: String) {
+        usage.record(id, at: .now)
+        do {
+            try usage.save(to: modules)
+        } catch {
+            logger.error("Saving usage failed: \(error, privacy: .public)")
         }
-        return [
-            CommandAction(id: "open", title: "Open Application") {
-                _ = try await NSWorkspace.shared.openApplication(
-                    at: app.url, configuration: NSWorkspace.OpenConfiguration())
-            }
-        ]
     }
 
     func windowDidResignKey(_: Notification) {
@@ -242,8 +236,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let lifetime = QueryLifetime.load(from: modules).duration
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
-            search?.run("")
         }
+        search?.run(launcherView.field.stringValue)
         panel.makeKeyAndOrderFront(nil)
         launcherView.field.selectText(nil)
         CATransaction.setCompletionBlock { [signposter] in

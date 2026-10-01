@@ -37,7 +37,7 @@ import Testing
         let index = AppIndex(folders: [root, root.appending(path: "Missing")])
         index.start()
         await index.scan?.value
-        #expect(index.apps(matching: "alp").map(\.name) == ["Alpha"])
+        #expect(index.apps.map(\.name) == ["Alpha", "Beta", "Flagged"])
 
         try FileManager.default.createDirectory(
             at: root.appending(path: "Gamma.app"), withIntermediateDirectories: false)
