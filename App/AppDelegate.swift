@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 import GlassUI
 import InputKit
 import os
+import SearchKit
 import WindowKit
 
 @MainActor
@@ -14,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
     private static let launcherRadius: CGFloat = 28
     private static let searchBarHalfHeight: CGFloat = 30
     private static let searchInset: CGFloat = 20
+    private static let searchFontSize: CGFloat = 20
+    private static let searchIconGap: CGFloat = 12
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
@@ -22,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
     private var launcher: GlassPanel?
+    private var search: SearchRunner<[Command]>?
     private var hotKeys: HotKeyRegistry?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
@@ -34,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
         launcher = makeLauncher()
+        search = makeSearch()
         hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
@@ -125,18 +130,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
             kind: .panel,
             contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
             shape: .rounded(Self.launcherRadius))
+        let icon = NSImageView()
+        icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+        icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
+        icon.contentTintColor = .secondaryLabelColor
+        icon.translatesAutoresizingMaskIntoConstraints = false
         let field = NSTextField()
-        field.placeholderString = "Search"
+        field.placeholderString = "Search apps and commands…"
+        field.font = .systemFont(ofSize: Self.searchFontSize)
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false
         let content = NSView()
+        content.addSubview(icon)
         content.addSubview(field)
         NSLayoutConstraint.activate([
-            field.leadingAnchor.constraint(
+            icon.leadingAnchor.constraint(
                 equalTo: content.leadingAnchor, constant: Self.searchInset),
+            icon.centerYAnchor.constraint(
+                equalTo: content.topAnchor, constant: Self.searchBarHalfHeight),
+            field.leadingAnchor.constraint(
+                equalTo: icon.trailingAnchor, constant: Self.searchIconGap),
             field.trailingAnchor.constraint(
                 equalTo: content.trailingAnchor, constant: -Self.searchInset),
             field.centerYAnchor.constraint(
@@ -146,6 +162,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         panel.initialFirstResponder = field
         panel.delegate = self
         return panel
+    }
+
+    private func makeSearch() -> SearchRunner<[Command]> {
+        SearchRunner(
+            search: { [weak self] query in
+                guard let self else { return [] }
+                return signposter.withIntervalSignpost("search") {
+                    modules?.commands.commands(matching: query) ?? []
+                }
+            },
+            deliver: { [logger] results in
+                logger.debug("Search matched \(results.count) commands")
+            })
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        guard let field = notification.object as? NSTextField else { return }
+        search?.run(field.stringValue)
     }
 
     func control(
