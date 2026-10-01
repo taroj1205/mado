@@ -10,6 +10,7 @@ enum LauncherResult {
     case pane(SettingsPane)
 
     private static let openApp = "Open Application"
+    private static let answerID = "calculator"
     private static let fileLimit = 20
 
     var id: String {
@@ -43,13 +44,20 @@ enum LauncherResult {
         let fileBonus = { (file: FileIndex.File) in usage.bonus(for: file.url.path, at: now) }
         let found =
             typed ? Fuzzy.rank(files.files, by: query, bonus: fileBonus) { [$0.key] } : []
-        if typed, ranked.isEmpty, found.isEmpty { return [Fallback.section(for: trimmed)] }
-        return [
+        let results = [
             ResultList.Section(
                 title: typed ? "Results" : "Commands", items: ranked.map { $0.item(icons: apps) }),
             ResultList.Section(
                 title: "Files", items: found.prefix(fileLimit).map { item(for: $0, at: now) }),
         ]
+        guard let answer = Calculator.answer(for: trimmed) else {
+            if typed, ranked.isEmpty, found.isEmpty {
+                return [Fallback.section(for: trimmed, matched: false)]
+            }
+            return results
+        }
+        return [ResultList.Section(title: answer.kind, items: [item(for: answer)])] + results
+            + [Fallback.section(for: trimmed, matched: true)]
     }
 
     static func actions(
@@ -64,6 +72,14 @@ enum LauncherResult {
                 CommandAction(id: "reveal", title: "Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([file.url])
                 },
+            ]
+        }
+        if id == answerID, let answer = Calculator.answer(for: query) {
+            return [
+                CommandAction(id: "copy", title: "Copy Answer") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(answer.result, forType: .string)
+                }
             ]
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
@@ -86,6 +102,13 @@ enum LauncherResult {
             id: file.url.path, title: file.name, subtitle: file.folder,
             kind: FileIndex.kind(of: file, at: now), symbol: "", action: "Open",
             icon: NSWorkspace.shared.icon(forFile: file.url.path), file: file.url)
+    }
+
+    private static func item(for answer: Calculator.Answer) -> ResultList.Item {
+        ResultList.Item(
+            id: answerID, title: answer.expression, subtitle: answer.expressionDetail,
+            kind: answer.kind, symbol: "", action: "Copy Answer",
+            answer: ResultList.Answer(value: answer.result, detail: answer.resultDetail))
     }
 
     private func item(icons apps: AppIndex) -> ResultList.Item {
