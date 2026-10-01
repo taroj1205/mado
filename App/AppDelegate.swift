@@ -213,12 +213,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
-        guard !launcherView.choosingAction else { return }
         focusLeft()
     }
 
     private func focusLeft() {
-        guard !launcherView.sharing else { return }
+        guard !launcherView.sharing, !launcherView.choosingAction else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }
         #endif
