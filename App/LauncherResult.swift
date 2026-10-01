@@ -61,9 +61,7 @@ enum LauncherResult {
                     _ = try await NSWorkspace.shared.open(
                         file.url, configuration: NSWorkspace.OpenConfiguration())
                 },
-                CommandAction(id: "reveal", title: "Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([file.url])
-                },
+                reveal(file.url),
             ]
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
@@ -77,8 +75,15 @@ enum LauncherResult {
             CommandAction(id: "open", title: Self.openApp) {
                 _ = try await NSWorkspace.shared.openApplication(
                     at: app.url, configuration: NSWorkspace.OpenConfiguration())
-            }
+            },
+            reveal(app.url),
         ]
+    }
+
+    private static func reveal(_ url: URL) -> CommandAction {
+        CommandAction(id: "reveal", title: "Show in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
     }
 
     private static func item(for file: FileIndex.File, at now: Date) -> ResultList.Item {

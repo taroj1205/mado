@@ -146,6 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
+        launcherView.onFocusLost = { [weak self] in self?.focusLeft() }
+        launcherView.actionTitles = { [weak self] in self?.actions(for: $0).map(\.title) ?? [] }
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
@@ -169,10 +171,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             })
     }
 
-    private func run(_ item: ResultList.Item, action index: Int) {
-        let actions = LauncherResult.actions(
+    private func actions(for item: ResultList.Item) -> [CommandAction] {
+        LauncherResult.actions(
             for: item.id, query: launcherView.field.stringValue, apps: apps, files: files,
             commands: modules?.commands.all ?? [])
+    }
+
+    private func run(_ item: ResultList.Item, action index: Int) {
+        let actions = actions(for: item)
         guard actions.indices.contains(index) else { return }
         hideLauncher()
         let action = actions[index]
@@ -205,6 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
+        guard !launcherView.choosingAction else { return }
+        focusLeft()
+    }
+
+    private func focusLeft() {
         guard !launcherView.sharing else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }

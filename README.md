@@ -18,7 +18,7 @@ To run a Debug build from a worktree next to another Mado, launch it without the
     until [ -e build/Build/Products/Debug/Mado.ready ]; do sleep 0.1; done
     pkill -USR1 -f "$PWD/build/Build/Products/Debug/"
 
-To let a script drive that launcher while you keep typing in another app, also pass `-MadoNoFocus YES`. The launcher then opens without taking focus, and keys the script posts to the Mado process with `CGEvent.postToPid` reach it as if typed there: the query, arrows, ↵, ⌘↵ and Esc. Keys posted to `.cghidEventTap` still go to the app you are typing in.
+To let a script drive that launcher while you keep typing in another app, also pass `-MadoNoFocus YES`. The launcher then opens without taking focus, and keys the script posts to the Mado process with `CGEvent.postToPid` reach it as if typed there: the query, arrows, ↵, ⌘↵, ⌘K and Esc, including inside the action panel. Keys posted to `.cghidEventTap` still go to the app you are typing in.
 
 Tests: `xcodebuild test -project Mado.xcodeproj -scheme Mado -destination 'platform=macOS'` runs the app and package tests in one build, which is what CI runs. A single package also runs with `swift test` from its directory.
 

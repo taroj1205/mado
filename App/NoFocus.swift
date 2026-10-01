@@ -17,8 +17,9 @@
         static func forwardKeys(to panel: GlassPanel) {
             _ = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak panel] event in
                 guard let panel, panel.isVisible, event.window == nil else { return event }
-                if panel.onEvent?(event) != true, !panel.performKeyEquivalent(with: event) {
-                    panel.firstResponder?.keyDown(with: event)
+                let target = panel.childWindows?.last as? GlassPanel ?? panel
+                if target.onEvent?(event) != true, !target.performKeyEquivalent(with: event) {
+                    target.firstResponder?.keyDown(with: event)
                 }
                 return nil
             }
