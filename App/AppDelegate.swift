@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launch: OSSignpostIntervalState
     private var statusItem: NSStatusItem?
     private var modules: ModuleManager?
-    private var settings: SettingsWindowController?
+    private(set) var settings: SettingsWindowController?
     private var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private let launcherView = LauncherView()

@@ -7,23 +7,16 @@ protocol LauncherSetting: RawRepresentable<String>, CaseIterable, Equatable {
 }
 
 extension LauncherSetting {
-    private static var key: String { "launcher" }
-
     @MainActor
     static func load(from modules: ModuleManager?) -> Self {
-        guard case .string(let raw) = launcher(modules)[field] else { return fallback }
+        guard case .string(let raw) = LauncherSettings.value(field, in: modules) else {
+            return fallback
+        }
         return Self(rawValue: raw) ?? fallback
     }
 
     @MainActor
-    private static func launcher(_ modules: ModuleManager?) -> [String: JSONValue] {
-        (try? modules?.value([String: JSONValue].self, for: key)) ?? [:]
-    }
-
-    @MainActor
     func save(to modules: ModuleManager?) throws {
-        var launcher = Self.launcher(modules)
-        launcher[Self.field] = .string(rawValue)
-        try modules?.setValue(launcher, for: Self.key)
+        try LauncherSettings.setValue(.string(rawValue), for: Self.field, in: modules)
     }
 }

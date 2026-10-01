@@ -104,9 +104,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         super.showWindow(sender)
     }
 
-    func windowDidBecomeKey(_: Notification) {
+    func refresh() {
         (tabs.tabViewItems[tabs.selectedTabViewItemIndex].viewController
             as? SettingsPageController)?.refresh()
+    }
+
+    func windowDidBecomeKey(_: Notification) {
+        refresh()
     }
 
     func windowWillClose(_: Notification) {
