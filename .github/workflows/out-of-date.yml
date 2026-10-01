@@ -3,7 +3,7 @@ name: Out of date
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
 
@@ -16,6 +16,7 @@ concurrency:
 jobs:
   comment:
     name: Comment
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.type != 'Bot')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,8 +29,8 @@ jobs:
       - name: Flag PRs behind main
         shell: bash
         run: |
-          gh pr list --base main --state open --limit 100 --json number,headRefOid \
-            --jq '.[] | "\(.number) \(.headRefOid)"' |
+          gh pr list --base main --state open --limit 100 --json number,headRefOid,author \
+            --jq '.[] | select(.author.is_bot | not) | "\(.number) \(.headRefOid)"' |
           while read -r number head; do
             behind=$(gh api "repos/$GH_REPO/compare/main...$head" --jq .behind_by)
             ids=$(gh api --paginate "repos/$GH_REPO/issues/$number/comments" \
