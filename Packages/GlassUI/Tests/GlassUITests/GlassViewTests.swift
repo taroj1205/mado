@@ -19,7 +19,7 @@ import Testing
     @Test func usesLiquidGlassOnlyWhereAvailable() {
         let view = GlassView(shape: .capsule)
         if #available(macOS 26, *) {
-            #expect(view.effect is NSGlassEffectView)
+            #expect((view.effect as? NSGlassEffectView)?.style == .clear)
         } else {
             #expect(view.effect is NSVisualEffectView)
         }
