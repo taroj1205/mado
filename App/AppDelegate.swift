@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
     private var launcher: GlassPanel?
+    private var launcherClosed: ContinuousClock.Instant?
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
@@ -214,6 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_: Notification) {
         launcher?.orderOut(nil)
+        launcherClosed = .now
     }
 
     private func toggleLauncher() {
@@ -228,43 +230,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func showLauncher() {
         guard let panel = launcher else { return }
         let opening = signposter.beginInterval("open launcher")
-        if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
+        let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
+        if let visible = screen?.visibleFrame {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
             panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
         }
+        let lifetime = QueryLifetime.load(from: modules).duration
+        if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
+            launcherView.field.stringValue = ""
+            search?.run("")
+        }
         panel.makeKeyAndOrderFront(nil)
+        launcherView.field.selectText(nil)
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
         }
-    }
-
-    private func launcherScreen() -> NSScreen? {
-        let mouse = NSEvent.mouseLocation
-        let mouseScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
-        switch LauncherScreen.load(from: modules) {
-        case .mouse:
-            return mouseScreen
-
-        case .activeWindow:
-            return activeWindowScreen() ?? mouseScreen
-        }
-    }
-
-    private func activeWindowScreen() -> NSScreen? {
-        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-            let windows = CGWindowListCopyWindowInfo(
-                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-                as? [[String: Any]],
-            let window = windows.first(where: { info in
-                info[kCGWindowOwnerPID as String] as? pid_t == pid
-                    && info[kCGWindowLayer as String] as? Int == 0
-            }),
-            let dictionary = window[kCGWindowBounds as String] as? [String: Any],
-            let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary)
-        else { return nil }
-        let screens = NSScreen.screens
-        return ScreenGeometry.screenIndex(showing: bounds, in: screens.map(\.frame))
-            .map { screens[$0] }
     }
 
     @objc
