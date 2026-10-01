@@ -152,7 +152,22 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         return true
     }
 
-    public func handleKeyDown(_ event: NSEvent) -> Bool {
+    public func handle(_ event: NSEvent) -> Bool {
+        switch event.type {
+        case .keyDown:
+            return previewKey(event)
+
+        case .leftMouseDown
+        where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
+            endBrowsing()
+            return false
+
+        default:
+            return false
+        }
+    }
+
+    private func previewKey(_ event: NSEvent) -> Bool {
         guard event.keyCode == kVK_Space,
             event.modifierFlags.isDisjoint(with: Self.modifierKeys),
             canPreview, let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
@@ -183,7 +198,10 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
         case #selector(NSResponder.cancelOperation) where previewing: closePreview()
         case #selector(NSResponder.cancelOperation): onCancel?()
-        default: return false
+
+        default:
+            endBrowsing()
+            return false
         }
         return true
     }

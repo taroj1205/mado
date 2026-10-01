@@ -14,7 +14,7 @@ import Testing
 
     init() {
         panel.glass.contentView = view
-        panel.onKeyDown = { [view] in view.handleKeyDown($0) }
+        panel.onEvent = { [view] in view.handle($0) }
         view.results.sections = [
             .init(title: "Applications", items: [item("Safari"), item("Notes")]),
             .init(title: "Commands", items: [item("Sleep")]),
@@ -99,6 +99,27 @@ import Testing
         view.show([.init(title: "Files", items: [file("new.txt")] + files)])
         #expect(view.results.selectedItem?.id == "b.txt")
         #expect(view.contextLabel.stringValue == "Space to preview")
+    }
+
+    @Test func movingTheCaretOrClickingTheFieldEndsBrowsing() throws {
+        view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
+        press(kVK_DownArrow, "\u{F701}")
+        press(kVK_LeftArrow, "\u{F702}")
+        press(kVK_Space, " ")
+        #expect(view.field.stringValue == " ")
+        #expect(!view.previewing)
+
+        press(kVK_DownArrow, "\u{F701}")
+        let field = view.field.convert(view.field.bounds, to: nil)
+        let click = try #require(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown, location: CGPoint(x: field.midX, y: field.midY),
+                modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil,
+                eventNumber: 0, clickCount: 1, pressure: 1))
+        #expect(!view.handle(click))
+        #expect(view.contextCapsule.isHidden)
+        press(kVK_Space, " ")
+        #expect(view.field.stringValue == "  ")
     }
 
     @Test func clickingTheAlreadySelectedFileLetsSpacePreviewIt() {

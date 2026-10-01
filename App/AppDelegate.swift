@@ -137,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
-        panel.onKeyDown = { [launcherView] in launcherView.handleKeyDown($0) }
+        panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
         panel.delegate = self

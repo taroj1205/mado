@@ -8,7 +8,7 @@ public final class GlassPanel: NSPanel {
 
     private let kind: Kind
     public let glass: GlassView
-    public var onKeyDown: ((NSEvent) -> Bool)?
+    public var onEvent: ((NSEvent) -> Bool)?
 
     override public var canBecomeKey: Bool { kind == .panel }
 
@@ -32,7 +32,7 @@ public final class GlassPanel: NSPanel {
     }
 
     override public func sendEvent(_ event: NSEvent) {
-        if event.type == .keyDown, onKeyDown?(event) == true { return }
+        if onEvent?(event) == true { return }
         super.sendEvent(event)
     }
 }
