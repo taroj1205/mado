@@ -21,19 +21,17 @@ public final class GlassView: NSView {
     public var contentView: NSView? {
         didSet {
             guard oldValue !== contentView else { return }
-            if #available(macOS 26, *), let glass = effect as? NSGlassEffectView {
-                glass.contentView = contentView
-                return
-            }
             oldValue?.removeFromSuperview()
             guard let contentView else { return }
-            contentView.frame = effect.bounds
+            contentView.frame = container.bounds
             contentView.autoresizingMask = [.width, .height]
-            effect.addSubview(contentView)
+            container.addSubview(contentView)
         }
     }
 
     let effect: NSView
+    let sheen = GlassSheen()
+    let container = NSView()
     private var radius: CGFloat?
 
     public init(shape: Shape) {
@@ -55,6 +53,15 @@ public final class GlassView: NSView {
         }
         effect.autoresizingMask = [.width, .height]
         addSubview(effect)
+        sheen.autoresizingMask = [.width, .height]
+        container.addSubview(sheen)
+        if #available(macOS 26, *), let glass = effect as? NSGlassEffectView {
+            glass.contentView = container
+        } else {
+            container.frame = effect.bounds
+            container.autoresizingMask = [.width, .height]
+            effect.addSubview(container)
+        }
     }
 
     @available(*, unavailable)
@@ -79,6 +86,7 @@ public final class GlassView: NSView {
         let next = shape.radius(in: bounds.size)
         guard next != radius else { return }
         radius = next
+        sheen.radius = next
         if #available(macOS 26, *), let glass = effect as? NSGlassEffectView {
             glass.cornerRadius = next
             layer?.cornerRadius = next
