@@ -22,17 +22,30 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         }
     }
 
+    public struct Notice: Sendable, Equatable {
+        public let title: String
+        public let detail: String
+
+        public init(title: String, detail: String) {
+            self.title = title
+            self.detail = detail
+        }
+    }
+
     public struct Section: Sendable, Equatable {
         public let title: String
         public let items: [Item]
+        public let notice: Notice?
 
-        public init(title: String, items: [Item]) {
+        public init(title: String, items: [Item], notice: Notice? = nil) {
             self.title = title
             self.items = items
+            self.notice = notice
         }
     }
 
     enum Row: Equatable {
+        case notice(Notice)
         case header(String)
         case item(Item)
 
@@ -43,6 +56,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     static let rowHeight: CGFloat = 42
     static let headerHeight: CGFloat = 32
+    static let noticeHeight: CGFloat = 80
     static let rowGap: CGFloat = 1
     static let topInset: CGFloat = 4
     private static let headerInset: CGFloat = 12
@@ -99,7 +113,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     static func rows(for sections: [Section]) -> [Row] {
         sections.filter { !$0.items.isEmpty }
-            .flatMap { [.header($0.title)] + $0.items.map(Row.item) }
+            .flatMap { section in
+                (section.notice.map { [Row.notice($0)] } ?? [])
+                    + [.header(section.title)] + section.items.map(Row.item)
+            }
     }
 
     public func selectPrevious() {
@@ -128,7 +145,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     }
 
     public func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
-        if case .header = rows[row] { Self.headerHeight } else { Self.rowHeight }
+        switch rows[row] {
+        case .notice: Self.noticeHeight
+        case .header: Self.headerHeight
+        case .item: Self.rowHeight
+        }
     }
 
     public func tableView(_: NSTableView, shouldSelectRow row: Int) -> Bool {
@@ -144,6 +165,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         _ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int
     ) -> NSView? {
         switch rows[row] {
+        case .notice(let notice):
+            let cell =
+                tableView.makeView(withIdentifier: NoticeCell.id, owner: nil)
+                as? NoticeCell ?? NoticeCell()
+            cell.show(notice)
+            return cell
+
         case .header(let title):
             let cell =
                 tableView.makeView(withIdentifier: Self.headerID, owner: nil)
@@ -166,6 +194,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: Self.headerFontSize, weight: .semibold)
         label.textColor = .secondaryLabelColor
+        label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
         cell.addSubview(label)
         unsafe cell.textField = label

@@ -1,5 +1,5 @@
 import AppCore
-import Foundation
+import AppKit
 import GlassUI
 import SearchKit
 
@@ -28,7 +28,8 @@ enum LauncherResult {
     static func sections(
         for query: String, apps: AppIndex, commands: [Command], usage: Usage
     ) -> [ResultList.Section] {
-        let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let typed = !trimmed.isEmpty
         let candidates =
             typed
             ? apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane) + commands.map(Self.command)
@@ -36,9 +37,28 @@ enum LauncherResult {
         let now = Date.now
         let ranked = Fuzzy.rank(
             candidates, by: query, bonus: { usage.bonus(for: $0.id, at: now) }, keys: \.keys)
+        if typed, ranked.isEmpty { return [Fallback.section(for: trimmed)] }
         return [
             ResultList.Section(
                 title: typed ? "Results" : "Commands", items: ranked.map { $0.item(icons: apps) })
+        ]
+    }
+
+    static func actions(
+        for id: String, query: String, apps: AppIndex, commands: [Command]
+    ) -> [CommandAction] {
+        if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
+        if let fallback = Fallback.all.first(where: { $0.item.id == id }) {
+            return [fallback.action(for: query.trimmingCharacters(in: .whitespacesAndNewlines))]
+        }
+        guard let app = apps.apps.first(where: { $0.url.path == id }) else {
+            return commands.first { $0.id == id }?.actions ?? []
+        }
+        return [
+            CommandAction(id: "open", title: "Open Application") {
+                _ = try await NSWorkspace.shared.openApplication(
+                    at: app.url, configuration: NSWorkspace.OpenConfiguration())
+            }
         ]
     }
 

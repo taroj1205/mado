@@ -28,6 +28,22 @@ import Testing
             ])
     }
 
+    @Test func aNoticeSitsAboveItsSectionAndCannotBeSelected() throws {
+        let notice = ResultList.Notice(title: "No matches for “xyz”", detail: "Try these.")
+        let web = item("Search Google")
+        let list = shown([.init(title: "Use “xyz” with…", items: [web], notice: notice)])
+        #expect(list.rows == [.notice(notice), .header("Use “xyz” with…"), .item(web)])
+        #expect(list.table.rect(ofRow: 0).height == ResultList.noticeHeight + ResultList.rowGap)
+        #expect(list.table.delegate?.tableView?(list.table, shouldSelectRow: 0) == false)
+        #expect(list.selectedItem == web)
+        list.selectPrevious()
+        #expect(list.selectedItem == web)
+        let cell = try #require(
+            list.table.view(atColumn: 0, row: 0, makeIfNecessary: false) as? NoticeCell)
+        #expect(cell.title.stringValue == notice.title)
+        #expect(cell.detail.stringValue == notice.detail)
+    }
+
     @Test func rowsAreFortyTwoPointsAndHeadersCannotBeSelected() {
         let list = shown([.init(title: "Commands", items: [item("A"), item("B")])])
         #expect(list.table.numberOfRows == 3)
