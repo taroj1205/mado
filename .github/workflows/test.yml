@@ -1,0 +1,53 @@
+name: Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: App and packages
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the scheme runs every package's tests
+        run: |
+          for dir in Packages/*/Tests/*/; do
+            package=${dir#Packages/}
+            package=${package%%/*}
+            target=$(basename "$dir")
+            grep -qE "^ +- package: $package/$target$" project.yml || {
+              echo "::error file=project.yml::Add '- package: $package/$target' to the Mado scheme's test targets"
+              exit 1
+            }
+          done
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build and test
+        run: |
+          xcodebuild test \
+            -project Mado.xcodeproj \
+            -scheme Mado \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Launch smoke test
+        run: |
+          build/Build/Products/Debug/Mado.app/Contents/MacOS/Mado &
+          pid=$!
+          sleep 3
+          kill -0 "$pid"
+          lsappinfo info -only ApplicationType -app "$pid" | grep -q UIElement
+          kill "$pid"
