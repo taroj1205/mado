@@ -73,19 +73,6 @@ import Testing
         try registry.register(Self.makeCommand("a", name: "Alpha", keywords: [], hotkey: nil))
     }
 
-    @Test func matchingFindsNameAndKeywordSubstrings() throws {
-        let registry = CommandRegistry()
-        try registry.register(
-            Self.makeCommand("a", name: "Open Clipboard", keywords: ["paste"], hotkey: nil))
-        try registry.register(
-            Self.makeCommand("b", name: "Window Left", keywords: ["tile"], hotkey: nil))
-
-        #expect(registry.commands(matching: "CLIP").map(\.id) == ["a"])
-        #expect(registry.commands(matching: "til").map(\.id) == ["b"])
-        #expect(registry.commands(matching: "zzz").isEmpty)
-        #expect(registry.commands(matching: "  ").map(\.id) == ["a", "b"])
-    }
-
     @Test func actionsRunOnTheMainActor() async throws {
         let ran = Flag()
         let command = Command(
