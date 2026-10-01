@@ -1,15 +1,15 @@
 import AppCore
 import AppKit
 import os
-import ServiceManagement
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
     private var statusItem: NSStatusItem?
-    private var launchAtLoginItem: NSMenuItem?
+    private var modules: ModuleManager?
+    private var settings: SettingsWindowController?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
         self.signposter = signposter
@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_: Notification) {
+        modules = makeModules()
+        NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
         signposter.endInterval("launch", launch)
     }
@@ -35,11 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Mado", action: nil, keyEquivalent: "")
-        menu.addItem(withTitle: "Settings…", action: nil, keyEquivalent: ",")
-        let launchAtLogin = menu.addItem(
-            withTitle: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
-        launchAtLogin.target = self
-        launchAtLoginItem = launchAtLogin
+        let settingsItem = menu.addItem(
+            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
         menu.addItem(.separator())
         let hide = menu.addItem(
             withTitle: "Hide Menu Bar Icon", action: #selector(hideStatusItem), keyEquivalent: "")
@@ -47,34 +47,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hide.toolTip = "Open Mado again to show the icon."
         menu.addItem(
             withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
-        menu.delegate = self
         item.menu = menu
         return item
     }
 
-    func menuNeedsUpdate(_: NSMenu) {
-        launchAtLoginItem?.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    private func makeMainMenu() -> NSMenu {
+        let app = NSMenu()
+        let settingsItem = app.addItem(
+            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        app.addItem(.separator())
+        app.addItem(
+            withTitle: "Hide Mado", action: #selector(NSApplication.hide), keyEquivalent: "h")
+        app.addItem(
+            withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
+        let window = NSMenu(title: "Window")
+        window.addItem(
+            withTitle: "Close", action: #selector(NSWindow.performClose), keyEquivalent: "w")
+        window.addItem(
+            withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize),
+            keyEquivalent: "m")
+        NSApp.windowsMenu = window
+
+        let menu = NSMenu()
+        for submenu in [app, window] {
+            menu.addItem(withTitle: submenu.title, action: nil, keyEquivalent: "").submenu = submenu
+        }
+        return menu
+    }
+
+    private func makeModules() -> ModuleManager? {
+        do {
+            let manager = try ModuleManager(store: .standard())
+            for descriptor in SettingsPage.all.compactMap(\.module) {
+                try manager.register(PlaceholderModule(descriptor: descriptor))
+            }
+            try manager.startEnabledModules()
+            return manager
+        } catch {
+            logger.error("Modules failed to load: \(error, privacy: .public)")
+            return nil
+        }
     }
 
     @objc
-    private func toggleLaunchAtLogin() {
-        let service = SMAppService.mainApp
-        do {
-            switch service.status {
-            case .enabled:
-                try service.unregister()
-
-            case .requiresApproval:
-                SMAppService.openSystemSettingsLoginItems()
-
-            default:
-                try service.register()
-            }
-        } catch {
-            logger.error("Launch at login failed: \(error, privacy: .public)")
-            NSApp.activate()
-            NSApp.presentError(error)
-        }
+    private func showSettings() {
+        let controller = settings ?? SettingsWindowController(modules: modules)
+        settings = controller
+        controller.showWindow(nil)
     }
 
     @objc
