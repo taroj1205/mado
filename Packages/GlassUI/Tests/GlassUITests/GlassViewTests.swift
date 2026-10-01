@@ -64,6 +64,7 @@ import Testing
         #expect(hud.ignoresMouseEvents)
         #expect(!panel.ignoresMouseEvents)
         #expect(panel.canBecomeKey)
+        #expect(panel.styleMask.contains(.nonactivatingPanel))
         #expect(!hud.canBecomeKey)
         #expect(hud.contentView === hud.glass)
     }
