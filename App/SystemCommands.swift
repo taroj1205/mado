@@ -67,7 +67,9 @@ enum SystemCommands {
         let previous = NSWorkspace.shared.frontmostApplication
         NSApp.activate()
         defer { previous?.activate(from: .current, options: []) }
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            throw CocoaError(.userCancelled)
+        }
         try runScript(
             """
             ignoring application responses

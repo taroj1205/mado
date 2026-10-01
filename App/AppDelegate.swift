@@ -189,6 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             do {
                 try await action.perform()
                 self?.recordUse(of: item.id)
+            } catch CocoaError.userCancelled {
+                logger.debug("Result \(item.id, privacy: .public) was canceled")
             } catch {
                 logger.error(
                     "Result \(item.id, privacy: .public) failed: \(error, privacy: .public)")
