@@ -13,10 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
-    private static let searchBarHalfHeight: CGFloat = 30
-    private static let searchInset: CGFloat = 20
-    private static let searchFontSize: CGFloat = 20
-    private static let searchIconGap: CGFloat = 12
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
@@ -25,7 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
     private var launcher: GlassPanel?
-    private var search: SearchRunner<[Command]>?
+    private let launcherView = LauncherView()
+    private var search: SearchRunner<[ResultList.Section]>?
     private var hotKeys: HotKeyRegistry?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
@@ -39,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         statusItem = makeStatusItem()
         launcher = makeLauncher()
         search = makeSearch()
+        search?.run(launcherView.field.stringValue)
         hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
@@ -130,50 +128,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
             kind: .panel,
             contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
             shape: .rounded(Self.launcherRadius))
-        let icon = NSImageView()
-        icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
-        icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
-        icon.contentTintColor = .secondaryLabelColor
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        let field = NSTextField()
-        field.placeholderString = "Search apps and commands…"
-        field.font = .systemFont(ofSize: Self.searchFontSize)
-        field.isBordered = false
-        field.drawsBackground = false
-        field.focusRingType = .none
-        field.delegate = self
-        field.translatesAutoresizingMaskIntoConstraints = false
-        let content = NSView()
-        content.addSubview(icon)
-        content.addSubview(field)
-        NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(
-                equalTo: content.leadingAnchor, constant: Self.searchInset),
-            icon.centerYAnchor.constraint(
-                equalTo: content.topAnchor, constant: Self.searchBarHalfHeight),
-            field.leadingAnchor.constraint(
-                equalTo: icon.trailingAnchor, constant: Self.searchIconGap),
-            field.trailingAnchor.constraint(
-                equalTo: content.trailingAnchor, constant: -Self.searchInset),
-            field.centerYAnchor.constraint(
-                equalTo: content.topAnchor, constant: Self.searchBarHalfHeight),
-        ])
-        panel.glass.contentView = content
-        panel.initialFirstResponder = field
+        launcherView.field.delegate = self
+        panel.glass.contentView = launcherView
+        panel.initialFirstResponder = launcherView.field
         panel.delegate = self
         return panel
     }
 
-    private func makeSearch() -> SearchRunner<[Command]> {
+    private func makeSearch() -> SearchRunner<[ResultList.Section]> {
         SearchRunner(
             search: { [weak self] query in
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
-                    modules?.commands.commands(matching: query) ?? []
+                    let commands = modules?.commands.commands(matching: query) ?? []
+                    let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    return [
+                        ResultList.Section(
+                            title: typed ? "Results" : "Commands",
+                            items: commands.map { command in
+                                ResultList.Item(
+                                    title: command.name, subtitle: "", kind: "Command",
+                                    symbol: command.icon)
+                            })
+                    ]
                 }
             },
-            deliver: { [logger] results in
-                logger.debug("Search matched \(results.count) commands")
+            deliver: { [launcherView] sections in
+                launcherView.results.sections = sections
             })
     }
 
