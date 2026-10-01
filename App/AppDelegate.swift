@@ -209,7 +209,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             logger.error("Saving usage failed: \(error, privacy: .public)")
         }
-        search?.run(launcherView.field.stringValue)
     }
 
     func windowDidResignKey(_: Notification) {
@@ -237,8 +236,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let lifetime = QueryLifetime.load(from: modules).duration
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
-            search?.run("")
         }
+        search?.run(launcherView.field.stringValue)
         panel.makeKeyAndOrderFront(nil)
         launcherView.field.selectText(nil)
         CATransaction.setCompletionBlock { [signposter] in
