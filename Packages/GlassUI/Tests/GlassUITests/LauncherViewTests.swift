@@ -31,6 +31,11 @@ import Testing
         #expect(view.field.stringValue.isEmpty)
     }
 
+    @Test func theSearchFieldSharesFocusWithTheResults() {
+        let shared = view.field.accessibilitySharedFocusElements() as? [NSTableView]
+        #expect(shared == [view.results.table])
+    }
+
     @Test func returnRunsThePrimaryActionAndCommandReturnTheSecondary() {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }

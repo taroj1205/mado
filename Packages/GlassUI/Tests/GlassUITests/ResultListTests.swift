@@ -124,6 +124,19 @@ import Testing
         #expect(result.tile.frame.height == ResultCell.tileSize)
     }
 
+    @Test func voiceOverReadsARowAsItsNameKindAndSubtitle() {
+        let cell = ResultCell()
+        cell.show(
+            .init(
+                id: "sleep", title: "Sleep", subtitle: "System", kind: "Command",
+                symbol: "moon", action: "Run Command"))
+        #expect(cell.accessibilityLabel() == "Sleep, Command, System")
+        #expect(cell.accessibilityChildren()?.isEmpty == true)
+
+        cell.show(item("Notes"))
+        #expect(cell.accessibilityLabel() == "Notes, Command")
+    }
+
     @Test func appIconsReplaceTheTileUntilTheCellShowsASymbolAgain() {
         let cell = ResultCell()
         let icon = NSImage(size: NSSize(width: 32, height: 32))
