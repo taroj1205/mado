@@ -52,15 +52,11 @@ struct SettingsPage {
     }
 
     private static func screenPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
-        let screens = LauncherSettings.Screen.allCases
+        let screens = LauncherScreen.allCases
         let popUp = SettingsPopUp(
             screens.map(\.title),
-            read: { screens.firstIndex(of: LauncherSettings.load(from: modules).screen) ?? 0 },
-            write: { index in
-                var settings = LauncherSettings.load(from: modules)
-                settings.screen = screens[index]
-                try settings.save(to: modules)
-            })
+            read: { screens.firstIndex(of: LauncherScreen.load(from: modules)) ?? 0 },
+            write: { try screens[$0].save(to: modules) })
         popUp.isEnabled = modules != nil
         return popUp
     }

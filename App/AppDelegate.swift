@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
     private func launcherScreen() -> NSScreen? {
         let mouse = NSEvent.mouseLocation
         let mouseScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
-        switch LauncherSettings.load(from: modules).screen {
+        switch LauncherScreen.load(from: modules) {
         case .mouse:
             return mouseScreen
 

@@ -23,6 +23,9 @@ public enum ScreenGeometry {
         let centerY = visibleFrame.maxY - visibleFrame.height / thirds
         let bottom = min(
             max(centerY - size.height * half, visibleFrame.minY), visibleFrame.maxY - size.height)
-        return CGPoint(x: visibleFrame.midX - size.width * half, y: bottom)
+        let left = max(
+            min(visibleFrame.midX - size.width * half, visibleFrame.maxX - size.width),
+            visibleFrame.minX)
+        return CGPoint(x: left, y: bottom)
     }
 }
