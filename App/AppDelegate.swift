@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
-    private static let querySeconds = 90
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
@@ -226,7 +225,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
             panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
         }
-        if let closed = launcherClosed, closed.duration(to: .now) > .seconds(Self.querySeconds) {
+        let lifetime = QueryLifetime.load(from: modules).duration
+        if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
             search?.run("")
         }
