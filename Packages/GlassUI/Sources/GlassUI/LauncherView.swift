@@ -140,6 +140,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
+        field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
     }
 
@@ -177,9 +178,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     }
 
     public func controlTextDidChange(_: Notification) {
-        browsing = false
-        closePreview()
-        showContext()
+        endBrowsing()
         onQuery?(field.stringValue)
     }
 
