@@ -95,9 +95,19 @@ import Testing
         let files = [file("a.txt"), file("b.txt")]
         view.show([.init(title: "Files", items: files)])
         view.results.table.selectRowIndexes([2], byExtendingSelection: false)
+        click()
         view.show([.init(title: "Files", items: [file("new.txt")] + files)])
         #expect(view.results.selectedItem?.id == "b.txt")
         #expect(view.contextLabel.stringValue == "Space to preview")
+    }
+
+    @Test func clickingTheAlreadySelectedFileLetsSpacePreviewIt() {
+        defer { view.closePreview() }
+        view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
+        click()
+        press(kVK_Space, " ")
+        #expect(view.previewing)
+        #expect(view.field.stringValue.isEmpty)
     }
 
     @Test func aRefreshRedrawsTheCardForAFileEditedInPlace() throws {
@@ -148,6 +158,10 @@ import Testing
 
     private func item(_ title: String) -> ResultList.Item {
         .init(id: title, title: title, subtitle: "", kind: "Command", symbol: "star", action: "Run")
+    }
+
+    private func click() {
+        view.results.table.sendAction(view.results.table.action, to: view.results.table.target)
     }
 
     private func press(_ keyCode: Int, _ characters: String) {

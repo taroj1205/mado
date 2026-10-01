@@ -179,10 +179,11 @@ import Testing
         list.onMove = { moves += 1 }
         list.selectNext()
         list.table.selectRowIndexes([1], byExtendingSelection: false)
+        list.table.sendAction(list.table.action, to: list.table.target)
         list.sections = [.init(title: "Results", items: [item("C")])]
         list.sections = []
         #expect(selected == ["B", "A", "C", nil])
-        #expect(moves == 2)
+        #expect(moves == 1)
     }
 
     @Test func emptyResultsHaveNoSelectedItem() {

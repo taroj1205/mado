@@ -116,6 +116,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         table.refusesFirstResponder = true
         table.dataSource = self
         table.delegate = self
+        table.target = self
+        table.action = #selector(rowClicked)
         documentView = table
         drawsBackground = false
         hasVerticalScroller = true
@@ -140,6 +142,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         kept = id
         self.sections = sections
         kept = nil
+    }
+
+    @objc
+    func rowClicked() {
+        onMove?()
     }
 
     public func selectPrevious() {
@@ -182,7 +189,6 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public func tableViewSelectionDidChange(_: Notification) {
         guard !reloading else { return }
         onSelect?(selectedItem)
-        onMove?()
     }
 
     public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
