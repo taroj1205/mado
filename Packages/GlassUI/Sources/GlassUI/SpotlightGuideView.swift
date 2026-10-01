@@ -10,7 +10,9 @@ public final class SpotlightGuideView: NSView {
     private static let keyboardSettings = URL(
         string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     private static let margin: CGFloat = 32
-    private static let top: CGFloat = 19
+    private static let crumbTop: CGFloat = 18
+    private static let contentTop: CGFloat = 51
+    private static let headerBottom: CGFloat = 2
     private static let bottom: CGFloat = 24
     private static let gap: CGFloat = 14
     private static let headerGap: CGFloat = 4
@@ -24,11 +26,13 @@ public final class SpotlightGuideView: NSView {
     private static let iconSize: CGFloat = 13
     private static let rowRadius: CGFloat = 10
     private static let rowPaddingX: CGFloat = 12
-    private static let rowPaddingY: CGFloat = 8
+    private static let statusHeight: CGFloat = 38
+    private static let buttonRowHeight: CGFloat = 26
+    private static let chipHeight: CGFloat = 36
     private static let chipRing: CGFloat = 3
+    private static let keyHeight: CGFloat = 18
     private static let keyRadius: CGFloat = 5
-    private static let keyPaddingX: CGFloat = 5
-    private static let keyPaddingY: CGFloat = 2
+    private static let keyInset: CGFloat = 10
     private static let ringAlpha = 0.22
     private static let borderAlpha = 0.6
     private static let insetAlpha = (dark: 0.22, light: 0.5)
@@ -81,7 +85,19 @@ public final class SpotlightGuideView: NSView {
         let key = GuideStep.box(radius: keyRadius, fill: .tertiarySystemFill)
         let name = label(text, size: keySize, color: .labelColor)
         name.font = .systemFont(ofSize: keySize, weight: .medium)
-        GuideStep.embed(name, in: key, horizontal: keyPaddingX, vertical: keyPaddingY)
+        name.translatesAutoresizingMaskIntoConstraints = false
+        key.addSubview(name)
+        let snug = key.widthAnchor.constraint(equalTo: name.widthAnchor, constant: keyInset)
+        snug.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            snug,
+            key.heightAnchor.constraint(equalToConstant: keyHeight),
+            key.widthAnchor.constraint(greaterThanOrEqualToConstant: keyHeight),
+            key.widthAnchor.constraint(
+                greaterThanOrEqualTo: name.widthAnchor, constant: keyInset),
+            name.centerXAnchor.constraint(equalTo: key.centerXAnchor),
+            name.centerYAnchor.constraint(equalTo: key.centerYAnchor),
+        ])
         return key
     }
 
@@ -120,22 +136,19 @@ public final class SpotlightGuideView: NSView {
         let content = NSStackView(views: [header] + steps)
         content.orientation = .vertical
         content.spacing = Self.gap
+        content.setCustomSpacing(Self.gap + Self.headerBottom, after: header)
         for view in content.arrangedSubviews {
             view.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
         }
         let footer = footerRow()
-        let titlebar = NSLayoutGuide()
-        addLayoutGuide(titlebar)
         for view in [crumb, content, footer] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
         NSLayoutConstraint.activate([
-            titlebar.topAnchor.constraint(equalTo: topAnchor),
-            titlebar.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            crumb.centerYAnchor.constraint(equalTo: titlebar.centerYAnchor),
+            crumb.topAnchor.constraint(equalTo: topAnchor, constant: Self.crumbTop),
             crumb.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.margin),
-            content.topAnchor.constraint(equalTo: titlebar.bottomAnchor, constant: Self.top),
+            content.topAnchor.constraint(equalTo: topAnchor, constant: Self.contentTop),
             content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.margin),
             content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.margin),
             footer.topAnchor.constraint(greaterThanOrEqualTo: content.bottomAnchor),
@@ -154,14 +167,16 @@ public final class SpotlightGuideView: NSView {
         spotlight.setAccessibilityEnabled(false)
         spotlight.refusesFirstResponder = true
         spotlight.setAccessibilityLabel("Show Spotlight search")
+        let name = Self.label("Show Spotlight search", size: Self.smallSize, color: .labelColor)
         let row = NSStackView(views: [
-            icon, Self.label("Show Spotlight search", size: Self.smallSize, color: .labelColor),
-            Self.label("⌘Space", size: Self.smallSize, color: .tertiaryLabelColor),
+            icon, name, Self.label("⌘Space", size: Self.smallSize, color: .tertiaryLabelColor),
         ])
         row.setViews([spotlight], in: .trailing)
         row.spacing = Self.rowGap
+        row.setCustomSpacing(Self.keyGap, after: name)
         let box = GuideStep.box(radius: Self.rowRadius, fill: Self.insetFill)
-        GuideStep.embed(row, in: box, horizontal: Self.rowPaddingX, vertical: Self.rowPaddingY)
+        GuideStep.embed(row, in: box, horizontal: Self.rowPaddingX, vertical: 0)
+        box.heightAnchor.constraint(equalToConstant: Self.statusHeight).isActive = true
         return box
     }
 
@@ -175,7 +190,9 @@ public final class SpotlightGuideView: NSView {
         if #available(macOS 26, *) {
             button.borderShape = .capsule
         }
-        return NSStackView(views: [button])
+        let row = NSStackView(views: [button])
+        row.heightAnchor.constraint(equalToConstant: Self.buttonRowHeight).isActive = true
+        return row
     }
 
     private func pressRow() -> NSView {
@@ -185,16 +202,23 @@ public final class SpotlightGuideView: NSView {
         let field = GuideStep.box(radius: Self.rowRadius, fill: Self.insetFill)
         field.borderWidth = 1
         field.borderColor = .controlAccentColor.withAlphaComponent(Self.borderAlpha)
-        GuideStep.embed(keys, in: field, horizontal: Self.rowPaddingX, vertical: Self.rowPaddingY)
+        GuideStep.embed(keys, in: field, horizontal: Self.rowPaddingX, vertical: 0)
+        field.heightAnchor.constraint(equalToConstant: Self.chipHeight).isActive = true
         let ring = GuideStep.box(radius: Self.rowRadius + Self.chipRing, fill: .clear)
         ring.borderWidth = Self.chipRing
         ring.borderColor = .controlAccentColor.withAlphaComponent(Self.ringAlpha)
-        GuideStep.embed(field, in: ring, horizontal: Self.chipRing, vertical: Self.chipRing)
+        let chip = NSView()
+        for view in [ring, field] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            chip.addSubview(view)
+        }
+        GuideStep.embed(field, in: chip, horizontal: 0, vertical: 0)
+        GuideStep.embed(ring, in: chip, horizontal: -Self.chipRing, vertical: -Self.chipRing)
         let hint = Self.label(
             "Press ⌘Space now to confirm it reaches Mado", size: Self.smallSize,
             color: .secondaryLabelColor)
-        let row = NSStackView(views: [ring, hint])
-        row.spacing = Self.gap - Self.chipRing
+        let row = NSStackView(views: [chip, hint])
+        row.spacing = Self.rowPaddingX
         return row
     }
 

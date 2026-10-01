@@ -155,6 +155,8 @@ final class LauncherHotKeys {
             defer: true)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.toolbar = NSToolbar()
+        window.toolbarStyle = .unified
         window.title = "Use ⌘Space for Mado"
         window.isReleasedWhenClosed = false
         window.isOpaque = false

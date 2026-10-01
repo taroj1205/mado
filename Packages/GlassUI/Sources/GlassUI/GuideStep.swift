@@ -72,6 +72,7 @@ final class GuideStep: NSView {
         box.borderWidth = 0
         box.cornerRadius = radius
         box.fillColor = fill
+        box.contentViewMargins = .zero
         return box
     }
 
