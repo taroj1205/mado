@@ -9,3 +9,4 @@ App/Info.plist
 App/Mado.entitlements
 build/
 .claude/worktrees/
+CLAUDE.local.md
