@@ -10,3 +10,6 @@ App/Mado.entitlements
 build/
 .claude/worktrees/
 CLAUDE.local.md
+.agents/references/launcher.md
+.agents/references/external-display.md
+.agents/references/goals.md
