@@ -66,7 +66,11 @@ public enum Fuzzy {
     }
 
     private static func romanized(_ text: String) -> String {
-        let katakana = text.applyingTransform(.hiraganaToKatakana, reverse: false) ?? text
-        return katakana.applyingTransform(.latinToKatakana, reverse: true) ?? katakana
+        text.replacing(/[\p{Script=Hiragana}\p{Script=Katakana}ー]+/) { match in
+            let kana = String(match.output)
+            let katakana = kana.applyingTransform(.hiraganaToKatakana, reverse: false) ?? kana
+            let latin = katakana.applyingTransform(.latinToKatakana, reverse: true) ?? katakana
+            return latin.filter(\.isLetter)
+        }
     }
 }

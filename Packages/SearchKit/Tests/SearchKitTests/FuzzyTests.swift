@@ -22,6 +22,11 @@ import Testing
         #expect(rank("めも") == ["メモ"])
     }
 
+    @Test func dropsSeparatorsAddedByRomanizingKana() {
+        #expect(Fuzzy.rank(["ShinAichi"], by: "しんあいち") { [$0] } == ["ShinAichi"])
+        #expect(Fuzzy.rank(["Mac's メモ"], by: "mac's") { [$0] } == ["Mac's メモ"])
+    }
+
     @Test func wordAndNameStartsRankFirst() {
         #expect(rank("ps") == ["Photoshop", "Maps"])
         #expect(
