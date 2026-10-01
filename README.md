@@ -10,6 +10,12 @@ Native macOS launcher (AppKit only, no SwiftUI). Plan: see the "Mado — AppKit 
 
 Debug builds are signed with a local certificate named `Mado Development`, so the Accessibility grant survives rebuilds. Create it once per Mac in Keychain Access: Certificate Assistant, Create a Certificate, name `Mado Development`, type Code Signing.
 
+To run a Debug build from a worktree next to another Mado, launch it without the ⌥Space hotkey and open its launcher with a signal instead:
+
+    xcodebuild build -project Mado.xcodeproj -scheme Mado -derivedDataPath build
+    open -n build/Build/Products/Debug/Mado.app --args -MadoNoHotKey YES
+    pkill -USR1 -f "$PWD/build/Build/Products/Debug/"
+
 Tests: `for p in Packages/*/; do (cd "$p" && swift test); done`, or `xcodebuild test -project Mado.xcodeproj -scheme Mado -destination 'platform=macOS'`.
 
 Branches and commits start with the goal ID, e.g. `M0-01-xcode-project`.

@@ -25,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
     private var hotKeys: HotKeyRegistry?
+    #if DEBUG
+        private var toggleSignal: (any DispatchSourceSignal)?
+    #endif
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
         self.signposter = signposter
@@ -44,6 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         apps.start()
         hotKeys = makeHotKeys()
+        #if DEBUG
+            toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
+        #endif
         signposter.endInterval("launch", launch)
     }
 
@@ -117,6 +123,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func makeHotKeys() -> HotKeyRegistry? {
+        #if DEBUG
+            if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
+        #endif
         do {
             let registry = try HotKeyRegistry()
             try registry.register(Self.launcherHotKey) { [weak self] in
