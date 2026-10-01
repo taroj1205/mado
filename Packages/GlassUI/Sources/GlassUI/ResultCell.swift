@@ -42,6 +42,7 @@ final class ResultCell: NSTableCellView {
         subtitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
         kind.font = .systemFont(ofSize: Self.kindSize)
         kind.textColor = .secondaryLabelColor
+        setAccessibilityChildren([])
         layout(tile, title, subtitle, kind)
     }
 
@@ -58,6 +59,8 @@ final class ResultCell: NSTableCellView {
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
+        setAccessibilityLabel(
+            [item.title, item.kind, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
     private func layout(_ views: NSView...) {
