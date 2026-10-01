@@ -88,6 +88,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     }
 
     public var onSelect: ((Item?) -> Void)?
+    public var onMove: (() -> Void)?
 
     public var selectedItem: Item? {
         guard rows.indices.contains(table.selectedRow),
@@ -181,6 +182,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public func tableViewSelectionDidChange(_: Notification) {
         guard !reloading else { return }
         onSelect?(selectedItem)
+        onMove?()
     }
 
     public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {

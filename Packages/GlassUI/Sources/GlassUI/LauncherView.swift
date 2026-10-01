@@ -139,6 +139,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         results.contentInsets.bottom =
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
+        results.onMove = { [weak self] in self?.selectionMoved() }
         showAction(of: nil)
     }
 

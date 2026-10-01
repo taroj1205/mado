@@ -91,6 +91,15 @@ import Testing
         #expect(!view.previewing)
     }
 
+    @Test func aRowPickedWithTheMouseSurvivesARefresh() {
+        let files = [file("a.txt"), file("b.txt")]
+        view.show([.init(title: "Files", items: files)])
+        view.results.table.selectRowIndexes([2], byExtendingSelection: false)
+        view.show([.init(title: "Files", items: [file("new.txt")] + files)])
+        #expect(view.results.selectedItem?.id == "b.txt")
+        #expect(view.contextLabel.stringValue == "Space to preview")
+    }
+
     @Test func aRefreshRedrawsTheCardForAFileEditedInPlace() throws {
         defer { view.closePreview() }
         let url = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString).txt")

@@ -174,12 +174,15 @@ import Testing
     @Test func selectionChangesAreReported() {
         let list = shown([.init(title: "Commands", items: [item("A"), item("B")])])
         var selected: [String?] = []
+        var moves = 0
         list.onSelect = { selected.append($0?.title) }
+        list.onMove = { moves += 1 }
         list.selectNext()
         list.table.selectRowIndexes([1], byExtendingSelection: false)
         list.sections = [.init(title: "Results", items: [item("C")])]
         list.sections = []
         #expect(selected == ["B", "A", "C", nil])
+        #expect(moves == 2)
     }
 
     @Test func emptyResultsHaveNoSelectedItem() {
