@@ -15,7 +15,12 @@ struct SettingsPage {
                                 read: { LaunchAtLogin.isEnabled },
                                 write: LaunchAtLogin.setEnabled))
                     ]),
-                SettingsSection("Window", [.init("Show on", screenPopUp(modules))]),
+                SettingsSection(
+                    "Window",
+                    [
+                        .init("Show on", popUp(LauncherScreen.self, modules)),
+                        .init("Keep last query", popUp(QueryLifetime.self, modules)),
+                    ]),
             ]
         },
         Self("Search", "magnifyingglass"),
@@ -51,12 +56,14 @@ struct SettingsPage {
         self.sections = sections
     }
 
-    private static func screenPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
-        let screens = LauncherScreen.allCases
+    private static func popUp<Setting: LauncherSetting>(
+        _: Setting.Type, _ modules: ModuleManager?
+    ) -> SettingsPopUp {
+        let choices = Array(Setting.allCases)
         let popUp = SettingsPopUp(
-            screens.map(\.title),
-            read: { screens.firstIndex(of: LauncherScreen.load(from: modules)) ?? 0 },
-            write: { try screens[$0].save(to: modules) })
+            choices.map(\.title),
+            read: { choices.firstIndex(of: Setting.load(from: modules)) ?? 0 },
+            write: { try choices[$0].save(to: modules) })
         popUp.isEnabled = modules != nil
         return popUp
     }

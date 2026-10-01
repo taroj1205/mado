@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
-    private static let querySeconds = 90
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
@@ -28,6 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let apps = AppIndex()
     private var usage = Usage()
     private var hotKeys: HotKeyRegistry?
+    #if DEBUG
+        private var toggleSignal: (any DispatchSourceSignal)?
+    #endif
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
         self.signposter = signposter
@@ -48,6 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         apps.start()
         hotKeys = makeHotKeys()
+        #if DEBUG
+            toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
+        #endif
         signposter.endInterval("launch", launch)
     }
 
@@ -131,6 +136,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func makeHotKeys() -> HotKeyRegistry? {
+        #if DEBUG
+            if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
+        #endif
         do {
             let registry = try HotKeyRegistry()
             try registry.register(Self.launcherHotKey) { [weak self] in
@@ -185,6 +193,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if !Fallback.all.contains(where: { $0.item.id == item.id }) {
                     self?.recordUse(of: item.id)
                 }
+            } catch CocoaError.userCancelled {
+                logger.debug("Result \(item.id, privacy: .public) was canceled")
             } catch {
                 logger.error(
                     "Result \(item.id, privacy: .public) failed: \(error, privacy: .public)")
@@ -219,11 +229,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func showLauncher() {
         guard let panel = launcher else { return }
         let opening = signposter.beginInterval("open launcher")
-        if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
+        let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
+        if let visible = screen?.visibleFrame {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
             panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
         }
-        if let closed = launcherClosed, closed.duration(to: .now) > .seconds(Self.querySeconds) {
+        let lifetime = QueryLifetime.load(from: modules).duration
+        if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
             search?.run("")
         }
@@ -232,35 +244,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
         }
-    }
-
-    private func launcherScreen() -> NSScreen? {
-        let mouse = NSEvent.mouseLocation
-        let mouseScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
-        switch LauncherScreen.load(from: modules) {
-        case .mouse:
-            return mouseScreen
-
-        case .activeWindow:
-            return activeWindowScreen() ?? mouseScreen
-        }
-    }
-
-    private func activeWindowScreen() -> NSScreen? {
-        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-            let windows = CGWindowListCopyWindowInfo(
-                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-                as? [[String: Any]],
-            let window = windows.first(where: { info in
-                info[kCGWindowOwnerPID as String] as? pid_t == pid
-                    && info[kCGWindowLayer as String] as? Int == 0
-            }),
-            let dictionary = window[kCGWindowBounds as String] as? [String: Any],
-            let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary)
-        else { return nil }
-        let screens = NSScreen.screens
-        return ScreenGeometry.screenIndex(showing: bounds, in: screens.map(\.frame))
-            .map { screens[$0] }
     }
 
     @objc
