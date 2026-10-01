@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launch: OSSignpostIntervalState
     private var statusItem: NSStatusItem?
     private var modules: ModuleManager?
-    private var settings: SettingsWindowController?
+    private(set) var settings: SettingsWindowController?
     private var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private let launcherView = LauncherView()
@@ -60,10 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         statusItem?.isVisible = true
         return true
-    }
-
-    func applicationDidChangeScreenParameters(_: Notification) {
-        settings?.refresh()
     }
 
     private func makeStatusItem() -> NSStatusItem {
