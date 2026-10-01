@@ -3,6 +3,8 @@
 <!-- `Closes #N` if this finishes the goal, `Refs #N` if it only moves it forward. Never close a milestone tracker. -->
 - Closes #
 
+## Checklist
+
 - [ ] The goal's blocked-by issues are all closed
 - [ ] I read the whole diff myself
 - [ ] Tests cover the new or changed behavior, or this PR says why they don't
