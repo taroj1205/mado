@@ -51,12 +51,28 @@ import Testing
     @Test func commandReturnWaitsWhileTheInputMethodIsComposing() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
-        let editor = try #require(view.field.currentEditor() as? NSTextView)
-        editor.setMarkedText(
-            "かいぎ", selectedRange: NSRange(location: 3, length: 0),
-            replacementRange: NSRange(location: NSNotFound, length: 0))
+        try compose("かいぎ")
         press(kVK_Return, "\r", [.command])
         #expect(runs.isEmpty)
+    }
+
+    @Test func returnCommitsTheInputMethodInsteadOfRunning() throws {
+        var runs: [String] = []
+        var queries: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        view.onQuery = { queries.append($0) }
+        try compose("かいぎ").doCommand(by: #selector(NSResponder.insertNewline))
+        #expect(runs.isEmpty)
+        #expect(queries == ["かいぎ"])
+    }
+
+    @Test func searchWaitsUntilTheInputMethodCommits() throws {
+        var queries: [String] = []
+        view.onQuery = { queries.append($0) }
+        let editor = try compose("かいぎ")
+        #expect(queries.isEmpty)
+        editor.insertText("会議", replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(queries == ["会議"])
     }
 
     @Test func nothingRunsWithoutResults() {
@@ -94,6 +110,15 @@ import Testing
         }
         if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
         panel.sendEvent(event)
+    }
+
+    @discardableResult
+    private func compose(_ text: String) throws -> NSTextView {
+        let editor = try #require(view.field.currentEditor() as? NSTextView)
+        editor.setMarkedText(
+            text, selectedRange: NSRange(location: text.utf16.count, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        return editor
     }
 
     private func item(_ title: String) -> ResultList.Item {

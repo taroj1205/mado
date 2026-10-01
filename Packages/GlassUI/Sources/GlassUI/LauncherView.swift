@@ -74,12 +74,12 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     }
 
     public func control(
-        _: NSControl, textView _: NSTextView, doCommandBy selector: Selector
+        _: NSControl, textView: NSTextView, doCommandBy selector: Selector
     ) -> Bool {
         switch selector {
         case #selector(NSResponder.moveUp): results.selectPrevious()
         case #selector(NSResponder.moveDown): results.selectNext()
-        case #selector(NSResponder.insertNewline): run(0)
+        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
         case #selector(NSResponder.cancelOperation): onCancel?()
         default: return false
         }
