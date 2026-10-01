@@ -85,4 +85,11 @@ schemes:
       config: Debug
     test:
       config: Debug
-      targets: [MadoTests]
+      targets:
+        - MadoTests
+        - package: AppCore/AppCoreTests
+        - package: ClipboardKit/ClipboardKitTests
+        - package: GlassUI/GlassUITests
+        - package: InputKit/InputKitTests
+        - package: SearchKit/SearchKitTests
+        - package: WindowKit/WindowKitTests
