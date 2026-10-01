@@ -4,5 +4,5 @@ import Testing
 
 @Test func appCoreLinks() {
     #expect(AppCoreModule.moduleName == "AppCore")
-    #expect(AppCoreModule.dependsOn == [])
+    #expect(AppCoreModule.dependsOn.isEmpty)
 }

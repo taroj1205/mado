@@ -2,5 +2,17 @@
   "version": 1,
   "lineLength": 100,
   "indentation": { "spaces": 4 },
-  "rules": { "NeverForceUnwrap": true }
+  "rules": {
+    "AlwaysUseLiteralForEmptyCollectionInit": true,
+    "BeginDocumentationCommentWithOneLineSummary": true,
+    "NeverForceUnwrap": true,
+    "NeverUseForceTry": true,
+    "NeverUseImplicitlyUnwrappedOptionals": true,
+    "NoEmptyLinesOpeningClosingBraces": true,
+    "NoLeadingUnderscores": true,
+    "OmitExplicitReturns": true,
+    "UseEarlyExits": true,
+    "UseWhereClausesInForLoops": true,
+    "ValidateDocumentationComments": true
+  }
 }

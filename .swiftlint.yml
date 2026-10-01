@@ -1,0 +1,54 @@
+strict: true
+
+included:
+  - App
+  - Packages
+  - Tests
+
+excluded:
+  - Packages/*/.build
+
+opt_in_rules:
+  - all
+
+disabled_rules:
+  - attributes
+  - contrasted_opening_brace
+  - explicit_acl
+  - explicit_top_level_acl
+  - explicit_type_interface
+  - let_var_whitespace
+  - missing_docs
+  - multiline_arguments_brackets
+  - prefixed_toplevel_constant
+  - required_deinit
+  - trailing_comma
+
+force_unwrapping: error
+force_cast: error
+force_try: error
+line_length: 100
+cyclomatic_complexity:
+  warning: 8
+  error: 12
+function_body_length:
+  warning: 40
+  error: 60
+type_body_length:
+  warning: 250
+  error: 400
+file_length:
+  warning: 400
+  error: 600
+
+custom_rules:
+  no_print:
+    name: "Use os.Logger"
+    regex: '\bprint\('
+    message: "Log through the module's os.Logger instead of print."
+    severity: error
+  no_nsexpression:
+    name: "No NSExpression"
+    regex: '\bNSExpression\b'
+    message: "NSExpression traps on invalid input; use the calculator parser."
+    severity: error

@@ -7,10 +7,21 @@ let package = Package(
     products: [
         .library(name: "AppCore", targets: ["AppCore"])
     ],
-    dependencies: [
-    ],
+    dependencies: [],
     targets: [
         .target(name: "AppCore", dependencies: []),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
     ]
 )
+
+for target in package.targets {
+    target.swiftSettings = [
+        .enableUpcomingFeature("ExistentialAny"),
+        .enableUpcomingFeature("InternalImportsByDefault"),
+        .enableUpcomingFeature("MemberImportVisibility"),
+        .enableUpcomingFeature("InferIsolatedConformances"),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("ImmutableWeakCaptures"),
+        .unsafeFlags(["-strict-memory-safety", "-warnings-as-errors"]),
+    ]
+}

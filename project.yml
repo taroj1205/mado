@@ -5,6 +5,12 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
 
+settings:
+  base:
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    OTHER_SWIFT_FLAGS: "-enable-upcoming-feature ExistentialAny -enable-upcoming-feature InternalImportsByDefault -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-upcoming-feature ImmutableWeakCaptures -strict-memory-safety"
+
 packages:
   AppCore:
     path: Packages/AppCore
