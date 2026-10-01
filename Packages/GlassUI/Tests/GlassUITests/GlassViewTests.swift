@@ -35,6 +35,17 @@ import Testing
         #expect(appliedRadius(view) == 12)
     }
 
+    @Test func liquidGlassIsClippedToItsShape() throws {
+        guard #available(macOS 26, *) else { return }
+        let view = GlassView(shape: .rounded(28))
+        view.frame = NSRect(x: 0, y: 0, width: 500, height: 300)
+        view.layoutSubtreeIfNeeded()
+        let layer = try #require(view.layer)
+        #expect(layer.masksToBounds)
+        #expect(layer.cornerCurve == .continuous)
+        #expect(layer.cornerRadius == 28)
+    }
+
     @Test func contentSitsInsideTheEffect() {
         let view = GlassView(shape: .rounded(12))
         let first = NSView()

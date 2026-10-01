@@ -48,6 +48,11 @@ public final class GlassView: NSView {
             effect = view
         }
         super.init(frame: .zero)
+        if #available(macOS 26, *) {
+            wantsLayer = true
+            layer?.cornerCurve = .continuous
+            layer?.masksToBounds = true
+        }
         effect.autoresizingMask = [.width, .height]
         addSubview(effect)
     }
@@ -76,6 +81,7 @@ public final class GlassView: NSView {
         radius = next
         if #available(macOS 26, *), let glass = effect as? NSGlassEffectView {
             glass.cornerRadius = next
+            layer?.cornerRadius = next
         } else if let view = effect as? NSVisualEffectView {
             view.maskImage = Self.mask(radius: next)
         }
