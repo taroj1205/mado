@@ -120,7 +120,7 @@ final class LauncherHotKeys {
     }
 
     private func fire(_ key: Key) {
-        if key == .commandSpace, !commandSpaceReaches {
+        if key == .commandSpace, !commandSpaceReaches, !spotlightHasCommandSpace {
             save(true, for: Self.confirmedField)
             update()
         }
