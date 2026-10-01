@@ -177,8 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             },
             deliver: { [launcherView] sections in
-                launcherView.closePreview()
-                launcherView.results.sections = sections
+                launcherView.show(sections)
                 launcherView.context = sections.contains { $0.notice != nil } ? "No results" : nil
             })
     }
@@ -235,7 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     #endif
 
     private func hideLauncher() {
-        launcherView.closePreview()
+        launcherView.endBrowsing()
         launcher?.orderOut(nil)
         launcherClosed = .now
     }

@@ -189,6 +189,31 @@ import Testing
         #expect(view.field.stringValue == "a ")
     }
 
+    @Test func refreshedResultsKeepTheRowThePreviewIsOn() {
+        defer { view.closePreview() }
+        let files = [file("a.txt"), file("b.txt")]
+        view.show([.init(title: "Files", items: files)])
+        press(kVK_DownArrow, "\u{F701}")
+        press(kVK_Space, " ")
+        view.show([.init(title: "Files", items: [file("new.txt")] + files)])
+        #expect(view.results.selectedItem?.id == "b.txt")
+        #expect(view.previewing)
+        view.show([.init(title: "Files", items: [file("new.txt"), file("a.txt")])])
+        #expect(view.results.selectedItem?.id == "new.txt")
+        #expect(!view.previewing)
+    }
+
+    @Test func closingTheLauncherEndsBrowsingSoSpaceTypesAgain() {
+        view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
+        press(kVK_DownArrow, "\u{F701}")
+        press(kVK_Space, " ")
+        view.endBrowsing()
+        #expect(!view.previewing)
+        #expect(view.contextCapsule.isHidden)
+        press(kVK_Space, " ")
+        #expect(view.field.stringValue == " ")
+    }
+
     @Test func spaceTypesWhenTheSelectedRowIsNotAFile() {
         press(kVK_DownArrow, "\u{F701}")
         #expect(view.contextCapsule.isHidden)

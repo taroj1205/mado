@@ -62,6 +62,21 @@ import Testing
         #expect(list.contentView.bounds.minY == -ResultList.topInset)
     }
 
+    @Test func anUpdateCanKeepTheSelectedItemIfItIsStillThere() {
+        let list = shown([.init(title: "Results", items: [item("A"), item("B"), item("C")])])
+        list.selectNext()
+        list.update(
+            [.init(title: "Results", items: [item("New"), item("A"), item("B")])],
+            keepingSelectionOf: "B")
+        #expect(list.selectedItem?.id == "B")
+        list.update(
+            [.init(title: "Results", items: [item("New"), item("A")])], keepingSelectionOf: "B")
+        #expect(list.selectedItem?.id == "New")
+        list.update(
+            [.init(title: "Results", items: [item("X"), item("A")])], keepingSelectionOf: nil)
+        #expect(list.selectedItem?.id == "X")
+    }
+
     @Test func selectionIsAGreyFillThatLeavesTheSearchFieldFocused() throws {
         let list = shown([.init(title: "Commands", items: [item("A")])])
         let row = try #require(list.table.rowView(atRow: 1, makeIfNecessary: false))

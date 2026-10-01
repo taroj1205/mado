@@ -199,7 +199,21 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         contextCapsule.isHidden = text == nil
     }
 
-    public func closePreview() {
+    public func show(_ sections: [ResultList.Section]) {
+        let previewed = results.selectedItem?.file
+        results.update(sections, keepingSelectionOf: browsing ? results.selectedItem?.id : nil)
+        if results.selectedItem?.file != previewed {
+            closePreview()
+        }
+    }
+
+    public func endBrowsing() {
+        browsing = false
+        closePreview()
+        showContext()
+    }
+
+    func closePreview() {
         preview?.close()
     }
 
