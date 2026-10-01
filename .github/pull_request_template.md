@@ -5,10 +5,11 @@
 
 - [ ] The goal's blocked-by issues are all closed
 - [ ] I read the whole diff myself
+- [ ] Tests cover the new or changed behavior, or this PR says why they don't
 
 ## What's in it
 
-<!-- Short bullets: what behavior changed, and any choice a reviewer might question. If a choice isn't obvious, name the Apple or Swift doc behind it. -->
+<!-- Short bullets: what behavior changed, and any choice a reviewer might question. If a choice isn't obvious, name the Apple or Swift doc behind it. For a refactor, say what moved and what must not change. If most added lines are tests or fixtures, say so. -->
 
 > [!NOTE]
 > <!-- Optional. Limits, follow-ups, or anything in the diff that's easy to misread. Delete if empty. -->
