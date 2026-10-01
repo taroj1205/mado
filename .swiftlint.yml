@@ -13,15 +13,19 @@ opt_in_rules:
 
 disabled_rules:
   - attributes
+  - conditional_returns_on_newline
   - contrasted_opening_brace
   - explicit_acl
   - explicit_top_level_acl
   - explicit_type_interface
   - let_var_whitespace
   - missing_docs
+  - multiline_arguments
   - multiline_arguments_brackets
+  - multiline_call_arguments
   - prefixed_toplevel_constant
   - required_deinit
+  - switch_case_on_newline
   - trailing_comma
 
 force_unwrapping: error
