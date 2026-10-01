@@ -181,14 +181,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
-        let actions = actions(for: item.id)
+        let actions = LauncherResult.actions(
+            for: item.id, query: launcherView.field.stringValue, apps: apps,
+            commands: modules?.commands.all ?? [])
         guard actions.indices.contains(index) else { return }
         launcher?.orderOut(nil)
         let action = actions[index]
         Task { [weak self, logger] in
             do {
                 try await action.perform()
-                self?.recordUse(of: item.id)
+                if !Fallback.all.contains(where: { $0.item.id == item.id }) {
+                    self?.recordUse(of: item.id)
+                }
             } catch CocoaError.userCancelled {
                 logger.debug("Result \(item.id, privacy: .public) was canceled")
             } catch {
@@ -205,19 +209,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             logger.error("Saving usage failed: \(error, privacy: .public)")
         }
-    }
-
-    private func actions(for id: String) -> [CommandAction] {
-        if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
-        guard let app = apps.apps.first(where: { $0.url.path == id }) else {
-            return modules?.commands.command(id: id)?.actions ?? []
-        }
-        return [
-            CommandAction(id: "open", title: "Open Application") {
-                _ = try await NSWorkspace.shared.openApplication(
-                    at: app.url, configuration: NSWorkspace.OpenConfiguration())
-            }
-        ]
     }
 
     func windowDidResignKey(_: Notification) {
