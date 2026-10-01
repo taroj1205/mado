@@ -172,8 +172,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         let panel = launcher ?? makeLauncher()
         launcher = panel
         if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
-            panel.setFrameOrigin(
-                ScreenGeometry.upperThirdOrigin(of: panel.frame.size, in: visible))
+            let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
+            panel.setFrame(ScreenGeometry.upperThirdFrame(of: size, in: visible), display: false)
         }
         panel.makeKeyAndOrderFront(nil)
     }

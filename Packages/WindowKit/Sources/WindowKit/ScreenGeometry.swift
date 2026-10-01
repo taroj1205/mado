@@ -19,13 +19,12 @@ public enum ScreenGeometry {
         return best
     }
 
-    public static func upperThirdOrigin(of size: CGSize, in visibleFrame: CGRect) -> CGPoint {
+    public static func upperThirdFrame(of size: CGSize, in visibleFrame: CGRect) -> CGRect {
+        let width = min(size.width, visibleFrame.width)
+        let height = min(size.height, visibleFrame.height)
         let centerY = visibleFrame.maxY - visibleFrame.height / thirds
         let bottom = min(
-            max(centerY - size.height * half, visibleFrame.minY), visibleFrame.maxY - size.height)
-        let left = max(
-            min(visibleFrame.midX - size.width * half, visibleFrame.maxX - size.width),
-            visibleFrame.minX)
-        return CGPoint(x: left, y: bottom)
+            max(centerY - height * half, visibleFrame.minY), visibleFrame.maxY - height)
+        return CGRect(x: visibleFrame.midX - width * half, y: bottom, width: width, height: height)
     }
 }

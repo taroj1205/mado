@@ -29,10 +29,26 @@ import Testing
         let tall = CGRect(x: 0, y: 0, width: 1_440, height: 876)
         let short = CGRect(x: 0, y: 0, width: 800, height: 480)
         let offset = CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080)
+        #expect(
+            ScreenGeometry.upperThirdFrame(of: size, in: tall)
+                == CGRect(x: 340, y: 346, width: 760, height: 476))
+        #expect(
+            ScreenGeometry.upperThirdFrame(of: size, in: short)
+                == CGRect(x: 20, y: 4, width: 760, height: 476))
+        #expect(
+            ScreenGeometry.upperThirdFrame(of: size, in: offset)
+                == CGRect(x: 2_020, y: 302, width: 760, height: 476))
+    }
+
+    @Test func shrinksToFitAVisibleFrameSmallerThanThePanel() {
+        let size = CGSize(width: 760, height: 476)
         let narrow = CGRect(x: 80, y: 0, width: 700, height: 876)
-        #expect(ScreenGeometry.upperThirdOrigin(of: size, in: tall) == CGPoint(x: 340, y: 346))
-        #expect(ScreenGeometry.upperThirdOrigin(of: size, in: short) == CGPoint(x: 20, y: 4))
-        #expect(ScreenGeometry.upperThirdOrigin(of: size, in: offset) == CGPoint(x: 2_020, y: 302))
-        #expect(ScreenGeometry.upperThirdOrigin(of: size, in: narrow) == CGPoint(x: 80, y: 346))
+        let low = CGRect(x: 0, y: 60, width: 1_440, height: 400)
+        #expect(
+            ScreenGeometry.upperThirdFrame(of: size, in: narrow)
+                == CGRect(x: 80, y: 346, width: 700, height: 476))
+        #expect(
+            ScreenGeometry.upperThirdFrame(of: size, in: low)
+                == CGRect(x: 340, y: 60, width: 760, height: 400))
     }
 }
