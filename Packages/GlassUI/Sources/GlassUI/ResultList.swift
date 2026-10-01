@@ -7,17 +7,19 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let subtitle: String
         public let kind: String
         public let symbol: String
+        public let action: String
         public let icon: NSImage?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            icon: NSImage? = nil
+            action: String, icon: NSImage? = nil
         ) {
             self.id = id
             self.title = title
             self.subtitle = subtitle
             self.kind = kind
             self.symbol = symbol
+            self.action = action
             self.icon = icon
         }
     }
@@ -66,14 +68,19 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     public var sections: [Section] = [] {
         didSet {
+            reloading = true
             rows = Self.rows(for: sections)
             table.reloadData()
             if let first = rows.firstIndex(where: \.isItem) {
                 table.selectRowIndexes([first], byExtendingSelection: false)
             }
             table.scrollRowToVisible(0)
+            reloading = false
+            onSelect?(selectedItem)
         }
     }
+
+    public var onSelect: ((Item?) -> Void)?
 
     public var selectedItem: Item? {
         guard rows.indices.contains(table.selectedRow),
@@ -84,6 +91,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     let table = NSTableView()
     private(set) var rows: [Row] = []
+    private var reloading = false
 
     public init() {
         super.init(frame: .zero)
@@ -154,6 +162,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     public func tableView(_: NSTableView, shouldSelectRow row: Int) -> Bool {
         rows[row].isItem
+    }
+
+    public func tableViewSelectionDidChange(_: Notification) {
+        guard !reloading else { return }
+        onSelect?(selectedItem)
     }
 
     public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {

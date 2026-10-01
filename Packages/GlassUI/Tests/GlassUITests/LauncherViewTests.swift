@@ -14,7 +14,9 @@ import Testing
     init() {
         panel.contentView = view
         view.results.sections = [
-            .init(title: "Applications", items: [item("Safari"), item("Notes")]),
+            .init(
+                title: "Applications",
+                items: [item("Safari", action: "Open Application"), item("Notes")]),
             .init(title: "Commands", items: [item("Sleep")]),
         ]
         panel.makeFirstResponder(view.field)
@@ -95,6 +97,56 @@ import Testing
         #expect(cancels == 1)
     }
 
+    @Test func theCapsuleNamesTheSelectedRowsPrimaryAction() {
+        let capsule = actionCapsule()
+        #expect(!capsule.isHidden)
+        #expect(view.actionLabel.stringValue == "Open Application")
+        let width = capsule.frame.width
+        press(kVK_DownArrow, "\u{F701}")
+        #expect(view.actionLabel.stringValue == "Run Command")
+        #expect(actionCapsule().frame.width < width)
+        #expect(actionCapsule().frame.maxX == view.bounds.maxX - 10)
+        #expect(actionCapsule().frame.minY == 10)
+        let label = actionCapsule().convert(view.actionLabel.bounds, from: view.actionLabel)
+        #expect(abs(label.midY - actionCapsule().bounds.midY) < 1)
+        view.results.sections = []
+        #expect(actionCapsule().isHidden)
+    }
+
+    @Test func theContextCapsuleShowsOnlyWhileThereIsContext() {
+        #expect(view.contextCapsule.isHidden)
+        view.context = "No results"
+        view.layoutSubtreeIfNeeded()
+        let capsule = view.contextCapsule
+        #expect(!capsule.isHidden)
+        #expect(view.contextLabel.stringValue == "No results")
+        #expect(capsule.frame.minX == 10)
+        #expect(capsule.frame.width >= view.contextLabel.fittingSize.width)
+        view.context = nil
+        #expect(capsule.isHidden)
+    }
+
+    @Test func rowsScrollUnderTheCapsuleButTheSelectionStopsAboveIt() {
+        view.results.sections = [
+            .init(title: "Commands", items: (0..<40).map { item("Command \($0)") })
+        ]
+        let capsule = actionCapsule()
+        #expect(view.results.frame.minY == 0)
+        for _ in 0..<39 {
+            press(kVK_DownArrow, "\u{F701}")
+        }
+        let table = view.results.table
+        #expect(view.results.selectedItem?.id == "Command 39")
+        let row = view.convert(table.rect(ofRow: table.selectedRow), from: table)
+        #expect(row.minY >= capsule.frame.maxY)
+        #expect(view.results.contentView.bounds.maxY > table.frame.maxY)
+    }
+
+    private func actionCapsule() -> GlassView {
+        view.layoutSubtreeIfNeeded()
+        return view.actionCapsule
+    }
+
     private func press(
         _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
     ) {
@@ -121,7 +173,9 @@ import Testing
         return editor
     }
 
-    private func item(_ title: String) -> ResultList.Item {
-        .init(id: title, title: title, subtitle: "", kind: "Command", symbol: "star")
+    private func item(_ title: String, action: String = "Run Command") -> ResultList.Item {
+        .init(
+            id: title, title: title, subtitle: "", kind: "Command", symbol: "star",
+            action: action)
     }
 }

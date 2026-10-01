@@ -52,6 +52,7 @@ struct SettingsPane {
         Self("Printers & Scanners", "com.apple.Print-Scan-Settings.extension"),
     ]
 
+    private static let openTitle = "Open Settings"
     private static let icon = NSWorkspace.shared.urlForApplication(
         withBundleIdentifier: "com.apple.systempreferences"
     )
@@ -64,11 +65,11 @@ struct SettingsPane {
     var item: ResultList.Item {
         ResultList.Item(
             id: id, title: name, subtitle: "", kind: "System Settings", symbol: "gearshape",
-            icon: Self.icon)
+            action: Self.openTitle, icon: Self.icon)
     }
 
     var open: CommandAction {
-        CommandAction(id: "open", title: "Open Settings") { [id] in
+        CommandAction(id: "open", title: Self.openTitle) { [id] in
             guard let url = URL(string: id) else { return }
             _ = try await NSWorkspace.shared.open(
                 url, configuration: NSWorkspace.OpenConfiguration())
