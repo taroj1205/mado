@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         statusItem = makeStatusItem()
         launcher = makeLauncher()
         search = makeSearch()
+        search?.run(launcherView.field.stringValue)
         hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
