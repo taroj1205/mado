@@ -65,6 +65,10 @@ final class SettingsPageController: NSViewController {
 
     override func viewWillAppear() {
         super.viewWillAppear()
+        refresh()
+    }
+
+    func refresh() {
         for toggle in switches {
             toggle.refresh()
         }
@@ -107,18 +111,16 @@ final class SettingsPageController: NSViewController {
         ])
         guard let title = section.title else { return box }
 
-        let header = NSTextField(labelWithString: title)
-        header.font = .systemFont(ofSize: Self.headerSize, weight: .semibold)
-        header.textColor = .secondaryLabelColor
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: Self.headerSize, weight: .semibold)
+        label.textColor = .secondaryLabelColor
+        let header = NSStackView(views: [label])
+        header.edgeInsets = NSEdgeInsets(top: 0, left: Self.headerInset, bottom: 0, right: 0)
         let group = NSStackView(views: [header, box])
         group.orientation = .vertical
         group.alignment = .leading
         group.spacing = Self.headerSpacing
-        NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(
-                equalTo: group.leadingAnchor, constant: Self.headerInset),
-            box.widthAnchor.constraint(equalTo: group.widthAnchor),
-        ])
+        box.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
         return group
     }
 

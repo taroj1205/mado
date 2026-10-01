@@ -114,6 +114,27 @@ import Testing
         #expect(try store.load() == Settings())
     }
 
+    @Test func failedSaveLeavesModulesAsTheyWere() throws {
+        let blocker = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try Data().write(to: blocker)
+        let manager = try ModuleManager(
+            store: SettingsStore(url: blocker.appending(path: "settings.json")))
+        let stopped = FakeModule(id: "clipboard", enabledByDefault: false)
+        let running = FakeModule(id: "launcher", enabledByDefault: true)
+        try manager.register(stopped)
+        try manager.register(running)
+        try manager.startEnabledModules()
+
+        #expect(throws: (any Error).self) { try manager.setEnabled("clipboard", true) }
+        #expect(stopped.stops == 1)
+        #expect(!manager.isEnabled("clipboard"))
+
+        #expect(throws: (any Error).self) { try manager.setEnabled("launcher", true) }
+        #expect(throws: (any Error).self) { try manager.setEnabled("launcher", false) }
+        #expect(running.stops == 0)
+        #expect(manager.isEnabled("launcher"))
+    }
+
     @Test func duplicateAndUnknownIdsAreRejected() throws {
         let manager = try ModuleManager(store: makeStore())
         try manager.register(FakeModule(id: "launcher", enabledByDefault: false))

@@ -62,21 +62,23 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private static let height: CGFloat = 608
     private static let sidebarWidth: CGFloat = 208
 
+    private let tabs: NSTabViewController
+
     init(modules: ModuleManager?) {
-        let tabs = NSTabViewController()
-        tabs.tabStyle = .unspecified
+        let pages = NSTabViewController()
+        pages.tabStyle = .unspecified
         for page in SettingsPage.all {
-            tabs.addTabViewItem(
+            pages.addTabViewItem(
                 NSTabViewItem(viewController: SettingsPageController(page: page, modules: modules))
             )
         }
-        let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: tabs))
+        let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
         sidebar.minimumThickness = Self.sidebarWidth
         sidebar.maximumThickness = Self.sidebarWidth
         let split = NSSplitViewController()
         split.addSplitViewItem(sidebar)
-        split.addSplitViewItem(NSSplitViewItem(viewController: tabs))
+        split.addSplitViewItem(NSSplitViewItem(viewController: pages))
 
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
@@ -86,6 +88,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.setContentSize(NSSize(width: Self.width, height: Self.height))
         window.center()
+        tabs = pages
         super.init(window: window)
         window.delegate = self
     }
@@ -99,6 +102,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         super.showWindow(sender)
+    }
+
+    func windowDidBecomeKey(_: Notification) {
+        (tabs.tabViewItems[tabs.selectedTabViewItemIndex].viewController
+            as? SettingsPageController)?.refresh()
     }
 
     func windowWillClose(_: Notification) {

@@ -58,14 +58,27 @@ public final class ModuleManager {
         guard let index = registered.firstIndex(where: { $0.module.descriptor.id == id }) else {
             throw ModuleError.unknownModule(id)
         }
+        var nextStates = states
+        nextStates.enabled[id] = enabled
+        var nextSettings = settings
+        try nextSettings.setValue(nextStates, for: Self.settingsKey)
         if enabled {
+            let wasRunning = registered[index].isRunning
             try start(at: index)
+            do {
+                try store.save(nextSettings)
+            } catch {
+                if !wasRunning {
+                    stop(at: index)
+                }
+                throw error
+            }
         } else {
+            try store.save(nextSettings)
             stop(at: index)
         }
-        states.enabled[id] = enabled
-        try settings.setValue(states, for: Self.settingsKey)
-        try store.save(settings)
+        states = nextStates
+        settings = nextSettings
     }
 
     public func drain() async {
