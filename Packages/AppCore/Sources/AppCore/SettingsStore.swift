@@ -11,7 +11,12 @@ public struct SettingsStore: Sendable {
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true)
-        return Self(url: base.appending(path: "Mado/settings.json"))
+        #if DEBUG
+            let name = "settings.debug.json"
+        #else
+            let name = "settings.json"
+        #endif
+        return Self(url: base.appending(path: "Mado/\(name)"))
     }
 
     public func load() throws -> Settings {
