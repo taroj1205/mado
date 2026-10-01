@@ -10,8 +10,7 @@ public final class SpotlightGuideView: NSView {
     private static let keyboardSettings = URL(
         string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     private static let margin: CGFloat = 32
-    private static let crumbMargin: CGFloat = 20
-    private static let top: CGFloat = 8
+    private static let top: CGFloat = 19
     private static let bottom: CGFloat = 24
     private static let gap: CGFloat = 14
     private static let headerGap: CGFloat = 4
@@ -135,7 +134,7 @@ public final class SpotlightGuideView: NSView {
             titlebar.topAnchor.constraint(equalTo: topAnchor),
             titlebar.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             crumb.centerYAnchor.constraint(equalTo: titlebar.centerYAnchor),
-            crumb.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.crumbMargin),
+            crumb.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.margin),
             content.topAnchor.constraint(equalTo: titlebar.bottomAnchor, constant: Self.top),
             content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.margin),
             content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.margin),

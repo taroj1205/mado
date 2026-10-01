@@ -19,6 +19,9 @@ final class GuideStep: NSView {
     private static let pendingAlpha = 0.45
     private static let titleSize: CGFloat = 14
     private static let detailSize: CGFloat = 12.5
+    private static let lineSpacing: CGFloat = 1.5
+    private static let detailLineHeight = detailSize * lineSpacing
+    private static let half: CGFloat = 0.5
     private static let numberSize: CGFloat = 13
 
     private(set) var state = State.pending {
@@ -40,9 +43,8 @@ final class GuideStep: NSView {
         setUpBadge()
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
-        let detailLabel = NSTextField(wrappingLabelWithString: detail)
-        detailLabel.font = .systemFont(ofSize: Self.detailSize)
-        detailLabel.textColor = .secondaryLabelColor
+        let detailLabel = NSTextField(wrappingLabelWithString: "")
+        detailLabel.attributedStringValue = Self.detailText(detail)
         let text = NSStackView(views: [titleLabel, detailLabel] + extras)
         text.orientation = .vertical
         text.alignment = .leading
@@ -71,6 +73,20 @@ final class GuideStep: NSView {
         box.cornerRadius = radius
         box.fillColor = fill
         return box
+    }
+
+    private static func detailText(_ text: String) -> NSAttributedString {
+        let font = NSFont.systemFont(ofSize: detailSize)
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = detailLineHeight
+        style.maximumLineHeight = detailLineHeight
+        let leading = detailLineHeight - (font.ascender - font.descender)
+        return NSAttributedString(
+            string: text,
+            attributes: [
+                .font: font, .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: style,
+                .baselineOffset: leading * half,
+            ])
     }
 
     static func embed(_ view: NSView, in box: NSView, horizontal: CGFloat, vertical: CGFloat) {
