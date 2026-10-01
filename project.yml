@@ -44,6 +44,7 @@ targets:
         CFBundleDisplayName: Mado
         LSUIElement: true
         LSMinimumSystemVersion: "14.0"
+        NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.taroj1205.mado
