@@ -41,7 +41,9 @@ jobs:
             -scheme Mado \
             -destination 'platform=macOS' \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            -parallel-testing-enabled YES \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Launch smoke test
         run: |
