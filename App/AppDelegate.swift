@@ -81,9 +81,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize),
             keyEquivalent: "m")
         NSApp.windowsMenu = window
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste), keyEquivalent: "v")
+        edit.addItem(
+            withTitle: "Select All", action: #selector(NSText.selectAll), keyEquivalent: "a")
 
         let menu = NSMenu()
-        for submenu in [app, window] {
+        for submenu in [app, edit, window] {
             menu.addItem(withTitle: submenu.title, action: nil, keyEquivalent: "").submenu = submenu
         }
         return menu
