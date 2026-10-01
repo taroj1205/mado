@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hotKeys = makeHotKeys()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
+            if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
         #endif
         signposter.endInterval("launch", launch)
     }
@@ -261,7 +262,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             launcherView.field.stringValue = ""
         }
         search?.run(launcherView.field.stringValue)
-        panel.makeKeyAndOrderFront(nil)
+        #if DEBUG
+            if NoFocus.isEnabled {
+                panel.orderFrontRegardless()
+            } else {
+                panel.makeKeyAndOrderFront(nil)
+            }
+        #else
+            panel.makeKeyAndOrderFront(nil)
+        #endif
         launcherView.field.selectText(nil)
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
