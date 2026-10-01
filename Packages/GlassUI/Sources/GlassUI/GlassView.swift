@@ -39,9 +39,7 @@ public final class GlassView: NSView {
     public init(shape: Shape) {
         self.shape = shape
         if #available(macOS 26, *) {
-            let glass = NSGlassEffectView()
-            glass.style = .clear
-            effect = glass
+            effect = NSGlassEffectView()
         } else {
             let view = NSVisualEffectView()
             view.material = .popover
