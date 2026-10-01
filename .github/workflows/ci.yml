@@ -22,7 +22,6 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      packages: ${{ steps.filter.outputs.packages }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,18 +32,13 @@ jobs:
         with:
           predicate-quantifier: some-with-excludes
           filters: |
-            code: &code
+            code:
               - '**'
               - '!**/*.md'
               - '!.github/ISSUE_TEMPLATE/**'
               - '!.github/dependabot.yml'
               - '!.githooks/**'
               - '!.agents/**'
-            packages:
-              - *code
-              - '!App/**'
-              - '!Tests/**'
-              - '!project.yml'
 
   lint:
     name: Lint
@@ -68,18 +62,25 @@ jobs:
   test:
     name: Test
     needs: changes
-    if: needs.changes.outputs.packages == 'true'
-    uses: ./.github/workflows/test-packages.yml
-
-  app:
-    name: App
-    needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: xcode-27
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Check the scheme runs every package's tests
+        run: |
+          for dir in Packages/*/Tests/*/; do
+            package=${dir#Packages/}
+            package=${package%%/*}
+            target=$(basename "$dir")
+            grep -qE "^ +- package: $package/$target$" project.yml || {
+              echo "::error file=project.yml::Add '- package: $package/$target' to the Mado scheme's test targets"
+              exit 1
+            }
+          done
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -94,17 +95,12 @@ jobs:
             -scheme Mado \
             -destination 'platform=macOS' \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            -parallel-testing-enabled YES \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Launch smoke test
         run: |
-          xcodebuild build \
-            -project Mado.xcodeproj \
-            -scheme Mado \
-            -configuration Debug \
-            -destination 'platform=macOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
           build/Build/Products/Debug/Mado.app/Contents/MacOS/Mado &
           pid=$!
           sleep 3
@@ -114,7 +110,7 @@ jobs:
 
   verify:
     name: Verify
-    needs: [changes, lint, test, app]
+    needs: [changes, lint, test]
     runs-on: ubuntu-latest
     if: always()
     steps:

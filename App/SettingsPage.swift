@@ -37,9 +37,27 @@ struct SettingsPage {
         Self("Extensions", "storefront"),
         Self("Shortcuts", "command"),
         Self("Permissions", "lock.shield"),
-        Self("Advanced", "gearshape.2"),
+        Self("Advanced", "gearshape.2") { _ in developer },
         Self("About", "person.crop.circle"),
     ]
+
+    private static var developer: [SettingsSection] {
+        #if DEBUG
+            [
+                SettingsSection(
+                    "Developer",
+                    [
+                        .init(
+                            "Keep launcher open when focus leaves",
+                            SettingsSwitch(
+                                read: { KeepLauncherOpen.isEnabled },
+                                write: KeepLauncherOpen.setEnabled))
+                    ])
+            ]
+        #else
+            []
+        #endif
+    }
 
     let title: String
     let symbol: String
