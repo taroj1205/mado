@@ -177,6 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             },
             deliver: { [launcherView] sections in
                 launcherView.results.sections = sections
+                launcherView.context = sections.contains { $0.notice != nil } ? "No results" : nil
             })
     }
 

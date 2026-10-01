@@ -6,6 +6,16 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchFontSize: CGFloat = 20
     private static let searchIconGap: CGFloat = 12
     private static let resultsInset: CGFloat = 8
+    private static let capsuleInset: CGFloat = 10
+    private static let actionGap: CGFloat = 8
+    private static let actionLeading: CGFloat = 17
+    private static let actionTrailing: CGFloat = 10
+    private static let dividerGap: CGFloat = 11
+    private static let actionsGap: CGFloat = 18
+    private static let shortcutGap: CGFloat = 3
+    private static let contextLeading: CGFloat = 11
+    private static let contextTrailing: CGFloat = 16
+    private static let contextIconSize: CGFloat = 17
     private static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     private static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -14,8 +24,21 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
+    public var context: String? {
+        didSet {
+            contextLabel.stringValue = context ?? ""
+            contextCapsule.isHidden = context == nil
+        }
+    }
+
+    let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
+    let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
+    let actionCapsule: GlassView
+    let contextCapsule: GlassView
 
     override public init(frame: NSRect) {
+        actionCapsule = Self.makeActionCapsule(actionLabel)
+        contextCapsule = Self.makeContextCapsule(contextLabel)
         super.init(frame: frame)
         let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
@@ -53,11 +76,67 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             results.topAnchor.constraint(equalTo: separator.bottomAnchor),
             results.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+        placeCapsules()
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    private static func makeActionCapsule(_ label: NSTextField) -> GlassView {
+        let enter = FloatingCapsule.keycap("↵")
+        let divider = FloatingCapsule.divider()
+        let actions = FloatingCapsule.label(weight: .medium, color: .labelColor)
+        actions.stringValue = "Actions"
+        let command = FloatingCapsule.keycap("⌘")
+        let stack = NSStackView(views: [
+            label, enter, divider, actions, command, FloatingCapsule.keycap("K"),
+        ])
+        stack.spacing = Self.actionGap
+        stack.setCustomSpacing(Self.dividerGap, after: enter)
+        stack.setCustomSpacing(Self.actionsGap, after: divider)
+        stack.setCustomSpacing(Self.shortcutGap, after: command)
+        return FloatingCapsule.make(
+            stack, leading: Self.actionLeading, trailing: Self.actionTrailing)
+    }
+
+    private static func makeContextCapsule(_ label: NSTextField) -> GlassView {
+        let icon = NSImageView()
+        icon.image = NSImage(
+            systemSymbolName: "chevron.forward.circle.fill", accessibilityDescription: nil)
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(
+            pointSize: Self.contextIconSize, weight: .semibold
+        )
+        .applying(.init(paletteColors: [.white, .controlAccentColor]))
+        let stack = NSStackView(views: [icon, label])
+        stack.spacing = Self.actionGap
+        return FloatingCapsule.make(
+            stack, leading: Self.contextLeading, trailing: Self.contextTrailing)
+    }
+
+    private func placeCapsules() {
+        addSubview(contextCapsule)
+        addSubview(actionCapsule)
+        NSLayoutConstraint.activate([
+            contextCapsule.leadingAnchor.constraint(
+                equalTo: leadingAnchor, constant: Self.capsuleInset),
+            contextCapsule.bottomAnchor.constraint(
+                equalTo: bottomAnchor, constant: -Self.capsuleInset),
+            actionCapsule.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.capsuleInset),
+            actionCapsule.bottomAnchor.constraint(
+                equalTo: bottomAnchor, constant: -Self.capsuleInset),
+        ])
+        results.contentInsets.bottom =
+            Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
+        results.onSelect = { [weak self] item in self?.showAction(of: item) }
+        showAction(of: nil)
+        contextCapsule.isHidden = true
+    }
+
+    override public func scrollWheel(with event: NSEvent) {
+        results.scrollWheel(with: event)
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -84,6 +163,11 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         default: return false
         }
         return true
+    }
+
+    private func showAction(of item: ResultList.Item?) {
+        actionLabel.stringValue = item?.action ?? ""
+        actionCapsule.isHidden = item == nil
     }
 
     private func run(_ action: Int) {

@@ -37,7 +37,7 @@ struct Fallback {
         search: @escaping @MainActor @Sendable (String) async throws -> Void
     ) {
         item = ResultList.Item(
-            id: id, title: title, subtitle: subtitle, kind: kind, symbol: symbol)
+            id: id, title: title, subtitle: subtitle, kind: kind, symbol: symbol, action: title)
         self.search = search
     }
 
