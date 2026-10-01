@@ -8,6 +8,7 @@ public final class GlassPanel: NSPanel {
 
     private let kind: Kind
     public let glass: GlassView
+    public var onEvent: ((NSEvent) -> Bool)?
 
     override public var canBecomeKey: Bool { kind == .panel }
 
@@ -28,5 +29,10 @@ public final class GlassPanel: NSPanel {
             ignoresMouseEvents = true
             level = .statusBar
         }
+    }
+
+    override public func sendEvent(_ event: NSEvent) {
+        if onEvent?(event) == true { return }
+        super.sendEvent(event)
     }
 }
