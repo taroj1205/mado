@@ -30,7 +30,11 @@ public final class FileIndex {
         self.folders = folders
     }
 
-    nonisolated static func files(in folders: [URL]) -> [File] {
+    @concurrent nonisolated static func files(in folders: [URL]) async -> [File] {
+        walk(folders)
+    }
+
+    nonisolated private static func walk(_ folders: [URL]) -> [File] {
         var found: [File] = []
         for root in folders {
             guard
@@ -39,6 +43,7 @@ public final class FileIndex {
                     options: [.skipsHiddenFiles, .skipsPackageDescendants])
             else { continue }
             for case let url as URL in items {
+                guard !Task.isCancelled else { return [] }
                 let name = url.lastPathComponent
                 found.append(
                     File(
@@ -89,8 +94,8 @@ public final class FileIndex {
 
     private func refresh() {
         scan?.cancel()
-        scan = Task { [folders] in
-            let found = await Task.detached(priority: .background) { Self.files(in: folders) }.value
+        scan = Task(priority: .background) { [folders] in
+            let found = await Self.files(in: folders)
             guard !Task.isCancelled, found != files else { return }
             files = found
             onChange?()

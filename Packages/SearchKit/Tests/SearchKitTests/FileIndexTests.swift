@@ -18,14 +18,21 @@ import Testing
         }
     }
 
-    @Test func findsFilesAndFoldersButNotHiddenEntriesOrBundleContents() {
+    @Test func findsFilesAndFoldersButNotHiddenEntriesOrBundleContents() async {
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let files = FileIndex.files(in: [root]).sorted { $0.name < $1.name }
+        let files = await FileIndex.files(in: [root]).sorted { $0.name < $1.name }
 
         #expect(files.map(\.name) == ["Mado.app", "Planning", "Q3 Roadmap.pdf", "notes.md"])
         #expect(files[2].folder.hasSuffix("/\(root.lastPathComponent)/Planning"))
         #expect(files[2].key == Fuzzy.Key("Q3 Roadmap.pdf"))
+    }
+
+    @Test func aCancelledScanStopsWalkingTheFolders() async {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scan = Task { await FileIndex.files(in: [root]) }
+        scan.cancel()
+        #expect(await scan.value.isEmpty)
     }
 
     @Test func foldersInsideHomeStartWithATilde() {
