@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
+    private static let querySeconds = 90
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
@@ -21,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
     private var launcher: GlassPanel?
+    private var launcherClosed: ContinuousClock.Instant?
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
@@ -213,6 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_: Notification) {
         launcher?.orderOut(nil)
+        launcherClosed = .now
     }
 
     private func toggleLauncher() {
@@ -231,7 +234,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
             panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
         }
+        if let closed = launcherClosed, closed.duration(to: .now) > .seconds(Self.querySeconds) {
+            launcherView.field.stringValue = ""
+            search?.run("")
+        }
         panel.makeKeyAndOrderFront(nil)
+        launcherView.field.selectText(nil)
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
         }
