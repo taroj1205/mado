@@ -59,7 +59,7 @@ custom_rules:
     regex: '\b(Timer\.scheduledTimer|Timer\(timeInterval|DispatchSource\.makeTimerSource|NSEvent\.add(Global|Local)MonitorForEvents|CGEvent\.tapCreate|NotificationCenter\.default\.addObserver|notificationCenter\.addObserver)'
     excluded:
       - "Packages/AppCore/Sources"
-      - "App/KeyForwarder.swift"
+      - "App/NoFocus.swift"
     message: "Create timers, monitors, taps and observers through ModuleContext so a disabled module holds none."
     severity: error
   no_nsexpression:

@@ -29,7 +29,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var hotKeys: HotKeyRegistry?
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
-        private let noFocus = UserDefaults.standard.bool(forKey: "MadoNoFocus")
     #endif
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
@@ -53,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hotKeys = makeHotKeys()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
-            if noFocus, let launcher { forwardKeys(to: launcher) }
+            if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
         #endif
         signposter.endInterval("launch", launch)
     }
@@ -257,7 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         search?.run(launcherView.field.stringValue)
         #if DEBUG
-            if noFocus {
+            if NoFocus.isEnabled {
                 panel.orderFrontRegardless()
             } else {
                 panel.makeKeyAndOrderFront(nil)
