@@ -33,6 +33,7 @@ final class AnswerCell: NSTableCellView {
         arrow.contentTintColor = .secondaryLabelColor
         arrow.translatesAutoresizingMaskIntoConstraints = false
         addSubview(arrow)
+        setAccessibilityChildren([])
         let left = column(expression, expressionDetail)
         let right = column(result, resultDetail)
         NSLayoutConstraint.activate([
