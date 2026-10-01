@@ -72,9 +72,4 @@ struct SettingsPane {
         self.name = name
         id = "x-apple.systempreferences:\(bundleID)"
     }
-
-    static func panes(matching text: String) -> [Self] {
-        let needle = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return all.filter { $0.name.localizedCaseInsensitiveContains(needle) }
-    }
 }
