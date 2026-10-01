@@ -1,5 +1,5 @@
 public import AppCore
-import Foundation
+public import Foundation
 
 public enum SystemShortcutConflicts {
     private struct Binding {
@@ -25,9 +25,25 @@ public enum SystemShortcutConflicts {
             defaultShortcut: Shortcut(keyCode: spaceKeyCode, modifiers: [.command, .option])),
     ]
 
+    private static let domain = "com.apple.symbolichotkeys"
+
+    public static func observe(
+        _ onChange: @escaping @MainActor @Sendable () -> Void
+    ) -> NSKeyValueObservation? {
+        UserDefaults(suiteName: domain).map { observe($0, onChange) }
+    }
+
+    static func observe(
+        _ defaults: UserDefaults, _ onChange: @escaping @MainActor @Sendable () -> Void
+    ) -> NSKeyValueObservation {
+        defaults.observe(\.symbolicHotKeys) { _, _ in
+            Task { @MainActor in onChange() }
+        }
+    }
+
     public static func conflict(for shortcut: Shortcut) -> HotKeyConflict? {
         let hotKeys = CFPreferencesCopyAppValue(
-            "AppleSymbolicHotKeys" as CFString, "com.apple.symbolichotkeys" as CFString)
+            "AppleSymbolicHotKeys" as CFString, domain as CFString)
         return conflict(for: shortcut, symbolicHotKeys: hotKeys as? [String: Any] ?? [:])
     }
 
@@ -59,5 +75,11 @@ public enum SystemShortcutConflicts {
         if flags & controlFlag != 0 { result.insert(.control) }
         if flags & shiftFlag != 0 { result.insert(.shift) }
         return result
+    }
+}
+
+extension UserDefaults {
+    @objc(AppleSymbolicHotKeys) dynamic var symbolicHotKeys: [String: Any] {
+        dictionary(forKey: "AppleSymbolicHotKeys") ?? [:]
     }
 }

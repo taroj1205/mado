@@ -64,12 +64,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let tabs: NSTabViewController
 
-    init(modules: ModuleManager?) {
+    init(modules: ModuleManager?, hotKeys: LauncherHotKeys) {
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {
             pages.addTabViewItem(
-                NSTabViewItem(viewController: SettingsPageController(page: page, modules: modules))
+                NSTabViewItem(
+                    viewController: SettingsPageController(
+                        page: page, modules: modules, hotKeys: hotKeys))
             )
         }
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
