@@ -34,6 +34,8 @@ final class HotKeyField: NSView {
         dark: .white.withAlphaComponent(keycapAlpha.dark),
         light: .black.withAlphaComponent(keycapAlpha.light))
 
+    var onPress: (() -> Void)?
+
     private let content = NSStackView()
     private var style = Style.waiting {
         didSet { needsDisplay = true }
@@ -50,7 +52,7 @@ final class HotKeyField: NSView {
             content.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
         setAccessibilityElement(true)
-        setAccessibilityRole(.staticText)
+        setAccessibilityRole(.button)
         setAccessibilityLabel("Hotkey")
     }
 
@@ -115,6 +117,11 @@ final class HotKeyField: NSView {
         let suffixLabel = suffix.map { Self.label($0, size: Self.suffixSize) }
         content.setViews(keycaps.map(Self.keycap) + [suffixLabel].compactMap(\.self), in: .center)
         setAccessibilityValue((keycaps + [suffix].compactMap(\.self)).joined(separator: " "))
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPress?()
+        return onPress != nil
     }
 
     override func draw(_: NSRect) {

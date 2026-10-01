@@ -20,6 +20,15 @@ import Testing
                 isARepeat: false, keyCode: UInt16(keyCode)))
     }
 
+    func descendant<View: NSView>(_ type: View.Type, in view: NSView) -> View? {
+        for child in view.subviews {
+            if let match = child as? View ?? descendant(type, in: child) {
+                return match
+            }
+        }
+        return nil
+    }
+
     @Test func recordsAChord() throws {
         let recorder = HotKeyRecorder()
         recorder.keyDown(with: try event(.keyDown, kVK_Space, [.control, .option]))
@@ -108,6 +117,48 @@ import Testing
         #expect(
             recorder.state
                 == .captured(.shortcut(Shortcut(keyCode: UInt32(kVK_ANSI_Q), modifiers: .command))))
+        window.makeFirstResponder(nil)
+    }
+
+    @Test func turnsOffSystemShortcutsOnlyWhileFocused() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 160), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        let recorder = HotKeyRecorder()
+        window.contentView = recorder
+        let before = GetSymbolicHotKeyMode()
+        window.makeFirstResponder(recorder)
+        #expect(
+            GetSymbolicHotKeyMode() == OptionBits(kHIHotKeyModeAllDisabledExceptUniversalAccess))
+        window.makeFirstResponder(nil)
+        #expect(GetSymbolicHotKeyMode() == before)
+        window.makeFirstResponder(recorder)
+        recorder.removeFromSuperview()
+        #expect(GetSymbolicHotKeyMode() == before)
+    }
+
+    @Test func pressingOrClickingTheFieldStartsRecording() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 160), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        let recorder = HotKeyRecorder()
+        window.contentView = recorder
+        window.layoutIfNeeded()
+        let field = try #require(descendant(HotKeyField.self, in: recorder))
+        #expect(field.accessibilityRole() == .button)
+        #expect(field.accessibilityPerformPress())
+        #expect(window.firstResponder === recorder)
+
+        window.makeFirstResponder(nil)
+        let prompt = try #require(descendant(NSTextField.self, in: field))
+        prompt.mouseDown(
+            with: try #require(
+                NSEvent.mouseEvent(
+                    with: .leftMouseDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                    pressure: 1)))
+        #expect(window.firstResponder === recorder)
+        window.makeFirstResponder(nil)
     }
 
     @Test func namesKeysFromTheKeyboardLayout() {

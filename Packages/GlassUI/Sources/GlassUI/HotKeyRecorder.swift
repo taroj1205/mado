@@ -2,6 +2,7 @@ public import AppCore
 public import AppKit
 import Carbon.HIToolbox
 
+@safe
 public final class HotKeyRecorder: NSView {
     enum State: Equatable {
         case captured(HotKey)
@@ -32,6 +33,7 @@ public final class HotKeyRecorder: NSView {
     }
 
     private var tapCandidate: HotKey.ModifierKey?
+    private var systemHotKeysOff: UnsafeMutableRawPointer?
     private let field = HotKeyField()
     private let warning = NSStackView()
     private let warningLabel = NSTextField(wrappingLabelWithString: "")
@@ -52,6 +54,7 @@ public final class HotKeyRecorder: NSView {
         }
         openSettings.target = self
         openSettings.action = #selector(openKeyboardSettings)
+        field.onPress = { [weak self] in self?.focus() }
         hint.font = .systemFont(ofSize: Self.hintSize)
         hint.textColor = .secondaryLabelColor
         setUpWarning()
@@ -89,7 +92,27 @@ public final class HotKeyRecorder: NSView {
     }
 
     override public func mouseDown(with _: NSEvent) {
-        unsafe window?.makeFirstResponder(self)
+        focus()
+    }
+
+    override public func becomeFirstResponder() -> Bool {
+        if unsafe systemHotKeysOff == nil {
+            unsafe systemHotKeysOff = PushSymbolicHotKeyMode(
+                OptionBits(kHIHotKeyModeAllDisabledExceptUniversalAccess))
+        }
+        return super.becomeFirstResponder()
+    }
+
+    override public func resignFirstResponder() -> Bool {
+        restoreSystemHotKeys()
+        return super.resignFirstResponder()
+    }
+
+    override public func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil {
+            restoreSystemHotKeys()
+        }
     }
 
     override public func keyDown(with event: NSEvent) {
@@ -131,6 +154,17 @@ public final class HotKeyRecorder: NSView {
             capture(.modifierTap(key))
         }
         tapCandidate = key.flatMap { HotKeyLabel.modifier(of: $0) == held ? $0 : nil }
+    }
+
+    private func focus() {
+        unsafe window?.makeFirstResponder(self)
+    }
+
+    private func restoreSystemHotKeys() {
+        if let token = unsafe systemHotKeysOff {
+            unsafe PopSymbolicHotKeyMode(token)
+            unsafe systemHotKeysOff = nil
+        }
     }
 
     private func setUpWarning() {
