@@ -75,6 +75,12 @@ import Testing
         #expect(GlassSheen.tone(for: light).sheen == GlassSheen.light.sheen)
     }
 
+    @Test func onlyFloatingCapsulesGetTheRim() {
+        let capsule = FloatingCapsule.make(NSStackView(), leading: 0, trailing: 0)
+        #expect(capsule.sheen.rimmed)
+        #expect(!GlassView(shape: .rounded(28)).sheen.rimmed)
+    }
+
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {
         let rect = NSRect(x: 0, y: 0, width: 200, height: 80)
         let hud = GlassPanel(kind: .hud, contentRect: rect, shape: .rounded(16))
