@@ -18,11 +18,13 @@ disabled_rules:
   - explicit_acl
   - explicit_top_level_acl
   - explicit_type_interface
+  - incompatible_concurrency_annotation
   - let_var_whitespace
   - missing_docs
   - multiline_arguments
   - multiline_arguments_brackets
   - multiline_call_arguments
+  - multiline_parameters
   - prefixed_toplevel_constant
   - required_deinit
   - switch_case_on_newline
@@ -50,6 +52,12 @@ custom_rules:
     name: "Use os.Logger"
     regex: '\bprint\('
     message: "Log through the module's os.Logger instead of print."
+    severity: error
+  no_raw_resources:
+    name: "No raw resources"
+    regex: '\b(Timer\.scheduledTimer|Timer\(timeInterval|DispatchSource\.makeTimerSource|NSEvent\.add(Global|Local)MonitorForEvents|CGEvent\.tapCreate|NotificationCenter\.default\.addObserver|notificationCenter\.addObserver)'
+    excluded: "Packages/AppCore/Sources"
+    message: "Create timers, monitors, taps and observers through ModuleContext so a disabled module holds none."
     severity: error
   no_nsexpression:
     name: "No NSExpression"
