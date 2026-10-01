@@ -24,20 +24,20 @@ import Testing
         #expect(ScreenGeometry.screenIndex(showing: offscreen, in: []) == nil)
     }
 
-    @Test func centersInTheUpperThirdAndStaysOnScreen() {
+    @Test func centersOnTheVisibleFrame() {
         let size = CGSize(width: 760, height: 476)
         let tall = CGRect(x: 0, y: 0, width: 1_440, height: 876)
         let short = CGRect(x: 0, y: 0, width: 800, height: 480)
         let offset = CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080)
         #expect(
-            ScreenGeometry.upperThirdFrame(of: size, in: tall)
-                == CGRect(x: 340, y: 346, width: 760, height: 476))
+            ScreenGeometry.centeredFrame(of: size, in: tall)
+                == CGRect(x: 340, y: 200, width: 760, height: 476))
         #expect(
-            ScreenGeometry.upperThirdFrame(of: size, in: short)
-                == CGRect(x: 20, y: 4, width: 760, height: 476))
+            ScreenGeometry.centeredFrame(of: size, in: short)
+                == CGRect(x: 20, y: 2, width: 760, height: 476))
         #expect(
-            ScreenGeometry.upperThirdFrame(of: size, in: offset)
-                == CGRect(x: 2_020, y: 302, width: 760, height: 476))
+            ScreenGeometry.centeredFrame(of: size, in: offset)
+                == CGRect(x: 2_020, y: 122, width: 760, height: 476))
     }
 
     @Test func shrinksToFitAVisibleFrameSmallerThanThePanel() {
@@ -45,10 +45,10 @@ import Testing
         let narrow = CGRect(x: 80, y: 0, width: 700, height: 876)
         let low = CGRect(x: 0, y: 60, width: 1_440, height: 400)
         #expect(
-            ScreenGeometry.upperThirdFrame(of: size, in: narrow)
-                == CGRect(x: 80, y: 346, width: 700, height: 476))
+            ScreenGeometry.centeredFrame(of: size, in: narrow)
+                == CGRect(x: 80, y: 200, width: 700, height: 476))
         #expect(
-            ScreenGeometry.upperThirdFrame(of: size, in: low)
+            ScreenGeometry.centeredFrame(of: size, in: low)
                 == CGRect(x: 340, y: 60, width: 760, height: 400))
     }
 }

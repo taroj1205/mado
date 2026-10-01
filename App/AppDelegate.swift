@@ -195,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let opening = signposter.beginInterval("open launcher")
         if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
-            panel.setFrame(ScreenGeometry.upperThirdFrame(of: size, in: visible), display: false)
+            panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
         }
         panel.makeKeyAndOrderFront(nil)
         CATransaction.setCompletionBlock { [signposter] in
