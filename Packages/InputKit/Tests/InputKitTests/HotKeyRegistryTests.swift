@@ -124,6 +124,24 @@ import Testing
         }
     }
 
+    @Test func registrationWithoutAContextLastsUntilUnregistered() throws {
+        let backend = FakeBackend()
+        let registry = HotKeyRegistry(backend: backend)
+        var fired = 0
+        let registration = try registry.register(Self.shortcut) { fired += 1 }
+
+        #expect(throws: HotKeyError.duplicate(Self.shortcut)) {
+            try registry.register(Self.shortcut) { Issue.record("Duplicate fired") }
+        }
+        backend.onPressed?(1)
+        #expect(fired == 1)
+
+        registry.unregister(registration)
+        backend.onPressed?(1)
+        #expect(fired == 1)
+        #expect(backend.registered.isEmpty)
+    }
+
     @Test func routesByIDAndStopsAfterUnregister() throws {
         let backend = FakeBackend()
         let registry = HotKeyRegistry(backend: backend)

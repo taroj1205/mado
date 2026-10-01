@@ -27,6 +27,17 @@ public final class HotKeyRegistry {
         _ shortcut: Shortcut, name: String, context: ModuleContext,
         handler: @escaping @MainActor () -> Void
     ) throws(HotKeyError) -> HotKeyRegistration {
+        let registration = try register(shortcut, handler: handler)
+        context.own(.other, name) { [weak self] in
+            MainActor.assumeIsolated { self?.unregister(registration) }
+        }
+        return registration
+    }
+
+    @discardableResult
+    public func register(
+        _ shortcut: Shortcut, handler: @escaping @MainActor () -> Void
+    ) throws(HotKeyError) -> HotKeyRegistration {
         if entries.values.contains(where: { $0.shortcut == shortcut }) {
             throw .duplicate(shortcut)
         }
@@ -37,11 +48,7 @@ public final class HotKeyRegistry {
         }
         nextID += 1
         entries[id] = Entry(shortcut: shortcut, handler: handler)
-        let registration = HotKeyRegistration(id: id)
-        context.own(.other, name) { [weak self] in
-            MainActor.assumeIsolated { self?.unregister(registration) }
-        }
-        return registration
+        return HotKeyRegistration(id: id)
     }
 
     public func unregister(_ registration: HotKeyRegistration) {

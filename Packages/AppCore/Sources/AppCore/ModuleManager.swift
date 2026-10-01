@@ -81,6 +81,18 @@ public final class ModuleManager {
         settings = nextSettings
     }
 
+    public func value<Value: Decodable>(_ type: Value.Type, for key: String) throws -> Value? {
+        try settings.value(type, for: key)
+    }
+
+    public func setValue<Value: Encodable>(_ value: Value, for key: String) throws {
+        precondition(key != Self.settingsKey, "\(key) holds the module states")
+        var nextSettings = settings
+        try nextSettings.setValue(value, for: key)
+        try store.save(nextSettings)
+        settings = nextSettings
+    }
+
     public func drain() async {
         for item in registered {
             await item.context.drain()

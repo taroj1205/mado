@@ -99,6 +99,31 @@ import Testing
         #expect(second.isEnabled("notes"))
     }
 
+    @Test func valuesSurviveModuleChangesAndARestart() throws {
+        let store = makeStore()
+        let first = try ModuleManager(store: store)
+        try first.register(FakeModule(id: "clipboard", enabledByDefault: false))
+        try first.setValue("activeWindow", for: "launcher")
+        try first.setEnabled("clipboard", true)
+        #expect(try first.value(String.self, for: "launcher") == "activeWindow")
+
+        let second = try ModuleManager(store: store)
+        try second.register(FakeModule(id: "clipboard", enabledByDefault: false))
+        #expect(try second.value(String.self, for: "launcher") == "activeWindow")
+        #expect(try second.value(String.self, for: "notes") == nil)
+        #expect(second.isEnabled("clipboard"))
+    }
+
+    @Test func failedValueSaveKeepsThePreviousValue() throws {
+        let blocker = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try Data().write(to: blocker)
+        let manager = try ModuleManager(
+            store: SettingsStore(url: blocker.appending(path: "settings.json")))
+
+        #expect(throws: (any Error).self) { try manager.setValue("mouse", for: "launcher") }
+        #expect(try manager.value(String.self, for: "launcher") == nil)
+    }
+
     @Test func failedStartReleasesResourcesAndStaysDisabled() async throws {
         let store = makeStore()
         let manager = try ModuleManager(store: store)

@@ -1,10 +1,14 @@
 import AppCore
 import AppKit
+import Carbon.HIToolbox
 import GlassUI
+import InputKit
 import os
+import WindowKit
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NSWindowDelegate {
+    private static let launcherHotKey = Shortcut(keyCode: UInt32(kVK_Space), modifiers: .option)
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
@@ -18,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
     private var launcher: GlassPanel?
+    private var hotKeys: HotKeyRegistry?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
         self.signposter = signposter
@@ -28,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         modules = makeModules()
         NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
+        hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
 
@@ -100,6 +106,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         }
     }
 
+    private func makeHotKeys() -> HotKeyRegistry? {
+        do {
+            let registry = try HotKeyRegistry()
+            try registry.register(Self.launcherHotKey) { [weak self] in
+                self?.toggleLauncher()
+            }
+            return registry
+        } catch {
+            logger.error("Launcher hotkey failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     private func makeLauncher() -> GlassPanel {
         let panel = GlassPanel(
             kind: .panel,
@@ -124,6 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         ])
         panel.glass.contentView = content
         panel.initialFirstResponder = field
+        panel.delegate = self
         return panel
     }
 
@@ -135,12 +155,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         return true
     }
 
+    func windowDidResignKey(_: Notification) {
+        launcher?.orderOut(nil)
+    }
+
+    private func toggleLauncher() {
+        if let panel = launcher, panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            showLauncher()
+        }
+    }
+
     @objc
     private func showLauncher() {
         let panel = launcher ?? makeLauncher()
         launcher = panel
-        panel.center()
+        if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
+            panel.setFrameOrigin(
+                ScreenGeometry.upperThirdOrigin(of: panel.frame.size, in: visible))
+        }
         panel.makeKeyAndOrderFront(nil)
+    }
+
+    private func launcherScreen() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        let mouseScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+        switch LauncherSettings.load(from: modules).screen {
+        case .mouse:
+            return mouseScreen
+
+        case .activeWindow:
+            return activeWindowScreen() ?? mouseScreen
+        }
+    }
+
+    private func activeWindowScreen() -> NSScreen? {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            let windows = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]],
+            let window = windows.first(where: { info in
+                info[kCGWindowOwnerPID as String] as? pid_t == pid
+                    && info[kCGWindowLayer as String] as? Int == 0
+            }),
+            let dictionary = window[kCGWindowBounds as String] as? [String: Any],
+            let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary)
+        else { return nil }
+        let screens = NSScreen.screens
+        return ScreenGeometry.screenIndex(showing: bounds, in: screens.map(\.frame))
+            .map { screens[$0] }
     }
 
     @objc
