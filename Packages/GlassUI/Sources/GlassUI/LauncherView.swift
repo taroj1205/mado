@@ -1,17 +1,21 @@
-import AppKit
-import GlassUI
+public import AppKit
 
-final class LauncherView: NSView {
+public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchBarHeight: CGFloat = 60
     private static let searchInset: CGFloat = 20
     private static let searchFontSize: CGFloat = 20
     private static let searchIconGap: CGFloat = 12
     private static let resultsInset: CGFloat = 8
+    private static let returnKeys: Set<String?> = ["\r", "\u{3}"]
+    private static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
-    let field = NSTextField()
-    let results = ResultList()
+    public let field = NSTextField()
+    public let results = ResultList()
+    public var onQuery: ((String) -> Void)?
+    public var onCancel: (() -> Void)?
+    public var onRun: ((ResultList.Item, Int) -> Void)?
 
-    override init(frame: NSRect) {
+    override public init(frame: NSRect) {
         super.init(frame: frame)
         let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
@@ -22,6 +26,7 @@ final class LauncherView: NSView {
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
+        field.delegate = self
         let separator = NSBox()
         separator.boxType = .separator
         let bar = NSLayoutGuide()
@@ -53,5 +58,36 @@ final class LauncherView: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override public func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
+            Self.returnKeys.contains(event.charactersIgnoringModifiers),
+            let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
+        else { return super.performKeyEquivalent(with: event) }
+        run(1)
+        return true
+    }
+
+    public func controlTextDidChange(_: Notification) {
+        onQuery?(field.stringValue)
+    }
+
+    public func control(
+        _: NSControl, textView _: NSTextView, doCommandBy selector: Selector
+    ) -> Bool {
+        switch selector {
+        case #selector(NSResponder.moveUp): results.selectPrevious()
+        case #selector(NSResponder.moveDown): results.selectNext()
+        case #selector(NSResponder.insertNewline): run(0)
+        case #selector(NSResponder.cancelOperation): onCancel?()
+        default: return false
+        }
+        return true
+    }
+
+    private func run(_ action: Int) {
+        guard let item = results.selectedItem else { return }
+        onRun?(item, action)
     }
 }

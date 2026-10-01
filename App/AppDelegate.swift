@@ -8,7 +8,7 @@ import SearchKit
 import WindowKit
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherHotKey = Shortcut(keyCode: UInt32(kVK_Space), modifiers: .option)
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
@@ -128,7 +128,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
             kind: .panel,
             contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
             shape: .rounded(Self.launcherRadius))
-        launcherView.field.delegate = self
+        launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
+        launcherView.onCancel = { [weak panel] in panel?.orderOut(nil) }
+        launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
         panel.delegate = self
@@ -147,7 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
                             title: typed ? "Results" : "Commands",
                             items: commands.map { command in
                                 ResultList.Item(
-                                    title: command.name, subtitle: "", kind: "Command",
+                                    id: command.id, title: command.name, subtitle: "",
+                                    kind: "Command",
                                     symbol: command.icon)
                             })
                     ]
@@ -158,17 +161,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
             })
     }
 
-    func controlTextDidChange(_ notification: Notification) {
-        guard let field = notification.object as? NSTextField else { return }
-        search?.run(field.stringValue)
-    }
-
-    func control(
-        _: NSControl, textView _: NSTextView, doCommandBy selector: Selector
-    ) -> Bool {
-        guard selector == #selector(NSResponder.cancelOperation) else { return false }
+    private func run(_ item: ResultList.Item, action index: Int) {
+        guard let actions = modules?.commands.command(id: item.id)?.actions,
+            actions.indices.contains(index)
+        else { return }
         launcher?.orderOut(nil)
-        return true
+        let action = actions[index]
+        Task { [logger] in
+            do {
+                try await action.perform()
+            } catch {
+                logger.error(
+                    "Command \(item.id, privacy: .public) failed: \(error, privacy: .public)")
+            }
+        }
     }
 
     func windowDidResignKey(_: Notification) {

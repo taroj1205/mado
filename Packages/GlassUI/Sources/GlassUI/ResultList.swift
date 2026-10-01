@@ -2,12 +2,14 @@ public import AppKit
 
 public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewDelegate {
     public struct Item: Sendable, Equatable {
+        public let id: String
         public let title: String
         public let subtitle: String
         public let kind: String
         public let symbol: String
 
-        public init(title: String, subtitle: String, kind: String, symbol: String) {
+        public init(id: String, title: String, subtitle: String, kind: String, symbol: String) {
+            self.id = id
             self.title = title
             self.subtitle = subtitle
             self.kind = kind
@@ -54,6 +56,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         }
     }
 
+    public var selectedItem: Item? {
+        guard rows.indices.contains(table.selectedRow),
+            case .item(let item) = rows[table.selectedRow]
+        else { return nil }
+        return item
+    }
+
     let table = NSTableView()
     private(set) var rows: [Row] = []
 
@@ -86,6 +95,27 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     static func rows(for sections: [Section]) -> [Row] {
         sections.filter { !$0.items.isEmpty }
             .flatMap { [.header($0.title)] + $0.items.map(Row.item) }
+    }
+
+    public func selectPrevious() {
+        moveSelection(by: -1)
+    }
+
+    public func selectNext() {
+        moveSelection(by: 1)
+    }
+
+    private func moveSelection(by step: Int) {
+        var row = table.selectedRow + step
+        while rows.indices.contains(row), !rows[row].isItem {
+            row += step
+        }
+        guard rows.indices.contains(row) else { return }
+        table.selectRowIndexes([row], byExtendingSelection: false)
+        if row > 0, !rows[row - 1].isItem {
+            table.scrollRowToVisible(row - 1)
+        }
+        table.scrollRowToVisible(row)
     }
 
     public func numberOfRows(in _: NSTableView) -> Int {

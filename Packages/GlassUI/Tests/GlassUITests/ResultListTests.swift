@@ -76,7 +76,11 @@ import Testing
         let list = shown([
             .init(
                 title: "Commands",
-                items: [.init(title: "Sleep", subtitle: "System", kind: "Command", symbol: "moon")])
+                items: [
+                    .init(
+                        id: "sleep", title: "Sleep", subtitle: "System", kind: "Command",
+                        symbol: "moon")
+                ])
         ])
         let cell = try #require(list.table.view(atColumn: 0, row: 1, makeIfNecessary: false))
         let result = try #require(cell as? ResultCell)
@@ -89,6 +93,44 @@ import Testing
         #expect(result.tile.frame.height == ResultCell.tileSize)
     }
 
+    @Test func arrowsSkipHeadersAndStopAtTheEnds() {
+        let list = shown([
+            .init(title: "Applications", items: [item("A"), item("B")]),
+            .init(title: "Commands", items: [item("C")]),
+        ])
+        var titles: [String?] = []
+        for move in [list.selectNext, list.selectNext, list.selectNext] {
+            move()
+            titles.append(list.selectedItem?.title)
+        }
+        for move in [list.selectPrevious, list.selectPrevious, list.selectPrevious] {
+            move()
+            titles.append(list.selectedItem?.title)
+        }
+        #expect(titles == ["B", "C", "C", "B", "A", "A"])
+        #expect(list.table.selectedRow == 1)
+    }
+
+    @Test func movingKeepsTheSelectionAndItsSectionHeaderInView() {
+        let list = shown(manyItems)
+        for _ in 0..<40 {
+            list.selectNext()
+        }
+        #expect(list.contentView.documentVisibleRect.contains(list.table.rect(ofRow: 41)))
+        for _ in 0..<40 {
+            list.selectPrevious()
+        }
+        #expect(list.table.selectedRow == 1)
+        #expect(list.contentView.bounds.minY == -ResultList.topInset)
+    }
+
+    @Test func emptyResultsHaveNoSelectedItem() {
+        let list = shown([])
+        list.selectNext()
+        list.selectPrevious()
+        #expect(list.selectedItem == nil)
+    }
+
     @Test func aThousandRowsOnlyBuildTheVisibleViews() {
         let list = shown(manyItems)
         let visible = list.table.rows(in: list.contentView.documentVisibleRect)
@@ -99,7 +141,7 @@ import Testing
     }
 
     private func item(_ title: String) -> ResultList.Item {
-        .init(title: title, subtitle: "", kind: "Command", symbol: "star")
+        .init(id: title, title: title, subtitle: "", kind: "Command", symbol: "star")
     }
 
     private func shown(_ sections: [ResultList.Section]) -> ResultList {
