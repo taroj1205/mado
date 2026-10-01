@@ -57,6 +57,24 @@ import Testing
         #expect(second.isDescendant(of: view.effect))
     }
 
+    @Test func sheenSitsUnderTheContentAndFollowsTheShape() {
+        let view = GlassView(shape: .rounded(28))
+        let content = NSView()
+        view.contentView = content
+        view.frame = NSRect(x: 0, y: 0, width: 500, height: 300)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.container.subviews.first === view.sheen)
+        #expect(view.container.subviews.last === content)
+        #expect(view.sheen.radius == 28)
+    }
+
+    @Test func sheenFollowsTheTheme() throws {
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let light = try #require(NSAppearance(named: .aqua))
+        #expect(GlassSheen.tone(for: dark).sheen == GlassSheen.dark.sheen)
+        #expect(GlassSheen.tone(for: light).sheen == GlassSheen.light.sheen)
+    }
+
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {
         let rect = NSRect(x: 0, y: 0, width: 200, height: 80)
         let hud = GlassPanel(kind: .hud, contentRect: rect, shape: .rounded(16))
