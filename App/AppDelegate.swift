@@ -219,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
+        guard !launcherView.sharing else { return }
         launcherView.closePreview()
         launcher?.orderOut(nil)
         launcherClosed = .now

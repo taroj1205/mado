@@ -10,7 +10,7 @@ enum FloatingCapsule {
     private static let keycapFontSize: CGFloat = 11
     private static let keycapAlpha = (dark: 0.10, light: 0.07)
     private static let dividerHeight: CGFloat = 14
-    private static let keycapFill = NSColor(name: nil) { appearance in
+    static let keycapFill = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? .white.withAlphaComponent(keycapAlpha.dark)
             : .black.withAlphaComponent(keycapAlpha.light)

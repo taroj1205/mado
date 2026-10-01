@@ -38,6 +38,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private var browsing = false
 
     var previewing: Bool { preview?.isVisible == true }
+    public var sharing: Bool { preview?.sharing == true }
 
     private var canPreview: Bool {
         (browsing || previewing) && results.selectedItem?.file != nil
@@ -218,8 +219,18 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             return
         }
         let card = preview ?? FilePreview()
+        card.onOpen = { [weak self] in self?.run(0) }
+        card.onShareEnd = { [weak self] shared in self?.shareEnded(shared) }
         preview = card
         card.show(file, beside: window.frame, in: visible)
+    }
+
+    private func shareEnded(_ shared: Bool) {
+        if shared {
+            onCancel?()
+        } else {
+            unsafe window?.makeKey()
+        }
     }
 
     private func selectionMoved() {
