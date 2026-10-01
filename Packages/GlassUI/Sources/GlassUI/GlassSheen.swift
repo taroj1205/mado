@@ -26,10 +26,10 @@ final class GlassSheen: NSView {
     private static let lightSheenMid: Stop = (0.12, 0.30)
     private static let lightSheenClearAt: CGFloat = 0.60
     private static let sheenAngle: CGFloat = -60
-    private static let darkRim: Ends = (0.55, 0.18)
-    private static let darkRimMid: Stop = (0.10, 0.5)
-    private static let lightRim: Ends = (1, 0.75)
-    private static let lightRimMid: Stop = (0.5, 0.5)
+    private static let darkRim: Ends = (0.60, 0.22)
+    private static let darkRimMid: Stop = (0.12, 0.5)
+    private static let lightRim: Ends = (1, 0.80)
+    private static let lightRimMid: Stop = (0.55, 0.5)
     private static let rimWidth: CGFloat = 1
     private static let rimAngle: CGFloat = -45
 
