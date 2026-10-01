@@ -135,10 +135,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         contextCapsule.isHidden = true
     }
 
-    override public func scrollWheel(with event: NSEvent) {
-        results.scrollWheel(with: event)
-    }
-
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             Self.returnKeys.contains(event.charactersIgnoringModifiers),

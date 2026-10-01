@@ -142,21 +142,6 @@ import Testing
         #expect(view.results.contentView.bounds.maxY > table.frame.maxY)
     }
 
-    @Test func scrollingOverTheCapsuleScrollsTheRows() throws {
-        view.results.sections = [
-            .init(title: "Commands", items: (0..<40).map { item("Command \($0)") })
-        ]
-        let event = try #require(
-            CGEvent(
-                scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: -5, wheel2: 0,
-                wheel3: 0
-            )
-            .flatMap(NSEvent.init(cgEvent:)))
-        let top = view.results.contentView.bounds.minY
-        view.scrollWheel(with: event)
-        #expect(view.results.contentView.bounds.minY > top)
-    }
-
     private func actionCapsule() -> GlassView {
         view.layoutSubtreeIfNeeded()
         return view.actionCapsule
