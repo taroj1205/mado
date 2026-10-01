@@ -7,7 +7,7 @@ public struct Usage: Codable, Equatable, Sendable {
     }
 
     static let halfLife: TimeInterval = 1_209_600
-    static let bonusPerDoubling = 8.0
+    static let bonusPerDoubling = Double(Fuzzy.wordStartBonus)
     static let forgottenWeight = 0.05
 
     private(set) var entries: [String: Entry]

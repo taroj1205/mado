@@ -4,7 +4,7 @@ public enum Fuzzy {
     private typealias Letter = (character: Character, wordStart: Bool)
 
     private static let nameStartBonus = 8
-    private static let wordStartBonus = 8
+    static let wordStartBonus = 8
     private static let consecutiveBonus = 4
 
     public static func rank<Item>(
