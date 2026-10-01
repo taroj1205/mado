@@ -107,9 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
-            for command in SystemCommands.all {
-                try manager.commands.register(command)
-            }
+            try SystemCommands.all.forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(PlaceholderModule(descriptor: descriptor))
             }
@@ -199,9 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func actions(for id: String) -> [CommandAction] {
-        if let pane = SettingsPane.all.first(where: { $0.id == id }) {
-            return [pane.open]
-        }
+        if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
         guard let app = apps.apps.first(where: { $0.url.path == id }) else {
             return modules?.commands.command(id: id)?.actions ?? []
         }
