@@ -1,9 +1,10 @@
 import AppCore
+import AppKit
 
 @MainActor
 struct SettingsPage {
     static let all: [Self] = [
-        Self("General", "gearshape") {
+        Self("General", "gearshape") { modules in
             [
                 SettingsSection(
                     "Launcher",
@@ -13,7 +14,8 @@ struct SettingsPage {
                             SettingsSwitch(
                                 read: { LaunchAtLogin.isEnabled },
                                 write: LaunchAtLogin.setEnabled))
-                    ])
+                    ]),
+                SettingsSection("Window", [.init("Show on", screenPopUp(modules))]),
             ]
         },
         Self("Search", "magnifyingglass"),
@@ -37,16 +39,26 @@ struct SettingsPage {
     let title: String
     let symbol: String
     let module: ModuleDescriptor?
-    let sections: () -> [SettingsSection]
+    let sections: (ModuleManager?) -> [SettingsSection]
 
     private init(
         _ title: String, _ symbol: String, module: ModuleDescriptor? = nil,
-        sections: @escaping () -> [SettingsSection] = { [] }
+        sections: @escaping (ModuleManager?) -> [SettingsSection] = { _ in [] }
     ) {
         self.title = title
         self.symbol = symbol
         self.module = module
         self.sections = sections
+    }
+
+    private static func screenPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
+        let screens = LauncherScreen.allCases
+        let popUp = SettingsPopUp(
+            screens.map(\.title),
+            read: { screens.firstIndex(of: LauncherScreen.load(from: modules)) ?? 0 },
+            write: { try screens[$0].save(to: modules) })
+        popUp.isEnabled = modules != nil
+        return popUp
     }
 
     private static func module(_ id: String, _ name: String, enabled: Bool) -> ModuleDescriptor {

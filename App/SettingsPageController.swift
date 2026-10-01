@@ -32,7 +32,7 @@ final class SettingsPageController: NSViewController {
     }
 
     override func loadView() {
-        var sections = page.sections()
+        var sections = page.sections(modules)
         if let module = page.module {
             sections.insert(moduleSection(module), at: 0)
         }
