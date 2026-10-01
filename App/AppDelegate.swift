@@ -105,6 +105,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
+            for command in SystemCommands.all {
+                try manager.commands.register(command)
+            }
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(PlaceholderModule(descriptor: descriptor))
             }
@@ -151,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     let commands = modules?.commands.commands(matching: query) ?? []
                     let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     let matches = typed ? apps.apps(matching: query) : []
+                    let panes = typed ? SettingsPane.panes(matching: query) : []
                     return [
                         ResultList.Section(
                             title: typed ? "Results" : "Commands",
@@ -160,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                     kind: "Application", symbol: "",
                                     icon: apps.icon(for: app))
                             }
+                                + panes.map(\.item)
                                 + commands.map { command in
                                     ResultList.Item(
                                         id: command.id, title: command.name, subtitle: "",
@@ -190,6 +195,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func actions(for id: String) -> [CommandAction] {
+        if let pane = SettingsPane.all.first(where: { $0.id == id }) {
+            return [pane.open]
+        }
         guard let app = apps.apps.first(where: { $0.url.path == id }) else {
             return modules?.commands.command(id: id)?.actions ?? []
         }
