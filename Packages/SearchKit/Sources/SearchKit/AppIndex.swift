@@ -8,6 +8,10 @@ public final class AppIndex {
         public let name: String
         public let folder: String
         public let url: URL
+
+        public var keys: [String] {
+            [name, url.deletingPathExtension().lastPathComponent]
+        }
     }
 
     public static let folders = [
@@ -66,10 +70,6 @@ public final class AppIndex {
             logger.error("Watching the app folders failed; installs show after relaunch")
         }
         refresh()
-    }
-
-    public func apps(matching text: String) -> [App] {
-        Fuzzy.rank(apps, by: text) { [$0.name, $0.url.deletingPathExtension().lastPathComponent] }
     }
 
     public func icon(for app: App) -> NSImage {
