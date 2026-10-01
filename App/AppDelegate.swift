@@ -219,6 +219,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hideLauncher()
     }
 
+    #if DEBUG
+        func applicationDidResignActive(_: Notification) {
+            if !KeepLauncherOpen.isEnabled, launcher?.isVisible == true {
+                hideLauncher()
+            }
+        }
+    #endif
+
     private func hideLauncher() {
         launcher?.orderOut(nil)
         launcherClosed = .now
