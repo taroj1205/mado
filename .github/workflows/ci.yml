@@ -1,34 +1,73 @@
 name: CI
+
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
-  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  lint:
+    name: Lint
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v4
-      - name: Install tools
-        run: brew install xcodegen swiftlint
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
       - name: Format check
         run: swift format lint --strict -r App Packages Tests
+
       - name: Lint
         run: swiftlint lint --strict
-      - name: Package unit tests
+
+  packages:
+    name: Package Tests
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run package tests
         run: |
           for p in Packages/*/; do
-            (cd "$p" && swift test)
+            swift test --package-path "$p"
           done
+
+  app:
+    name: App
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: Build and test the app workspace
+
+      - name: Build and test
         run: |
           xcodebuild test \
             -project Mado.xcodeproj \
             -scheme Mado \
             -destination 'platform=macOS' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
+
       - name: Launch smoke test
         run: |
           xcodebuild build \
@@ -44,3 +83,18 @@ jobs:
           kill -0 "$pid"
           lsappinfo info -only ApplicationType -app "$pid" | grep -q UIElement
           kill "$pid"
+
+  verify:
+    name: Verify
+    needs: [lint, packages, app]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" || "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "CI failed - one or more required jobs failed or were cancelled"
+            exit 1
+          fi
+
+          echo "CI passed"

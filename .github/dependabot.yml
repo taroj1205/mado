@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'saturday'
+      time: '05:00'
+      timezone: 'Pacific/Auckland'
+    assignees:
+      - 'taroj1205'
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    cooldown:
+      default-days: 7
