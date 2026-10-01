@@ -151,7 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             search: { [weak self] query in
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
-                    let commands = modules?.commands.commands(matching: query) ?? []
+                    let commands = Fuzzy.rank(modules?.commands.all ?? [], by: query) { command in
+                        [command.name] + command.keywords
+                    }
                     let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     let matches = typed ? apps.apps(matching: query) : []
                     let panes = typed ? SettingsPane.panes(matching: query) : []
