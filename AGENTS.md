@@ -23,6 +23,7 @@
 
 - Never commit to `main` directly. Work on a task branch with a conventional name (`feat/...`, `fix/...`, `chore/...`) and open a PR with the `pr-local` skill.
 - Build the PR body from `.github/pull_request_template.md`. `gh pr create --body` and `--body-file` don't apply it, so copy its sections in.
+- Before attaching screenshots, read `.agents/references/screenshots.md`. It covers which shots a UI change needs and how to keep anything real out of the background.
 - PRs are ready for review by default. Do not merge them; merging is the maintainer's call.
 - After every push, wait for the CI result on the latest head before calling the work done, and report a failure as a failure.
 - CI runs the toolchain it is pinned to, which can lag the local one. A rule that passes locally can still fail in CI, so do not rely on the local result alone.
