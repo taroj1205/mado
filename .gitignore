@@ -7,3 +7,4 @@ xcuserdata/
 Mado.xcodeproj/
 App/Info.plist
 build/
+.claude/worktrees/
