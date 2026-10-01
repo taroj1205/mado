@@ -11,11 +11,12 @@ final class FolderWatcher {
         }
     }
 
-    private static let latency: TimeInterval = 0.5
-
     private let stream: FSEventStreamRef
 
-    init?(folders: [URL], onChange: @escaping @MainActor @Sendable () -> Void) {
+    init?(
+        folders: [URL], latency: TimeInterval,
+        onChange: @escaping @MainActor @Sendable () -> Void
+    ) {
         let handler = Handler(onChange)
         var context = unsafe FSEventStreamContext(
             version: 0,
@@ -40,7 +41,7 @@ final class FolderWatcher {
                     MainActor.assumeIsolated { notify() }
                 },
                 &context, folders.map(\.path) as CFArray,
-                FSEventStreamEventId(kFSEventStreamEventIdSinceNow), Self.latency,
+                FSEventStreamEventId(kFSEventStreamEventIdSinceNow), latency,
                 FSEventStreamCreateFlags(kFSEventStreamCreateFlagNone))
         else { return nil }
         unsafe FSEventStreamSetDispatchQueue(created, .main)

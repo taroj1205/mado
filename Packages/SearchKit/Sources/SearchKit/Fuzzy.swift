@@ -1,7 +1,18 @@
 import Foundation
 
 public enum Fuzzy {
-    private typealias Letter = (character: Character, wordStart: Bool)
+    public struct Key: Sendable, Equatable {
+        let letters: [Letter]
+
+        public init(_ text: String) {
+            letters = Fuzzy.fold(text)
+        }
+    }
+
+    struct Letter: Sendable, Equatable {
+        let character: Character
+        let wordStart: Bool
+    }
 
     private static let nameStartBonus = 8
     static let wordStartBonus = 8
@@ -11,16 +22,29 @@ public enum Fuzzy {
         _ items: [Item], by query: String, bonus: (Item) -> Int = { _ in 0 },
         keys: (Item) -> [String]
     ) -> [Item] {
-        let needle = fold(query.trimmingCharacters(in: .whitespacesAndNewlines)).map(\.character)
+        rank(items, by: query, bonus: bonus) { keys($0).map(Key.init) }
+    }
+
+    public static func rank<Item>(
+        _ items: [Item], by query: String, bonus: (Item) -> Int = { _ in 0 },
+        keys: (Item) -> [Key]
+    ) -> [Item] {
+        let needle = Key(query.trimmingCharacters(in: .whitespacesAndNewlines)).letters
+            .map(\.character)
         let scored = items.enumerated().compactMap { offset, item in
             let best =
-                needle.isEmpty ? 0 : keys(item).compactMap { score(needle, in: fold($0)) }.max()
+                needle.isEmpty ? 0 : keys(item).compactMap { score(needle, in: $0.letters) }.max()
             return best.map { (item: item, score: $0 + bonus(item), offset: offset) }
         }
         return scored.sorted { ($1.score, $0.offset) < ($0.score, $1.offset) }.map(\.item)
     }
 
     private static func score(_ needle: [Character], in text: [Letter]) -> Int? {
+        var matched = 0
+        for letter in text where matched < needle.count && letter.character == needle[matched] {
+            matched += 1
+        }
+        guard matched == needle.count else { return nil }
         var row = [Int?](repeating: nil, count: text.count)
         for (step, wanted) in needle.enumerated() {
             var next = [Int?](repeating: nil, count: text.count)
@@ -32,14 +56,19 @@ public enum Fuzzy {
                         1 + (text[index].wordStart ? wordStartBonus : 0)
                         + (index == 0 ? nameStartBonus : 0)
                     let joined = previous.map { $0 + gain + consecutiveBonus }
-                    next[index] = [joined, gap.map { $0 + gain }].compactMap(\.self).max()
+                    next[index] = larger(joined, gap.map { $0 + gain })
                 }
-                gap = [gap, previous].compactMap(\.self).max()
+                gap = larger(gap, previous)
                 previous = row[index]
             }
             row = next
         }
         return row.compactMap(\.self).max()
+    }
+
+    private static func larger(_ first: Int?, _ second: Int?) -> Int? {
+        guard let first, let second else { return first ?? second }
+        return max(first, second)
     }
 
     private static func fold(_ text: String) -> [Letter] {
@@ -59,7 +88,7 @@ public enum Fuzzy {
                     options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
                     locale: nil)
             for (offset, piece) in plain.enumerated() {
-                folded.append((piece, wordStart && offset == 0))
+                folded.append(Letter(character: piece, wordStart: wordStart && offset == 0))
             }
             before = character
         }

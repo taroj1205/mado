@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
+    private let files = FileIndex()
     private var usage = Usage()
     private var hotKeys: HotKeyRegistry?
     #if DEBUG
@@ -43,12 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = makeStatusItem()
         launcher = makeLauncher()
         search = makeSearch()
-        search?.run(launcherView.field.stringValue)
-        apps.onChange = { [weak self] in
-            guard let self else { return }
-            search?.run(launcherView.field.stringValue)
-        }
+        searchAgain()
+        apps.onChange = { [weak self] in self?.searchAgain() }
+        files.onChange = { [weak self] in self?.searchAgain() }
         apps.start()
+        files.start()
         hotKeys = makeHotKeys()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
@@ -159,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak panel] in panel?.orderOut(nil) }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
+        panel.onKeyDown = { [launcherView] in launcherView.handleKeyDown($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
         panel.delegate = self
@@ -171,11 +172,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
                     LauncherResult.sections(
-                        for: query, apps: apps, commands: modules?.commands.all ?? [],
-                        usage: usage)
+                        for: query, apps: apps, files: files,
+                        commands: modules?.commands.all ?? [], usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
+                launcherView.closePreview()
                 launcherView.results.sections = sections
                 launcherView.context = sections.contains { $0.notice != nil } ? "No results" : nil
             })
@@ -183,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func run(_ item: ResultList.Item, action index: Int) {
         let actions = LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, apps: apps,
+            for: item.id, query: launcherView.field.stringValue, apps: apps, files: files,
             commands: modules?.commands.all ?? [])
         guard actions.indices.contains(index) else { return }
         launcher?.orderOut(nil)
@@ -212,7 +214,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    private func searchAgain() {
+        search?.run(launcherView.field.stringValue)
+    }
+
     func windowDidResignKey(_: Notification) {
+        launcherView.closePreview()
         launcher?.orderOut(nil)
         launcherClosed = .now
     }

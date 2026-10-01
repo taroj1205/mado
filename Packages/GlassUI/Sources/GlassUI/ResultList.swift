@@ -9,10 +9,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let symbol: String
         public let action: String
         public let icon: NSImage?
+        public let file: URL?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil
+            action: String, icon: NSImage? = nil, file: URL? = nil
         ) {
             self.id = id
             self.title = title
@@ -21,6 +22,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.symbol = symbol
             self.action = action
             self.icon = icon
+            self.file = file
         }
     }
 

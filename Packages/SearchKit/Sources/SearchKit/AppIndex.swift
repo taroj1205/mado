@@ -14,6 +14,8 @@ public final class AppIndex {
         }
     }
 
+    private static let latency: TimeInterval = 0.5
+
     public static let folders = [
         URL(filePath: "/Applications"),
         URL(filePath: "/System/Applications"),
@@ -63,7 +65,7 @@ public final class AppIndex {
     }
 
     public func start() {
-        watcher = FolderWatcher(folders: folders) { [weak self] in
+        watcher = FolderWatcher(folders: folders, latency: Self.latency) { [weak self] in
             self?.refresh()
         }
         if watcher == nil {
