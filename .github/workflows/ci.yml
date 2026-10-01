@@ -17,33 +17,34 @@ jobs:
   changes:
     name: Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
       packages: ${{ steps.filter.outputs.packages }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
           persist-credentials: false
 
-      - id: filter
-        env:
-          NOT_CODE: '\.md$|^\.github/ISSUE_TEMPLATE/|^\.github/dependabot\.yml$|^\.githooks/|^\.agents/'
-          APP_ONLY: '^(App|Tests)/|^project\.yml$'
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "packages=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed"
-          code=false
-          packages=false
-          grep -qvE "$NOT_CODE" "$RUNNER_TEMP/changed" && code=true
-          grep -qvE "$NOT_CODE|$APP_ONLY" "$RUNNER_TEMP/changed" && packages=true
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: some-with-excludes
+          filters: |
+            code: &code
+              - '**'
+              - '!**/*.md'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/dependabot.yml'
+              - '!.githooks/**'
+              - '!.agents/**'
+            packages:
+              - *code
+              - '!App/**'
+              - '!Tests/**'
+              - '!project.yml'
 
   lint:
     name: Lint
