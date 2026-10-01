@@ -1,3 +1,4 @@
+public import CoreGraphics
 public import Foundation
 public import os
 
@@ -47,6 +48,16 @@ public final class ModuleContext {
             MainActor.assumeIsolated { handler() }
         }
         own(.timer, name) { timer.invalidate() }
+    }
+
+    public func tapEvents(
+        _ name: String, matching types: [CGEventType],
+        swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
+    ) throws(ModuleError) {
+        guard let tap = EventTap(types: types, swallow: swallow) else {
+            throw .eventTapRefused(name)
+        }
+        own(.eventTap, name) { tap.invalidate() }
     }
 
     public func run(_ name: String, operation: @escaping @MainActor @Sendable () async -> Void) {
