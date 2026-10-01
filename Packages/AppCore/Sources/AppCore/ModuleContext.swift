@@ -1,4 +1,5 @@
 public import Foundation
+public import os
 
 @MainActor
 public final class ModuleContext {
@@ -7,6 +8,9 @@ public final class ModuleContext {
         let release: () -> Void
         let task: Task<Void, Never>?
     }
+
+    public let logger: Logger
+    public let signposter: OSSignposter
 
     private let moduleID: String
     private var entries: [UInt: Entry] = [:]
@@ -18,6 +22,8 @@ public final class ModuleContext {
 
     init(moduleID: String) {
         self.moduleID = moduleID
+        logger = Log.logger(moduleID)
+        signposter = Log.signposter(moduleID)
     }
 
     public func own(_ kind: ResourceKind, _ name: String, release: @escaping () -> Void) {
