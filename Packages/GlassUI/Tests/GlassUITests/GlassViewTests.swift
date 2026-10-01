@@ -69,6 +69,14 @@ import Testing
         #expect(hud.contentView === hud.glass)
     }
 
+    @Test func panelHasItsWindowBeforeItIsShown() {
+        let panel = GlassPanel(
+            kind: .panel, contentRect: NSRect(x: 0, y: 0, width: 200, height: 80),
+            shape: .rounded(16))
+        #expect(!panel.isVisible)
+        #expect(panel.windowNumber > 0)
+    }
+
     func appliedRadius(_ view: GlassView) -> CGFloat? {
         if #available(macOS 26, *), let glass = view.effect as? NSGlassEffectView {
             return glass.cornerRadius

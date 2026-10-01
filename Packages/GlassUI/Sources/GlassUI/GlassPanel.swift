@@ -16,7 +16,7 @@ public final class GlassPanel: NSPanel {
         glass = GlassView(shape: shape)
         super.init(
             contentRect: contentRect, styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered, defer: true)
+            backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true

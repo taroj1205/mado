@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
         modules = makeModules()
         NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
+        launcher = makeLauncher()
         hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
@@ -169,13 +170,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, N
 
     @objc
     private func showLauncher() {
-        let panel = launcher ?? makeLauncher()
-        launcher = panel
+        guard let panel = launcher else { return }
+        let opening = signposter.beginInterval("open launcher")
         if let visible = (launcherScreen() ?? NSScreen.main)?.visibleFrame {
             let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
             panel.setFrame(ScreenGeometry.upperThirdFrame(of: size, in: visible), display: false)
         }
         panel.makeKeyAndOrderFront(nil)
+        CATransaction.setCompletionBlock { [signposter] in
+            signposter.endInterval("open launcher", opening)
+        }
     }
 
     private func launcherScreen() -> NSScreen? {
