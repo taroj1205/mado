@@ -41,7 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         modules = makeModules()
         usage = loadUsage()
         NSApp.mainMenu = makeMainMenu()
-        statusItem = makeStatusItem()
+        statusItem = StatusMenu.makeItem(
+            target: self, open: #selector(showLauncher), settings: #selector(showSettings),
+            hide: #selector(hideStatusItem))
         launcher = makeLauncher()
         search = makeSearch()
         searchAgain()
@@ -60,31 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         statusItem?.isVisible = true
         return true
-    }
-
-    private func makeStatusItem() -> NSStatusItem {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.behavior = .removalAllowed
-        item.isVisible = true
-        item.button?.image = NSImage(
-            systemSymbolName: "macwindow", accessibilityDescription: "Mado")
-
-        let menu = NSMenu()
-        let open = menu.addItem(
-            withTitle: "Open Mado", action: #selector(showLauncher), keyEquivalent: "")
-        open.target = self
-        let settingsItem = menu.addItem(
-            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(.separator())
-        let hide = menu.addItem(
-            withTitle: "Hide Menu Bar Icon", action: #selector(hideStatusItem), keyEquivalent: "")
-        hide.target = self
-        hide.toolTip = "Open Mado again to show the icon."
-        menu.addItem(
-            withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
-        item.menu = menu
-        return item
     }
 
     private func makeMainMenu() -> NSMenu {
@@ -263,11 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         search?.run(launcherView.field.stringValue)
         #if DEBUG
-            if NoFocus.isEnabled {
-                panel.orderFrontRegardless()
-            } else {
-                panel.makeKeyAndOrderFront(nil)
-            }
+            NoFocus.show(panel)
         #else
             panel.makeKeyAndOrderFront(nil)
         #endif
