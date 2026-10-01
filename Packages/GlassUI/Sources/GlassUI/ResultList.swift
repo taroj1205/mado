@@ -7,13 +7,18 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let subtitle: String
         public let kind: String
         public let symbol: String
+        public let icon: NSImage?
 
-        public init(id: String, title: String, subtitle: String, kind: String, symbol: String) {
+        public init(
+            id: String, title: String, subtitle: String, kind: String, symbol: String,
+            icon: NSImage? = nil
+        ) {
             self.id = id
             self.title = title
             self.subtitle = subtitle
             self.kind = kind
             self.symbol = symbol
+            self.icon = icon
         }
     }
 

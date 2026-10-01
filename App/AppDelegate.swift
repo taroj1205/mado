@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var launcher: GlassPanel?
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
+    private let apps = AppIndex()
     private var hotKeys: HotKeyRegistry?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
@@ -37,6 +38,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcher = makeLauncher()
         search = makeSearch()
         search?.run(launcherView.field.stringValue)
+        apps.onChange = { [weak self] in
+            guard let self else { return }
+            search?.run(launcherView.field.stringValue)
+        }
+        apps.start()
         hotKeys = makeHotKeys()
         signposter.endInterval("launch", launch)
     }
@@ -144,15 +150,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 return signposter.withIntervalSignpost("search") {
                     let commands = modules?.commands.commands(matching: query) ?? []
                     let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    let matches = typed ? apps.apps(matching: query) : []
                     return [
                         ResultList.Section(
                             title: typed ? "Results" : "Commands",
-                            items: commands.map { command in
+                            items: matches.map { app in
                                 ResultList.Item(
-                                    id: command.id, title: command.name, subtitle: "",
-                                    kind: "Command",
-                                    symbol: command.icon)
-                            })
+                                    id: app.url.path, title: app.name, subtitle: app.folder,
+                                    kind: "Application", symbol: "",
+                                    icon: apps.icon(for: app))
+                            }
+                                + commands.map { command in
+                                    ResultList.Item(
+                                        id: command.id, title: command.name, subtitle: "",
+                                        kind: "Command",
+                                        symbol: command.icon)
+                                })
                     ]
                 }
             },
@@ -162,9 +175,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
-        guard let actions = modules?.commands.command(id: item.id)?.actions,
-            actions.indices.contains(index)
-        else { return }
+        let actions = actions(for: item.id)
+        guard actions.indices.contains(index) else { return }
         launcher?.orderOut(nil)
         let action = actions[index]
         Task { [logger] in
@@ -172,9 +184,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 try await action.perform()
             } catch {
                 logger.error(
-                    "Command \(item.id, privacy: .public) failed: \(error, privacy: .public)")
+                    "Result \(item.id, privacy: .public) failed: \(error, privacy: .public)")
             }
         }
+    }
+
+    private func actions(for id: String) -> [CommandAction] {
+        guard let app = apps.apps.first(where: { $0.url.path == id }) else {
+            return modules?.commands.command(id: id)?.actions ?? []
+        }
+        return [
+            CommandAction(id: "open", title: "Open Application") {
+                _ = try await NSWorkspace.shared.openApplication(
+                    at: app.url, configuration: NSWorkspace.OpenConfiguration())
+            }
+        ]
     }
 
     func windowDidResignKey(_: Notification) {

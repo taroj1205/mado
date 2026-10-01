@@ -49,7 +49,10 @@ final class ResultCell: NSTableCellView {
     }
 
     func show(_ item: ResultList.Item) {
-        symbol.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
+        symbol.image =
+            item.icon ?? NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
+        tile.fillColor = item.icon == nil ? ResultRowView.fill : .clear
+        tile.borderWidth = item.icon == nil ? Self.tileBorder : 0
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
