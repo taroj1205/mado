@@ -18,7 +18,7 @@ struct SettingsPage {
                 SettingsSection(
                     "Window",
                     [
-                        .init("Show on", popUp(LauncherScreen.self, modules)),
+                        .init("Show on", screenPopUp(modules)),
                         .init("Keep last query", popUp(QueryLifetime.self, modules)),
                     ]),
             ]
@@ -59,11 +59,36 @@ struct SettingsPage {
     private static func popUp<Setting: LauncherSetting>(
         _: Setting.Type, _ modules: ModuleManager?
     ) -> SettingsPopUp {
-        let choices = Array(Setting.allCases)
-        let popUp = SettingsPopUp(
-            choices.map(\.title),
-            read: { choices.firstIndex(of: Setting.load(from: modules)) ?? 0 },
-            write: { try choices[$0].save(to: modules) })
+        let popUp = SettingsPopUp {
+            let current = Setting.load(from: modules)
+            let choices = Setting.allCases.map { choice in
+                SettingsPopUp.Choice(title: choice.title, isSelected: choice == current) {
+                    try choice.save(to: modules)
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: choices)]
+        }
+        popUp.isEnabled = modules != nil
+        return popUp
+    }
+
+    private static func screenPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
+        let popUp = SettingsPopUp {
+            let current = LauncherScreen.load(from: modules)
+            let choice = { (screen: LauncherScreen) in
+                SettingsPopUp.Choice(
+                    title: screen.title, isSelected: screen.id == current.id,
+                    isEnabled: screen.isAvailable
+                ) { try screen.save(to: modules) }
+            }
+            return [
+                SettingsPopUp.Section(
+                    title: nil, choices: [choice(.mouse), choice(.activeWindow)]),
+                SettingsPopUp.Section(
+                    title: "Displays",
+                    choices: LauncherScreen.displays(keeping: current).map(choice)),
+            ]
+        }
         popUp.isEnabled = modules != nil
         return popUp
     }

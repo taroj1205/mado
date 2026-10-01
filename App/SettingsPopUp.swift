@@ -3,15 +3,26 @@ import AppKit
 import os
 
 final class SettingsPopUp: NSPopUpButton {
-    private let logger = Log.logger("Settings")
-    private let read: () -> Int
-    private let write: (Int) throws -> Void
+    struct Section {
+        let title: String?
+        let choices: [Choice]
+    }
 
-    init(_ titles: [String], read: @escaping () -> Int, write: @escaping (Int) throws -> Void) {
-        self.read = read
-        self.write = write
+    struct Choice {
+        let title: String
+        let isSelected: Bool
+        var isEnabled = true
+        let select: () throws -> Void
+    }
+
+    private let logger = Log.logger("Settings")
+    private let sections: () -> [Section]
+    private var choices: [Choice] = []
+
+    init(_ sections: @escaping () -> [Section]) {
+        self.sections = sections
         super.init(frame: .zero, pullsDown: false)
-        addItems(withTitles: titles)
+        autoenablesItems = false
         target = self
         action = #selector(changed)
         refresh()
@@ -23,13 +34,35 @@ final class SettingsPopUp: NSPopUpButton {
     }
 
     func refresh() {
-        selectItem(at: read())
+        let menu = NSMenu()
+        var selected: NSMenuItem?
+        choices = []
+        for section in sections() where !section.choices.isEmpty {
+            if !menu.items.isEmpty {
+                menu.addItem(.separator())
+            }
+            if let title = section.title {
+                menu.addItem(.sectionHeader(title: title))
+            }
+            for choice in section.choices {
+                let item = NSMenuItem(title: choice.title, action: nil, keyEquivalent: "")
+                item.tag = choices.count
+                item.isEnabled = choice.isEnabled
+                menu.addItem(item)
+                choices.append(choice)
+                if choice.isSelected {
+                    selected = item
+                }
+            }
+        }
+        self.menu = menu
+        select(selected)
     }
 
     @objc
     private func changed() {
         do {
-            try write(indexOfSelectedItem)
+            try choices[selectedTag()].select()
         } catch {
             let name = accessibilityLabel() ?? ""
             logger.error("\(name, privacy: .public) failed: \(error, privacy: .public)")

@@ -61,6 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return true
     }
 
+    func applicationDidChangeScreenParameters(_: Notification) {
+        settings?.refresh()
+    }
+
     private func makeStatusItem() -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.behavior = .removalAllowed

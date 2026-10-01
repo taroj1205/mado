@@ -19,6 +19,7 @@ final class SettingsPageController: NSViewController {
     private let page: SettingsPage
     private let modules: ModuleManager?
     private var switches: [SettingsSwitch] = []
+    private var popUps: [SettingsPopUp] = []
 
     init(page: SettingsPage, modules: ModuleManager?) {
         self.page = page
@@ -36,7 +37,9 @@ final class SettingsPageController: NSViewController {
         if let module = page.module {
             sections.insert(moduleSection(module), at: 0)
         }
-        switches = sections.flatMap(\.rows).compactMap { $0.control as? SettingsSwitch }
+        let controls = sections.flatMap(\.rows).map(\.control)
+        switches = controls.compactMap { $0 as? SettingsSwitch }
+        popUps = controls.compactMap { $0 as? SettingsPopUp }
 
         let heading = NSTextField(labelWithString: page.title)
         heading.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
@@ -71,6 +74,9 @@ final class SettingsPageController: NSViewController {
     func refresh() {
         for toggle in switches {
             toggle.refresh()
+        }
+        for popUp in popUps {
+            popUp.refresh()
         }
     }
 
