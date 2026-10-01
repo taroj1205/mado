@@ -157,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
             shape: .rounded(Self.launcherRadius))
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
-        launcherView.onCancel = { [weak panel] in panel?.orderOut(nil) }
+        launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
@@ -186,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             for: item.id, query: launcherView.field.stringValue, apps: apps,
             commands: modules?.commands.all ?? [])
         guard actions.indices.contains(index) else { return }
-        launcher?.orderOut(nil)
+        hideLauncher()
         let action = actions[index]
         Task { [weak self, logger] in
             do {
@@ -213,13 +213,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
+        #if DEBUG
+            if KeepLauncherOpen.isEnabled { return }
+        #endif
+        hideLauncher()
+    }
+
+    #if DEBUG
+        func applicationDidResignActive(_: Notification) {
+            if !KeepLauncherOpen.isEnabled, launcher?.isVisible == true {
+                hideLauncher()
+            }
+        }
+    #endif
+
+    private func hideLauncher() {
         launcher?.orderOut(nil)
         launcherClosed = .now
     }
 
     private func toggleLauncher() {
-        if let panel = launcher, panel.isVisible {
-            panel.orderOut(nil)
+        if launcher?.isVisible == true {
+            hideLauncher()
         } else {
             showLauncher()
         }
