@@ -24,6 +24,17 @@ import Testing
         (" ( 1 + 2 ) * 3 ", "9"),
         ("-1*0", "0"),
         (".5+.25", "0.75"),
+        ("15% of 24*533", "1,918.8"),
+        ("50% of 50% of 80", "20"),
+        ("200 + 10% of 50", "205"),
+        ("200 + 15% + 30%", "299"),
+        ("(200+10%)*2", "440"),
+        ("100 - 20% - 10%", "72"),
+        ("15% + 30%", "0.45"),
+        ("15% + 30% + 200", "200.45"),
+        ("200 + (10%)", "200.1"),
+        ("15%of240", "36"),
+        ("what is 2+2", "4"),
     ])
     func mathsEvaluates(query: String, result: String) {
         #expect(Calculator.answer(for: query)?.result == result)
@@ -31,7 +42,8 @@ import Testing
 
     @Test(arguments: [
         "", "42", "-42", "safari", "xcode", "c++", "2+", "*2", "2**3", "(1+2", "1+2)", "()",
-        "1/0", "0/0", "1.2.3+1", "1 2+3", "2^99999", "5 ft in cm", "1,2+3",
+        "1/0", "0/0", "1.2.3+1", "1 2+3", "2^99999", "5 ft in cm", "1,2+3", "15% offset 2",
+        "of 2", "2 of",
     ])
     func invalidInputHasNoAnswer(query: String) {
         #expect(Calculator.answer(for: query) == nil)
@@ -74,7 +86,7 @@ import Testing
     @Test(arguments: [
         ("15% of 240", "15% of 240", "Part of a total", "36"),
         ("what is 15% of 240", "15% of 240", "Part of a total", "36"),
-        ("20% off 1,500", "20% off 1,500", "Discount", "1,200"),
+        ("20% off 1,500", "20% off 1500", "Discount", "1,200"),
         ("200 + 10%", "200 + 10%", "Increase", "220"),
         ("80-25%", "80 - 25%", "Decrease", "60"),
     ])

@@ -11,21 +11,29 @@ public enum Calculator {
 
     struct Parser {
         private static let maxDepth = 64
-        private static let shown: [Character: String] = ["*": "×", "x": "×", "/": "÷"]
+        private static let shown = ["*": "×", "x": "×", "/": "÷"]
 
         var pretty: String {
-            characters.indices.reduce(into: "") { text, index in
-                let character = characters[index]
-                guard !character.isWhitespace else { return }
-                let symbol = Self.shown[character] ?? String(character)
-                text += binaryOperators.contains(index) ? " \(symbol) " : symbol
+            var text = ""
+            var position = 0
+            while position < characters.count {
+                let length = operators[position] ?? 1
+                let piece = String(characters[position..<position + length])
+                if operators[position] != nil {
+                    text += " \(Self.shown[piece] ?? piece) "
+                } else if !piece.allSatisfy(\.isWhitespace) {
+                    text += piece
+                }
+                position += length
             }
+            return text
         }
 
         private let characters: [Character]
         private var index = 0
         private var depth = 0
-        private var binaryOperators: Set<Int> = []
+        private var operators: [Int: Int] = [:]
+        private var percentTerm = false
 
         init(_ text: String) {
             characters = Array(text)
@@ -38,18 +46,26 @@ public enum Calculator {
 
         private mutating func sum() -> Double? {
             guard var value = product() else { return nil }
+            var percentSoFar = percentTerm
             while let symbol = takeOperator(["+", "-"]) {
                 guard let rhs = product() else { return nil }
-                value = symbol == "+" ? value + rhs : value - rhs
+                let change = percentTerm && !percentSoFar ? value * rhs : rhs
+                value = symbol == "+" ? value + change : value - change
+                percentSoFar = percentSoFar && percentTerm
             }
             return value
         }
 
         private mutating func product() -> Double? {
             guard var value = signed() else { return nil }
-            while let symbol = takeOperator(["*", "x", "×", "/", "÷"]) {
+            while let symbol = takeOperator(["off", "of", "*", "x", "×", "/", "÷"]) {
                 guard let rhs = signed() else { return nil }
-                value = symbol == "/" || symbol == "÷" ? value / rhs : value * rhs
+                switch symbol {
+                case "/", "÷": value /= rhs
+                case "off": value = rhs * (1 - value)
+                default: value *= rhs
+                }
+                percentTerm = false
             }
             return value
         }
@@ -65,13 +81,17 @@ public enum Calculator {
         private mutating func power() -> Double? {
             guard let base = percent() else { return nil }
             guard takeOperator(["^"]) != nil else { return base }
-            return signed().map { pow(base, $0) }
+            let exponent = signed()
+            percentTerm = false
+            return exponent.map { pow(base, $0) }
         }
 
         private mutating func percent() -> Double? {
             guard var value = atom() else { return nil }
+            percentTerm = false
             while take(["%"]) != nil {
                 value /= 100
+                percentTerm = true
             }
             return value
         }
@@ -101,9 +121,12 @@ public enum Calculator {
             return next
         }
 
-        private mutating func takeOperator(_ symbols: Set<Character>) -> Character? {
-            guard let symbol = take(symbols) else { return nil }
-            binaryOperators.insert(index - 1)
+        private mutating func takeOperator(_ symbols: [String]) -> String? {
+            skipSpaces()
+            guard let symbol = symbols.first(where: { characters[index...].starts(with: $0) })
+            else { return nil }
+            operators[index] = symbol.count
+            index += symbol.count
             return symbol
         }
     }
@@ -113,7 +136,7 @@ public enum Calculator {
     private static let smallFractionDigits = 6
     private static let spelledLimit = 1e12
     private static let spelledPrecision = 10_000.0
-    private static let operators: Set<Character> = [
+    private static let triggers: Set<Character> = [
         "+", "-", "*", "/", "×", "÷", "x", "^", "%", "(",
     ]
     private static let operatorWords = [
@@ -126,10 +149,17 @@ public enum Calculator {
             .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
-        guard text.drop(while: { $0 == "-" }).contains(where: operators.contains) else {
+            .replacing(/^what is\s/, with: "")
+        guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }
-        return portion(text) ?? change(text) ?? maths(text)
+        var parser = Parser(text)
+        guard let value = parser.parse() else { return nil }
+        let compact = text.filter { !$0.isWhitespace }
+        let percentage = percentageDetail(compact)
+        return answer(
+            percentage == nil ? "Calculator" : "Percentage", expression: parser.pretty,
+            detail: percentage ?? spelled(compact) ?? "Expression", value: value)
     }
 
     static func format(_ value: Double) -> String {
@@ -145,38 +175,15 @@ public enum Calculator {
         return formatter.string(for: (value * spelledPrecision).rounded() / spelledPrecision)
     }
 
-    private static func portion(_ text: String) -> Answer? {
-        guard let match = text.wholeMatch(of: /(?:what is )?(-?[\d.]+) ?% (of|off) (-?[\d.]+)/),
-            let percent = Double(match.1), let total = Double(match.3)
-        else { return nil }
-        let off = match.2 == "off"
-        return answer(
-            "Percentage", expression: "\(match.1)% \(match.2) \(format(total))",
-            detail: off ? "Discount" : "Part of a total",
-            value: total * (off ? 1 - percent / 100 : percent / 100))
+    private static func percentageDetail(_ compact: String) -> String? {
+        if let match = compact.wholeMatch(of: /-?[\d.]+%(of|off)-?[\d.]+/) {
+            return match.1 == "off" ? "Discount" : "Part of a total"
+        }
+        guard let match = compact.wholeMatch(of: /-?[\d.]+([+-])[\d.]+%/) else { return nil }
+        return match.1 == "+" ? "Increase" : "Decrease"
     }
 
-    private static func change(_ text: String) -> Answer? {
-        guard let match = text.wholeMatch(of: /(-?[\d.]+) ?([+-]) ?([\d.]+) ?%/),
-            let base = Double(match.1), let percent = Double(match.3)
-        else { return nil }
-        let increase = match.2 == "+"
-        return answer(
-            "Percentage", expression: "\(format(base)) \(match.2) \(format(percent))%",
-            detail: increase ? "Increase" : "Decrease",
-            value: base * (increase ? 1 + percent / 100 : 1 - percent / 100))
-    }
-
-    private static func maths(_ text: String) -> Answer? {
-        var parser = Parser(text)
-        guard let value = parser.parse() else { return nil }
-        return answer(
-            "Calculator", expression: parser.pretty, detail: spelled(text) ?? "Expression",
-            value: value)
-    }
-
-    private static func spelled(_ text: String) -> String? {
-        let compact = text.filter { !$0.isWhitespace }
+    private static func spelled(_ compact: String) -> String? {
         guard let match = compact.wholeMatch(of: /(-?[\d.]+)([-+*\/x×÷])([\d.]+)/),
             let lhs = Double(match.1).flatMap(words), let rhs = Double(match.3).flatMap(words),
             let name = operatorWords[String(match.2)]
