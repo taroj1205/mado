@@ -5,7 +5,7 @@ enum FloatingCapsule {
     static let height: CGFloat = 40
     private static let fontSize: CGFloat = 13
     private static let keycapSize: CGFloat = 20
-    private static let keycapRadius: CGFloat = 10
+    private static let keycapRadius: CGFloat = 5
     private static let keycapInset: CGFloat = 10
     private static let keycapFontSize: CGFloat = 11
     private static let keycapAlpha = (dark: 0.10, light: 0.07)
