@@ -75,8 +75,9 @@ final class CarbonHotKeyBackend: HotKeyBackend {
     }
 
     isolated deinit {
-        for unsafe ref in unsafe refs.values {
-            unsafe _ = UnregisterEventHotKey(ref)
+        let registered = unsafe Array(refs.keys)
+        for id in registered {
+            unregister(id: id)
         }
         if let installed = unsafe handler {
             unsafe _ = RemoveEventHandler(installed)
