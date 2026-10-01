@@ -1,15 +1,23 @@
 import AppCore
 import AppKit
+import GlassUI
 import os
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
+    private static let launcherWidth: CGFloat = 760
+    private static let launcherHeight: CGFloat = 476
+    private static let launcherRadius: CGFloat = 28
+    private static let searchBarHalfHeight: CGFloat = 30
+    private static let searchInset: CGFloat = 20
+
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
     private var statusItem: NSStatusItem?
     private var modules: ModuleManager?
     private var settings: SettingsWindowController?
+    private var launcher: GlassPanel?
 
     init(signposter: OSSignposter, launch: OSSignpostIntervalState) {
         self.signposter = signposter
@@ -36,7 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             systemSymbolName: "macwindow", accessibilityDescription: "Mado")
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Mado", action: nil, keyEquivalent: "")
+        let open = menu.addItem(
+            withTitle: "Open Mado", action: #selector(showLauncher), keyEquivalent: "")
+        open.target = self
         let settingsItem = menu.addItem(
             withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -88,6 +98,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.error("Modules failed to load: \(error, privacy: .public)")
             return nil
         }
+    }
+
+    private func makeLauncher() -> GlassPanel {
+        let panel = GlassPanel(
+            kind: .panel,
+            contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
+            shape: .rounded(Self.launcherRadius))
+        let field = NSTextField()
+        field.placeholderString = "Search"
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.delegate = self
+        field.translatesAutoresizingMaskIntoConstraints = false
+        let content = NSView()
+        content.addSubview(field)
+        NSLayoutConstraint.activate([
+            field.leadingAnchor.constraint(
+                equalTo: content.leadingAnchor, constant: Self.searchInset),
+            field.trailingAnchor.constraint(
+                equalTo: content.trailingAnchor, constant: -Self.searchInset),
+            field.centerYAnchor.constraint(
+                equalTo: content.topAnchor, constant: Self.searchBarHalfHeight),
+        ])
+        panel.glass.contentView = content
+        panel.initialFirstResponder = field
+        return panel
+    }
+
+    func control(
+        _: NSControl, textView _: NSTextView, doCommandBy selector: Selector
+    ) -> Bool {
+        guard selector == #selector(NSResponder.cancelOperation) else { return false }
+        launcher?.orderOut(nil)
+        return true
+    }
+
+    @objc
+    private func showLauncher() {
+        let panel = launcher ?? makeLauncher()
+        launcher = panel
+        panel.center()
+        panel.makeKeyAndOrderFront(nil)
     }
 
     @objc
