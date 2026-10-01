@@ -46,30 +46,34 @@ import Testing
         #expect(FileIndex.abbreviated(URL(filePath: "/tmp/Planning")) == "/tmp/Planning")
     }
 
-    @Test func kindIsFolderOrWhenTheFileWasEdited() throws {
+    @Test func kindIsFolderOrWhenTheFileWasEdited() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "Pacific/Auckland"))
         calendar.locale = Locale(identifier: "en_US")
         let now = try Date("2026-10-02T09:00:00+13:00", strategy: .iso8601)
         let today = calendar.startOfDay(for: now)
-        let file = root.appending(path: "notes.md")
+        let path = root.appending(path: "notes.md").path
 
-        func kind(daysAgo days: Int, hour: Int) throws -> String {
-            let day = try #require(calendar.date(byAdding: .day, value: -days, to: today))
-            let edited = try #require(calendar.date(byAdding: .hour, value: hour, to: day))
-            try FileManager.default.setAttributes(
-                [.modificationDate: edited], ofItemAtPath: file.path)
+        func kind(of name: String) async throws -> String {
+            let file = try #require(await FileIndex.files(in: [root]).first { $0.name == name })
             return FileIndex.kind(of: file, at: now, in: calendar)
         }
 
-        let folder = root.appending(path: "Planning")
-        #expect(FileIndex.kind(of: folder, at: now, in: calendar) == "Folder")
-        #expect(try kind(daysAgo: 0, hour: 0) == "Edited today")
-        #expect(try kind(daysAgo: 1, hour: 23) == "Yesterday")
-        #expect(try kind(daysAgo: 1, hour: 0) == "Yesterday")
-        #expect(try kind(daysAgo: 4, hour: 12) == "Mon")
-        #expect(try kind(daysAgo: 7, hour: 12) == "Sep 25, 2026")
+        func kind(daysAgo days: Int, hour: Int) async throws -> String {
+            let day = try #require(calendar.date(byAdding: .day, value: -days, to: today))
+            let edited = try #require(calendar.date(byAdding: .hour, value: hour, to: day))
+            try FileManager.default.setAttributes([.modificationDate: edited], ofItemAtPath: path)
+            return try await kind(of: "notes.md")
+        }
+
+        #expect(try await kind(of: "Planning") == "Folder")
+        #expect(try await kind(of: "Mado.app") != "Folder")
+        #expect(try await kind(daysAgo: 0, hour: 0) == "Edited today")
+        #expect(try await kind(daysAgo: 1, hour: 23) == "Yesterday")
+        #expect(try await kind(daysAgo: 1, hour: 0) == "Yesterday")
+        #expect(try await kind(daysAgo: 4, hour: 12) == "Mon")
+        #expect(try await kind(daysAgo: 7, hour: 12) == "Sep 25, 2026")
     }
 
     @Test func followsFilesAddedAndRemoved() async throws {
@@ -92,5 +96,14 @@ import Testing
         }
         #expect(index.files.map(\.name).sorted() == expected)
         #expect(changes == 2)
+
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSinceNow: -3_600)],
+            ofItemAtPath: root.appending(path: "draft.txt").path)
+        let edited = ContinuousClock.now + .seconds(10)
+        while changes < 3, ContinuousClock.now < edited {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(changes == 3)
     }
 }

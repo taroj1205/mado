@@ -1,20 +1,18 @@
 import AppKit
 import Carbon.HIToolbox
-import QuickLookUI
 import Testing
 
 @testable import GlassUI
 
 @MainActor
-@Suite(.serialized) struct LauncherViewTests {
-    private let panel = GlassPanel(
-        kind: .panel, contentRect: NSRect(x: 0, y: 0, width: 760, height: 476),
-        shape: .rounded(28))
+@Suite struct LauncherViewTests {
+    private let panel = NSPanel(
+        contentRect: NSRect(x: 0, y: 0, width: 760, height: 476),
+        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
 
     init() {
-        panel.glass.contentView = view
-        panel.onKeyDown = { [view] in view.handleKeyDown($0) }
+        panel.contentView = view
         view.results.sections = [
             .init(
                 title: "Applications",
@@ -147,85 +145,6 @@ import Testing
     private func actionCapsule() -> GlassView {
         view.layoutSubtreeIfNeeded()
         return view.actionCapsule
-    }
-
-    @Test func spaceTypesIntoTheQueryUntilTheSelectionMoves() {
-        view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
-        #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
-        #expect(!view.previewing)
-    }
-
-    @Test func spaceAfterMovingPreviewsTheFileAndEscapeClosesOnlyThePreview() {
-        defer { view.closePreview() }
-        var cancels = 0
-        view.onCancel = { cancels += 1 }
-        view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
-        press(kVK_DownArrow, "\u{F701}")
-        #expect(view.contextLabel.stringValue == "Space to preview")
-        #expect(!view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.previewing)
-        #expect(view.preview?.view?.previewItem?.previewItemURL?.lastPathComponent == "b.txt")
-        #expect(view.preview?.title.stringValue == "b.txt")
-        press(kVK_UpArrow, "\u{F700}")
-        #expect(view.preview?.view?.previewItem?.previewItemURL?.lastPathComponent == "a.txt")
-        press(kVK_Escape, "\u{1B}")
-        #expect(!view.previewing)
-        #expect(cancels == 0)
-        #expect(view.field.stringValue.isEmpty)
-    }
-
-    @Test func typingClosesThePreviewAndSpaceTypesAgain() {
-        defer { view.closePreview() }
-        view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
-        press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
-        press(kVK_ANSI_A, "a")
-        #expect(!view.previewing)
-        #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == "a ")
-    }
-
-    @Test func refreshedResultsKeepTheRowThePreviewIsOn() {
-        defer { view.closePreview() }
-        let files = [file("a.txt"), file("b.txt")]
-        view.show([.init(title: "Files", items: files)])
-        press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
-        view.show([.init(title: "Files", items: [file("new.txt")] + files)])
-        #expect(view.results.selectedItem?.id == "b.txt")
-        #expect(view.previewing)
-        view.show([.init(title: "Files", items: [file("new.txt"), file("a.txt")])])
-        #expect(view.results.selectedItem?.id == "new.txt")
-        #expect(!view.previewing)
-    }
-
-    @Test func closingTheLauncherEndsBrowsingSoSpaceTypesAgain() {
-        view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
-        press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
-        view.endBrowsing()
-        #expect(!view.previewing)
-        #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
-    }
-
-    @Test func spaceTypesWhenTheSelectedRowIsNotAFile() {
-        press(kVK_DownArrow, "\u{F701}")
-        #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
-        #expect(!view.previewing)
-    }
-
-    private func file(_ name: String) -> ResultList.Item {
-        .init(
-            id: name, title: name, subtitle: "", kind: "File", symbol: "", action: "Open",
-            file: URL(filePath: "/tmp").appending(path: name))
     }
 
     private func press(

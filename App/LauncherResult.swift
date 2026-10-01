@@ -84,7 +84,7 @@ enum LauncherResult {
     private static func item(for file: FileIndex.File, at now: Date) -> ResultList.Item {
         ResultList.Item(
             id: file.url.path, title: file.name, subtitle: file.folder,
-            kind: FileIndex.kind(of: file.url, at: now), symbol: "", action: "Open",
+            kind: FileIndex.kind(of: file, at: now), symbol: "", action: "Open",
             icon: NSWorkspace.shared.icon(forFile: file.url.path), file: file.url)
     }
 

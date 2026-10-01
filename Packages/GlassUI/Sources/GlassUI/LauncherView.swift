@@ -138,7 +138,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         ])
         results.contentInsets.bottom =
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
-        results.onSelect = { [weak self] item in self?.showAction(of: item) }
+        results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         showAction(of: nil)
     }
 
@@ -185,6 +185,13 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         default: return false
         }
         return true
+    }
+
+    private func selectionChanged(to item: ResultList.Item?) {
+        showAction(of: item)
+        if previewing {
+            showPreview()
+        }
     }
 
     private func showAction(of item: ResultList.Item?) {
@@ -250,9 +257,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private func selectionMoved() {
         browsing = true
         showContext()
-        if previewing {
-            showPreview()
-        }
     }
 
     private func run(_ action: Int) {

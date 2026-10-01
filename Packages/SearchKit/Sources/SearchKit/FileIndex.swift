@@ -9,9 +9,14 @@ public final class FileIndex {
         public let folder: String
         public let url: URL
         public let key: Fuzzy.Key
+        public let isFolder: Bool
+        public let modified: Date?
     }
 
     private static let latency: TimeInterval = 5
+    nonisolated private static let keys: [URLResourceKey] = [
+        .isDirectoryKey, .isPackageKey, .contentModificationDateKey,
+    ]
     private static let daysShownAsWeekday = 6
 
     public static let folders = [
@@ -39,17 +44,20 @@ public final class FileIndex {
         for root in folders {
             guard
                 let items = FileManager.default.enumerator(
-                    at: root, includingPropertiesForKeys: [],
+                    at: root, includingPropertiesForKeys: keys,
                     options: [.skipsHiddenFiles, .skipsPackageDescendants])
             else { continue }
             for case let url as URL in items {
                 guard !Task.isCancelled else { return [] }
                 let name = url.lastPathComponent
+                let values = try? url.resourceValues(forKeys: Set(keys))
                 found.append(
                     File(
                         name: name,
                         folder: abbreviated(url.deletingLastPathComponent()),
-                        url: url, key: Fuzzy.Key(name)))
+                        url: url, key: Fuzzy.Key(name),
+                        isFolder: values?.isDirectory == true && values?.isPackage != true,
+                        modified: values?.contentModificationDate))
             }
         }
         return found
@@ -62,14 +70,11 @@ public final class FileIndex {
         return "~" + path.dropFirst(home.count)
     }
 
-    public static func kind(of url: URL, at now: Date, in calendar: Calendar = .current) -> String {
-        var url = url
-        url.removeAllCachedResourceValues()
-        let values = try? url.resourceValues(forKeys: [
-            .isDirectoryKey, .isPackageKey, .contentModificationDateKey,
-        ])
-        if values?.isDirectory == true, values?.isPackage != true { return "Folder" }
-        guard let edited = values?.contentModificationDate else { return "File" }
+    public static func kind(
+        of file: File, at now: Date, in calendar: Calendar = .current
+    ) -> String {
+        if file.isFolder { return "Folder" }
+        guard let edited = file.modified else { return "File" }
         let today = calendar.startOfDay(for: now)
         if edited >= today { return "Edited today" }
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
