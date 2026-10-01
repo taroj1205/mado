@@ -1,6 +1,12 @@
 public import AppKit
 
 public final class SpotlightGuideView: NSView {
+    private final class StatusSwitch: NSSwitch {
+        override func hitTest(_: NSPoint) -> NSView? {
+            nil
+        }
+    }
+
     private static let keyboardSettings = URL(
         string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     private static let margin: CGFloat = 32
@@ -26,11 +32,17 @@ public final class SpotlightGuideView: NSView {
     private static let keyPaddingY: CGFloat = 2
     private static let ringAlpha = 0.22
     private static let borderAlpha = 0.6
+    private static let insetAlpha = (dark: 0.22, light: 0.5)
+    private static let insetFill = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? .black.withAlphaComponent(insetAlpha.dark)
+            : .white.withAlphaComponent(insetAlpha.light)
+    }
 
     public var onUseOptionSpace: (() -> Void)?
     public var onClose: (() -> Void)?
 
-    let spotlight = NSSwitch()
+    let spotlight: NSSwitch = StatusSwitch()
     let useOptionSpace = NSButton()
     let skip = NSButton(title: "Skip", target: nil, action: nil)
     let finish = NSButton(title: "Continue", target: nil, action: nil)
@@ -140,7 +152,8 @@ public final class SpotlightGuideView: NSView {
                 ?? NSImage())
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
-        spotlight.isEnabled = false
+        spotlight.setAccessibilityEnabled(false)
+        spotlight.refusesFirstResponder = true
         spotlight.setAccessibilityLabel("Show Spotlight search")
         let row = NSStackView(views: [
             icon, Self.label("Show Spotlight search", size: Self.smallSize, color: .labelColor),
@@ -148,7 +161,7 @@ public final class SpotlightGuideView: NSView {
         ])
         row.setViews([spotlight], in: .trailing)
         row.spacing = Self.rowGap
-        let box = GuideStep.box(radius: Self.rowRadius, fill: .controlBackgroundColor)
+        let box = GuideStep.box(radius: Self.rowRadius, fill: Self.insetFill)
         GuideStep.embed(row, in: box, horizontal: Self.rowPaddingX, vertical: Self.rowPaddingY)
         return box
     }
@@ -160,6 +173,9 @@ public final class SpotlightGuideView: NSView {
                 ?? NSImage(),
             target: self, action: #selector(openKeyboardSettings))
         button.imagePosition = .imageLeading
+        if #available(macOS 26, *) {
+            button.borderShape = .capsule
+        }
         return NSStackView(views: [button])
     }
 
@@ -167,7 +183,7 @@ public final class SpotlightGuideView: NSView {
         let keys = NSStackView(views: ["⌘", "Space"].map(Self.keycap))
         keys.spacing = Self.keyGap
         keys.setHuggingPriority(.required, for: .horizontal)
-        let field = GuideStep.box(radius: Self.rowRadius, fill: .controlBackgroundColor)
+        let field = GuideStep.box(radius: Self.rowRadius, fill: Self.insetFill)
         field.borderWidth = 1
         field.borderColor = .controlAccentColor.withAlphaComponent(Self.borderAlpha)
         GuideStep.embed(keys, in: field, horizontal: Self.rowPaddingX, vertical: Self.rowPaddingY)
@@ -194,6 +210,8 @@ public final class SpotlightGuideView: NSView {
         useOptionSpace.target = self
         useOptionSpace.action = #selector(chooseOptionSpace)
         skip.keyEquivalent = "\u{1b}"
+        skip.controlSize = .large
+        finish.controlSize = .large
         finish.keyEquivalent = "\r"
         for button in [skip, finish] {
             button.target = self

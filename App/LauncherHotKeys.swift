@@ -32,6 +32,7 @@ final class LauncherHotKeys {
     private static let guideShownField = "spotlight_guide_shown"
     private static let guideWidth: CGFloat = 800
     private static let guideHeight: CGFloat = 660
+    private static let guideRadius: CGFloat = 26
 
     var onChange: (() -> Void)?
 
@@ -142,19 +143,25 @@ final class LauncherHotKeys {
         update()
         NSApp.activate()
         shown.window.makeKeyAndOrderFront(nil)
+        shown.window.makeFirstResponder(nil)
     }
 
     private func makeGuide() -> (window: NSWindow, view: SpotlightGuideView) {
         let view = SpotlightGuideView()
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: Self.guideWidth, height: Self.guideHeight),
-            styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered,
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            backing: .buffered,
             defer: true)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.title = "Use ⌘Space for Mado"
         window.isReleasedWhenClosed = false
-        window.contentView = view
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        let glass = GlassView(shape: .rounded(Self.guideRadius))
+        glass.contentView = view
+        window.contentView = glass
         window.center()
         view.onClose = { [weak window] in window?.close() }
         view.onUseOptionSpace = { [weak self, weak window] in
