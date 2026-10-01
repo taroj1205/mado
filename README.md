@@ -18,7 +18,7 @@ To run a Debug build from a worktree next to another Mado, launch it without the
     until [ -e build/Build/Products/Debug/Mado.ready ]; do sleep 0.1; done
     pkill -USR1 -f "$PWD/build/Build/Products/Debug/"
 
-Tests: `for p in Packages/*/; do (cd "$p" && swift test); done`, or `xcodebuild test -project Mado.xcodeproj -scheme Mado -destination 'platform=macOS'`.
+Tests: `xcodebuild test -project Mado.xcodeproj -scheme Mado -destination 'platform=macOS'` runs the app and package tests in one build, which is what CI runs. A single package also runs with `swift test` from its directory.
 
 Branches and commits start with the goal ID, e.g. `M0-01-xcode-project`.
 
