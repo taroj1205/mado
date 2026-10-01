@@ -8,6 +8,7 @@ import Testing
     @Test func roundedRadiusIsClampedToHalfTheShortSide() {
         #expect(GlassView.Shape.rounded(12).radius(in: NSSize(width: 200, height: 100)) == 12)
         #expect(GlassView.Shape.rounded(80).radius(in: NSSize(width: 200, height: 100)) == 50)
+        #expect(GlassView.Shape.rounded(-4).radius(in: NSSize(width: 200, height: 100)) == 0)
     }
 
     @Test func capsuleRadiusIsHalfTheShortSide() {
@@ -45,12 +46,14 @@ import Testing
         #expect(second.isDescendant(of: view.effect))
     }
 
-    @Test func hudIgnoresTheMouse() {
+    @Test func onlyThePanelTakesTheMouseAndKeyboard() {
         let rect = NSRect(x: 0, y: 0, width: 200, height: 80)
         let hud = GlassPanel(kind: .hud, contentRect: rect, shape: .rounded(16))
         let panel = GlassPanel(kind: .panel, contentRect: rect, shape: .rounded(16))
         #expect(hud.ignoresMouseEvents)
         #expect(!panel.ignoresMouseEvents)
+        #expect(panel.canBecomeKey)
+        #expect(!hud.canBecomeKey)
         #expect(hud.contentView === hud.glass)
     }
 

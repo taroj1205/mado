@@ -10,7 +10,7 @@ public final class GlassView: NSView {
         func radius(in size: NSSize) -> CGFloat {
             let limit = min(size.width, size.height) * Self.half
             return switch self {
-            case .rounded(let radius): min(radius, limit)
+            case .rounded(let radius): max(0, min(radius, limit))
             case .capsule: limit
             }
         }
