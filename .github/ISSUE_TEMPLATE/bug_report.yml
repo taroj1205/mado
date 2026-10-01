@@ -1,0 +1,47 @@
+name: Bug report
+description: Something doesn't behave the way it should.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Describe what you saw. Add a screenshot or screen recording if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Say whether it happens every time.
+      placeholder: |
+        1. Open the launcher with the hotkey
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: The macOS version and the Mado build (for example the short commit hash).
+      placeholder: macOS 26.6.2 / c5f4cfe
+    validations:
+      required: true
+  - type: input
+    id: last-working
+    attributes:
+      label: Last build that worked
+      description: If this used to work, the last build where it did. It tells us where to look.
+      placeholder: 13d308f
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste them if you have any. Remove tokens and personal information first.
+      render: shell

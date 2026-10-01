@@ -1,0 +1,25 @@
+name: Goal
+description: A unit of work that one PR can finish.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Title format: `🟢 M1-09: Floating capsule at the bottom`. The mark is difficulty (🟢 easy / 🟡 medium / 🔴 hard), followed by the goal ID.
+        Add the milestone and the MVP / v1 label after creating it. If this waits on another issue, set it as blocked by under Relationships, not in the body.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: What you can see working once it's finished.
+      placeholder: '"Open ↵" and "Actions ⌘K" sit on the right, and the rows scroll underneath.'
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: How to check
+      description: What you'll check before calling it done. Include checks you can't run locally, like another macOS version or a comparison with the design canvas.
+      placeholder: Look at it on macOS 14 and 26, and compare with the canvas.
+    validations:
+      required: true
