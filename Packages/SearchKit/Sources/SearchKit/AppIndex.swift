@@ -69,13 +69,7 @@ public final class AppIndex {
     }
 
     public func apps(matching text: String) -> [App] {
-        let needle = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !needle.isEmpty else { return apps }
-        return apps.filter { app in
-            [app.name, app.url.deletingPathExtension().lastPathComponent].contains { candidate in
-                candidate.localizedCaseInsensitiveContains(needle)
-            }
-        }
+        Fuzzy.rank(apps, by: text) { [$0.name, $0.url.deletingPathExtension().lastPathComponent] }
     }
 
     public func icon(for app: App) -> NSImage {

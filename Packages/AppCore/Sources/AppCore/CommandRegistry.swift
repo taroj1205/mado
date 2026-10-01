@@ -1,5 +1,3 @@
-import Foundation
-
 @MainActor
 public final class CommandRegistry {
     public var all: [Command] {
@@ -25,15 +23,5 @@ public final class CommandRegistry {
 
     public func command(id: String) -> Command? {
         commands.first { $0.id == id }
-    }
-
-    public func commands(matching text: String) -> [Command] {
-        let needle = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !needle.isEmpty else { return commands }
-        return commands.filter { command in
-            ([command.name] + command.keywords).contains { candidate in
-                candidate.localizedCaseInsensitiveContains(needle)
-            }
-        }
     }
 }
