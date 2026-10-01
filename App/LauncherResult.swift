@@ -21,7 +21,7 @@ enum LauncherResult {
         switch self {
         case .app(let app): app.keys
         case .command(let command): [command.name] + command.keywords
-        case .pane(let pane): [pane.name]
+        case .pane(let pane): pane.keys
         }
     }
 

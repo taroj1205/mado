@@ -1,12 +1,11 @@
 import AppCore
 import AppKit
-import Carbon.HIToolbox
 import IOKit.pwr_mgt
 
 @MainActor
 enum SystemCommands {
     enum Failure: Error {
-        case postEventDenied
+        case accessibilityDenied
         case scriptFailed
         case sleepFailed(IOReturn)
     }
@@ -33,16 +32,12 @@ enum SystemCommands {
     ]
 
     private static func lock() throws {
-        guard CGRequestPostEventAccess() else {
-            throw Failure.postEventDenied
-        }
-        let source = CGEventSource(stateID: .hidSystemState)
-        for keyDown in [true, false] {
-            let event = CGEvent(
-                keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_Q), keyDown: keyDown)
-            event?.flags = [.maskControl, .maskCommand]
-            event?.post(tap: .cghidEventTap)
-        }
+        guard AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        else { throw Failure.accessibilityDenied }
+        try runScript(
+            """
+            tell application "System Events" to keystroke "q" using {control down, command down}
+            """)
     }
 
     private static func sleep() throws {
@@ -67,7 +62,9 @@ enum SystemCommands {
         alert.informativeText = "You can’t undo this action."
         alert.addButton(withTitle: "Empty Trash").hasDestructiveAction = true
         alert.addButton(withTitle: "Cancel")
+        let previous = NSWorkspace.shared.frontmostApplication
         NSApp.activate()
+        defer { previous?.activate(from: .current, options: []) }
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         try runScript(
             """
