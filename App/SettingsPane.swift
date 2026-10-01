@@ -13,7 +13,9 @@ struct SettingsPane {
         Self("About", "com.apple.SystemProfiler.AboutExtension"),
         Self("Software Update", "com.apple.Software-Update-Settings.extension"),
         Self("Storage", "com.apple.settings.Storage"),
-        Self("AirDrop & Continuity", "com.apple.AirDrop-Handoff-Settings.extension"),
+        Self(
+            "AirDrop & Continuity", "com.apple.AirDrop-Handoff-Settings.extension",
+            aliases: "AirDrop & Handoff"),
         Self("Login Items", "com.apple.LoginItems-Settings.extension"),
         Self("Language & Region", "com.apple.Localization-Settings.extension"),
         Self("Date & Time", "com.apple.Date-Time-Settings.extension"),
@@ -23,8 +25,8 @@ struct SettingsPane {
         Self("Startup Disk", "com.apple.Startup-Disk-Settings.extension"),
         Self("Accessibility", "com.apple.Accessibility-Settings.extension"),
         Self("Appearance", "com.apple.Appearance-Settings.extension"),
-        Self("Menu Bar", "com.apple.ControlCenter-Settings.extension"),
-        Self("Siri", "com.apple.Siri-Settings.extension"),
+        Self("Menu Bar", "com.apple.ControlCenter-Settings.extension", aliases: "Control Center"),
+        Self("Siri", "com.apple.Siri-Settings.extension", aliases: "Apple Intelligence & Siri"),
         Self("Spotlight", "com.apple.Spotlight-Settings.extension"),
         Self("Privacy & Security", "com.apple.settings.PrivacySecurity.extension"),
         Self("Desktop & Dock", "com.apple.Desktop-Settings.extension"),
@@ -53,6 +55,7 @@ struct SettingsPane {
 
     let name: String
     let id: String
+    let keys: [String]
 
     var item: ResultList.Item {
         ResultList.Item(
@@ -68,8 +71,9 @@ struct SettingsPane {
         }
     }
 
-    private init(_ name: String, _ bundleID: String) {
+    private init(_ name: String, _ bundleID: String, aliases: String...) {
         self.name = name
         id = "x-apple.systempreferences:\(bundleID)"
+        keys = [name] + aliases
     }
 }

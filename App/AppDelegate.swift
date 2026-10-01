@@ -164,7 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     }
                     let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     let matches = typed ? apps.apps(matching: query) : []
-                    let panes = typed ? Fuzzy.rank(SettingsPane.all, by: query) { [$0.name] } : []
+                    let panes = typed ? Fuzzy.rank(SettingsPane.all, by: query, keys: \.keys) : []
                     return [
                         ResultList.Section(
                             title: typed ? "Results" : "Commands",
