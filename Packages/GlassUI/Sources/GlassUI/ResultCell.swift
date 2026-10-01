@@ -33,6 +33,8 @@ final class ResultCell: NSTableCellView {
         symbol.contentTintColor = .labelColor
         tile.contentView = symbol
         title.font = .systemFont(ofSize: Self.titleSize, weight: .medium)
+        title.lineBreakMode = .byTruncatingMiddle
+        title.setContentCompressionResistancePriority(.defaultHigh - 1, for: .horizontal)
         subtitle.font = .systemFont(ofSize: Self.subtitleSize)
         subtitle.textColor = .secondaryLabelColor
         subtitle.lineBreakMode = .byTruncatingTail

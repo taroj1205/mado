@@ -9,10 +9,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let symbol: String
         public let action: String
         public let icon: NSImage?
+        public let file: URL?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil
+            action: String, icon: NSImage? = nil, file: URL? = nil
         ) {
             self.id = id
             self.title = title
@@ -21,6 +22,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.symbol = symbol
             self.action = action
             self.icon = icon
+            self.file = file
         }
     }
 
@@ -52,7 +54,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         case item(Item)
 
         var isItem: Bool {
-            if case .item = self { true } else { false }
+            itemID != nil
+        }
+
+        var itemID: String? {
+            if case .item(let item) = self { item.id } else { nil }
         }
     }
 
@@ -71,16 +77,18 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             reloading = true
             rows = Self.rows(for: sections)
             table.reloadData()
-            if let first = rows.firstIndex(where: \.isItem) {
-                table.selectRowIndexes([first], byExtendingSelection: false)
+            let keptRow = kept.flatMap { id in rows.firstIndex { $0.itemID == id } }
+            if let row = keptRow ?? rows.firstIndex(where: \.isItem) {
+                table.selectRowIndexes([row], byExtendingSelection: false)
             }
-            table.scrollRowToVisible(0)
+            table.scrollRowToVisible(keptRow ?? 0)
             reloading = false
             onSelect?(selectedItem)
         }
     }
 
     public var onSelect: ((Item?) -> Void)?
+    public var onMove: (() -> Void)?
 
     public var selectedItem: Item? {
         guard rows.indices.contains(table.selectedRow),
@@ -92,6 +100,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     let table = NSTableView()
     private(set) var rows: [Row] = []
     private var reloading = false
+    private var kept: String?
 
     public init() {
         super.init(frame: .zero)
@@ -107,6 +116,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         table.refusesFirstResponder = true
         table.dataSource = self
         table.delegate = self
+        table.target = self
+        table.action = #selector(rowClicked)
         documentView = table
         drawsBackground = false
         hasVerticalScroller = true
@@ -125,6 +136,17 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
                 (section.notice.map { [Row.notice($0)] } ?? [])
                     + [.header(section.title)] + section.items.map(Row.item)
             }
+    }
+
+    public func update(_ sections: [Section], keepingSelectionOf id: String?) {
+        kept = id
+        self.sections = sections
+        kept = nil
+    }
+
+    @objc
+    func rowClicked() {
+        onMove?()
     }
 
     public func selectPrevious() {

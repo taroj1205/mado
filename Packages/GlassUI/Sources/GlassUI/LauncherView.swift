@@ -1,4 +1,5 @@
 public import AppKit
+import Carbon.HIToolbox
 
 public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchBarHeight: CGFloat = 60
@@ -16,6 +17,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let contextLeading: CGFloat = 11
     private static let contextTrailing: CGFloat = 16
     private static let contextIconSize: CGFloat = 17
+    private static let previewHint = "Space to preview"
     private static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     private static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -25,16 +27,22 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var context: String? {
-        didSet {
-            contextLabel.stringValue = context ?? ""
-            contextCapsule.isHidden = context == nil
-        }
+        didSet { showContext() }
     }
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
     let actionCapsule: GlassView
     let contextCapsule: GlassView
+    private(set) var preview: FilePreview?
+    private var browsing = false
+
+    var previewing: Bool { preview?.isVisible == true }
+    public var sharing: Bool { preview?.sharing == true }
+
+    private var canPreview: Bool {
+        (browsing || previewing) && results.selectedItem?.file != nil
+    }
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel)
@@ -130,9 +138,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         ])
         results.contentInsets.bottom =
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
-        results.onSelect = { [weak self] item in self?.showAction(of: item) }
+        results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
+        results.onMove = { [weak self] in self?.selectionMoved() }
         showAction(of: nil)
-        contextCapsule.isHidden = true
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -144,7 +152,34 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         return true
     }
 
+    public func handle(_ event: NSEvent) -> Bool {
+        switch event.type {
+        case .keyDown:
+            return previewKey(event)
+
+        case .leftMouseDown
+        where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
+            endBrowsing()
+            return false
+
+        default:
+            return false
+        }
+    }
+
+    private func previewKey(_ event: NSEvent) -> Bool {
+        guard event.keyCode == kVK_Space,
+            event.modifierFlags.isDisjoint(with: Self.modifierKeys),
+            canPreview, let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
+        else { return false }
+        togglePreview()
+        return true
+    }
+
     public func controlTextDidChange(_: Notification) {
+        browsing = false
+        closePreview()
+        showContext()
         onQuery?(field.stringValue)
     }
 
@@ -152,18 +187,95 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         _: NSControl, textView: NSTextView, doCommandBy selector: Selector
     ) -> Bool {
         switch selector {
-        case #selector(NSResponder.moveUp): results.selectPrevious()
-        case #selector(NSResponder.moveDown): results.selectNext()
+        case #selector(NSResponder.moveUp):
+            results.selectPrevious()
+            selectionMoved()
+
+        case #selector(NSResponder.moveDown):
+            results.selectNext()
+            selectionMoved()
+
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
+        case #selector(NSResponder.cancelOperation) where previewing: closePreview()
         case #selector(NSResponder.cancelOperation): onCancel?()
-        default: return false
+
+        default:
+            endBrowsing()
+            return false
         }
         return true
+    }
+
+    private func selectionChanged(to item: ResultList.Item?) {
+        showAction(of: item)
+        if previewing {
+            showPreview()
+        }
     }
 
     private func showAction(of item: ResultList.Item?) {
         actionLabel.stringValue = item?.action ?? ""
         actionCapsule.isHidden = item == nil
+        showContext()
+    }
+
+    private func showContext() {
+        let text = canPreview ? Self.previewHint : context
+        contextLabel.stringValue = text ?? ""
+        contextCapsule.isHidden = text == nil
+    }
+
+    public func show(_ sections: [ResultList.Section]) {
+        let previewed = results.selectedItem?.file
+        results.update(sections, keepingSelectionOf: browsing ? results.selectedItem?.id : nil)
+        if results.selectedItem?.file != previewed {
+            closePreview()
+        }
+    }
+
+    public func endBrowsing() {
+        browsing = false
+        closePreview()
+        showContext()
+    }
+
+    func closePreview() {
+        preview?.close()
+    }
+
+    private func togglePreview() {
+        if previewing {
+            closePreview()
+        } else {
+            showPreview()
+        }
+    }
+
+    private func showPreview() {
+        guard let file = results.selectedItem?.file, let window = unsafe window,
+            let visible = window.screen?.visibleFrame
+        else {
+            closePreview()
+            return
+        }
+        let card = preview ?? FilePreview()
+        card.onOpen = { [weak self] in self?.run(0) }
+        card.onShareEnd = { [weak self] shared in self?.shareEnded(shared) }
+        preview = card
+        card.show(file, beside: window.frame, in: visible)
+    }
+
+    private func shareEnded(_ shared: Bool) {
+        if shared {
+            onCancel?()
+        } else {
+            unsafe window?.makeKey()
+        }
+    }
+
+    private func selectionMoved() {
+        browsing = true
+        showContext()
     }
 
     private func run(_ action: Int) {

@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
+    private let files = FileIndex()
     private var usage = Usage()
     private var hotKeys: HotKeyRegistry?
     #if DEBUG
@@ -40,15 +41,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         modules = makeModules()
         usage = loadUsage()
         NSApp.mainMenu = makeMainMenu()
-        statusItem = makeStatusItem()
+        statusItem = StatusMenu.makeItem(
+            target: self, open: #selector(showLauncher), settings: #selector(showSettings),
+            hide: #selector(hideStatusItem))
         launcher = makeLauncher()
         search = makeSearch()
-        search?.run(launcherView.field.stringValue)
-        apps.onChange = { [weak self] in
-            guard let self else { return }
-            search?.run(launcherView.field.stringValue)
-        }
+        searchAgain()
+        apps.onChange = { [weak self] in self?.searchAgain() }
+        files.onChange = { [weak self] in self?.searchAgain() }
         apps.start()
+        files.start()
         hotKeys = makeHotKeys()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
@@ -60,31 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         statusItem?.isVisible = true
         return true
-    }
-
-    private func makeStatusItem() -> NSStatusItem {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.behavior = .removalAllowed
-        item.isVisible = true
-        item.button?.image = NSImage(
-            systemSymbolName: "macwindow", accessibilityDescription: "Mado")
-
-        let menu = NSMenu()
-        let open = menu.addItem(
-            withTitle: "Open Mado", action: #selector(showLauncher), keyEquivalent: "")
-        open.target = self
-        let settingsItem = menu.addItem(
-            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(.separator())
-        let hide = menu.addItem(
-            withTitle: "Hide Menu Bar Icon", action: #selector(hideStatusItem), keyEquivalent: "")
-        hide.target = self
-        hide.toolTip = "Open Mado again to show the icon."
-        menu.addItem(
-            withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
-        item.menu = menu
-        return item
     }
 
     private func makeMainMenu() -> NSMenu {
@@ -160,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
+        panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
         panel.delegate = self
@@ -172,19 +150,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
                     LauncherResult.sections(
-                        for: query, apps: apps, commands: modules?.commands.all ?? [],
-                        usage: usage)
+                        for: query, apps: apps, files: files,
+                        commands: modules?.commands.all ?? [], usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
-                launcherView.results.sections = sections
+                launcherView.show(sections)
                 launcherView.context = sections.contains { $0.notice != nil } ? "No results" : nil
             })
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
         let actions = LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, apps: apps,
+            for: item.id, query: launcherView.field.stringValue, apps: apps, files: files,
             commands: modules?.commands.all ?? [])
         guard actions.indices.contains(index) else { return }
         hideLauncher()
@@ -196,10 +174,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     self?.recordUse(of: item.id)
                 }
             } catch CocoaError.userCancelled {
-                logger.debug("Result \(item.id, privacy: .public) was canceled")
+                logger.debug("Result \(item.id, privacy: .private) was canceled")
             } catch {
                 logger.error(
-                    "Result \(item.id, privacy: .public) failed: \(error, privacy: .public)")
+                    "Result \(item.id, privacy: .private) failed: \(error, privacy: .private)")
             }
         }
     }
@@ -213,7 +191,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    private func searchAgain() {
+        search?.run(launcherView.field.stringValue)
+    }
+
     func windowDidResignKey(_: Notification) {
+        guard !launcherView.sharing else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }
         #endif
@@ -222,13 +205,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     #if DEBUG
         func applicationDidResignActive(_: Notification) {
-            if !KeepLauncherOpen.isEnabled, launcher?.isVisible == true {
+            if !KeepLauncherOpen.isEnabled, !launcherView.sharing, launcher?.isVisible == true {
                 hideLauncher()
             }
         }
     #endif
 
     private func hideLauncher() {
+        launcherView.endBrowsing()
         launcher?.orderOut(nil)
         launcherClosed = .now
     }
@@ -256,11 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         search?.run(launcherView.field.stringValue)
         #if DEBUG
-            if NoFocus.isEnabled {
-                panel.orderFrontRegardless()
-            } else {
-                panel.makeKeyAndOrderFront(nil)
-            }
+            NoFocus.show(panel)
         #else
             panel.makeKeyAndOrderFront(nil)
         #endif
