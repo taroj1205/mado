@@ -167,7 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             },
             deliver: { [launcherView] sections in
                 launcherView.show(sections)
-                launcherView.context = sections.contains { $0.notice != nil } ? "No results" : nil
+                let answer = sections.lazy.flatMap(\.items).first { $0.answer != nil }
+                launcherView.context =
+                    sections.contains { $0.notice != nil } ? "No results" : answer?.kind
             })
     }
 
@@ -185,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { [weak self, logger] in
             do {
                 try await action.perform()
-                if !Fallback.all.contains(where: { $0.item.id == item.id }) {
+                if item.answer == nil, !Fallback.all.contains(where: { $0.item.id == item.id }) {
                     self?.recordUse(of: item.id)
                 }
             } catch CocoaError.userCancelled {

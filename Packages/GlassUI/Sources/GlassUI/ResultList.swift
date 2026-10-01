@@ -10,10 +10,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let action: String
         public let icon: NSImage?
         public let file: URL?
+        public let answer: Answer?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil, file: URL? = nil
+            action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil
         ) {
             self.id = id
             self.title = title
@@ -23,6 +24,17 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.action = action
             self.icon = icon
             self.file = file
+            self.answer = answer
+        }
+    }
+
+    public struct Answer: Sendable, Equatable {
+        public let value: String
+        public let detail: String
+
+        public init(value: String, detail: String) {
+            self.value = value
+            self.detail = detail
         }
     }
 
@@ -63,6 +75,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     }
 
     static let rowHeight: CGFloat = 42
+    static let answerHeight: CGFloat = 116
     static let headerHeight: CGFloat = 32
     static let noticeHeight: CGFloat = 80
     static let rowGap: CGFloat = 1
@@ -178,7 +191,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         switch rows[row] {
         case .notice: Self.noticeHeight
         case .header: Self.headerHeight
-        case .item: Self.rowHeight
+        case .item(let item): item.answer == nil ? Self.rowHeight : Self.answerHeight
         }
     }
 
@@ -191,9 +204,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         onSelect?(selectedItem)
     }
 
-    public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
-        tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
+    public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        let view =
+            tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
+        let answer = if case .item(let item) = rows[row] { item.answer != nil } else { false }
+        view.radius = answer ? AnswerCell.radius : ResultRowView.radius
+        return view
     }
 
     public func tableView(
@@ -212,6 +229,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
                 tableView.makeView(withIdentifier: Self.headerID, owner: nil)
                 as? NSTableCellView ?? makeHeader()
             unsafe cell.textField?.stringValue = title
+            return cell
+
+        case .item(let item) where item.answer != nil:
+            let cell =
+                tableView.makeView(withIdentifier: AnswerCell.id, owner: nil)
+                as? AnswerCell ?? AnswerCell()
+            cell.show(item)
             return cell
 
         case .item(let item):
