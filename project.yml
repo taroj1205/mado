@@ -45,6 +45,11 @@ targets:
         LSUIElement: true
         LSMinimumSystemVersion: "14.0"
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true
+        NSAppleEventsUsageDescription: Mado asks Finder to empty the Trash, System Events to lock the screen and switch dark mode, and the login window to show the restart dialog.
+    entitlements:
+      path: App/Mado.entitlements
+      properties:
+        com.apple.security.automation.apple-events: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.taroj1205.mado

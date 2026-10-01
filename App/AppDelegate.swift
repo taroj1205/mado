@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
+            try SystemCommands.all.forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(PlaceholderModule(descriptor: descriptor))
             }
@@ -163,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     }
                     let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     let matches = typed ? apps.apps(matching: query) : []
+                    let panes = typed ? Fuzzy.rank(SettingsPane.all, by: query, keys: \.keys) : []
                     return [
                         ResultList.Section(
                             title: typed ? "Results" : "Commands",
@@ -172,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                     kind: "Application", symbol: "",
                                     icon: apps.icon(for: app))
                             }
+                                + panes.map(\.item)
                                 + commands.map { command in
                                     ResultList.Item(
                                         id: command.id, title: command.name, subtitle: "",
@@ -202,6 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func actions(for id: String) -> [CommandAction] {
+        if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
         guard let app = apps.apps.first(where: { $0.url.path == id }) else {
             return modules?.commands.command(id: id)?.actions ?? []
         }
