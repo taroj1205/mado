@@ -8,13 +8,14 @@ public enum Fuzzy {
     private static let consecutiveBonus = 4
 
     public static func rank<Item>(
-        _ items: [Item], by query: String, keys: (Item) -> [String]
+        _ items: [Item], by query: String, bonus: (Item) -> Int = { _ in 0 },
+        keys: (Item) -> [String]
     ) -> [Item] {
         let needle = fold(query.trimmingCharacters(in: .whitespacesAndNewlines)).map(\.character)
-        guard !needle.isEmpty else { return items }
         let scored = items.enumerated().compactMap { offset, item in
-            let best = keys(item).compactMap { key in score(needle, in: fold(key)) }.max()
-            return best.map { (item: item, score: $0, offset: offset) }
+            let best =
+                needle.isEmpty ? 0 : keys(item).compactMap { score(needle, in: fold($0)) }.max()
+            return best.map { (item: item, score: $0 + bonus(item), offset: offset) }
         }
         return scored.sorted { ($1.score, $0.offset) < ($0.score, $1.offset) }.map(\.item)
     }
