@@ -60,7 +60,9 @@ enum SystemCommands {
         let alert = NSAlert()
         alert.messageText = "Are you sure you want to permanently erase the items in the Trash?"
         alert.informativeText = "You can’t undo this action."
-        alert.addButton(withTitle: "Empty Trash").hasDestructiveAction = true
+        let empty = alert.addButton(withTitle: "Empty Trash")
+        empty.hasDestructiveAction = true
+        empty.keyEquivalent = ""
         alert.addButton(withTitle: "Cancel")
         let previous = NSWorkspace.shared.frontmostApplication
         NSApp.activate()

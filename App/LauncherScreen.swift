@@ -1,11 +1,12 @@
-import AppCore
+import AppKit
+import WindowKit
 
-enum LauncherScreen: String, CaseIterable {
+enum LauncherScreen: String, LauncherSetting {
     case activeWindow = "active_window"
     case mouse = "mouse"
 
-    private static let key = "launcher"
-    private static let field = "screen"
+    static let field = "screen"
+    static let fallback = Self.mouse
 
     var title: String {
         switch self {
@@ -14,21 +15,32 @@ enum LauncherScreen: String, CaseIterable {
         }
     }
 
-    @MainActor
-    static func load(from modules: ModuleManager?) -> Self {
-        guard case .string(let raw) = launcher(modules)[field] else { return .mouse }
-        return Self(rawValue: raw) ?? .mouse
+    var screen: NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        let mouseScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+        switch self {
+        case .mouse:
+            return mouseScreen
+
+        case .activeWindow:
+            return Self.activeWindowScreen() ?? mouseScreen
+        }
     }
 
-    @MainActor
-    private static func launcher(_ modules: ModuleManager?) -> [String: JSONValue] {
-        (try? modules?.value([String: JSONValue].self, for: key)) ?? [:]
-    }
-
-    @MainActor
-    func save(to modules: ModuleManager?) throws {
-        var launcher = Self.launcher(modules)
-        launcher[Self.field] = .string(rawValue)
-        try modules?.setValue(launcher, for: Self.key)
+    private static func activeWindowScreen() -> NSScreen? {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            let windows = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]],
+            let window = windows.first(where: { info in
+                info[kCGWindowOwnerPID as String] as? pid_t == pid
+                    && info[kCGWindowLayer as String] as? Int == 0
+            }),
+            let dictionary = window[kCGWindowBounds as String] as? [String: Any],
+            let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary)
+        else { return nil }
+        let screens = NSScreen.screens
+        return ScreenGeometry.screenIndex(showing: bounds, in: screens.map(\.frame))
+            .map { screens[$0] }
     }
 }
