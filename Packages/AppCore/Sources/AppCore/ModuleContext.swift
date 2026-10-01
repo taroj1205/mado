@@ -13,6 +13,7 @@ public final class ModuleContext {
     public let signposter: OSSignposter
 
     private let moduleID: String
+    private let commands: CommandRegistry
     private var entries: [UInt: Entry] = [:]
     private var nextID: UInt = 0
 
@@ -20,14 +21,22 @@ public final class ModuleContext {
         entries.keys.sorted().compactMap { entries[$0]?.resource }
     }
 
-    init(moduleID: String) {
+    init(moduleID: String, commands: CommandRegistry) {
         self.moduleID = moduleID
+        self.commands = commands
         logger = Log.logger(moduleID)
         signposter = Log.signposter(moduleID)
     }
 
     public func own(_ kind: ResourceKind, _ name: String, release: @escaping () -> Void) {
         add(Entry(resource: resource(kind, name), release: release, task: nil))
+    }
+
+    public func register(_ command: Command) throws {
+        try commands.register(command)
+        own(.other, "command:\(command.id)") { [commands] in
+            commands.unregister(command.id)
+        }
     }
 
     public func scheduleTimer(

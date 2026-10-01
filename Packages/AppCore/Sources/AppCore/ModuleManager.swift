@@ -12,6 +12,8 @@ public final class ModuleManager {
 
     private static let settingsKey = "core"
 
+    public let commands: CommandRegistry
+
     private let store: SettingsStore
     private var settings: Settings
     private var states: States
@@ -21,8 +23,9 @@ public final class ModuleManager {
         registered.flatMap(\.context.active)
     }
 
-    public init(store: SettingsStore) throws {
+    public init(store: SettingsStore, commands: CommandRegistry = CommandRegistry()) throws {
         self.store = store
+        self.commands = commands
         let loaded = try store.load()
         settings = loaded
         states = try loaded.value(States.self, for: Self.settingsKey) ?? States()
@@ -34,7 +37,9 @@ public final class ModuleManager {
             throw ModuleError.duplicateModule(id)
         }
         registered.append(
-            Registered(module: module, context: ModuleContext(moduleID: id), isRunning: false))
+            Registered(
+                module: module, context: ModuleContext(moduleID: id, commands: commands),
+                isRunning: false))
     }
 
     public func isEnabled(_ id: String) -> Bool {
