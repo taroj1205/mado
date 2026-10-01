@@ -31,19 +31,9 @@ jobs:
       - name: Lint
         run: swiftlint lint --strict
 
-  packages:
-    name: Package Tests
-    runs-on: xcode-27
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Run package tests
-        run: |
-          for p in Packages/*/; do
-            swift test --package-path "$p"
-          done
+  test:
+    name: Test
+    uses: ./.github/workflows/test-packages.yml
 
   app:
     name: App
@@ -86,7 +76,7 @@ jobs:
 
   verify:
     name: Verify
-    needs: [lint, packages, app]
+    needs: [lint, test, app]
     runs-on: ubuntu-latest
     if: always()
     steps:
