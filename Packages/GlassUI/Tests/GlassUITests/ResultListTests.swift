@@ -93,6 +93,22 @@ import Testing
         #expect(result.tile.frame.height == ResultCell.tileSize)
     }
 
+    @Test func appIconsReplaceTheTileUntilTheCellShowsASymbolAgain() {
+        let cell = ResultCell()
+        let icon = NSImage(size: NSSize(width: 32, height: 32))
+        cell.show(
+            .init(
+                id: "/Applications/Safari.app", title: "Safari", subtitle: "",
+                kind: "Application", symbol: "", icon: icon))
+        #expect(cell.symbol.image === icon)
+        #expect(cell.tile.borderWidth == 0)
+
+        cell.show(item("Sleep"))
+        #expect(cell.symbol.image !== icon)
+        #expect(cell.tile.borderWidth > 0)
+        #expect(cell.tile.fillColor == ResultRowView.fill)
+    }
+
     @Test func arrowsSkipHeadersAndStopAtTheEnds() {
         let list = shown([
             .init(title: "Applications", items: [item("A"), item("B")]),
