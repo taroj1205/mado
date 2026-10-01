@@ -95,7 +95,7 @@ import Testing
                 items: [
                     .init(
                         id: "sleep", title: "Sleep", subtitle: "System", kind: "Command",
-                        symbol: "moon")
+                        symbol: "moon", action: "Run Command")
                 ])
         ])
         let cell = try #require(list.table.view(atColumn: 0, row: 1, makeIfNecessary: false))
@@ -115,7 +115,7 @@ import Testing
         cell.show(
             .init(
                 id: "/Applications/Safari.app", title: "Safari", subtitle: "",
-                kind: "Application", symbol: "", icon: icon))
+                kind: "Application", symbol: "", action: "Open Application", icon: icon))
         #expect(cell.symbol.image === icon)
         #expect(cell.tile.borderWidth == 0)
 
@@ -156,6 +156,17 @@ import Testing
         #expect(list.contentView.bounds.minY == -ResultList.topInset)
     }
 
+    @Test func selectionChangesAreReported() {
+        let list = shown([.init(title: "Commands", items: [item("A"), item("B")])])
+        var selected: [String?] = []
+        list.onSelect = { selected.append($0?.title) }
+        list.selectNext()
+        list.table.selectRowIndexes([1], byExtendingSelection: false)
+        list.sections = [.init(title: "Results", items: [item("C")])]
+        list.sections = []
+        #expect(selected == ["B", "A", "C", nil])
+    }
+
     @Test func emptyResultsHaveNoSelectedItem() {
         let list = shown([])
         list.selectNext()
@@ -173,7 +184,9 @@ import Testing
     }
 
     private func item(_ title: String) -> ResultList.Item {
-        .init(id: title, title: title, subtitle: "", kind: "Command", symbol: "star")
+        .init(
+            id: title, title: title, subtitle: "", kind: "Command", symbol: "star",
+            action: "Run Command")
     }
 
     private func shown(_ sections: [ResultList.Section]) -> ResultList {

@@ -9,6 +9,8 @@ enum LauncherResult {
     case command(Command)
     case pane(SettingsPane)
 
+    private static let openApp = "Open Application"
+
     var id: String {
         switch self {
         case .app(let app): app.url.path
@@ -55,7 +57,7 @@ enum LauncherResult {
             return commands.first { $0.id == id }?.actions ?? []
         }
         return [
-            CommandAction(id: "open", title: "Open Application") {
+            CommandAction(id: "open", title: Self.openApp) {
                 _ = try await NSWorkspace.shared.openApplication(
                     at: app.url, configuration: NSWorkspace.OpenConfiguration())
             }
@@ -67,11 +69,12 @@ enum LauncherResult {
         case .app(let app):
             ResultList.Item(
                 id: id, title: app.name, subtitle: app.folder, kind: "Application", symbol: "",
-                icon: apps.icon(for: app))
+                action: Self.openApp, icon: apps.icon(for: app))
 
         case .command(let command):
             ResultList.Item(
-                id: id, title: command.name, subtitle: "", kind: "Command", symbol: command.icon)
+                id: id, title: command.name, subtitle: "", kind: "Command", symbol: command.icon,
+                action: "Run Command")
 
         case .pane(let pane):
             pane.item
