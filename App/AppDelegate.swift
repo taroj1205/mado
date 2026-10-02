@@ -87,8 +87,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
         edit.addItem(withTitle: "Cut", action: #selector(NSText.cut), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy), keyEquivalent: "c")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         edit.addItem(withTitle: "Paste", action: #selector(NSText.paste), keyEquivalent: "v")
+        edit.addItem(
+            withTitle: "Paste and Match Style", action: #selector(NSTextView.pasteAsPlainText),
+            keyEquivalent: "v"
+        ).keyEquivalentModifierMask = [.command, .option, .shift]
         edit.addItem(
             withTitle: "Select All", action: #selector(NSText.selectAll), keyEquivalent: "a")
 
