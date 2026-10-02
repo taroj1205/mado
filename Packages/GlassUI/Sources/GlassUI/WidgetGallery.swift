@@ -34,12 +34,12 @@ public final class WidgetGallery: NSView {
         public let name: String
         public let summary: String
         public let size: Size
-        public let group: Group
+        public let group: Group?
         public let symbol: String
         public let colour: NSColor
 
         public init(
-            id: String, name: String, summary: String, size: Size, group: Group, symbol: String,
+            id: String, name: String, summary: String, size: Size, group: Group?, symbol: String,
             colour: NSColor
         ) {
             self.id = id

@@ -9,10 +9,10 @@ import Testing
         contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
         styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: true)
     private let gallery = WidgetGallery(
-        cards: ["clock", "system", "battery", "keep_awake", "timer"].map { id in
+        cards: ["clock", "system", "battery", "keep_awake", "timer", "music"].map { id in
             WidgetGallery.Card(
                 id: id, name: id.capitalized, summary: "About \(id)", size: .small,
-                group: id == "clock" || id == "timer" ? .time : .system, symbol: "clock",
+                group: Self.group(of: id), symbol: "clock",
                 colour: .gray)
         })
 
@@ -20,6 +20,14 @@ import Testing
         window.contentView = gallery
         gallery.added = ["clock", "system"]
         gallery.layoutSubtreeIfNeeded()
+    }
+
+    private static func group(of id: String) -> WidgetGallery.Group? {
+        switch id {
+        case "clock", "timer": .time
+        case "music": nil
+        default: .system
+        }
     }
 
     private static func texts(in view: NSView) -> [String] {
@@ -89,7 +97,7 @@ import Testing
         #expect(gallery.shown.isEmpty)
         #expect(gallery.grid.arrangedSubviews.isEmpty)
         pick(0)
-        #expect(gallery.shown.count == 5)
+        #expect(gallery.shown.map(\.card.id).last == "music")
         #expect(gallery.grid.arrangedSubviews.count == 2)
     }
 
