@@ -26,13 +26,16 @@ import Testing
             { "MX Master 3": { "device_batteryLevelMain": "60%", "device_minorType": "Mouse" } },
             { "AirPods Pro": {
                 "device_batteryLevelCase": "100%", "device_batteryLevelLeft": "80%",
-                "device_batteryLevelRight": "90%" } }
+                "device_batteryLevelRight": "90%", "device_minorType": "Headphones" } }
             """)
         #expect(found == .init(name: "AirPods Pro", level: 0.8))
     }
 
     @Test func oneBudIsEnough() {
-        let found = headphones(#"{ "AirPods": { "device_batteryLevelRight": "45%" } }"#)
+        let found = headphones(
+            """
+            { "AirPods": { "device_batteryLevelRight": "45%", "device_minorType": "Headphones" } }
+            """)
         #expect(found == .init(name: "AirPods", level: 0.45))
     }
 
@@ -49,7 +52,8 @@ import Testing
         let found = headphones(
             """
             { "AirPods": {
-                "device_batteryLevelLeft": "80%   Last updated: 2026/10/03 01:59AM" } }
+                "device_batteryLevelLeft": "80%   Last updated: 2026/10/03 01:59AM",
+                "device_minorType": "Headphones" } }
             """)
         #expect(found == .init(name: "AirPods", level: 0.8))
     }
@@ -57,5 +61,15 @@ import Testing
     @Test func earbudsThatAreNotConnectedAreIgnored() {
         #expect(headphones("") == nil)
         #expect(SystemSampler.headphones(inBluetoothProfile: Data("not json".utf8)) == nil)
+    }
+
+    @Test func theLowEnergyLinkLeftAfterDisconnectingIsIgnored() {
+        let found = headphones(
+            """
+            { "AirPods Pro": {
+                "device_batteryLevelLeft": "96%", "device_batteryLevelRight": "97%",
+                "device_services": "0x400000 < BLE >" } }
+            """)
+        #expect(found == nil)
     }
 }

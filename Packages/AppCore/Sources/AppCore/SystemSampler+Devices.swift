@@ -26,11 +26,10 @@ extension SystemSampler {
             let bluetooth = (root["SPBluetoothDataType"] as? [[String: Any]])?.first,
             let devices = bluetooth["device_connected"] as? [[String: [String: Any]]]
         else { return nil }
-        for (name, info) in devices.flatMap(\.self) {
-            let isHeadset = headsets.contains(info["device_minorType"] as? String ?? "")
+        for (name, info) in devices.flatMap(\.self)
+        where headsets.contains(info["device_minorType"] as? String ?? "") {
             let budLevel = buds.compactMap { level(info[$0]) }.min()
-            let mainLevel = isHeadset ? level(info["device_batteryLevelMain"]) : nil
-            if let found = budLevel ?? mainLevel {
+            if let found = budLevel ?? level(info["device_batteryLevelMain"]) {
                 return SystemStats.Headphones(name: name, level: found)
             }
         }
