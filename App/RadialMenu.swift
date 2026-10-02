@@ -12,6 +12,8 @@ final class RadialMenu {
     }
 
     private let logger: Logger
+    private let panel: OverlayPanel
+    private let ring = RadialRing()
     private let preview: SnapPreview
     private let settings = RadialSettings()
     private var resolver: RadialResolver?
@@ -21,9 +23,11 @@ final class RadialMenu {
         self?.move(to: location)
     }
 
-    init(logger: Logger, preview: SnapPreview) {
+    init(logger: Logger, panel: OverlayPanel, preview: SnapPreview) {
         self.logger = logger
+        self.panel = panel
         self.preview = preview
+        panel.contentView = ring
     }
 
     @AccessibilityActor
@@ -61,6 +65,7 @@ final class RadialMenu {
         focus = nil
         preview.end()
         logger.debug("Pointer tracking stopped")
+        ring.disappear { [panel] in panel.orderOut(nil) }
     }
 
     private func begin(quartzFrame: CGRect) {
@@ -75,16 +80,25 @@ final class RadialMenu {
             window: window,
             screen: ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame))
         preview.begin(from: window, on: screen)
+        if panel.isVisible {
+            panel.orderFrontRegardless()
+        }
         showPreview()
     }
 
     private func move(to location: CGPoint) {
+        if resolver == nil {
+            panel.setFrame(RadialRing.frame(centredOn: location), display: false)
+            panel.orderFrontRegardless()
+            ring.appear()
+        }
         var next = resolver ?? RadialResolver(origin: location)
         let zone = next.zone
         next.update(pointer: location)
         resolver = next
         if next.zone != zone {
             logger.debug("Radial zone: \(String(describing: next.zone), privacy: .public)")
+            ring.select(RadialRing.Highlight(next.zone))
             showPreview()
         }
     }
@@ -93,5 +107,15 @@ final class RadialMenu {
         guard let focus, let zone = resolver?.zone else { return }
         preview.show(
             settings.action(in: zone).previewFrame(of: focus.window, on: focus.screen, gap: 0))
+    }
+}
+
+extension RadialRing.Highlight {
+    init(_ zone: RadialResolver.Zone) {
+        switch zone {
+        case .cancel: self = .cancel
+        case .ring: self = .ring
+        case .direction(let direction): self = .direction(degrees: direction.degrees)
+        }
     }
 }

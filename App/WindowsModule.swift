@@ -12,7 +12,8 @@ struct WindowsModule: Module {
     let radialPreview = SnapPreview()
 
     func start(context: ModuleContext) {
-        let radialMenu = RadialMenu(logger: context.logger, preview: radialPreview)
+        let radialMenu = RadialMenu(
+            logger: context.logger, panel: radialRing, preview: radialPreview)
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {
