@@ -54,6 +54,10 @@ extension RadialSettings: StoredValue {
     static let key = "radial"
 }
 
+extension StatusBarLayout: StoredValue {
+    static let key = "status_bar"
+}
+
 extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
 }

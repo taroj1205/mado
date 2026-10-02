@@ -45,6 +45,29 @@ extension LauncherView {
         }
     }
 
+    public func handle(_ event: NSEvent) -> Bool {
+        if event.type == .leftMouseDown {
+            closeCustomiser(unlessAt: event.locationInWindow)
+        }
+        switch event.type {
+        case .leftMouseDown
+        where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
+            endBrowsing()
+            return false
+
+        case .leftMouseDown:
+            let point = event.locationInWindow
+            let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
+            if !onToggle, actionPanel?.contains(point) != true {
+                closeActions()
+            }
+            return false
+
+        default:
+            return false
+        }
+    }
+
     func runActionShortcut(_ event: NSEvent) -> Bool {
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
             let item = results.selectedItem,

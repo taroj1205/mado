@@ -1,11 +1,13 @@
 import AppCore
 import AppKit
 import GlassUI
+import WindowKit
 
 extension AppDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let gridLauncherHeight: CGFloat = 548
+    private static let half: CGFloat = 0.5
 
     var widgetPlacement: WidgetPlacement? {
         modules?.isEnabled(Widgets.moduleID) == false ? nil : .load(from: modules)
@@ -18,7 +20,14 @@ extension AppDelegate {
             height: grid ? Self.gridLauncherHeight : Self.launcherHeight)
     }
 
+    func launcherFrame(in visible: CGRect) -> CGRect {
+        ScreenGeometry.centeredFrame(of: launcherSize, in: visible)
+            .offsetBy(dx: 0, dy: -launcherView.widgetOverhang * Self.half)
+    }
+
     func connectGlances() {
+        launcherView.statusLayout = .load(from: modules)
+        launcherView.onStatusLayout = { [weak self] layout in layout.save(to: self?.modules) }
         launcherView.onPill = { [weak self] pill in
             self?.runGlance(StatusPills.action(for: pill), for: pill.id)
         }

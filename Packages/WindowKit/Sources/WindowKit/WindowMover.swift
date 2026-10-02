@@ -4,7 +4,7 @@ public import ApplicationServices
 public final class WindowMover {
     public typealias Failure = FocusedWindow.Failure
 
-    struct Placement {
+    struct Placement: Equatable {
         let restore: CGRect
         let placed: CGRect
     }
@@ -15,9 +15,12 @@ public final class WindowMover {
 
     private var placements: [AXUIElement: Placement] = [:]
 
-    nonisolated static func restoreFrame(keeping placement: Placement?, current: CGRect) -> CGRect {
-        guard let placement, placement.placed == current else { return current }
-        return placement.restore
+    nonisolated static func placement(
+        after previous: Placement?, from current: CGRect, to placed: CGRect
+    ) -> Placement? {
+        let kept = previous?.placed == current ? previous : nil
+        guard placed != current else { return kept }
+        return Placement(restore: kept?.restore ?? current, placed: placed)
     }
 
     public func move(_ window: FocusedWindow, to quartzFrame: CGRect) throws(Failure) -> CGRect {
@@ -58,9 +61,9 @@ public final class WindowMover {
     private func place(
         _ window: FocusedWindow, from current: CGRect, to target: CGRect
     ) throws(Failure) -> CGRect {
-        let restore = Self.restoreFrame(keeping: placements[window.element], current: current)
         let placed = try window.setFrame(target)
-        placements[window.element] = Placement(restore: restore, placed: placed)
+        placements[window.element] = Self.placement(
+            after: placements[window.element], from: current, to: placed)
         return placed
     }
 }

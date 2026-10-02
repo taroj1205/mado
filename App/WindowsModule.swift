@@ -33,7 +33,7 @@ struct WindowsModule: Module {
 
     private func registerLayouts(context: ModuleContext) {
         do {
-            for command in WindowLayouts.commands(gap: { layoutSettings().gap }) {
+            for command in WindowLayouts.commands(settings: layoutSettings) {
                 try context.register(command)
             }
         } catch {

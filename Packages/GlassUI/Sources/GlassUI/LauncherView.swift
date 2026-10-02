@@ -22,6 +22,13 @@ public final class LauncherView: NSView {
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
     public var onPill: ((StatusBar.Pill) -> Void)?
+    public var onStatusLayout: ((StatusBarLayout) -> Void)?
+    public var pills: [StatusBar.Pill] = [] {
+        didSet { arrangePills() }
+    }
+    public var statusLayout = StatusBarLayout() {
+        didSet { arrangePills() }
+    }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var context: String? {
@@ -37,6 +44,7 @@ public final class LauncherView: NSView {
     let contextPill = StatusPill()
     let statusBar = StatusBar()
     var selectedPill: Int?
+    var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
@@ -123,8 +131,14 @@ public final class LauncherView: NSView {
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
         actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         statusBar.onPress = { [weak self] index in self?.pressPill(index) }
+        statusBar.customise.onPress = { [weak self] in self?.toggleCustomiser() }
         field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
+    }
+
+    override public func layout() {
+        super.layout()
+        widgetGrid.placeFloats()
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -149,26 +163,6 @@ public final class LauncherView: NSView {
         return true
     }
 
-    public func handle(_ event: NSEvent) -> Bool {
-        switch event.type {
-        case .leftMouseDown
-        where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
-            endBrowsing()
-            return false
-
-        case .leftMouseDown:
-            let point = event.locationInWindow
-            let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
-            if !onToggle, actionPanel?.contains(point) != true {
-                closeActions()
-            }
-            return false
-
-        default:
-            return false
-        }
-    }
-
     func replaceQuery(with query: String) {
         field.stringValue = query
         field.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
@@ -185,7 +179,7 @@ public final class LauncherView: NSView {
 
     func showAction(of item: ResultList.Item?) {
         let action =
-            selectedPill.map { pills[$0].action }
+            selectedPill.map { statusBar.pills[$0].action }
             ?? selectedWidget.map { widgetGrid.shown[$0].action }
             ?? item?.action
         actionLabel.stringValue = action ?? ""
@@ -195,6 +189,9 @@ public final class LauncherView: NSView {
 
     func showContext() {
         statusBar.isHidden = !showsStatusBar
+        if statusBar.isHidden {
+            closeCustomiser()
+        }
         widgetGrid.isHidden = !showsWidgets
         let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
         let text = hintsPreview ? Self.previewHint : context
