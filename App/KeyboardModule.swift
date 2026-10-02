@@ -4,19 +4,11 @@ import os
 
 struct KeyboardModule: Module {
     static let id = "keyboard"
-    private static let retryInterval: Duration = .seconds(1)
 
     let descriptor: ModuleDescriptor
 
     func start(context: ModuleContext) {
-        guard !installTap(context) else { return }
-        context.logger.notice("Input mode taps wait for Accessibility")
-        context.run("wait for Accessibility") {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: Self.retryInterval)
-                if !Task.isCancelled, installTap(context) { return }
-            }
-        }
+        context.installWhenTrusted("input mode taps") { installTap(context) }
     }
 
     func stop() {
