@@ -20,7 +20,8 @@ final class ResultCell: NSTableCellView {
     let title = NSTextField(labelWithString: "")
     let subtitle = NSTextField(labelWithString: "")
     let kind = NSTextField(labelWithString: "")
-    let accessory = NSStackView()
+    let shortcut = NSStackView()
+    private let accessory = NSStackView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -32,7 +33,6 @@ final class ResultCell: NSTableCellView {
         tile.cornerRadius = Self.tileRadius
         tile.contentViewMargins = .zero
         symbol.symbolConfiguration = .init(pointSize: Self.symbolSize, weight: .medium)
-        symbol.contentTintColor = .labelColor
         tile.contentView = symbol
         title.font = .systemFont(ofSize: Self.titleSize, weight: .medium)
         title.lineBreakMode = .byTruncatingMiddle
@@ -44,7 +44,10 @@ final class ResultCell: NSTableCellView {
         subtitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
         kind.font = .systemFont(ofSize: Self.kindSize)
         kind.textColor = .secondaryLabelColor
-        accessory.spacing = Self.keyGap
+        shortcut.spacing = Self.keyGap
+        shortcut.setHuggingPriority(.defaultHigh, for: .horizontal)
+        accessory.setViews([kind, shortcut], in: .leading)
+        accessory.spacing = Self.gap
         accessory.setHuggingPriority(.defaultHigh, for: .horizontal)
         setAccessibilityChildren([])
         layout(tile, title, subtitle, accessory)
@@ -58,13 +61,15 @@ final class ResultCell: NSTableCellView {
     func show(_ item: ResultList.Item) {
         symbol.image =
             item.icon ?? NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
-        tile.fillColor = item.icon == nil ? ResultRowView.fill : .clear
+        symbol.contentTintColor = item.tint == nil ? .labelColor : .white
+        tile.fillColor = item.icon == nil ? item.tint ?? ResultRowView.fill : .clear
         tile.borderWidth = item.icon == nil ? Self.tileBorder : 0
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
-        accessory.setViews(
-            item.keys.isEmpty ? [kind] : item.keys.map(FloatingCapsule.keycap), in: .leading)
+        kind.isHidden = item.kind.isEmpty
+        shortcut.setViews(item.shortcut.map(FloatingCapsule.keycap), in: .leading)
+        shortcut.isHidden = item.shortcut.isEmpty
         setAccessibilityLabel(
             [item.title, item.kind, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
     }

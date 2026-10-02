@@ -1,4 +1,4 @@
-public import AppKit
+import AppKit
 
 final class ColourCell: NSTableCellView {
     static let id = NSUserInterfaceItemIdentifier("colour")
@@ -147,30 +147,5 @@ final class ColourCell: NSTableCellView {
             values.widthAnchor.constraint(equalTo: info.widthAnchor),
             notes.widthAnchor.constraint(lessThanOrEqualTo: info.widthAnchor),
         ])
-    }
-}
-
-extension ResultList {
-    public struct ColourCard: Sendable, Equatable {
-        public let swatch: NSColor
-        public let hex: String
-        public let rgb: String
-        public let hsl: String
-        public let closest: String
-        public let onWhite: String
-        public let onBlack: String
-
-        public init(
-            swatch: NSColor, hex: String, rgb: String, hsl: String, closest: String,
-            onWhite: String, onBlack: String
-        ) {
-            self.swatch = swatch
-            self.hex = hex
-            self.rgb = rgb
-            self.hsl = hsl
-            self.closest = closest
-            self.onWhite = onWhite
-            self.onBlack = onBlack
-        }
     }
 }

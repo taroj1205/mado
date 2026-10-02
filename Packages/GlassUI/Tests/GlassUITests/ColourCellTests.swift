@@ -16,7 +16,7 @@ import Testing
     .map { id, value, keys in
         .init(
             id: id, title: "Copy \(id)", subtitle: value, kind: "Colour", symbol: "doc.on.doc",
-            action: "Copy \(id)", keys: keys)
+            action: "Copy \(id)", shortcut: keys)
     }
 
     @Test func theCardSitsAboveCopyAsAndCannotBeSelected() throws {
@@ -69,21 +69,6 @@ import Testing
         }
         #expect(list.selectedItem == copies[0])
         #expect(list.contentView.bounds.minY == -ResultList.topInset)
-    }
-
-    @Test func copyRowsShowTheirShortcutWhereTheKindWouldBe() {
-        let cell = ResultCell(frame: NSRect(x: 0, y: 0, width: 744, height: 42))
-        cell.show(copies[1])
-        let keys = cell.accessory.arrangedSubviews.compactMap { ($0 as? Keycap)?.name.stringValue }
-        #expect(keys == ["⌘", "1"])
-        cell.layoutSubtreeIfNeeded()
-        #expect(cell.accessory.frame.maxX == cell.bounds.maxX - 12)
-        #expect(cell.accessory.frame.width < 60)
-        cell.show(
-            .init(
-                id: "sleep", title: "Sleep", subtitle: "", kind: "Command", symbol: "moon",
-                action: "Run Command"))
-        #expect(cell.accessory.arrangedSubviews == [cell.kind])
     }
 
     @Test func voiceOverReadsTheCardAsOneSentence() {

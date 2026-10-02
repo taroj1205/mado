@@ -168,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             deliver: { [launcherView] sections in
                 launcherView.show(sections)
                 (launcherView.context, launcherView.contextSymbol) = LauncherResult.context(
-                    of: sections)
+                    for: sections)
             })
     }
 
@@ -186,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { [weak self, logger] in
             do {
                 try await action.perform()
-                if LauncherResult.remembers(item) {
+                if LauncherResult.isRanked(item) {
                     self?.recordUse(of: item.id)
                 }
             } catch CocoaError.userCancelled {

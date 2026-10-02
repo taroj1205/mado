@@ -140,7 +140,7 @@ import Testing
                 items: [("hex", ["↵"]), ("rgb", ["⌘", "1"]), ("hsl", ["⌘", "2"])].map { id, keys in
                     .init(
                         id: id, title: id, subtitle: "", kind: "Colour", symbol: "",
-                        action: "Copy", keys: keys)
+                        action: "Copy", shortcut: keys)
                 })
         ]
         press(kVK_ANSI_2, "2", [.command])

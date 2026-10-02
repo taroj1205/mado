@@ -11,12 +11,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let icon: NSImage?
         public let file: URL?
         public let answer: Answer?
-        public let keys: [String]
+        public let tint: NSColor?
+        public let shortcut: [String]
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
             action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil,
-            keys: [String] = []
+            tint: NSColor? = nil, shortcut: [String] = []
         ) {
             self.id = id
             self.title = title
@@ -27,7 +28,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.icon = icon
             self.file = file
             self.answer = answer
-            self.keys = keys
+            self.tint = tint
+            self.shortcut = shortcut
         }
     }
 
@@ -51,24 +53,9 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         }
     }
 
-    public struct Section: Sendable, Equatable {
-        public let title: String
-        public let items: [Item]
-        public let notice: Notice?
-        public let colour: ColourCard?
-
-        public init(
-            title: String, items: [Item], notice: Notice? = nil, colour: ColourCard? = nil
-        ) {
-            self.title = title
-            self.items = items
-            self.notice = notice
-            self.colour = colour
-        }
-    }
-
     enum Row: Equatable {
         case notice(Notice)
+        case card(Card)
         case colour(ColourCard)
         case header(String)
         case item(Item)
@@ -111,6 +98,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     public var onSelect: ((Item?) -> Void)?
     public var onMove: (() -> Void)?
+    public var onPick: ((String) -> Void)?
 
     public var selectedItem: Item? {
         guard rows.indices.contains(table.selectedRow),
@@ -156,9 +144,12 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     static func rows(for sections: [Section]) -> [Row] {
         sections.filter { !$0.items.isEmpty }
             .flatMap { section in
-                (section.notice.map { [Row.notice($0)] } ?? [])
-                    + (section.colour.map { [Row.colour($0)] } ?? [])
-                    + [.header(section.title)] + section.items.map(Row.item)
+                let above: [Row?] = [
+                    section.notice.map(Row.notice), section.card.map(Row.card),
+                    section.colour.map(Row.colour),
+                ]
+                return above.compactMap(\.self) + [.header(section.title)]
+                    + section.items.map(Row.item)
             }
     }
 
@@ -199,6 +190,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
         switch rows[row] {
         case .notice: Self.noticeHeight
+        case .card(let card): DefinitionCell.height(for: card, width: contentSize.width)
         case .colour: Self.colourHeight
         case .header: Self.headerHeight
         case .item(let item): item.answer == nil ? Self.rowHeight : Self.answerHeight
@@ -232,6 +224,14 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
                 tableView.makeView(withIdentifier: NoticeCell.id, owner: nil)
                 as? NoticeCell ?? NoticeCell()
             cell.show(notice)
+            return cell
+
+        case .card(let card):
+            let cell =
+                tableView.makeView(withIdentifier: DefinitionCell.id, owner: nil)
+                as? DefinitionCell ?? DefinitionCell()
+            cell.show(card, width: contentSize.width)
+            cell.onPick = { [weak self] in self?.onPick?($0) }
             return cell
 
         case .colour(let card):
