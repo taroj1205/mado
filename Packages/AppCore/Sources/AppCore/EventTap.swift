@@ -1,15 +1,58 @@
 import CoreGraphics
+import os
 
 @MainActor
 @safe
 final class EventTap {
-    private let swallow: @MainActor (CGEventType, CGEvent) -> Bool
+    private let signposter = Log.signposter("EventTap")
+    private var routes = EventRoutes()
     private(set) var port: CFMachPort?
     private var source: CFRunLoopSource?
+    private var installedMask: CGEventMask = 0
 
-    init?(types: [CGEventType], swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool) {
-        self.swallow = swallow
-        let mask = types.reduce(CGEventMask(0)) { $0 | 1 << $1.rawValue }
+    func add(
+        types: [CGEventType], swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
+    ) -> UInt? {
+        installed(routes.add(types: types, swallow: swallow))
+    }
+
+    func observe(
+        types: [CGEventType], observe: @escaping @MainActor (CGEventType, CGEvent) -> Void
+    ) -> UInt? {
+        installed(routes.observe(types: types, observe: observe))
+    }
+
+    func remove(_ id: UInt) {
+        routes.remove(id)
+        _ = install(routes.mask)
+    }
+
+    func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let port {
+                CGEvent.tapEnable(tap: port, enable: true)
+            }
+            return true
+        }
+        let state = signposter.beginInterval("dispatch")
+        defer { signposter.endInterval("dispatch", state) }
+        return !routes.dispatch(type, event)
+    }
+
+    private func installed(_ id: UInt) -> UInt? {
+        guard install(routes.mask) else {
+            routes.remove(id)
+            return nil
+        }
+        return id
+    }
+
+    private func install(_ mask: CGEventMask) -> Bool {
+        guard mask != installedMask else { return true }
+        guard mask != 0 else {
+            invalidate()
+            return true
+        }
         guard
             let created = unsafe CGEvent.tapCreate(
                 tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
@@ -25,25 +68,18 @@ final class EventTap {
                 },
                 userInfo: unsafe Unmanaged.passUnretained(self).toOpaque())
         else {
-            return nil
+            return false
         }
+        invalidate()
         let runLoopSource = CFMachPortCreateRunLoopSource(nil, created, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         port = created
         source = runLoopSource
+        installedMask = mask
+        return true
     }
 
-    func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let port {
-                CGEvent.tapEnable(tap: port, enable: true)
-            }
-            return true
-        }
-        return !swallow(type, event)
-    }
-
-    func invalidate() {
+    private func invalidate() {
         if let source {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
         }
@@ -52,6 +88,7 @@ final class EventTap {
         }
         port = nil
         source = nil
+        installedMask = 0
     }
 
     isolated deinit {

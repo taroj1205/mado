@@ -1,6 +1,7 @@
 public import AppCore
 import Carbon.HIToolbox
 import CoreGraphics
+import Dispatch
 
 public struct ModifierTrigger {
     public enum Event: Equatable, Sendable {
@@ -33,11 +34,21 @@ public struct ModifierTrigger {
         _ modifiers: Shortcut.Modifiers, name: String, context: ModuleContext,
         onEvent: @escaping @MainActor (Event) -> Void
     ) throws(ModuleError) {
+        try context.tapEvents(name, matching: types, swallow: swallow(modifiers, onEvent: onEvent))
+    }
+
+    @MainActor
+    static func swallow(
+        _ modifiers: Shortcut.Modifiers, onEvent: @escaping @MainActor (Event) -> Void
+    ) -> @MainActor (CGEventType, CGEvent) -> Bool {
         var trigger = Self(modifiers: modifiers)
-        try context.tapEvents(name, matching: types) { type, event in
+        return { type, event in
             trigger.handle(
                 type, flags: event.flags,
-                keyCode: event.getIntegerValueField(.keyboardEventKeycode), emit: onEvent)
+                keyCode: event.getIntegerValueField(.keyboardEventKeycode)
+            ) { change in
+                DispatchQueue.main.async { onEvent(change) }
+            }
         }
     }
 

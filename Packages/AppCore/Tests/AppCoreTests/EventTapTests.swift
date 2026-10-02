@@ -9,8 +9,9 @@ import Testing
 struct EventTapTests {
     @Test(arguments: [CGEventType.tapDisabledByTimeout, .tapDisabledByUserInput])
     func aStoppedTapIsReenabledRightAway(reason: CGEventType) throws {
-        let tap = try #require(EventTap(types: [.flagsChanged]) { _, _ in false })
-        defer { tap.invalidate() }
+        let tap = EventTap()
+        let id = try #require(tap.add(types: [.flagsChanged]) { _, _ in false })
+        defer { tap.remove(id) }
         let port = try #require(tap.port)
         let event = try #require(CGEvent(source: nil))
 
@@ -20,22 +21,60 @@ struct EventTapTests {
         #expect(CGEvent.tapIsEnabled(tap: port))
     }
 
-    @Test func theHandlerDecidesWhatIsSwallowed() throws {
-        let tap = try #require(EventTap(types: [.flagsChanged]) { type, _ in type == .keyDown })
-        defer { tap.invalidate() }
+    @Test func theRoutesDecideWhatIsSwallowed() throws {
+        let tap = EventTap()
+        let id = try #require(tap.add(types: [.keyDown, .keyUp]) { type, _ in type == .keyDown })
+        defer { tap.remove(id) }
         let event = try #require(CGEvent(source: nil))
 
         #expect(!tap.handle(.keyDown, event))
         #expect(tap.handle(.keyUp, event))
     }
 
-    @Test func theContextOwnsTheTapUntilReleased() throws {
-        let context = ModuleContext(moduleID: "radial", commands: CommandRegistry())
+    @Test func allRoutesShareOneTapThatGoesAwayWithTheLast() throws {
+        let tap = EventTap()
+        let radial = try #require(tap.add(types: [.flagsChanged]) { _, _ in false })
+        let first = try #require(tap.port)
+
+        let modifier = try #require(tap.add(types: [.flagsChanged]) { _, _ in false })
+        #expect(tap.port === first)
+
+        let snippets = try #require(tap.add(types: [.keyDown]) { _, _ in false })
+        let widened = try #require(tap.port)
+        #expect(widened !== first)
+        #expect(!CFMachPortIsValid(first))
+
+        tap.remove(radial)
+        tap.remove(modifier)
+        #expect(tap.port !== widened)
+        tap.remove(snippets)
+        #expect(tap.port == nil)
+    }
+
+    @Test func theContextOwnsItsRouteUntilReleased() throws {
+        let tap = EventTap()
+        let context = ModuleContext(moduleID: "radial", commands: CommandRegistry(), eventTap: tap)
         try context.tapEvents("trigger", matching: [.flagsChanged]) { _, _ in false }
         #expect(
             context.active == [ActiveResource(module: "radial", kind: .eventTap, name: "trigger")])
+        #expect(tap.port != nil)
 
         context.releaseAll()
         #expect(context.active.isEmpty)
+        #expect(tap.port == nil)
+    }
+
+    @Test func anObserverIsOwnedLikeAnyOtherRoute() throws {
+        let tap = EventTap()
+        let context = ModuleContext(moduleID: "keys", commands: CommandRegistry(), eventTap: tap)
+        var observed = 0
+        try context.observeEvents("taps", matching: [.flagsChanged]) { _, _ in observed += 1 }
+        #expect(context.active == [ActiveResource(module: "keys", kind: .eventTap, name: "taps")])
+        let event = try #require(CGEvent(source: nil))
+        #expect(tap.handle(.flagsChanged, event))
+        #expect(observed == 1)
+
+        context.releaseAll()
+        #expect(tap.port == nil)
     }
 }
