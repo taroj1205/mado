@@ -15,10 +15,13 @@ struct PlaceholderModule: Module {
 
 extension ModuleDescriptor {
     @MainActor
-    func makeModule() -> any Module {
+    func makeModule(in modules: ModuleManager) -> any Module {
         switch id {
         case KeyboardModule.id: KeyboardModule(descriptor: self)
-        case WindowsModule.id: WindowsModule(descriptor: self)
+
+        case WindowsModule.id:
+            WindowsModule(descriptor: self) { [weak modules] in .load(from: modules) }
+
         default: PlaceholderModule(descriptor: self)
         }
     }
