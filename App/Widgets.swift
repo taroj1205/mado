@@ -17,6 +17,11 @@ final class Widgets {
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
     private static let logger = Log.logger("Widgets")
+    private static let battery = "battery"
+    private static let batteryAction = "Battery Settings"
+    private static let macName = "Mac"
+    private static let owner = #/^\S+['’]s /#
+    private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
 
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
@@ -28,8 +33,10 @@ final class Widgets {
     private var listening: Task<Void, Never>?
 
     static func action(for widget: WidgetGrid.Widget) -> CommandAction {
-        if widget.id == system {
-            return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
+        switch widget.id {
+        case system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
+        case battery: return SettingsPane.battery.open
+        default: break
         }
         guard let clock else { return SettingsPane.dateAndTime.open }
         return CommandAction(id: "open", title: widget.action) {
@@ -49,6 +56,7 @@ final class Widgets {
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
             playing.map(widget(for:)),
+            stats.flatMap(batteries),
             .init(
                 id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
                 action: "Open Activity Monitor",
@@ -66,6 +74,44 @@ final class Widgets {
                 isPlaying: playing.isPlaying),
             action: "Play / Pause",
             spoken: "\(playing.isPlaying ? "Now playing" : "Paused"): \(song)")
+    }
+
+    private static func batteries(in stats: SystemStats) -> WidgetGrid.Widget? {
+        let mac = stats.battery
+        let macStatus = mac.map { "\(percent($0.level)), \(status(of: $0).lowercased())" }
+        guard let headphones = stats.headphones else {
+            guard let mac, let macStatus else { return nil }
+            return .init(
+                id: battery, value: percent(mac.level), detail: status(of: mac),
+                action: batteryAction, spoken: "Battery: \(macStatus)",
+                symbol: StatusPills.symbol(for: mac))
+        }
+        let spoken = [
+            macStatus.map { "\(macName) \($0)" },
+            "\(headphones.name) \(percent(headphones.level))",
+        ]
+        return .init(
+            id: battery,
+            meters: [
+                mac.map { meter(macName, $0.level) },
+                meter(headphones.name.replacing(owner, with: ""), headphones.level),
+            ]
+            .compactMap(\.self),
+            action: batteryAction,
+            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; "))")
+    }
+
+    private static func status(of battery: SystemStats.Battery) -> String {
+        switch battery.power {
+        case .charging: "Charging"
+        case .charged: "Charged"
+        case .notCharging: "Not charging"
+
+        case .draining(let minutes?):
+            "\(Duration.seconds(Double(minutes) * minute).formatted(timeLeft)) left"
+
+        case .draining(nil): "On battery"
+        }
     }
 
     private static func meter(_ name: String, _ level: Double?) -> WidgetGrid.Meter {

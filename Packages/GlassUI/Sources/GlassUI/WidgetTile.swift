@@ -8,6 +8,8 @@ final class WidgetTile: NSView {
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
     private static let detailSize: CGFloat = 11.5
+    private static let iconSize: CGFloat = 13
+    private static let iconGap: CGFloat = 4
     private static let meterGap: CGFloat = 8
     private static let fillAlpha = (dark: 0.055, light: 0.55)
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
@@ -20,8 +22,14 @@ final class WidgetTile: NSView {
 
     let value = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")
+    let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    private lazy var trackPlacement = [
+        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
+        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+        track.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ]
     private let box = NSBox()
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
@@ -50,21 +58,23 @@ final class WidgetTile: NSView {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
+        icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
+        icon.contentTintColor = .secondaryLabelColor
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(icon)
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(meters)
-        addSubview(track)
+        [meters, track].forEach(addSubview)
         NSLayoutConstraint.activate([
-            track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
-            track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-            track.centerYAnchor.constraint(equalTo: centerYAnchor),
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
             meters.centerYAnchor.constraint(equalTo: centerYAnchor),
             value.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             value.trailingAnchor.constraint(
-                lessThanOrEqualTo: trailingAnchor, constant: -Self.horizontal),
+                lessThanOrEqualTo: icon.leadingAnchor, constant: -Self.iconGap),
+            icon.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            icon.centerYAnchor.constraint(equalTo: value.centerYAnchor),
             value.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
             detail.leadingAnchor.constraint(equalTo: value.leadingAnchor),
             detail.trailingAnchor.constraint(
@@ -98,11 +108,17 @@ final class WidgetTile: NSView {
                 .kern: Self.valueKern,
             ])
         detail.stringValue = widget.detail
+        icon.image = widget.symbol.flatMap { name in
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        }
         value.isHidden = !widget.meters.isEmpty || widget.track != nil
         detail.isHidden = value.isHidden
         track.isHidden = widget.track == nil
         if let playing = widget.track {
             track.show(playing)
+            NSLayoutConstraint.activate(trackPlacement)
+        } else {
+            NSLayoutConstraint.deactivate(trackPlacement)
         }
         if meters.arrangedSubviews.count != widget.meters.count {
             meters.arrangedSubviews.forEach { $0.removeFromSuperview() }

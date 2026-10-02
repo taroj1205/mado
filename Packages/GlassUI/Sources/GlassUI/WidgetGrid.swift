@@ -5,6 +5,7 @@ public final class WidgetGrid: NSView {
         public let id: String
         public let value: String
         public let detail: String
+        public let symbol: String?
         public let meters: [Meter]
         public let track: Track?
         public let action: String
@@ -14,10 +15,14 @@ public final class WidgetGrid: NSView {
             track == nil ? 1 : WidgetGrid.trackSpan
         }
 
-        public init(id: String, value: String, detail: String, action: String, spoken: String) {
+        public init(
+            id: String, value: String, detail: String, action: String, spoken: String,
+            symbol: String? = nil
+        ) {
             self.id = id
             self.value = value
             self.detail = detail
+            self.symbol = symbol
             self.action = action
             self.spoken = spoken
             meters = []
@@ -31,6 +36,7 @@ public final class WidgetGrid: NSView {
             self.spoken = spoken
             value = ""
             detail = ""
+            symbol = nil
             track = nil
         }
 
@@ -41,6 +47,7 @@ public final class WidgetGrid: NSView {
             self.spoken = spoken
             value = ""
             detail = ""
+            symbol = nil
             meters = []
         }
     }
