@@ -67,9 +67,7 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_: Notification) {
-        if !popover.isShown {
-            (anchor as? HotKeyButton)?.showsRecording = false
-        }
+        (anchor as? HotKeyButton)?.showsRecording = false
     }
 
     private func row(for app: URL, hotkey: Shortcut) -> SettingsSection.Row {
@@ -110,21 +108,15 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
         prompt.onClear = { [weak self] in _ = self?.assign(nil, to: id) }
         prompt.show(for: Self.name(of: app), clearable: items.settings[id].hotkey != nil)
         self.anchor = anchor
-        present()
-    }
-
-    private func present() {
-        guard let anchor else { return }
         (anchor as? HotKeyButton)?.showsRecording = true
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         unsafe prompt.window?.makeFirstResponder(prompt)
     }
 
     private func assign(_ hotkey: Shortcut?, to id: String) -> String? {
-        popover.close()
         let problem = items.assign(hotkey, to: id)
-        if problem != nil {
-            present()
+        if problem == nil {
+            popover.close()
         }
         return problem
     }
