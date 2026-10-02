@@ -66,7 +66,8 @@ public actor SystemSampler {
         }
         return SystemStats(
             cpu: meter.cpu, memory: memory(), battery: Self.battery(), diskFree: Self.diskFree(),
-            download: meter.download)
+            download: meter.download, headphones: Self.headphones(), vpn: Self.vpn(),
+            wifi: Self.wifi())
     }
 
     private func counters() -> LoadMeter.Counters? {
