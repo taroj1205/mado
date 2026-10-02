@@ -46,8 +46,10 @@ import Testing
         var cancels = 0
         view.onCancel = { cancels += 1 }
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
+        view.contextSymbol = "paintpalette.fill"
         press(kVK_DownArrow, "\u{F701}")
         #expect(view.contextLabel.stringValue == "⌘Y to preview")
+        #expect(view.contextIcon.image?.isTemplate == true)
         #expect(!view.contextCapsule.isHidden)
         previewKey()
         #expect(view.previewing)
