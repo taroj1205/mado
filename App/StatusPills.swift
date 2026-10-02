@@ -81,12 +81,16 @@ enum StatusPills {
         .filter { !hiddenByDefault.contains($0.id) }
     }
 
+    static func symbol(for battery: SystemStats.Battery) -> String {
+        guard battery.power != .charging else { return charging }
+        return batteries[Int((battery.level * Double(batteries.count - 1)).rounded())]
+    }
+
     private static func pill(for battery: SystemStats.Battery) -> StatusBar.Pill {
-        let level = Int((battery.level * Double(batteries.count - 1)).rounded())
-        return .init(
-            id: "battery", name: battery.isCharging ? "Battery, charging" : "Battery",
-            symbol: battery.isCharging ? charging : batteries[level],
-            value: battery.level.formatted(percent), action: "Battery Settings")
+        .init(
+            id: "battery", name: battery.power == .charging ? "Battery, charging" : "Battery",
+            symbol: symbol(for: battery), value: battery.level.formatted(percent),
+            action: "Battery Settings")
     }
 
     private static func pill(for headphones: SystemStats.Headphones) -> StatusBar.Pill {

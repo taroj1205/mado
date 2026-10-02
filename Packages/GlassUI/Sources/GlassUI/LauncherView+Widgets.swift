@@ -4,8 +4,11 @@ extension LauncherView {
     public var widgets: [WidgetGrid.Widget] {
         get { widgetGrid.widgets }
         set {
+            let selected = selectedWidget.map { widgetGrid.widgets[$0].id }
             widgetGrid.widgets = newValue
-            if let selectedWidget, !newValue.indices.contains(selectedWidget) {
+            if let index = newValue.firstIndex(where: { $0.id == selected }) {
+                selectedWidget = index
+            } else {
                 selectWidget(nil)
             }
             widgetGrid.highlight(selectedWidget)

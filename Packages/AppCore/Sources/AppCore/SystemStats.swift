@@ -1,7 +1,14 @@
 public struct SystemStats: Equatable, Sendable {
+    public enum Power: Equatable, Sendable {
+        case charging
+        case charged
+        case notCharging
+        case draining(minutesLeft: Int?)
+    }
+
     public struct Battery: Equatable, Sendable {
         public let level: Double
-        public let isCharging: Bool
+        public let power: Power
     }
 
     public struct Headphones: Equatable, Sendable {
