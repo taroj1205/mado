@@ -117,7 +117,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         items: ItemEditor
     ) {
         let context = SettingsPage.Context(
-            modules: modules, hotKeys: hotKeys, rates: rates, apps: AppHotKeys(items: items))
+            modules: modules, hotKeys: hotKeys, rates: rates, apps: AppHotKeys(items: items),
+            radial: RadialMenuSettings(modules: modules))
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {

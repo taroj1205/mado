@@ -36,9 +36,15 @@ import Testing
         #expect(radial.left == .leftCycle)
         #expect(radial.topLeft == .topLeftQuarter)
         #expect(radial.haptics)
+        #expect(radial.isEnabled)
+        #expect(radial.trigger == [.function])
+        #expect(radial.opensAt == .pointer)
+        #expect(radial.showsPreview)
+        #expect(!radial.showsLabel)
+        #expect(radial.clickStepsCycle)
     }
 
-    @Test func theRingEightDirectionsAndHapticsAreTheOnlyStoredKeys() throws {
+    @Test func theHoleIsNeverStored() throws {
         var settings = Settings()
 
         try settings.setValue(RadialSettings(), for: "radial")
@@ -50,7 +56,8 @@ import Testing
         #expect(
             Set(stored.keys) == [
                 "ring", "top", "topRight", "right", "bottomRight", "bottom", "bottomLeft",
-                "left", "topLeft", "haptics",
+                "left", "topLeft", "haptics", "isEnabled", "trigger", "opensAt", "showsPreview",
+                "showsLabel", "clickStepsCycle",
             ])
     }
 
@@ -121,5 +128,31 @@ import Testing
         radial.haptics = false
 
         #expect(try roundTrip(radial)?.haptics == false)
+    }
+
+    @Test func everyOptionSurvivesSavingAndLoading() throws {
+        var radial = RadialSettings()
+        radial.isEnabled = false
+        radial.trigger = [.command, .shift]
+        radial.opensAt = .screenCentre
+        radial.showsPreview = false
+        radial.showsLabel = true
+        radial.clickStepsCycle = false
+
+        #expect(try roundTrip(radial) == radial)
+    }
+
+    @Test func anOlderFileKeepsItsValuesAndTakesDefaultsForTheRest() throws {
+        var settings = Settings()
+        settings.modules["radial"] = .object([
+            "left": .string("left_half"), "haptics": .bool(false),
+        ])
+
+        let radial = try #require(try settings.value(RadialSettings.self, for: "radial"))
+
+        var expected = RadialSettings()
+        expected.left = .leftHalf
+        expected.haptics = false
+        #expect(radial == expected)
     }
 }
