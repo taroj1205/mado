@@ -39,10 +39,12 @@ public final class HalfSnap {
         let target = beside.reduce(frame) { target, refusal in
             Self.remaining(of: target, beside: refusal.frame, on: side, gap: gap)
         }
-        var placed = try window.setFrame(target)
+        let mover = WindowMover.shared
+        var placed = try mover.move(window, to: target)
         if placed.width > target.width {
             if side == .right {
-                placed = try window.setFrame(placed.offsetBy(dx: target.maxX - placed.maxX, dy: 0))
+                placed = try mover.move(
+                    window, to: placed.offsetBy(dx: target.maxX - placed.maxX, dy: 0))
             }
             refusals.append(Refusal(side: side, window: window, frame: placed))
         }

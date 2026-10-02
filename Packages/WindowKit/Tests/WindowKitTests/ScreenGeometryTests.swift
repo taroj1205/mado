@@ -9,6 +9,17 @@ import Testing
 
     static let retina = CGRect(x: 0, y: 0, width: 1_512, height: 982)
 
+    static let side = [
+        ScreenGeometry.Screen(
+            frame: primary, visibleFrame: CGRect(x: 0, y: 0, width: 1_440, height: 875)),
+        ScreenGeometry.Screen(
+            frame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080),
+            visibleFrame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080)),
+        ScreenGeometry.Screen(
+            frame: CGRect(x: -1_080, y: -500, width: 1_080, height: 1_920),
+            visibleFrame: CGRect(x: -1_080, y: -500, width: 1_080, height: 1_920)),
+    ]
+
     @Test func convertsSideBySideScreens() {
         expectConversions([
             (Self.retina, Self.retina),
@@ -103,6 +114,47 @@ import Testing
         #expect(ScreenGeometry.screenIndex(showing: offscreen, in: [Self.primary]) == nil)
         #expect(ScreenGeometry.screenIndex(showing: .zero, in: [Self.primary]) == nil)
         #expect(ScreenGeometry.screenIndex(showing: offscreen, in: []) == nil)
+    }
+
+    @Test func movesToTheNextDisplayKeepingRelativeSize() {
+        let leftHalf = CGRect(x: 0, y: 25, width: 720, height: 875)
+        #expect(
+            ScreenGeometry.quartzFrame(leftHalf, movedBy: 1, across: Self.side)
+                == CGRect(x: 1_440, y: 0, width: 960, height: 1_080))
+        #expect(
+            ScreenGeometry.quartzFrame(leftHalf, movedBy: -1, across: Self.side)
+                == CGRect(x: -1_080, y: -520, width: 540, height: 1_920))
+        let centred = CGRect(x: 1_920, y: 270, width: 960, height: 540)
+        #expect(
+            ScreenGeometry.quartzFrame(centred, movedBy: 1, across: Self.side)
+                == CGRect(x: -810, y: -40, width: 540, height: 960))
+        #expect(
+            ScreenGeometry.quartzFrame(centred, movedBy: -1, across: Self.side)
+                == CGRect(x: 360, y: 243, width: 720, height: 438))
+    }
+
+    @Test func ordersStackedDisplaysTopFirst() {
+        let screens = [Self.primary, Self.above, CGRect(x: 1_440, y: 0, width: 1_440, height: 900)]
+            .map { ScreenGeometry.Screen(frame: $0, visibleFrame: $0) }
+        let window = CGRect(x: 0, y: 0, width: 720, height: 450)
+        #expect(
+            ScreenGeometry.quartzFrame(window, movedBy: 1, across: screens)
+                == CGRect(x: 1_440, y: 0, width: 720, height: 450))
+        #expect(
+            ScreenGeometry.quartzFrame(window, movedBy: -1, across: screens)
+                == CGRect(x: 0, y: -1_080, width: 960, height: 540))
+        #expect(
+            ScreenGeometry.quartzFrame(window, movedBy: 2, across: screens)
+                == CGRect(x: 0, y: -1_080, width: 960, height: 540))
+    }
+
+    @Test func staysPutWithOneDisplayOrOffscreen() {
+        let window = CGRect(x: 0, y: 25, width: 720, height: 875)
+        #expect(ScreenGeometry.quartzFrame(window, movedBy: 1, across: [Self.side[0]]) == nil)
+        #expect(ScreenGeometry.quartzFrame(window, movedBy: 3, across: Self.side) == nil)
+        #expect(ScreenGeometry.quartzFrame(window, movedBy: 1, across: []) == nil)
+        let offscreen = CGRect(x: 9_000, y: 0, width: 800, height: 400)
+        #expect(ScreenGeometry.quartzFrame(offscreen, movedBy: 1, across: Self.side) == nil)
     }
 
     @Test func centersOnTheVisibleFrame() {
