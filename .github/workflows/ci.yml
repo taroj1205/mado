@@ -109,7 +109,7 @@ jobs:
             COMPILATION_CACHE_LIMIT_SIZE=1G
 
       - name: Save build cache
-        if: github.ref == 'refs/heads/main' || github.head_ref == 'chore/ci-compilation-cache'
+        if: github.ref == 'refs/heads/main'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/CompilationCache.noindex
