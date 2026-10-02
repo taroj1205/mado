@@ -8,17 +8,27 @@ import WindowKit
 
 @MainActor
 final class ItemEditor {
+    enum Edit {
+        case field(ItemSheet.Field)
+        case createQuicklink
+        case editQuicklink
+    }
+
     private struct Host {
         let panel: GlassPanel
         let content: NSView?
         let focus: NSView?
     }
 
+    private static let badLink = "Mado can’t open this link. Use a web address or a folder path."
+
     let sheet = ItemSheet()
+    let quicklinkSheet = QuicklinkSheet()
     var onHotKey: ((String) -> Void)?
     var onSave: ((_ id: String, _ resetsRanking: Bool) -> Void)?
 
     private(set) var settings: ItemSettings
+    private(set) var quicklinks: Quicklinks
     private let logger = Log.logger("App")
     private let modules: ModuleManager?
     private let registry: HotKeyRegistry?
@@ -30,11 +40,16 @@ final class ItemEditor {
         modules: ModuleManager?, registry: HotKeyRegistry?, name: @escaping (String) -> String?
     ) {
         settings = ItemSettings.load(from: modules)
+        quicklinks = Quicklinks.load(from: modules)
         self.modules = modules
         self.registry = registry
         self.name = name
         sheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         sheet.onCancel = { [weak self] in self?.close() }
+        quicklinkSheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
+        quicklinkSheet.onCancel = { [weak self] in self?.close() }
+        quicklinkSheet.applications = { Quicklink.applications(for: $0) }
+        quicklinkSheet.websiteIcon = { await Quicklink.websiteIcon(for: $0) }
     }
 
     func start() {
@@ -43,14 +58,64 @@ final class ItemEditor {
         }
     }
 
-    func open(
+    func edits(for id: String) -> [Edit] {
+        if quicklinks[id] != nil { return [.field(.favourite), .editQuicklink] }
+        let fields: [Edit] = [.field(.favourite), .field(.hotkey), .field(.aliases)]
+        return id == Quicklink.createID ? fields : fields + [.createQuicklink]
+    }
+
+    func action(for edit: Edit, on id: String) -> LauncherView.Action {
+        switch edit {
+        case .field(let field): LauncherView.Action(field.title(favourite: settings[id].favourite))
+        case .createQuicklink: LauncherView.Action(Quicklink.createTitle, keys: ["⌘", "⇧", "L"])
+        case .editQuicklink: LauncherView.Action("Edit Quicklink")
+        }
+    }
+
+    func perform(
+        _ edit: Edit, for item: ResultList.Item, ranking: String?, in panel: GlassPanel
+    ) {
+        switch edit {
+        case .field(let field):
+            open(field, for: item, ranking: ranking, in: panel)
+
+        case .createQuicklink:
+            let link = item.file.map { Quicklink(name: item.title, link: $0.path) }
+            openQuicklink(link ?? Quicklink(name: "", link: ""), in: panel)
+
+        case .editQuicklink:
+            if let link = quicklinks[item.id] {
+                openQuicklink(link, in: panel)
+            }
+        }
+    }
+
+    func openQuicklink(_ link: Quicklink, in panel: GlassPanel) {
+        present(quicklinkSheet, in: panel)
+        let current = settings[link.id]
+        quicklinkSheet.conflict = { [weak self] in self?.conflict(for: $0, besides: link.id) }
+        quicklinkSheet.onSave = { [weak self] in self?.save($0, as: link) }
+        quicklinkSheet.show(
+            QuicklinkSheet.Values(
+                name: link.name, link: link.link, app: link.app, icon: link.icon,
+                alias: current.aliases.first ?? "", hotkey: current.hotkey),
+            editing: quicklinks[link.id] != nil)
+    }
+
+    func close() {
+        guard let host else { return }
+        self.host = nil
+        host.panel.glass.contentView = host.content
+        host.panel.initialFirstResponder = host.focus
+        host.panel.makeFirstResponder(host.focus)
+        (host.focus as? NSTextField)?.selectText(nil)
+    }
+
+    private func open(
         _ field: ItemSheet.Field, for item: ResultList.Item, ranking: String?,
         in panel: GlassPanel
     ) {
-        close()
-        host = Host(
-            panel: panel, content: panel.glass.contentView, focus: panel.initialFirstResponder)
-        panel.glass.contentView = sheet
+        present(sheet, in: panel)
         let current = settings[item.id]
         sheet.conflict = { [weak self] in self?.conflict(for: $0, besides: item.id) }
         sheet.onSave = { [weak self] in self?.save($0, for: item.id) }
@@ -62,13 +127,11 @@ final class ItemEditor {
             isApp: AppToggle.app(for: item.id) != nil)
     }
 
-    func close() {
-        guard let host else { return }
-        self.host = nil
-        host.panel.glass.contentView = host.content
-        host.panel.initialFirstResponder = host.focus
-        host.panel.makeFirstResponder(host.focus)
-        (host.focus as? NSTextField)?.selectText(nil)
+    private func present(_ view: NSView, in panel: GlassPanel) {
+        close()
+        host = Host(
+            panel: panel, content: panel.glass.contentView, focus: panel.initialFirstResponder)
+        panel.glass.contentView = view
     }
 
     func assign(_ hotkey: Shortcut?, to id: String) -> String? {
@@ -108,6 +171,25 @@ final class ItemEditor {
         settings.save(to: modules)
         close()
         onSave?(id, values.resetsRanking)
+        return nil
+    }
+
+    private func save(_ values: QuicklinkSheet.Values, as link: Quicklink) -> String? {
+        let saved = Quicklink(
+            name: values.name, link: values.link, app: values.app, icon: values.icon, id: link.id)
+        guard saved.url(for: "") != nil else { return Self.badLink }
+        if let problem = bind(values.hotkey, to: link.id) {
+            return problem
+        }
+        var item = settings[link.id]
+        item.aliases = values.alias.isEmpty ? [] : [values.alias]
+        item.hotkey = values.hotkey
+        settings[link.id] = item
+        settings.save(to: modules)
+        quicklinks.update(saved)
+        quicklinks.save(to: modules)
+        close()
+        onSave?(link.id, false)
         return nil
     }
 

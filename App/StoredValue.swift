@@ -42,3 +42,7 @@ extension ItemSettings: StoredValue {
 extension AnswerSettings: StoredValue {
     static let key = "answers"
 }
+
+extension Quicklinks: StoredValue {
+    static let key = "quicklinks"
+}

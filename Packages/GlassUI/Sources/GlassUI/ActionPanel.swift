@@ -103,9 +103,14 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     func performShortcut(_ event: NSEvent) -> Bool {
-        guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command,
-            (field.currentEditor() as? NSTextView)?.hasMarkedText() != true
-        else { return false }
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() != true else { return false }
+        if let index = actions.firstIndex(where: { $0.matches(event) }) {
+            onRun?(index)
+            return true
+        }
+        guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command else {
+            return false
+        }
         switch event.charactersIgnoringModifiers {
         case "k":
             close()
