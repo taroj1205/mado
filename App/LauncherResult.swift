@@ -9,6 +9,13 @@ enum LauncherResult {
     case command(Command)
     case pane(SettingsPane)
 
+    struct Sources {
+        let apps: AppIndex
+        let files: FileIndex
+        let commands: [Command]
+        let rates: ExchangeRates?
+    }
+
     private static let openApp = "Open Application"
     private static let answerID = "calculator"
     private static let fileLimit = 20
@@ -30,29 +37,31 @@ enum LauncherResult {
     }
 
     static func sections(
-        for query: String, apps: AppIndex, files: FileIndex, commands: [Command], usage: Usage
+        for query: String, in sources: Sources, usage: Usage
     ) -> [ResultList.Section] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let typed = !trimmed.isEmpty
         let candidates =
             typed
-            ? apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane) + commands.map(Self.command)
-            : commands.map(Self.command)
+            ? sources.apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane)
+                + sources.commands.map(Self.command)
+            : sources.commands.map(Self.command)
         let now = Date.now
         let ranked = Fuzzy.rank(
             candidates, by: query, bonus: { usage.bonus(for: $0.id, at: now) }, keys: \.keys)
         let fileBonus = { (file: FileIndex.File) in usage.bonus(for: file.url.path, at: now) }
         let found =
-            typed ? Fuzzy.rank(files.files, by: query, bonus: fileBonus) { [$0.key] } : []
+            typed ? Fuzzy.rank(sources.files.files, by: query, bonus: fileBonus) { [$0.key] } : []
         let results = [
             ResultList.Section(
-                title: typed ? "Results" : "Commands", items: ranked.map { $0.item(icons: apps) }),
+                title: typed ? "Results" : "Commands",
+                items: ranked.map { $0.item(icons: sources.apps) }),
             ResultList.Section(
                 title: "Files", items: found.prefix(fileLimit).map { item(for: $0, at: now) }),
         ]
         let answer =
             ColourAnswer.section(for: trimmed)
-            ?? Calculator.answer(for: trimmed).map { answer in
+            ?? Calculator.answer(for: trimmed, rates: sources.rates).map { answer in
                 ResultList.Section(title: answer.kind, items: [item(for: answer)])
             } ?? DictionaryAnswer.section(for: trimmed)
         guard let answer else {
@@ -81,9 +90,9 @@ enum LauncherResult {
     }
 
     static func actions(
-        for id: String, query: String, apps: AppIndex, files: FileIndex, commands: [Command]
+        for id: String, query: String, in sources: Sources
     ) -> [CommandAction] {
-        if let file = files.files.first(where: { $0.url.path == id }) {
+        if let file = sources.files.files.first(where: { $0.url.path == id }) {
             return [
                 CommandAction(id: "open", title: "Open") {
                     _ = try await NSWorkspace.shared.open(
@@ -92,7 +101,7 @@ enum LauncherResult {
                 reveal(file.url),
             ]
         }
-        if id == answerID, let answer = Calculator.answer(for: query) {
+        if id == answerID, let answer = Calculator.answer(for: query, rates: sources.rates) {
             return [
                 CommandAction(id: "copy", title: "Copy Answer") {
                     NSPasteboard.general.clearContents()
@@ -110,8 +119,8 @@ enum LauncherResult {
         if let fallback = Fallback.all.first(where: { $0.item.id == id }) {
             return [fallback.action(for: query.trimmingCharacters(in: .whitespacesAndNewlines))]
         }
-        guard let app = apps.apps.first(where: { $0.url.path == id }) else {
-            return commands.first { $0.id == id }?.actions ?? []
+        guard let app = sources.apps.apps.first(where: { $0.url.path == id }) else {
+            return sources.commands.first { $0.id == id }?.actions ?? []
         }
         return [
             CommandAction(id: "open", title: Self.openApp) {

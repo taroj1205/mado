@@ -145,7 +145,8 @@ public enum Calculator {
     ]
 
     public static func answer(
-        for query: String, now: Date = .now, local: TimeZone = .current
+        for query: String, now: Date = .now, local: TimeZone = .current,
+        rates: ExchangeRates? = nil
     ) -> Answer? {
         let text = query.lowercased()
             .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
@@ -155,6 +156,10 @@ public enum Calculator {
         if let conversion = Conversion.answer(for: text) { return conversion }
         if let time = TimeZones.answer(for: text, now: now, local: local) { return time }
         if let math = TimeMath.answer(for: text, now: now, local: local) { return math }
+        let home = Locale.current.currency?.identifier
+        if let money = Currency.answer(for: text, rates: rates, zone: local, home: home) {
+            return money
+        }
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }
@@ -207,7 +212,7 @@ public enum Calculator {
             result: format(result), resultDetail: words(for: result).map(capitalized) ?? "Result")
     }
 
-    private static func capitalized(_ text: String) -> String {
+    static func capitalized(_ text: String) -> String {
         text.prefix(1).uppercased() + text.dropFirst()
     }
 }
