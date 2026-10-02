@@ -5,6 +5,9 @@ import Testing
 
 @MainActor
 @Suite struct SnapPreviewTests {
+    private static let fadeChecks = 60
+    private static let fadeCheckMilliseconds = 50
+
     private let preview = SnapPreview()
     private let screen = NSScreen.screens[0]
 
@@ -72,16 +75,28 @@ import Testing
         #expect(preview.outline.opacity == 0)
     }
 
-    @Test(arguments: [false, true])
-    func endingFadesOutThenHidesThePanel(reducesMotion: Bool) async throws {
-        preview.reducesMotion = { reducesMotion }
+    @Test func endingFadesOutThenHidesThePanel() async throws {
+        preview.reducesMotion = { false }
         preview.begin(from: window, on: screen)
         preview.show(target)
 
         preview.end()
 
         #expect(preview.outline.opacity == 0)
-        try await Task.sleep(for: .milliseconds(300))
+        for _ in 0..<Self.fadeChecks where preview.panel.isVisible {
+            try await Task.sleep(for: .milliseconds(Self.fadeCheckMilliseconds))
+        }
+        #expect(!preview.panel.isVisible)
+    }
+
+    @Test func endingHidesThePanelAtOnceWhenReduceMotionIsOn() {
+        preview.reducesMotion = { true }
+        preview.begin(from: window, on: screen)
+        preview.show(target)
+
+        preview.end()
+
+        #expect(preview.outline.opacity == 0)
         #expect(!preview.panel.isVisible)
     }
 

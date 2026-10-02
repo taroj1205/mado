@@ -96,6 +96,11 @@ public final class SnapPreview {
 
     public func end() {
         guard panel.isVisible else { return }
+        guard !reducesMotion() else {
+            change(to: outline.frame, opacity: 0)
+            panel.orderOut(nil)
+            return
+        }
         isEnding = true
         change(to: outline.frame, opacity: 0) { [weak self] in
             guard let self, isEnding else { return }
