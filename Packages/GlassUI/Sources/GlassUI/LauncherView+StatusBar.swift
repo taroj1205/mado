@@ -4,9 +4,15 @@ extension LauncherView {
     public var pills: [StatusBar.Pill] {
         get { statusBar.pills }
         set {
+            let selected = selectedPill.map { statusBar.pills[$0].id }
             statusBar.pills = newValue
-            selectPill(nil)
-            showContext()
+            if let index = newValue.firstIndex(where: { $0.id == selected }) {
+                selectedPill = index
+            } else {
+                selectPill(nil)
+            }
+            statusBar.highlight(selectedPill)
+            showAction(of: results.selectedItem)
         }
     }
 
