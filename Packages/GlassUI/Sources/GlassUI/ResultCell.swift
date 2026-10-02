@@ -13,12 +13,15 @@ final class ResultCell: NSTableCellView {
     private static let titleSize: CGFloat = 14
     private static let subtitleSize: CGFloat = 13
     private static let kindSize: CGFloat = 12
+    private static let keyGap: CGFloat = 3
 
     let tile = NSBox()
     let symbol = NSImageView()
     let title = NSTextField(labelWithString: "")
     let subtitle = NSTextField(labelWithString: "")
     let kind = NSTextField(labelWithString: "")
+    let shortcut = NSStackView()
+    private let accessory = NSStackView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -30,7 +33,6 @@ final class ResultCell: NSTableCellView {
         tile.cornerRadius = Self.tileRadius
         tile.contentViewMargins = .zero
         symbol.symbolConfiguration = .init(pointSize: Self.symbolSize, weight: .medium)
-        symbol.contentTintColor = .labelColor
         tile.contentView = symbol
         title.font = .systemFont(ofSize: Self.titleSize, weight: .medium)
         title.lineBreakMode = .byTruncatingMiddle
@@ -42,8 +44,13 @@ final class ResultCell: NSTableCellView {
         subtitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
         kind.font = .systemFont(ofSize: Self.kindSize)
         kind.textColor = .secondaryLabelColor
+        shortcut.spacing = Self.keyGap
+        shortcut.setHuggingPriority(.defaultHigh, for: .horizontal)
+        accessory.setViews([kind, shortcut], in: .leading)
+        accessory.spacing = Self.gap
+        accessory.setHuggingPriority(.defaultHigh, for: .horizontal)
         setAccessibilityChildren([])
-        layout(tile, title, subtitle, kind)
+        layout(tile, title, subtitle, accessory)
     }
 
     @available(*, unavailable)
@@ -54,11 +61,15 @@ final class ResultCell: NSTableCellView {
     func show(_ item: ResultList.Item) {
         symbol.image =
             item.icon ?? NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
-        tile.fillColor = item.icon == nil ? ResultRowView.fill : .clear
+        symbol.contentTintColor = item.tint == nil ? .labelColor : .white
+        tile.fillColor = item.icon == nil ? item.tint ?? ResultRowView.fill : .clear
         tile.borderWidth = item.icon == nil ? Self.tileBorder : 0
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
+        kind.isHidden = item.kind.isEmpty
+        shortcut.setViews(item.shortcut.map(FloatingCapsule.keycap), in: .leading)
+        shortcut.isHidden = item.shortcut.isEmpty
         setAccessibilityLabel(
             [item.title, item.kind, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
     }
@@ -75,8 +86,10 @@ final class ResultCell: NSTableCellView {
             tile.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.leadingInset),
             title.leadingAnchor.constraint(equalTo: tile.trailingAnchor, constant: Self.gap),
             subtitle.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: Self.gap),
-            kind.leadingAnchor.constraint(equalTo: subtitle.trailingAnchor, constant: Self.gap),
-            kind.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.trailingInset),
+            accessory.leadingAnchor.constraint(
+                equalTo: subtitle.trailingAnchor, constant: Self.gap),
+            accessory.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.trailingInset),
         ])
     }
 }
