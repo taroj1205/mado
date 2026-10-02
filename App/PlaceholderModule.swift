@@ -12,3 +12,11 @@ struct PlaceholderModule: Module {
         Log.logger(descriptor.id).debug("Stopped")
     }
 }
+
+extension ModuleDescriptor {
+    @MainActor
+    func makeModule() -> any Module {
+        id == KeyboardModule.id
+            ? KeyboardModule(descriptor: self) : PlaceholderModule(descriptor: self)
+    }
+}

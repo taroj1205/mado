@@ -108,11 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let manager = try ModuleManager(store: .standard())
             try SystemCommands.all.forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
-                let module: any Module =
-                    descriptor.id == KeyboardModule.id
-                    ? KeyboardModule(descriptor: descriptor)
-                    : PlaceholderModule(descriptor: descriptor)
-                try manager.register(module)
+                try manager.register(descriptor.makeModule())
             }
             try manager.startEnabledModules()
             return manager
