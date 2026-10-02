@@ -12,12 +12,16 @@ extension AppDelegate {
     }
 
     func showGlances() {
-        statusPills.show(in: launcherView)
         widgets.show(in: launcherView)
+        systemFeed.start { [weak self] stats in
+            guard let self else { return }
+            launcherView.pills = StatusPills.pills(for: stats)
+            widgets.show(stats, in: launcherView)
+        }
     }
 
     func hideGlances() {
-        statusPills.stop()
+        systemFeed.stop()
         widgets.stop()
     }
 

@@ -5,6 +5,7 @@ public final class WidgetGrid: NSView {
         public let id: String
         public let value: String
         public let detail: String
+        public let meters: [Meter]
         public let action: String
         public let spoken: String
 
@@ -14,6 +15,28 @@ public final class WidgetGrid: NSView {
             self.detail = detail
             self.action = action
             self.spoken = spoken
+            meters = []
+        }
+
+        public init(id: String, meters: [Meter], action: String, spoken: String) {
+            self.id = id
+            self.meters = meters
+            self.action = action
+            self.spoken = spoken
+            value = ""
+            detail = ""
+        }
+    }
+
+    public struct Meter: Sendable, Equatable {
+        public let name: String
+        public let value: String
+        public let level: Double
+
+        public init(name: String, value: String, level: Double) {
+            self.name = name
+            self.value = value
+            self.level = level
         }
     }
 
