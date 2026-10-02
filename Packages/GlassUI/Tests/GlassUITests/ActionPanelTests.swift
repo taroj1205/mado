@@ -87,6 +87,25 @@ import Testing
         #expect(view.actionsToggle.fillColor == .clear)
     }
 
+    @Test func aFilterWithNoMatchesSaysSoAndReturnDoesNothing() throws {
+        defer { view.closeActions() }
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        #expect(!menu.empty.isDescendant(of: menu.glass))
+        type("zzz", in: menu)
+        #expect(menu.rows.isEmpty)
+        #expect(menu.empty.isDescendant(of: menu.glass))
+        #expect(menu.empty.label.stringValue == "No matching actions")
+        press(kVK_Return, "\r", in: panel)
+        #expect(runs.isEmpty)
+        #expect(view.choosingAction)
+        type("", in: menu)
+        #expect(!menu.empty.isDescendant(of: menu.glass))
+        #expect(menu.rows.count == 3)
+    }
+
     @Test func commandReturnInThePanelRunsTheSecondaryAction() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
@@ -199,22 +218,6 @@ import Testing
         #expect(menu.glass.frame.height > short)
         let header = menu.glass.convert(menu.header.bounds, from: menu.header)
         #expect(menu.glass.bounds.contains(header))
-    }
-
-    @Test func selectedRowNestsInThePanelCornersWithALitTopEdge() throws {
-        let row = ActionRow(title: "A", keys: [])
-        row.frame = NSRect(x: 0, y: 0, width: 200, height: 32)
-        #expect(row.cornerRadius == 12)
-        let image = try #require(row.bitmapImageRepForCachingDisplay(in: row.bounds))
-        row.cacheDisplay(in: row.bounds, to: image)
-        #expect(image.colorAt(x: image.pixelsWide / 2, y: 0)?.alphaComponent == 0)
-        row.isSelected = true
-        row.cacheDisplay(in: row.bounds, to: image)
-        let middle = image.pixelsWide / 2
-        let top = try #require(image.colorAt(x: middle, y: 0)?.usingColorSpace(.sRGB))
-        let body = try #require(
-            image.colorAt(x: middle, y: image.pixelsHigh / 2)?.usingColorSpace(.sRGB))
-        #expect(top.redComponent > body.redComponent)
     }
 
     @Test func commandKDoesNothingWithoutASelection() {

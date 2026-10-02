@@ -18,6 +18,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     let header = NSTextField(labelWithString: "")
     let field = NSTextField()
     private let list = NSStackView()
+    let empty = ActionRow.note("No matching actions")
     var onRun: ((Int) -> Void)?
     var onClose: (() -> Void)?
     private(set) var rows: [ActionRow] = []
@@ -124,7 +125,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         shown = actions.indices.filter { index in
             query.isEmpty || actions[index].title.localizedStandardContains(query)
         }
-        for row in rows {
+        for row in list.arrangedSubviews {
             row.removeFromSuperview()
         }
         rows = shown.map { index in
@@ -132,7 +133,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             row.onPress = { [weak self] in self?.onRun?(index) }
             return row
         }
-        for row in rows {
+        for row in rows.isEmpty ? [empty] : rows {
             list.addArrangedSubview(row)
             row.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
         }

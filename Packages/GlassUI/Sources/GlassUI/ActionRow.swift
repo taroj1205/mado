@@ -57,6 +57,13 @@ final class ActionRow: NSBox {
         nil
     }
 
+    static func note(_ text: String) -> ActionRow {
+        let row = ActionRow(title: text, keys: [])
+        row.label.textColor = .secondaryLabelColor
+        row.setAccessibilityRole(.staticText)
+        return row
+    }
+
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
         true
     }
@@ -66,7 +73,8 @@ final class ActionRow: NSBox {
     }
 
     override func accessibilityPerformPress() -> Bool {
-        onPress?()
+        guard let onPress else { return false }
+        onPress()
         return true
     }
 
