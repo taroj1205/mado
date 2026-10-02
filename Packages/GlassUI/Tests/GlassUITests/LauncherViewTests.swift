@@ -19,6 +19,9 @@ import Testing
                 items: [item("Safari", action: "Open Application"), item("Notes")]),
             .init(title: "Commands", items: [item("Sleep")]),
         ]
+        view.actions = { _ in
+            [.init("Open", keys: ["↵"]), .init("Show in Finder", keys: ["⌘", "↵"])]
+        }
         panel.makeFirstResponder(view.field)
     }
 

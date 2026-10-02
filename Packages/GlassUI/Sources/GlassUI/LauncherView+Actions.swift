@@ -1,6 +1,19 @@
 import AppKit
 
 extension LauncherView {
+    public struct Action: Equatable, Sendable {
+        public static let primaryKeys = ["↵"]
+        public static let secondaryKeys = ["⌘", "↵"]
+
+        public let title: String
+        public let keys: [String]
+
+        public init(_ title: String, keys: [String] = []) {
+            self.title = title
+            self.keys = keys
+        }
+    }
+
     func showActions() {
         guard let item = results.selectedItem else { return }
         closePreview()
@@ -13,8 +26,16 @@ extension LauncherView {
         actionPanel = menu
         actionsToggle.fillColor = ResultRowView.fill
         menu.show(
-            actionTitles?(item) ?? [], for: item.title, above: actionCapsule,
+            actions?(item) ?? [], for: item.title, above: actionCapsule,
             gap: Self.capsuleInset)
+    }
+
+    func toggleActions() {
+        if choosingAction {
+            closeActions()
+        } else {
+            showActions()
+        }
     }
 
     func closeActions() {

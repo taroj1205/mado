@@ -1,6 +1,8 @@
 import AppKit
 
 extension LauncherView {
+    public var scoped: Bool { rootQuery != nil }
+
     public func enter(placeholder: String) {
         rootQuery = rootQuery ?? field.stringValue
         showScope(placeholder: placeholder)
@@ -19,8 +21,11 @@ extension LauncherView {
         let inside = placeholder != nil
         icon.isHidden = inside
         back.isHidden = !inside
-        NSLayoutConstraint.deactivate([inside ? fieldAfterIcon : fieldAfterBack])
-        NSLayoutConstraint.activate([inside ? fieldAfterBack : fieldAfterIcon])
+        let leading: NSView = inside ? back : icon
+        fieldLeading.isActive = false
+        fieldLeading = field.leadingAnchor.constraint(
+            equalTo: leading.trailingAnchor, constant: Self.searchIconGap)
+        fieldLeading.isActive = true
         field.placeholderString = placeholder ?? Self.searchPlaceholder
     }
 }

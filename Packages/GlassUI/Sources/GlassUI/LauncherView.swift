@@ -1,10 +1,10 @@
 public import AppKit
 
-public final class LauncherView: NSView, NSTextFieldDelegate {
+public final class LauncherView: NSView {
     private static let searchBarHeight: CGFloat = 60
     private static let searchInset: CGFloat = 20
     private static let searchFontSize: CGFloat = 20
-    private static let searchIconGap: CGFloat = 12
+    static let searchIconGap: CGFloat = 12
     static let searchPlaceholder = "Search apps and commands…"
     private static let backInset: CGFloat = 14
     private static let resultsInset: CGFloat = 8
@@ -19,7 +19,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
-    public var actionTitles: ((ResultList.Item) -> [String])?
+    public var actions: ((ResultList.Item) -> [Action])?
     public var context: String? {
         didSet { showContext() }
     }
@@ -38,15 +38,12 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private var browsing = false
     var rootQuery: String?
     let icon = NSImageView()
-    lazy var fieldAfterIcon = field.leadingAnchor.constraint(
+    lazy var fieldLeading = field.leadingAnchor.constraint(
         equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
-    lazy var fieldAfterBack = field.leadingAnchor.constraint(
-        equalTo: back.trailingAnchor, constant: Self.searchIconGap)
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
     public var choosingAction: Bool { actionPanel?.isVisible == true }
-    public var scoped: Bool { rootQuery != nil }
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
@@ -76,7 +73,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             icon.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             back.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.backInset),
             back.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            fieldAfterIcon,
+            fieldLeading,
             field.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.searchInset),
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -114,6 +111,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
+        actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
     }
@@ -126,7 +124,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
-        case let key where Self.returnKeys.contains(key): run(1)
+        case let key where Self.returnKeys.contains(key): runSecondary()
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
         case let key?: return runShortcut(key) || super.performKeyEquivalent(with: event)
@@ -152,7 +150,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             return false
 
         case .leftMouseDown:
-            if actionPanel?.contains(event.locationInWindow) != true {
+            let point = event.locationInWindow
+            let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
+            if !onToggle, actionPanel?.contains(point) != true {
                 closeActions()
             }
             return false
@@ -160,36 +160,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         default:
             return false
         }
-    }
-
-    public func controlTextDidChange(_: Notification) {
-        endBrowsing()
-        onQuery?(field.stringValue)
-    }
-
-    public func control(
-        _: NSControl, textView: NSTextView, doCommandBy selector: Selector
-    ) -> Bool {
-        switch selector {
-        case #selector(NSResponder.moveUp):
-            results.selectPrevious()
-            selectionMoved()
-
-        case #selector(NSResponder.moveDown):
-            results.selectNext()
-            selectionMoved()
-
-        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
-        case #selector(NSResponder.cancelOperation) where previewing: closePreview()
-        case #selector(NSResponder.cancelOperation) where scoped: leave()
-        case #selector(NSResponder.cancelOperation): onCancel?()
-        case #selector(NSResponder.deleteBackward) where scoped && textView.string.isEmpty: leave()
-
-        default:
-            endBrowsing()
-            return false
-        }
-        return true
     }
 
     func replaceQuery(with query: String) {
@@ -270,13 +240,20 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         }
     }
 
-    private func selectionMoved() {
+    func selectionMoved() {
         browsing = true
         showContext()
     }
 
-    private func run(_ action: Int) {
+    func run(_ action: Int) {
         guard let item = results.selectedItem else { return }
         onRun?(item, action)
+    }
+
+    private func runSecondary() {
+        guard let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
+        else { return }
+        onRun?(item, index)
     }
 }

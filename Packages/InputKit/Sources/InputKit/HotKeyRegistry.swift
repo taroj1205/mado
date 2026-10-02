@@ -11,6 +11,19 @@ public final class HotKeyRegistry {
     private var entries: [UInt32: Entry] = [:]
     private var nextID: UInt32 = 1
 
+    public var isSuspended = false {
+        didSet {
+            guard isSuspended != oldValue else { return }
+            for (id, entry) in entries {
+                if isSuspended {
+                    backend.unregister(id: id)
+                } else {
+                    _ = backend.register(entry.shortcut, id: id)
+                }
+            }
+        }
+    }
+
     public convenience init() throws(HotKeyError) {
         self.init(backend: try CarbonHotKeyBackend())
     }
@@ -42,7 +55,7 @@ public final class HotKeyRegistry {
             throw .duplicate(shortcut)
         }
         let id = nextID
-        let status = backend.register(shortcut, id: id)
+        let status = isSuspended ? 0 : backend.register(shortcut, id: id)
         guard status == 0 else {
             throw .refused(status)
         }
@@ -52,7 +65,7 @@ public final class HotKeyRegistry {
     }
 
     public func unregister(_ registration: HotKeyRegistration) {
-        if entries.removeValue(forKey: registration.id) != nil {
+        if entries.removeValue(forKey: registration.id) != nil, !isSuspended {
             backend.unregister(id: registration.id)
         }
     }

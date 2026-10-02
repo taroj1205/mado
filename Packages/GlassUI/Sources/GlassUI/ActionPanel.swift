@@ -3,7 +3,6 @@ import AppKit
 @MainActor
 final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let width: CGFloat = 316
-    private static let shortcuts = [["↵"], ["⌘", "↵"]]
     private static let radius: CGFloat = 18
     private static let inset: CGFloat = 6
     private static let rowGap: CGFloat = 1
@@ -24,7 +23,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private(set) var rows: [ActionRow] = []
     private var shown: [Int] = []
     private var selected = 0
-    private var titles: [String] = []
+    private var actions: [LauncherView.Action] = []
 
     var isVisible: Bool { unsafe glass.superview != nil }
 
@@ -57,9 +56,11 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         ]
     }
 
-    func show(_ titles: [String], for title: String, above anchor: NSView, gap: CGFloat) {
+    func show(
+        _ actions: [LauncherView.Action], for title: String, above anchor: NSView, gap: CGFloat
+    ) {
         guard let host = unsafe anchor.superview else { return }
-        self.titles = titles
+        self.actions = actions
         header.stringValue = title
         list.setAccessibilityLabel("Actions for \(title)")
         field.stringValue = ""
@@ -103,8 +104,16 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             (field.currentEditor() as? NSTextView)?.hasMarkedText() != true
         else { return false }
         switch event.charactersIgnoringModifiers {
-        case "k": close()
-        case let key where LauncherView.returnKeys.contains(key) && titles.count > 1: onRun?(1)
+        case "k":
+            close()
+
+        case let key where LauncherView.returnKeys.contains(key):
+            let secondary = LauncherView.Action.secondaryKeys
+            guard let index = actions.firstIndex(where: { $0.keys == secondary }) else {
+                return false
+            }
+            onRun?(index)
+
         default: return false
         }
         return true
@@ -112,16 +121,14 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
 
     private func filter() {
         let query = field.stringValue.trimmingCharacters(in: .whitespaces)
-        shown = titles.indices.filter { index in
-            query.isEmpty || titles[index].localizedStandardContains(query)
+        shown = actions.indices.filter { index in
+            query.isEmpty || actions[index].title.localizedStandardContains(query)
         }
         for row in rows {
             row.removeFromSuperview()
         }
         rows = shown.map { index in
-            let row = ActionRow(
-                title: titles[index],
-                keys: Self.shortcuts.indices.contains(index) ? Self.shortcuts[index] : [])
+            let row = ActionRow(title: actions[index].title, keys: actions[index].keys)
             row.onPress = { [weak self] in self?.onRun?(index) }
             return row
         }

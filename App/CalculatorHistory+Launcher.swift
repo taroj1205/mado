@@ -35,10 +35,6 @@ extension CalculatorHistory {
         id == commandID
     }
 
-    static func owns(_ id: String) -> Bool {
-        id.hasPrefix(entryPrefix)
-    }
-
     private static func title(of day: Date, now: Date, calendar: Calendar) -> String {
         if calendar.isDate(day, inSameDayAs: now) { return "Today" }
         let yesterday = calendar.date(byAdding: .day, value: -1, to: now)
@@ -70,7 +66,9 @@ extension CalculatorHistory {
         }
     }
 
-    func sections(for query: String, now: Date, calendar: Calendar) -> [ResultList.Section] {
+    func sections(for query: String) -> [ResultList.Section] {
+        let now = Date.now
+        let calendar = Calendar.current
         let days = days(matching: query, calendar: calendar)
         guard !days.isEmpty else {
             let notice =
