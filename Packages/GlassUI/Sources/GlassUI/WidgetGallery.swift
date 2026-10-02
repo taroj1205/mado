@@ -58,6 +58,7 @@ public final class WidgetGallery: NSView {
     private static let side: CGFloat = 20
     private static let footerY: CGFloat = 14
     private static let countSize: CGFloat = 12.5
+    private static let doneHeight: CGFloat = 30
 
     public let filter = NSSegmentedControl(
         labels: ["All"] + Group.allCases.map(\.title), trackingMode: .selectOne, target: nil,
@@ -72,7 +73,7 @@ public final class WidgetGallery: NSView {
     let cards: [WidgetGalleryCard]
     let grid = NSStackView()
     let count = NSTextField(labelWithString: "")
-    let done = NSButton(title: "Done", target: nil, action: nil)
+    let done = PillButton("Done", height: doneHeight)
 
     var shown: [WidgetGalleryCard] {
         let group = filter.selectedSegment > 0 ? Group.allCases[filter.selectedSegment - 1] : nil
@@ -94,7 +95,6 @@ public final class WidgetGallery: NSView {
         grid.spacing = Self.gap
         count.font = .systemFont(ofSize: Self.countSize)
         count.textColor = .secondaryLabelColor
-        done.bezelStyle = .push
         done.keyEquivalent = "\r"
         done.target = self
         done.action = #selector(finish)

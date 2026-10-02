@@ -16,9 +16,11 @@ final class WidgetGalleryCard: NSView {
     private static let summarySize: CGFloat = 12
     private static let badgeSize: CGFloat = 12
     private static let sizeSize: CGFloat = 11
+    private static let addHeight: CGFloat = 24
+    private static let fade: TimeInterval = 0.2
 
     let card: WidgetGallery.Card
-    let add = NSButton(title: "Add", target: nil, action: nil)
+    let add = PillButton("Add", height: addHeight)
     let added = NSStackView()
     var onAdd: (() -> Void)?
 
@@ -26,6 +28,15 @@ final class WidgetGalleryCard: NSView {
         didSet {
             add.isHidden = isAdded
             added.isHidden = !isAdded
+            guard isAdded, !oldValue, unsafe window != nil,
+                !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            else { return }
+            added.alphaValue = 0
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = Self.fade
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                added.animator().alphaValue = 1
+            }
         }
     }
 
@@ -113,8 +124,6 @@ final class WidgetGalleryCard: NSView {
             "Added", size: Self.badgeSize, color: .systemGreen, weight: .semibold)
         added.setViews([check, badge], in: .leading)
         added.spacing = Self.badgeGap
-        add.bezelStyle = .push
-        add.bezelColor = .controlAccentColor
         add.target = self
         add.action = #selector(pressed)
         add.setAccessibilityLabel("Add \(card.name)")

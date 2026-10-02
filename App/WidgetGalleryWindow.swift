@@ -26,6 +26,7 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate {
             window.center()
         }
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(nil)
     }
 
     func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
