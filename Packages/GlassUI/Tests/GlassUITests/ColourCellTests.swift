@@ -42,6 +42,9 @@ import Testing
         #expect(cell.card.frame == NSRect(x: 4, y: 4, width: cell.bounds.width - 8, height: 130))
         let swatch = cell.convert(cell.swatch.bounds, from: cell.swatch)
         #expect(swatch.size == NSSize(width: 96, height: 96))
+        let box = cell.card.frame
+        #expect(abs(swatch.midY - box.midY) < 1)
+        #expect(abs(swatch.minX - box.minX - 19) < 1)
         let columns = [cell.hex, cell.rgb, cell.hsl].map { cell.convert($0.bounds, from: $0) }
         #expect(swatch.maxX < columns[0].minX)
         #expect(columns[0].maxX < columns[1].minX)

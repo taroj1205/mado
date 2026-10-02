@@ -131,17 +131,22 @@ final class ColourCell: NSTableCellView {
         info.spacing = Self.columnGap
         let content = NSStackView(views: [swatch, info])
         content.spacing = Self.gap
-        content.edgeInsets = NSEdgeInsets(
-            top: Self.cardPadding, left: Self.cardPaddingSide, bottom: Self.cardPadding,
-            right: Self.cardPaddingSide)
-        card.contentView = content
-        card.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(card)
+        let inset = Self.cardPadding + Self.cardBorder
+        let side = Self.cardPaddingSide + Self.cardBorder
+        content.edgeInsets = NSEdgeInsets(top: inset, left: side, bottom: inset, right: side)
+        for view in [card, content] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(view)
+        }
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: topAnchor, constant: Self.cardTop),
             card.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.cardSide),
             card.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.cardSide),
             card.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.cardBottom),
+            content.topAnchor.constraint(equalTo: card.topAnchor),
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor),
             swatch.widthAnchor.constraint(equalToConstant: Self.swatchSize),
             swatch.heightAnchor.constraint(equalToConstant: Self.swatchSize),
             values.widthAnchor.constraint(equalTo: info.widthAnchor),
