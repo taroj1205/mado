@@ -4,9 +4,11 @@ import SystemConfiguration
 
 extension SystemSampler {
     private static let buds = ["device_batteryLevelLeft", "device_batteryLevelRight"]
+    private static let headsets: Set = ["Headphones", "Headset"]
     private static let percent = 100.0
 
-    static func headphones() -> SystemStats.Headphones? {
+    @concurrent
+    static func headphones() async -> SystemStats.Headphones? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
         process.arguments = ["-json", "-timeout", "2", "SPBluetoothDataType"]
@@ -25,9 +27,11 @@ extension SystemSampler {
             let devices = bluetooth["device_connected"] as? [[String: [String: Any]]]
         else { return nil }
         for (name, info) in devices.flatMap(\.self) {
-            let levels = buds.compactMap { (info[$0] as? String).flatMap(level) }
-            if let lowest = levels.min() {
-                return SystemStats.Headphones(name: name, level: lowest)
+            let isHeadset = headsets.contains(info["device_minorType"] as? String ?? "")
+            let budLevel = buds.compactMap { level(info[$0]) }.min()
+            let mainLevel = isHeadset ? level(info["device_batteryLevelMain"]) : nil
+            if let found = budLevel ?? mainLevel {
+                return SystemStats.Headphones(name: name, level: found)
             }
         }
         return nil
@@ -49,8 +53,9 @@ extension SystemSampler {
         return .connected(network: interface.ssid())
     }
 
-    private static func level(_ text: String) -> Double? {
-        Double(text.filter(\.isNumber)).map { min($0 / percent, 1) }
+    private static func level(_ value: Any?) -> Double? {
+        guard let text = value as? String else { return nil }
+        return Double(text.prefix(while: \.isNumber)).map { min($0 / percent, 1) }
     }
 
     private static func status(of service: SCNetworkService) -> SCNetworkConnectionStatus? {

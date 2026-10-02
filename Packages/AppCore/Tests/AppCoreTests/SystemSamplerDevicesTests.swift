@@ -36,6 +36,24 @@ import Testing
         #expect(found == .init(name: "AirPods", level: 0.45))
     }
 
+    @Test func overEarHeadphonesFallBackToTheirMainLevel() {
+        let found = headphones(
+            """
+            { "AirPods Max": {
+                "device_batteryLevelMain": "70%", "device_minorType": "Headphones" } }
+            """)
+        #expect(found == .init(name: "AirPods Max", level: 0.7))
+    }
+
+    @Test func onlyTheLeadingNumberIsTheLevel() {
+        let found = headphones(
+            """
+            { "AirPods": {
+                "device_batteryLevelLeft": "80%   Last updated: 2026/10/03 01:59AM" } }
+            """)
+        #expect(found == .init(name: "AirPods", level: 0.8))
+    }
+
     @Test func earbudsThatAreNotConnectedAreIgnored() {
         #expect(headphones("") == nil)
         #expect(SystemSampler.headphones(inBluetoothProfile: Data("not json".utf8)) == nil)
