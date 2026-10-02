@@ -42,7 +42,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             scroll.drawsBackground = false
             scroll.automaticallyAdjustsContentInsets = false
             scroll.contentInsets = NSEdgeInsets(top: Self.topInset, left: 0, bottom: 0, right: 0)
-            view = scroll
+            let fill = NSBox()
+            fill.boxType = .custom
+            fill.titlePosition = .noTitle
+            fill.borderWidth = 0
+            fill.contentViewMargins = .zero
+            fill.fillColor = SettingsWindowController.tint
+            fill.contentView = scroll
+            view = fill
             table.selectRowIndexes([0], byExtendingSelection: false)
         }
 
@@ -93,6 +100,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private static let height: CGFloat = 608
     private static let sidebarWidth: CGFloat = 208
     private static let cornerRadius: CGFloat = 26
+    private static let tintGray: CGFloat = 0.094
+    private static let tintBlue: CGFloat = 0.118
+    private static let tintAlpha: CGFloat = 0.62
+    private static let tint = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: tintGray, green: tintGray, blue: tintBlue, alpha: tintAlpha)
+            : .clear
+    }
 
     private let tabs: NSTabViewController
 
@@ -114,7 +129,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         split.addSplitViewItem(sidebar)
         split.addSplitViewItem(NSSplitViewItem(viewController: pages))
 
-        let glass = GlassView(shape: .rounded(Self.cornerRadius))
+        let glass = GlassView(shape: .rounded(Self.cornerRadius), tint: Self.tint)
         glass.frame = split.splitView.bounds
         glass.autoresizingMask = [.width, .height]
         split.splitView.addSubview(glass, positioned: .below, relativeTo: nil)
