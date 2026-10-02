@@ -1,5 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
+import InputKit
+import IOKit.hidsystem
 import Testing
 
 @testable import ClipboardKit
@@ -28,10 +30,10 @@ import Testing
     @Test func sendsCommandVDownThenUp() throws {
         let events = try PasteTarget.commandV()
 
-        #expect(events.count == 2)
-        let keyV = Int64(kVK_ANSI_V)
+        let keyV = Int64(KeyboardLayout.commandKeyCode(typing: "v") ?? CGKeyCode(kVK_ANSI_V))
+        let leftCommand = CGEventFlags.maskCommand.rawValue | UInt64(NX_DEVICELCMDKEYMASK)
         #expect(events.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [keyV, keyV])
         #expect(events.map(\.type) == [.keyDown, .keyUp])
-        #expect(events.allSatisfy { $0.flags == .maskCommand })
+        #expect(events.allSatisfy { $0.flags.rawValue == leftCommand })
     }
 }

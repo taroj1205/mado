@@ -1,5 +1,7 @@
 public import AppKit
 import Carbon.HIToolbox
+import InputKit
+import IOKit.hidsystem
 
 @MainActor
 public struct PasteTarget {
@@ -32,11 +34,16 @@ public struct PasteTarget {
 
     static func commandV() throws -> [CGEvent] {
         let source = CGEventSource(stateID: .hidSystemState)
+        source?.setLocalEventsFilterDuringSuppressionState(
+            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
+            state: .eventSuppressionStateSuppressionInterval)
+        let key = KeyboardLayout.commandKeyCode(typing: "v") ?? CGKeyCode(kVK_ANSI_V)
+        let flags = CGEventFlags(
+            rawValue: CGEventFlags.maskCommand.rawValue | UInt64(NX_DEVICELCMDKEYMASK))
         let keyDowns = [true, false]
         let events = keyDowns.compactMap { down in
-            let event = CGEvent(
-                keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: down)
-            event?.flags = .maskCommand
+            let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
+            event?.flags = flags
             return event
         }
         guard events.count == keyDowns.count else { throw Failure.noKeyEvents }
