@@ -64,6 +64,9 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     let hotkey = HotKeyButton()
     let clear = NSButton(title: "Clear", target: nil, action: nil)
     let hotkeyHintLabel = ItemSheet.hint()
+    let mode = AppHotKeyMode.menu()
+    let modeHint = ItemSheet.hint()
+    private(set) lazy var modeRow = row("Mode", [mode, modeHint])
     let favourite = NSSwitch()
     let ranking = NSTextField(labelWithString: "")
     let resetRanking = NSButton(title: "Reset Ranking", target: nil, action: nil)
@@ -101,6 +104,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         }
         clear.action = #selector(clearHotkey)
         resetRanking.action = #selector(resetUsage)
+        modeHint.stringValue = AppHotKeyMode.toggle + AppHotKeyMode.summary
         layoutSheet()
     }
 
@@ -110,9 +114,11 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     }
 
     public func show(
-        _ item: ResultList.Item, values: Values, ranking summary: String?, opening field: Field
+        _ item: ResultList.Item, values: Values, ranking summary: String?, opening field: Field,
+        isApp: Bool = false
     ) {
         itemTitle = item.title
+        modeRow.isHidden = !isApp
         showHeader(item)
         aliasField.stringValue = ""
         aliases = values.aliases

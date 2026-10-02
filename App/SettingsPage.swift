@@ -4,15 +4,25 @@ import SearchKit
 
 @MainActor
 struct SettingsPage {
-    typealias Sections = (ModuleManager?, LauncherHotKeys, ExchangeRateFeed) -> [SettingsSection]
+    struct Context {
+        let modules: ModuleManager?
+        let hotKeys: LauncherHotKeys
+        let rates: ExchangeRateFeed
+        let apps: AppHotKeys
+    }
+
+    struct Tab {
+        let title: String
+        let sections: ((Context) -> [SettingsSection])?
+    }
 
     static let all: [Self] = [
-        Self("General", "gearshape") { modules, hotKeys, _ in
+        Self("General", "gearshape") { context in
             [
                 SettingsSection(
                     "Launcher",
                     [
-                        .init("Launcher hotkey", hotKeyPopUp(hotKeys, modules)),
+                        .init("Launcher hotkey", hotKeyPopUp(context.hotKeys, context.modules)),
                         .init(
                             "Launch at login",
                             SettingsSwitch(
@@ -22,17 +32,25 @@ struct SettingsPage {
                 SettingsSection(
                     "Window",
                     [
-                        .init("Show on", screenPopUp(modules)),
-                        .init("Keep last query", popUp(QueryLifetime.self, modules)),
+                        .init("Show on", screenPopUp(context.modules)),
+                        .init("Keep last query", popUp(QueryLifetime.self, context.modules)),
                     ]),
             ]
         },
-        Self("Search", "magnifyingglass") { modules, _, rates in answers(modules, rates) },
+        Self("Search", "magnifyingglass") { answers($0.modules, $0.rates) },
         Self("Widgets", "square.grid.2x2", module: module("widgets", "Widgets", enabled: true)),
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)),
-        Self("Windows", "rectangle.split.2x1", module: module("windows", "Windows", enabled: true)),
+        Self(
+            "Windows", "rectangle.split.2x1",
+            module: module("windows", "Windows", enabled: true),
+            tabs: [
+                Tab(title: "Layouts", sections: nil),
+                Tab(title: "Apps") { [$0.apps.section] },
+                Tab(title: "Radial Menu", sections: nil),
+                Tab(title: "Drag & Snap", sections: nil),
+            ]),
         Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
@@ -41,7 +59,7 @@ struct SettingsPage {
         Self("Extensions", "storefront"),
         Self("Shortcuts", "command"),
         Self("Permissions", "lock.shield"),
-        Self("Advanced", "gearshape.2") { _, _, _ in developer },
+        Self("Advanced", "gearshape.2") { _ in developer },
         Self("About", "person.crop.circle"),
     ]
 
@@ -66,16 +84,22 @@ struct SettingsPage {
     let title: String
     let symbol: String
     let module: ModuleDescriptor?
-    let sections: Sections
+    let tabs: [Tab]
 
     private init(
-        _ title: String, _ symbol: String, module: ModuleDescriptor? = nil,
-        sections: @escaping Sections = { _, _, _ in [] }
+        _ title: String, _ symbol: String, module: ModuleDescriptor?, tabs: [Tab]
     ) {
         self.title = title
         self.symbol = symbol
         self.module = module
-        self.sections = sections
+        self.tabs = tabs
+    }
+
+    private init(
+        _ title: String, _ symbol: String, module: ModuleDescriptor? = nil,
+        sections: @escaping (Context) -> [SettingsSection] = { _ in [] }
+    ) {
+        self.init(title, symbol, module: module, tabs: [Tab(title: title, sections: sections)])
     }
 
     private static func popUp<Setting: LauncherSetting>(

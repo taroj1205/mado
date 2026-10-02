@@ -164,7 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func runHotKey(of id: String) {
-        guard let action = LauncherResult.result(for: id, in: sources)?.actions.first else {
+        guard let action = LauncherResult.hotKeyAction(for: id, in: sources) else {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
@@ -195,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             usage.save(to: modules)
         }
         searchAgain()
+        settings?.reload()
     }
 
     private func recordUse(of id: String) {
@@ -266,7 +267,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc
     private func showSettings() {
         let controller =
-            settings ?? SettingsWindowController(modules: modules, hotKeys: hotKeys, rates: rates)
+            settings
+            ?? SettingsWindowController(
+                modules: modules, hotKeys: hotKeys, rates: rates, items: editor)
         settings = controller
         controller.showWindow(nil)
     }
