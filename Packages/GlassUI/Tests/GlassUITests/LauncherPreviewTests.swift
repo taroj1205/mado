@@ -6,7 +6,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite(.serialized) struct LauncherPreviewTests {
+@Suite(.serialized) final class LauncherPreviewTests {
     private let panel = GlassPanel(
         kind: .panel, contentRect: NSRect(x: 0, y: 0, width: 760, height: 476),
         shape: .rounded(28))
@@ -214,5 +214,9 @@ import Testing
         }
         if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
         panel.sendEvent(event)
+    }
+
+    isolated deinit {
+        panel.makeFirstResponder(nil)
     }
 }

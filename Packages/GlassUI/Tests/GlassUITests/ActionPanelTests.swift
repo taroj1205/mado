@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite(.serialized) struct ActionPanelTests {
+@Suite(.serialized) final class ActionPanelTests {
     private let panel = GlassPanel(
         kind: .panel, contentRect: NSRect(x: 100, y: 100, width: 760, height: 476),
         shape: .rounded(28))
@@ -244,5 +244,9 @@ import Testing
         .init(
             id: title, title: title, subtitle: "", kind: "Application", symbol: "star",
             action: "Open Application")
+    }
+
+    isolated deinit {
+        panel.makeFirstResponder(nil)
     }
 }

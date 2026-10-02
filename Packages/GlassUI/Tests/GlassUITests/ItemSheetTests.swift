@@ -6,7 +6,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite(.serialized) struct ItemSheetTests {
+@Suite(.serialized) final class ItemSheetTests {
     private let panel = GlassPanel(
         kind: .panel, contentRect: NSRect(x: 100, y: 100, width: 760, height: 476),
         shape: .rounded(28))
@@ -23,7 +23,6 @@ import Testing
     }
 
     @Test func showsTheResultsAliasesHotkeyFavouriteAndRanking() {
-        defer { panel.makeFirstResponder(nil) }
         sheet.show(
             terminal,
             values: .init(aliases: ["t", "term"], hotkey: controlOptionT, favourite: true),
@@ -119,7 +118,6 @@ import Testing
     }
 
     @Test func aConflictIsFlaggedAndBlocksSavingUntilCleared() {
-        defer { panel.makeFirstResponder(nil) }
         var saved: [ItemSheet.Values] = []
         sheet.conflict = { [controlOptionT] in $0 == controlOptionT ? "Safari" : nil }
         sheet.onSave = { values in
@@ -145,7 +143,6 @@ import Testing
     }
 
     @Test func theItemsOwnHotkeyIsNotAConflictAndShiftAloneIsNotAChord() {
-        defer { panel.makeFirstResponder(nil) }
         sheet.conflict = { _ in "Terminal" }
         sheet.show(terminal, values: .init(hotkey: controlOptionT), ranking: nil, opening: .hotkey)
 
@@ -157,7 +154,6 @@ import Testing
     }
 
     @Test func aProblemFromSavingStaysOnScreen() {
-        defer { panel.makeFirstResponder(nil) }
         let problem = "macOS wouldn’t register this hotkey. Try another."
         sheet.onSave = { _ in problem }
         sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey)
@@ -183,7 +179,6 @@ import Testing
     }
 
     @Test func tabGoesFromTheSheetToTheAliasFieldAndThenTheHotkey() {
-        defer { panel.makeFirstResponder(nil) }
         sheet.show(terminal, values: .init(), ranking: nil, opening: .aliases)
         panel.makeFirstResponder(sheet)
         press(kVK_Tab, "\t")
@@ -254,5 +249,9 @@ import Testing
         }
         if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
         panel.sendEvent(event)
+    }
+
+    isolated deinit {
+        panel.makeFirstResponder(nil)
     }
 }
