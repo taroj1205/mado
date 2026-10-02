@@ -46,7 +46,8 @@ extension LauncherView {
     }
 
     func pressWidget(_ index: Int) {
-        selectWidget(selectedWidget == index ? nil : index)
+        selectWidget(index)
+        onWidget?(widgets[index])
     }
 
     func moveUp() {
