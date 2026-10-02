@@ -1,4 +1,5 @@
 import AppCore
+import InputKit
 import os
 
 struct PlaceholderModule: Module {
@@ -15,12 +16,14 @@ struct PlaceholderModule: Module {
 
 extension ModuleDescriptor {
     @MainActor
-    func makeModule(in modules: ModuleManager) -> any Module {
+    func makeModule(in modules: ModuleManager, hotKeys: HotKeyRegistry?) -> any Module {
         switch id {
         case KeyboardModule.id: KeyboardModule(descriptor: self)
 
         case WindowsModule.id:
-            WindowsModule(descriptor: self) { [weak modules] in .load(from: modules) }
+            WindowsModule(descriptor: self, hotKeys: hotKeys) { [weak modules] in
+                .load(from: modules)
+            }
 
         default: PlaceholderModule(descriptor: self)
         }
