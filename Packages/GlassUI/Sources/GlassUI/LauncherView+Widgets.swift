@@ -5,16 +5,28 @@ extension LauncherView {
         get { widgetGrid.widgets }
         set {
             widgetGrid.widgets = newValue
-            if let selectedWidget, !newValue.indices.contains(selectedWidget) {
-                selectWidget(nil)
-            }
-            widgetGrid.highlight(selectedWidget)
-            showAction(of: results.selectedItem)
+            widgetsChanged()
+        }
+    }
+
+    public var widgetLayout: WidgetGrid.Layout? {
+        get { widgetGrid.tileLayout }
+        set {
+            widgetGrid.tileLayout = newValue
+            widgetsChanged()
         }
     }
 
     var showsWidgets: Bool {
-        onEmptyRootQuery && !widgets.isEmpty
+        onEmptyRootQuery && !widgetGrid.shown.isEmpty
+    }
+
+    private func widgetsChanged() {
+        if let selectedWidget, !widgetGrid.shown.indices.contains(selectedWidget) {
+            selectWidget(nil)
+        }
+        widgetGrid.highlight(selectedWidget)
+        showAction(of: results.selectedItem)
     }
 
     func placeWidgets(below separator: NSView) {
@@ -47,7 +59,7 @@ extension LauncherView {
 
     func pressWidget(_ index: Int) {
         selectWidget(index)
-        onWidget?(widgets[index])
+        onWidget?(widgetGrid.shown[index])
     }
 
     func moveUp() {
@@ -62,7 +74,8 @@ extension LauncherView {
         switch selector {
         case #selector(NSResponder.moveLeft): selectWidget(max(widget - 1, 0))
 
-        case #selector(NSResponder.moveRight): selectWidget(min(widget + 1, widgets.count - 1))
+        case #selector(NSResponder.moveRight):
+            selectWidget(min(widget + 1, widgetGrid.shown.count - 1))
 
         case #selector(NSResponder.moveDown):
             results.selectFirst()
@@ -72,7 +85,7 @@ extension LauncherView {
         case #selector(NSResponder.cancelOperation): selectWidget(nil)
 
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText():
-            onWidget?(widgets[widget])
+            onWidget?(widgetGrid.shown[widget])
 
         default:
             selectWidget(nil)
