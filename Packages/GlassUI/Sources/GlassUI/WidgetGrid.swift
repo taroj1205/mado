@@ -2,30 +2,44 @@ public import AppKit
 
 public final class WidgetGrid: NSView {
     public struct Widget: Sendable, Equatable {
+        static let wideSpan = 2
+
         public let id: String
-        public let value: String
-        public let detail: String
-        public let meters: [Meter]
+        public let content: Content
         public let action: String
         public let spoken: String
+        public let isWide: Bool
 
-        public init(id: String, value: String, detail: String, action: String, spoken: String) {
+        var span: Int {
+            isWide ? Self.wideSpan : 1
+        }
+
+        public init(
+            id: String, content: Content, action: String, spoken: String, isWide: Bool = false
+        ) {
             self.id = id
-            self.value = value
-            self.detail = detail
+            self.content = content
             self.action = action
             self.spoken = spoken
-            meters = []
+            self.isWide = isWide
+        }
+
+        public init(id: String, value: String, detail: String, action: String, spoken: String) {
+            self.init(
+                id: id, content: .value(value, detail: detail), action: action, spoken: spoken)
         }
 
         public init(id: String, meters: [Meter], action: String, spoken: String) {
-            self.id = id
-            self.meters = meters
-            self.action = action
-            self.spoken = spoken
-            value = ""
-            detail = ""
+            self.init(id: id, content: .meters(meters), action: action, spoken: spoken)
         }
+    }
+
+    public enum Content: Sendable, Equatable {
+        case value(String, detail: String)
+        case meters([Meter])
+        case loading(title: String)
+        case notice(title: String, headline: String, detail: String)
+        case permission(title: String, request: String, reason: String)
     }
 
     public struct Meter: Sendable, Equatable {
@@ -70,9 +84,17 @@ public final class WidgetGrid: NSView {
 
     var shown: [Widget] {
         switch tileLayout {
-        case .grid: widgets
-        case .strip: Array(widgets.prefix(Self.columns))
-        case nil: []
+        case .grid: return widgets
+
+        case .strip:
+            var used = 0
+            return Array(
+                widgets.prefix { widget in
+                    used += widget.span
+                    return used <= Self.columns
+                })
+
+        case nil: return []
         }
     }
 
@@ -87,7 +109,7 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = (tiles.count + Self.columns - 1) / Self.columns
+        let rows = (Self.cells(for: shown).last?.row ?? -1) + 1
         guard !isHidden, rows > 0 else { return NSSize(width: NSView.noIntrinsicMetric, height: 0) }
         let height = CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Self.gap
         return NSSize(width: NSView.noIntrinsicMetric, height: Self.top + height + Self.bottom)
@@ -108,18 +130,31 @@ public final class WidgetGrid: NSView {
         nil
     }
 
+    static func cells(for widgets: [Widget]) -> [(column: Int, row: Int)] {
+        var column = 0
+        var row = 0
+        return widgets.map { widget in
+            if column + widget.span > columns {
+                column = 0
+                row += 1
+            }
+            defer { column += widget.span }
+            return (column, row)
+        }
+    }
+
     override public func layout() {
         super.layout()
         let area = bounds.insetBy(dx: Self.inset, dy: 0)
         let gaps = CGFloat(Self.columns - 1) * Self.gap
         let width = (area.width - gaps) / CGFloat(Self.columns)
-        for (index, tile) in tiles.enumerated() {
-            let column = CGFloat(index % Self.columns)
-            let row = CGFloat(index / Self.columns)
+        let visible = shown
+        for ((tile, widget), cell) in zip(zip(tiles, visible), Self.cells(for: visible)) {
+            let span = CGFloat(widget.span)
             tile.frame = NSRect(
-                x: area.minX + column * (width + Self.gap),
-                y: Self.top + row * (rowHeight + Self.gap),
-                width: width, height: rowHeight)
+                x: area.minX + CGFloat(cell.column) * (width + Self.gap),
+                y: Self.top + CGFloat(cell.row) * (rowHeight + Self.gap),
+                width: span * width + (span - 1) * Self.gap, height: rowHeight)
         }
     }
 

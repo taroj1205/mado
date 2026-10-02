@@ -39,10 +39,14 @@ final class Widgets {
                 id: "clock", value: date.formatted(time), detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
-            .init(
-                id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
-                action: "Open Activity Monitor",
-                spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
+            cpu == nil
+                ? .init(
+                    id: system, content: .loading(title: "System"),
+                    action: "Open Activity Monitor", spoken: "System: loading")
+                : .init(
+                    id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
+                    action: "Open Activity Monitor",
+                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
         ]
     }
 
