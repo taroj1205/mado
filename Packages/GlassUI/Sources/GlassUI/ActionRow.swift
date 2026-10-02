@@ -7,6 +7,7 @@ final class ActionRow: NSBox {
     private static let trailing: CGFloat = 6
     private static let keyGap: CGFloat = 3
     private static let keyRadius: CGFloat = 5
+    private static let keySize: CGFloat = 20
     private static let fontSize: CGFloat = 13
     private static let selectedKeyAlpha = 0.22
 
@@ -19,7 +20,7 @@ final class ActionRow: NSBox {
 
     init(title text: String, keys: [String]) {
         label = NSTextField(labelWithString: text)
-        keycaps = keys.map { Keycap($0, radius: Self.keyRadius) }
+        keycaps = keys.map { Keycap($0, radius: Self.keyRadius, size: Self.keySize) }
         super.init(frame: .zero)
         boxType = .custom
         borderWidth = 0

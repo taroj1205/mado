@@ -26,9 +26,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let files = FileIndex()
     private let rates = ExchangeRateFeed()
     private var usage = Usage()
+    private lazy var registry = makeHotKeyRegistry()
     private lazy var hotKeys = LauncherHotKeys(
-        modules: modules, registry: makeHotKeyRegistry()
+        modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
+    private lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
+        guard let self else { return nil }
+        return LauncherResult.result(for: id, in: sources)?.name
+    }
     private var sources: LauncherResult.Sources {
         LauncherResult.Sources(
             apps: apps, files: files, commands: modules?.commands.all ?? [], rates: rates.rates)
@@ -44,8 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
-        usage = loadUsage()
-        NSApp.mainMenu = makeMainMenu()
+        usage = Usage.load(from: modules)
+        NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
         statusItem = StatusMenu.makeItem(
             target: self, open: #selector(showLauncher), settings: #selector(showSettings),
             hide: #selector(hideStatusItem))
@@ -60,6 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         rates.start()
         hotKeys.onChange = { [weak self] in self?.settings?.refresh() }
         hotKeys.start()
+        editor.onHotKey = { [weak self] in self?.runHotKey(of: $0) }
+        editor.onSave = { [weak self] in self?.saved($0, resettingRanking: $1) }
+        editor.start()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
@@ -70,44 +78,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         statusItem?.isVisible = true
         return true
-    }
-
-    private func makeMainMenu() -> NSMenu {
-        let app = NSMenu()
-        let settingsItem = app.addItem(
-            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        app.addItem(.separator())
-        app.addItem(
-            withTitle: "Hide Mado", action: #selector(NSApplication.hide), keyEquivalent: "h")
-        app.addItem(
-            withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
-        let window = NSMenu(title: "Window")
-        window.addItem(
-            withTitle: "Close", action: #selector(NSWindow.performClose), keyEquivalent: "w")
-        window.addItem(
-            withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize),
-            keyEquivalent: "m")
-        NSApp.windowsMenu = window
-        let edit = NSMenu(title: "Edit")
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
-        edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste), keyEquivalent: "v")
-        edit.addItem(
-            withTitle: "Paste and Match Style", action: #selector(NSTextView.pasteAsPlainText),
-            keyEquivalent: "v"
-        ).keyEquivalentModifierMask = [.command, .option, .shift]
-        edit.addItem(
-            withTitle: "Select All", action: #selector(NSText.selectAll), keyEquivalent: "a")
-
-        let menu = NSMenu()
-        for submenu in [app, edit, window] {
-            menu.addItem(withTitle: submenu.title, action: nil, keyEquivalent: "").submenu = submenu
-        }
-        return menu
     }
 
     private func makeModules() -> ModuleManager? {
@@ -122,15 +92,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             logger.error("Modules failed to load: \(error, privacy: .public)")
             return nil
-        }
-    }
-
-    private func loadUsage() -> Usage {
-        do {
-            return try Usage.load(from: modules)
-        } catch {
-            logger.error("Usage failed to load: \(error, privacy: .public)")
-            return Usage()
         }
     }
 
@@ -154,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
-        launcherView.actionTitles = { [weak self] in self?.actions(for: $0).map(\.title) ?? [] }
+        launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
@@ -167,7 +128,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             search: { [weak self] query in
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(for: query, in: sources, usage: usage)
+                    LauncherResult.sections(
+                        for: query, in: sources, usage: usage, items: editor.settings)
                 }
             },
             deliver: { [launcherView] sections in
@@ -177,37 +139,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             })
     }
 
-    private func actions(for item: ResultList.Item) -> [CommandAction] {
-        LauncherResult.actions(for: item.id, query: launcherView.field.stringValue, in: sources)
+    private func menu(
+        for item: ResultList.Item
+    ) -> (run: [CommandAction], edit: [ItemSheet.Field]) {
+        let run = LauncherResult.actions(
+            for: item.id, query: launcherView.field.stringValue, in: sources)
+        let editable = LauncherResult.result(for: item.id, in: sources) != nil
+        return (run, editable ? [.favourite, .hotkey, .aliases] : [])
+    }
+
+    private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
+        let (actions, edits) = menu(for: item)
+        let keys = [LauncherView.Action.primaryKeys, LauncherView.Action.secondaryKeys]
+        let favourite = editor.settings[item.id].favourite
+        return actions.enumerated().map { index, action in
+            LauncherView.Action(action.title, keys: keys.indices.contains(index) ? keys[index] : [])
+        } + edits.map { LauncherView.Action($0.title(favourite: favourite)) }
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
-        let actions = actions(for: item)
-        guard actions.indices.contains(index) else { return }
-        hideLauncher()
-        let action = actions[index]
+        let (actions, edits) = menu(for: item)
+        if actions.indices.contains(index) {
+            hideLauncher()
+            perform(actions[index], for: item.id, recordingUse: !edits.isEmpty)
+        } else if edits.indices.contains(index - actions.count), let launcher {
+            let ranking = usage.summary(of: item.id, at: .now)
+            editor.open(edits[index - actions.count], for: item, ranking: ranking, in: launcher)
+        }
+    }
+
+    private func runHotKey(of id: String) {
+        guard let action = LauncherResult.result(for: id, in: sources)?.actions.first else {
+            logger.error("Hotkey item \(id, privacy: .private) is gone")
+            return
+        }
+        if launcher?.isVisible == true {
+            hideLauncher()
+        }
+        perform(action, for: id, recordingUse: true)
+    }
+
+    private func perform(_ action: CommandAction, for id: String, recordingUse: Bool) {
         Task { [weak self, logger] in
             do {
                 try await action.perform()
-                if LauncherResult.isRanked(item) {
-                    self?.recordUse(of: item.id)
+                if recordingUse {
+                    self?.recordUse(of: id)
                 }
             } catch CocoaError.userCancelled {
-                logger.debug("Result \(item.id, privacy: .private) was canceled")
+                logger.debug("Result \(id, privacy: .private) was canceled")
             } catch {
-                logger.error(
-                    "Result \(item.id, privacy: .private) failed: \(error, privacy: .private)")
+                logger.error("Result \(id, privacy: .private) failed: \(error, privacy: .private)")
             }
         }
     }
 
+    private func saved(_ id: String, resettingRanking: Bool) {
+        if resettingRanking {
+            usage.forget(id)
+            usage.save(to: modules)
+        }
+        searchAgain()
+    }
+
     private func recordUse(of id: String) {
         usage.record(id, at: .now)
-        do {
-            try usage.save(to: modules)
-        } catch {
-            logger.error("Saving usage failed: \(error, privacy: .public)")
-        }
+        usage.save(to: modules)
     }
 
     private func searchAgain() {
@@ -231,6 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     #endif
 
     private func hideLauncher() {
+        editor.close()
         launcherView.endBrowsing()
         launcher?.orderOut(nil)
         launcherClosed = .now

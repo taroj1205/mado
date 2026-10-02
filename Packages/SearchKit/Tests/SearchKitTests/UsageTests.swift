@@ -56,6 +56,40 @@ import Testing
         #expect(usage.bonus(for: "safari", at: daysAgo(30)) == 8)
     }
 
+    @Test func summarisesHowOftenAndWhenAnItemWasOpened() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Pacific/Auckland"))
+        calendar.locale = Locale(identifier: "en_US")
+        var usage = Usage()
+        #expect(usage.summary(of: "safari", at: now, in: calendar) == nil)
+
+        usage.record("safari", at: now)
+        #expect(
+            usage.summary(of: "safari", at: now, in: calendar)
+                == "Opened 1 time · last today, 6:13\u{202F}PM")
+
+        usage.record("safari", at: now)
+        let tomorrow = now.addingTimeInterval(24 * 60 * 60)
+        let later = now.addingTimeInterval(10 * 24 * 60 * 60)
+        #expect(
+            usage.summary(of: "safari", at: tomorrow, in: calendar)
+                == "Opened 2 times · last yesterday, 6:13\u{202F}PM")
+        #expect(
+            usage.summary(of: "safari", at: later, in: calendar)
+                == "Opened 2 times · last May 9, 6:13\u{202F}PM")
+
+        usage.forget("safari")
+        #expect(usage.summary(of: "safari", at: now, in: calendar) == nil)
+    }
+
+    @Test func estimatesTheCountOfEntriesSavedBeforeCountsExisted() throws {
+        let json = #"{"entries":{"safari":{"weight":2.6,"date":800000000}}}"#
+
+        let usage = try JSONDecoder().decode(Usage.self, from: Data(json.utf8))
+
+        #expect(usage.entries["safari"] == Usage.Entry(weight: 2.6, date: now, count: 3))
+    }
+
     @Test func survivesAJSONRoundTrip() throws {
         var usage = Usage()
         usage.record("safari", at: now)

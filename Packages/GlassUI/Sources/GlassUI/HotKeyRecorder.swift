@@ -2,7 +2,6 @@ public import AppCore
 public import AppKit
 import Carbon.HIToolbox
 
-@safe
 public final class HotKeyRecorder: NSView {
     enum State: Equatable {
         case captured(HotKey)
@@ -33,7 +32,7 @@ public final class HotKeyRecorder: NSView {
     }
 
     private var tapCandidate: HotKey.ModifierKey?
-    private var systemHotKeysOff: UnsafeMutableRawPointer?
+    private var systemHotKeys = SystemHotKeyPause()
     private let field = HotKeyField()
     private let warning = NSStackView()
     private let warningLabel = NSTextField(wrappingLabelWithString: "")
@@ -82,7 +81,7 @@ public final class HotKeyRecorder: NSView {
         nil
     }
 
-    private static func modifiers(_ flags: NSEvent.ModifierFlags) -> Shortcut.Modifiers {
+    static func modifiers(_ flags: NSEvent.ModifierFlags) -> Shortcut.Modifiers {
         var result: Shortcut.Modifiers = []
         if flags.contains(.command) { result.insert(.command) }
         if flags.contains(.control) { result.insert(.control) }
@@ -96,22 +95,19 @@ public final class HotKeyRecorder: NSView {
     }
 
     override public func becomeFirstResponder() -> Bool {
-        if unsafe systemHotKeysOff == nil {
-            unsafe systemHotKeysOff = PushSymbolicHotKeyMode(
-                OptionBits(kHIHotKeyModeAllDisabledExceptUniversalAccess))
-        }
+        systemHotKeys.begin()
         return super.becomeFirstResponder()
     }
 
     override public func resignFirstResponder() -> Bool {
-        restoreSystemHotKeys()
+        systemHotKeys.end()
         return super.resignFirstResponder()
     }
 
     override public func viewWillMove(toWindow newWindow: NSWindow?) {
         super.viewWillMove(toWindow: newWindow)
         if newWindow == nil {
-            restoreSystemHotKeys()
+            systemHotKeys.end()
         }
     }
 
@@ -158,13 +154,6 @@ public final class HotKeyRecorder: NSView {
 
     private func focus() {
         unsafe window?.makeFirstResponder(self)
-    }
-
-    private func restoreSystemHotKeys() {
-        if let token = unsafe systemHotKeysOff {
-            unsafe PopSymbolicHotKeyMode(token)
-            unsafe systemHotKeysOff = nil
-        }
     }
 
     private func setUpWarning() {

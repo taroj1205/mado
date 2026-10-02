@@ -17,7 +17,12 @@ import Testing
         view.results.sections = [
             .init(title: "Results", items: [item("Terminal"), item("Notes")])
         ]
-        view.actionTitles = { _ in ["Open Application", "Show in Finder", "Copy Path"] }
+        view.actions = { _ in
+            [
+                .init("Open Application", keys: ["↵"]), .init("Show in Finder", keys: ["⌘", "↵"]),
+                .init("Copy Path"),
+            ]
+        }
         panel.makeFirstResponder(view.field)
     }
 
@@ -92,6 +97,18 @@ import Testing
         #expect(runs == ["Terminal 1"])
     }
 
+    @Test func commandReturnOnlyRunsTheActionMarkedSecondary() throws {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        view.actions = { _ in [.init("Open", keys: ["↵"]), .init("Add to Favourites")] }
+        press(kVK_Return, "\r", in: panel, [.command])
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        #expect(menu.rows.map { $0.keycaps.map(\.name.stringValue) } == [["↵"], []])
+        press(kVK_Return, "\r", in: panel, [.command])
+        #expect(runs.isEmpty)
+    }
+
     @Test func clickingARowRunsIt() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
@@ -142,8 +159,33 @@ import Testing
         #expect(!view.choosingAction)
     }
 
+    @Test func clickingTheActionsCapsuleTogglesThePanel() throws {
+        defer { view.closeActions() }
+        view.layoutSubtreeIfNeeded()
+        let toggle = view.actionsToggle
+        let center = toggle.convert(NSPoint(x: toggle.bounds.midX, y: toggle.bounds.midY), to: nil)
+        let click = try #require(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown, location: center, modifierFlags: [], timestamp: 0,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                pressure: 1))
+        #expect(toggle.accessibilityRole() == .button)
+
+        #expect(!view.handle(click))
+        toggle.mouseDown(with: click)
+        #expect(view.choosingAction)
+        #expect(!view.handle(click))
+        #expect(view.choosingAction)
+        #expect(toggle.accessibilityPerformPress())
+        #expect(!view.choosingAction)
+    }
+
     @Test func reopeningForARowWithMoreActionsGrowsThePanel() throws {
-        view.actionTitles = { $0.id == "Notes" ? ["Open Application"] : ["One", "Two", "Three"] }
+        view.actions = { item in
+            item.id == "Notes"
+                ? [.init("Open Application", keys: ["↵"]), .init("Add to Favourites")]
+                : [.init("One", keys: ["↵"]), .init("Two", keys: ["⌘", "↵"]), .init("Three")]
+        }
         press(kVK_DownArrow, "\u{F701}", in: panel)
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)

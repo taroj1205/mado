@@ -6,6 +6,7 @@ enum FloatingCapsule {
     private static let radius: CGFloat = 14
     private static let fontSize: CGFloat = 13
     private static let keycapRadius: CGFloat = 5
+    private static let keycapSize: CGFloat = 20
     private static let keycapAlpha = (dark: 0.10, light: 0.07)
     private static let dividerHeight: CGFloat = 14
     static let keycapFill = NSColor(name: nil) { appearance in
@@ -44,7 +45,7 @@ enum FloatingCapsule {
     }
 
     static func keycap(_ key: String) -> NSView {
-        Keycap(key, radius: keycapRadius)
+        Keycap(key, radius: keycapRadius, size: keycapSize)
     }
 
     static func divider() -> NSView {
