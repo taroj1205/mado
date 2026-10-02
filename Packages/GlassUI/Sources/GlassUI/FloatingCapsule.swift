@@ -15,6 +15,7 @@ enum FloatingCapsule {
 
     static func make(_ stack: NSStackView, leading: CGFloat, trailing: CGFloat) -> GlassView {
         let glass = GlassView(shape: .capsule)
+        glass.sheen.isHidden = true
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
         stack.setHuggingPriority(.defaultHigh, for: .horizontal)
         glass.contentView = stack
