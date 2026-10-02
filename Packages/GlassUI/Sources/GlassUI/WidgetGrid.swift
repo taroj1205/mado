@@ -40,8 +40,14 @@ public final class WidgetGrid: NSView {
         }
     }
 
+    public enum Layout: Sendable {
+        case grid
+        case strip
+    }
+
     static let columns = 6
     static let rowHeight: CGFloat = 78
+    static let stripHeight: CGFloat = 72
     static let gap: CGFloat = 8
     static let inset: CGFloat = 14
     static let top: CGFloat = 12
@@ -49,18 +55,30 @@ public final class WidgetGrid: NSView {
 
     var widgets: [Widget] = [] {
         didSet {
-            guard widgets != oldValue else { return }
-            if widgets.count == tiles.count {
-                zip(tiles, widgets).forEach { $0.show($1) }
-            } else {
-                rebuild()
-            }
-            invalidateIntrinsicContentSize()
+            if widgets != oldValue { update() }
+        }
+    }
+
+    var tileLayout: Layout? = .grid {
+        didSet {
+            if tileLayout != oldValue { update() }
         }
     }
 
     var onPress: ((Int) -> Void)?
     private(set) var tiles: [WidgetTile] = []
+
+    var shown: [Widget] {
+        switch tileLayout {
+        case .grid: widgets
+        case .strip: Array(widgets.prefix(Self.columns))
+        case nil: []
+        }
+    }
+
+    private var rowHeight: CGFloat {
+        tileLayout == .strip ? Self.stripHeight : Self.rowHeight
+    }
 
     override public var isFlipped: Bool { true }
 
@@ -69,9 +87,9 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = (widgets.count + Self.columns - 1) / Self.columns
+        let rows = (tiles.count + Self.columns - 1) / Self.columns
         guard !isHidden, rows > 0 else { return NSSize(width: NSView.noIntrinsicMetric, height: 0) }
-        let height = CGFloat(rows) * Self.rowHeight + CGFloat(rows - 1) * Self.gap
+        let height = CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Self.gap
         return NSSize(width: NSView.noIntrinsicMetric, height: Self.top + height + Self.bottom)
     }
 
@@ -100,8 +118,8 @@ public final class WidgetGrid: NSView {
             let row = CGFloat(index / Self.columns)
             tile.frame = NSRect(
                 x: area.minX + column * (width + Self.gap),
-                y: Self.top + row * (Self.rowHeight + Self.gap),
-                width: width, height: Self.rowHeight)
+                y: Self.top + row * (rowHeight + Self.gap),
+                width: width, height: rowHeight)
         }
     }
 
@@ -111,15 +129,19 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    private func rebuild() {
-        tiles.forEach { $0.removeFromSuperview() }
-        tiles = widgets.enumerated().map { index, widget in
-            let tile = WidgetTile()
-            tile.show(widget)
-            tile.onPress = { [weak self] in self?.onPress?(index) }
-            addSubview(tile)
-            return tile
+    private func update() {
+        let visible = shown
+        if visible.count != tiles.count {
+            tiles.forEach { $0.removeFromSuperview() }
+            tiles = visible.indices.map { index in
+                let tile = WidgetTile()
+                tile.onPress = { [weak self] in self?.onPress?(index) }
+                addSubview(tile)
+                return tile
+            }
         }
+        zip(tiles, visible).forEach { $0.show($1) }
+        invalidateIntrinsicContentSize()
         needsLayout = true
     }
 }
