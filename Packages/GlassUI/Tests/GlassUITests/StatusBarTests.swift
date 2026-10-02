@@ -19,6 +19,11 @@ import Testing
             action: "Open Activity Monitor"),
     ]
 
+    private var fades: [Bool] {
+        let colors = view.statusBar.edges.colors as? [CGColor] ?? []
+        return [colors.first, colors.last].map { $0?.alpha == 0 }
+    }
+
     init() {
         panel.contentView = view
         view.results.sections = [
@@ -150,23 +155,52 @@ import Testing
         #expect(view.actionLabel.stringValue == "Open Activity Monitor")
     }
 
-    @Test func newValuesLeaveTheBarWhereItWasScrolled() {
-        let many = (0..<12).map { index in
-            StatusBar.Pill(
-                id: "pill\(index)", name: "Pill", symbol: "cpu", value: "\(index)",
-                action: "Open Activity Monitor")
-        }
-        view.pills = many
+    @Test func theEdgesFadeOnlyWhereMorePillsAreHidden() {
+        view.layoutSubtreeIfNeeded()
+        #expect(fades == [false, false])
+        view.pills = many()
+        view.layoutSubtreeIfNeeded()
+        #expect(fades == [false, true])
+        view.pressPill(9)
+        #expect(fades == [true, true])
+        view.pressPill(11)
+        #expect(fades == [true, false])
+    }
+
+    @Test func aSelectedPillStaysClearOfTheFadedEdges() {
+        view.pills = many()
+        view.layoutSubtreeIfNeeded()
+        let bar = view.statusBar
+        let clear = bar.bounds.insetBy(dx: 28, dy: 0)
+        view.pressPill(9)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.actionLabel.stringValue == "Open Activity Monitor")
+        #expect(clear.contains(bar.convert(bar.views[9].bounds, from: bar.views[9])))
+        view.pills = many(ninth: "1,234.5")
+        view.layoutSubtreeIfNeeded()
+        #expect(bar.views[9].text == "1,234.5")
+        #expect(clear.contains(bar.convert(bar.views[9].bounds, from: bar.views[9])))
+        view.pressPill(3)
+        view.layoutSubtreeIfNeeded()
+        #expect(clear.contains(bar.convert(bar.views[3].bounds, from: bar.views[3])))
+    }
+
+    @Test func newValuesLeaveTheBarWhereItWasScrolledByHand() throws {
+        view.pills = many()
         view.layoutSubtreeIfNeeded()
         view.pressPill(11)
         let clip = view.statusBar.contentView
         #expect(clip.bounds.minX > 0)
+        let wheel = try #require(
+            CGEvent(
+                scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: 0, wheel2: 1,
+                wheel3: 0
+            )
+            .flatMap(NSEvent.init))
+        view.statusBar.scrollWheel(with: wheel)
         clip.scroll(to: .zero)
-        view.pills = many.map { pill in
-            StatusBar.Pill(
-                id: pill.id, name: pill.name, symbol: pill.symbol, value: "9\(pill.value)",
-                action: pill.action)
-        }
+        view.pills = many(ninth: "1,234.5")
+        view.layoutSubtreeIfNeeded()
         #expect(clip.bounds.minX == 0)
         #expect(view.selectedPill == 11)
     }
@@ -193,6 +227,14 @@ import Testing
         }
         #expect(view.selectedPill == nil)
         #expect(view.results.selectedItem?.id == "Sleep")
+    }
+
+    private func many(ninth: String = "9") -> [StatusBar.Pill] {
+        (0..<12).map { index in
+            StatusBar.Pill(
+                id: "pill\(index)", name: "Pill", symbol: "cpu",
+                value: index == 9 ? ninth : "\(index)", action: "Open Activity Monitor")
+        }
     }
 
     private func press(
