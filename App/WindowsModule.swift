@@ -5,7 +5,7 @@ import os
 
 struct WindowsModule: Module {
     static let id = "windows"
-    private static let radialTrigger: Shortcut.Modifiers = [.control, .option]
+    private static let radialTrigger: Shortcut.Modifiers = [.function]
 
     let descriptor: ModuleDescriptor
     let radialRing = OverlayPanel()

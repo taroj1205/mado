@@ -15,7 +15,7 @@ public struct ModifierTrigger {
         .flagsChanged, .leftMouseDown, .leftMouseDragged, .leftMouseUp, .keyDown, .keyUp,
     ]
     private static let modifierFlags: CGEventFlags = [
-        .maskCommand, .maskControl, .maskAlternate, .maskShift,
+        .maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn,
     ]
     private static let escape = Int64(kVK_Escape)
 
@@ -58,13 +58,16 @@ public struct ModifierTrigger {
         if modifiers.contains(.control) { result.insert(.maskControl) }
         if modifiers.contains(.option) { result.insert(.maskAlternate) }
         if modifiers.contains(.shift) { result.insert(.maskShift) }
+        if modifiers.contains(.function) { result.insert(.maskSecondaryFn) }
         return result
     }
 
     mutating func handle(
         _ type: CGEventType, flags: CGEventFlags, keyCode: Int64, emit: (Event) -> Void
     ) -> Bool {
-        track(flags, emit: emit)
+        if ![.keyDown, .keyUp].contains(type) {
+            track(flags, emit: emit)
+        }
         switch type {
         case .leftMouseDown where isOpen:
             swallowsClickUp = true
