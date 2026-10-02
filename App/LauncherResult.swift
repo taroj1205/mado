@@ -131,7 +131,9 @@ enum LauncherResult {
         return sources.commands.first { $0.id == id }.map(Self.command)
     }
 
-    static func context(for sections: [ResultList.Section]) -> (title: String?, symbol: String?) {
+    static func context(
+        for sections: [ResultList.Section], query: String
+    ) -> (title: String?, symbol: String?) {
         if sections.contains(where: { $0.notice != nil }) { return ("No results", nil) }
         if sections.contains(where: { $0.colour != nil }) {
             return (ColourAnswer.context, ColourAnswer.symbol)
@@ -139,7 +141,12 @@ enum LauncherResult {
         let answer = sections.first { section in
             section.card != nil || section.items.contains { $0.answer != nil }
         }
-        return (answer?.title, nil)
+        if let answer { return (answer.title, nil) }
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return (nil, nil)
+        }
+        let count = sections.reduce(0) { $0 + $1.items.count }
+        return (count == 1 ? "1 result" : "\(count) results", nil)
     }
 
     static func actions(

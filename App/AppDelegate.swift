@@ -131,7 +131,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 (launcherView.context, launcherView.contextSymbol) =
                     launcherView.scoped
                     ? (CalculatorHistory.title, CalculatorHistory.symbol)
-                    : LauncherResult.context(for: sections)
+                    : LauncherResult.context(
+                        for: sections, query: launcherView.field.stringValue)
             })
     }
 
