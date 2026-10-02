@@ -47,6 +47,27 @@ import Testing
         #expect(calls.names == ["radial", "radial", "enter guard"])
     }
 
+    @Test func observersSeeEventsAnEarlierRouteSwallowedAndNeverSwallow() throws {
+        var routes = EventRoutes()
+        let calls = Calls()
+        _ = routes.add(types: [.keyDown]) { _, _ in
+            calls.names.append("radial")
+            return true
+        }
+        _ = routes.observe(types: [.keyDown, .keyUp]) { _, _ in
+            calls.names.append("modifier tap")
+        }
+        _ = routes.add(types: [.keyDown]) { _, _ in
+            calls.names.append("snippets")
+            return false
+        }
+        let event = try #require(CGEvent(source: nil))
+
+        #expect(routes.dispatch(.keyDown, event))
+        #expect(!routes.dispatch(.keyUp, event))
+        #expect(calls.names == ["radial", "modifier tap", "modifier tap"])
+    }
+
     @Test func theMaskIsTheUnionOfTheRoutesStillAdded() {
         var routes = EventRoutes()
         let flags = routes.add(types: [.flagsChanged]) { _, _ in false }

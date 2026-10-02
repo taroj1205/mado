@@ -13,12 +13,13 @@ final class EventTap {
     func add(
         types: [CGEventType], swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
     ) -> UInt? {
-        let id = routes.add(types: types, swallow: swallow)
-        guard install(routes.mask) else {
-            routes.remove(id)
-            return nil
-        }
-        return id
+        installed(routes.add(types: types, swallow: swallow))
+    }
+
+    func observe(
+        types: [CGEventType], observe: @escaping @MainActor (CGEventType, CGEvent) -> Void
+    ) -> UInt? {
+        installed(routes.observe(types: types, observe: observe))
     }
 
     func remove(_ id: UInt) {
@@ -36,6 +37,14 @@ final class EventTap {
         let state = signposter.beginInterval("dispatch")
         defer { signposter.endInterval("dispatch", state) }
         return !routes.dispatch(type, event)
+    }
+
+    private func installed(_ id: UInt) -> UInt? {
+        guard install(routes.mask) else {
+            routes.remove(id)
+            return nil
+        }
+        return id
     }
 
     private func install(_ mask: CGEventMask) -> Bool {
