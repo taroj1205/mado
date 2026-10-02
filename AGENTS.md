@@ -2,7 +2,7 @@
 
 ## Design and plan
 
-- Before implementing a feature, read `.agents/references/launcher.md` (local only, gitignored because it holds private artifact IDs). It links the Launcher design canvas and the implementation plan doc, and says how to read them and which goal ID (`M2-07`) to put on branches and commits.
+- Before implementing a feature, read `.agents/references/launcher.md` (local only, gitignored because it holds private artifact IDs). It links the Launcher design canvas and the implementation plan doc, and says how to read them and which goal ID (`M2-07`) to put in commit scopes.
 
 ## Order of work
 
@@ -21,7 +21,7 @@
 
 ## Pull requests
 
-- Never commit to `main` directly. Work on a task branch with a conventional name (`feat/...`, `fix/...`, `chore/...`) and open a PR with the `pr-local` skill.
+- Never commit to `main` directly. Work on a task branch named `<type>/<issue>-<summary>` with the goal's issue number, not its goal ID (`feat/231-battery-widget`, not `feat/M5-11-battery-widget`), and open a PR with the `pr-local` skill.
 - Build the PR body from `.github/pull_request_template.md`. `gh pr create --body` and `--body-file` don't apply it, so copy its sections in.
 - Before attaching screenshots, read `.agents/references/screenshots.md`. It covers which shots a UI change needs and how to keep anything real out of the background.
 - PRs are ready for review by default. Do not merge them; merging is the maintainer's call.
