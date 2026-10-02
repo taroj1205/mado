@@ -44,6 +44,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         list.setAccessibilityElement(true)
         list.setAccessibilityRole(.menu)
         glass.translatesAutoresizingMaskIntoConstraints = false
+        glass.sheen.isHidden = true
         layout()
     }
 
