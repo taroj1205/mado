@@ -12,7 +12,9 @@ let package = Package(
     ],
     targets: [
         .target(name: "GlassUI", dependencies: [.product(name: "AppCore", package: "AppCore")]),
-        .testTarget(name: "GlassUITests", dependencies: ["GlassUI"]),
+        .testTarget(
+            name: "GlassUITests",
+            dependencies: ["GlassUI", .product(name: "AppCore", package: "AppCore")]),
     ]
 )
 
