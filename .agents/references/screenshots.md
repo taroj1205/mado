@@ -6,5 +6,6 @@
 - Force light mode with `-NSRequiresAquaSystemAppearance YES`.
 - When automating, close the launcher with its own shortcut (⌘Space, or ⌥Space until ⌘Space reaches Mado), not Esc.
 - Open every image before attaching it and check that only the generated backdrop shows.
+- Also attach the canvas board the change follows, so the reviewer can compare the two. Read the board with the Artifact tool (`path: project/<Board>.dc.html`), remove its `support.js` script tag, and render it at 1280×800 with headless Chrome (`--headless=new --screenshot`). Chrome may hang after writing the file, so run it in the background and stop it once the PNG exists. Put it under the screenshots in `<details><summary>Design: <board title></summary>`, and name the board in the summary.
 - Upload with `gh pr create --attach` or `gh pr edit --attach`, then move the images from the end of the body into the Screenshots section.
 - Say in the PR when sample data came from a local patch that isn't in it, and that light mode was forced.
