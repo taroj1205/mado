@@ -1,4 +1,5 @@
 import AppCore
+import ClipboardKit
 import GlassUI
 import os
 import SearchKit
@@ -55,6 +56,10 @@ extension RadialSettings: StoredValue {
 
 extension StatusBarLayout: StoredValue {
     static let key = "status_bar"
+}
+
+extension ClipboardSettings: StoredValue {
+    static let key = "clipboard"
 }
 
 extension GestureSettings: StoredValue {
