@@ -1,4 +1,5 @@
 import AppCore
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -73,6 +74,46 @@ import Testing
         }
 
         #expect(try roundTrip(radial) == radial)
+    }
+
+    @Test func eachZoneTakesItsSlotsActionAndTheHoleDoesNothing() {
+        var radial = RadialSettings()
+        for (slot, action) in zip(Self.slots, RadialSettings.Action.allCases) {
+            radial[keyPath: slot] = action
+        }
+        let zones: [RadialResolver.Zone] = [
+            .ring, .direction(.top), .direction(.topRight), .direction(.right),
+            .direction(.bottomRight), .direction(.bottom), .direction(.bottomLeft),
+            .direction(.left), .direction(.topLeft),
+        ]
+
+        #expect(zones.map(radial.action(in:)) == Self.slots.map { radial[keyPath: $0] })
+        #expect(radial.action(in: .cancel) == .nothing)
+    }
+
+    @Test func previewsLayoutsCyclesFromTheHalfAndFullScreenOverTheWholeScreen() {
+        let screen = ScreenGeometry.Screen(
+            frame: CGRect(x: 0, y: 0, width: 1_440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 66, width: 1_440, height: 810))
+        let window = CGRect(x: 100, y: 200, width: 800, height: 600)
+        func preview(_ action: RadialSettings.Action) -> CGRect? {
+            action.previewFrame(of: window, on: screen, gap: 12)
+        }
+        func layout(_ action: LayoutEngine.Action) -> CGRect {
+            LayoutEngine.frame(
+                for: action, in: screen.visibleFrame, gap: 12, windowSize: window.size)
+        }
+
+        #expect(preview(.nothing) == nil)
+        #expect(preview(.fullScreen) == screen.frame)
+        #expect(preview(.topCycle) == layout(.topHalf))
+        #expect(preview(.rightCycle) == layout(.rightHalf))
+        #expect(preview(.bottomCycle) == layout(.bottomHalf))
+        #expect(preview(.leftCycle) == layout(.leftHalf))
+        #expect(preview(.centre) == layout(.centre))
+        #expect(preview(.almostMaximize) == layout(.almostMaximize))
+        #expect(preview(.bottomRightQuarter) == layout(.bottomRightQuarter))
+        #expect(preview(.centreThird) == layout(.centreThird))
     }
 
     @Test func turningHapticsOffSurvivesSavingAndLoading() throws {

@@ -6,16 +6,17 @@ import WindowKit
 
 struct WindowsModule: Module {
     static let id = "windows"
-    private static let radialTrigger: Shortcut.Modifiers = [.control, .option]
+    private static let radialTrigger: Shortcut.Modifiers = [.function]
 
     let descriptor: ModuleDescriptor
     let radialSettings: @MainActor () -> RadialSettings
     let radialRing = OverlayPanel()
-    let radialPreview = OverlayPanel()
+    let radialPreview = SnapPreview()
 
     func start(context: ModuleContext) {
         let radialMenu = RadialMenu(
-            logger: context.logger, panel: radialRing, settings: radialSettings)
+            logger: context.logger, panel: radialRing, preview: radialPreview,
+            settings: radialSettings)
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {
