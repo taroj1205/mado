@@ -30,6 +30,7 @@ import Testing
             .init(title: "Commands", items: ["Safari", "Notes", "Sleep"].map(item))
         ]
         view.pills = pills
+        view.statusBar.reducesMotion = { true }
         panel.makeFirstResponder(view.field)
     }
 

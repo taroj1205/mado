@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import SearchKit
+import WindowKit
 
 @MainActor
 struct SettingsPage {
@@ -8,6 +9,7 @@ struct SettingsPage {
         let modules: ModuleManager?
         let hotKeys: LauncherHotKeys
         let rates: ExchangeRateFeed
+        let recorder: HotKeyPopover
         let apps: AppHotKeys
         let radial: RadialMenuSettings
     }
@@ -56,7 +58,9 @@ struct SettingsPage {
             "Windows", "rectangle.split.2x1",
             module: module("windows", "Windows", enabled: true),
             tabs: [
-                Tab(title: "Layouts", sections: nil),
+                Tab(title: "Layouts") { context in
+                    WindowLayouts.sections(recorder: context.recorder, modules: context.modules)
+                },
                 Tab(title: "Apps") { [$0.apps.section] },
                 Tab(title: "Radial Menu") { $0.radial.sections },
                 Tab(title: "Switcher") { context in
@@ -65,7 +69,13 @@ struct SettingsPage {
                             "Window switcher", [.init("Order", orderPopUp(context.modules))])
                     ]
                 },
-                Tab(title: "Drag & Snap", sections: nil),
+                Tab(title: "Drag & Snap") { context in
+                    [
+                        SettingsSection(
+                            "Gestures",
+                            [.init("Move and resize", gestureTargetPopUp(context.modules))])
+                    ]
+                },
             ]),
         Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
@@ -141,6 +151,22 @@ struct SettingsPage {
                 SettingsPopUp.Choice(title: order.title, isSelected: order == current.order) {
                     var settings = SwitcherSettings.load(from: modules)
                     settings.order = order
+                    settings.save(to: modules)
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: choices)]
+        }
+        popUp.isEnabled = modules != nil
+        return popUp
+    }
+
+    private static func gestureTargetPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
+        let popUp = SettingsPopUp {
+            let current = GestureSettings.load(from: modules)
+            let choices = GestureSettings.Target.allCases.map { target in
+                SettingsPopUp.Choice(title: target.title, isSelected: target == current.target) {
+                    var settings = GestureSettings.load(from: modules)
+                    settings.target = target
                     settings.save(to: modules)
                 }
             }

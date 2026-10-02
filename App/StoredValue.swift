@@ -56,3 +56,16 @@ extension RadialSettings: StoredValue {
 extension StatusBarLayout: StoredValue {
     static let key = "status_bar"
 }
+
+extension GestureSettings: StoredValue {
+    static let key = "gestures"
+}
+
+extension GestureSettings.Target {
+    var title: String {
+        switch self {
+        case .activeWindow: "Active Window"
+        case .underMouse: "Window Under Mouse"
+        }
+    }
+}
