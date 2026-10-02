@@ -10,14 +10,15 @@ extension LauncherView: NSTextFieldDelegate {
         _: NSControl, textView: NSTextView, doCommandBy selector: Selector
     ) -> Bool {
         if let pill = selectedPill { return pillCommand(selector, from: pill, in: textView) }
+        if let widget = selectedWidget {
+            return widgetCommand(selector, from: widget, in: textView)
+        }
         return fieldCommand(selector, in: textView)
     }
 
     private func fieldCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
         switch selector {
-        case #selector(NSResponder.moveUp):
-            results.selectPrevious()
-            selectionMoved()
+        case #selector(NSResponder.moveUp): moveUp()
 
         case #selector(NSResponder.moveDown): moveDown()
 
