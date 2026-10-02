@@ -10,6 +10,7 @@ struct WindowsModule: Module {
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
     let radialSettings: @MainActor () -> RadialSettings
+    let gestureSettings: @MainActor () -> GestureSettings
     let switcherSettings: @MainActor () -> SwitcherSettings
     let radialRing = OverlayPanel()
     let radialPreview = SnapPreview()
@@ -19,6 +20,7 @@ struct WindowsModule: Module {
         if radial.isEnabled {
             startRadialMenu(trigger: radial.trigger, context: context)
         }
+        startGestures(gestureSettings(), context: context)
         startSwitcher(context: context)
         context.logger.debug("Started")
     }
@@ -40,6 +42,27 @@ struct WindowsModule: Module {
                 return true
             } catch {
                 return false
+            }
+        }
+    }
+
+    private func startGestures(_ settings: GestureSettings, context: ModuleContext) {
+        let gesture = WindowGesture(logger: context.logger, settings: gestureSettings)
+        context.own(.other, "window gesture") { gesture.stop() }
+        let triggers: [(WindowDrag.Mode, Shortcut.Modifiers)] = [
+            (.move, settings.move), (.resize, settings.resize),
+        ]
+        for (mode, held) in triggers {
+            let name = "\(mode) gesture trigger"
+            context.installWhenTrusted(name) {
+                do {
+                    try ModifierTrigger.install(held, name: name, context: context) { event in
+                        gesture.handle(event, mode: mode, held: held)
+                    }
+                    return true
+                } catch {
+                    return false
+                }
             }
         }
     }
