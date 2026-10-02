@@ -1,9 +1,5 @@
 # AGENTS.md
 
-## Design and plan
-
-- Before implementing a feature, read `.agents/references/launcher.md` (local only, gitignored because it holds private artifact IDs). It links the Launcher design canvas and the implementation plan doc, and says how to read them and which goal ID (`M2-07`) to put in commit scopes.
-
 ## Order of work
 
 - Before starting a goal, check its native blocked-by relationships with `gh api repos/taroj1205/mado/issues/<n>/dependencies/blocked_by`. If a blocker is open, do not start the goal. Work the nearest blocker that is not itself blocked, or ask which to do. Goal numbers and the issue body do not show order.
