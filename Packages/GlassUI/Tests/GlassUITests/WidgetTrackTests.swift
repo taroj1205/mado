@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Testing
 
 @testable import GlassUI
@@ -103,6 +104,38 @@ import Testing
         #expect(pressed.isEmpty)
         view.widgets = [clock, clock]
         #expect(tile.accessibilityCustomActions()?.isEmpty != false)
+    }
+
+    @Test func commandArrowsSkipOnlyFromTheTrackTile() {
+        var skips: [WidgetGrid.Skip] = []
+        view.onSkip = { skips.append($0) }
+        view.widgets = [clock, song(isPlaying: true)]
+        view.pressWidget(1)
+        press(kVK_LeftArrow, "\u{F702}", [.command])
+        press(kVK_RightArrow, "\u{F703}", [.command])
+        #expect(skips == [.previous, .next])
+        #expect(view.selectedWidget == 1)
+        view.pressWidget(0)
+        press(kVK_RightArrow, "\u{F703}", [.command])
+        #expect(skips == [.previous, .next])
+        #expect(view.selectedWidget == nil)
+    }
+
+    private func press(
+        _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
+    ) {
+        guard
+            let event = NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
+                windowNumber: panel.windowNumber, context: nil, characters: characters,
+                charactersIgnoringModifiers: characters, isARepeat: false,
+                keyCode: UInt16(keyCode))
+        else {
+            Issue.record("Could not make a key event for \(keyCode)")
+            return
+        }
+        if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
+        panel.sendEvent(event)
     }
 
     private func song(isPlaying: Bool, artwork: Data? = nil) -> WidgetGrid.Widget {

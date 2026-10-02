@@ -131,9 +131,7 @@ public final class LauncherView: NSView {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
-        if !event.modifierFlags.isDisjoint(with: Self.modifierKeys) {
-            leavePillsAndWidgets()
-        }
+        if handleModifiedKey(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
