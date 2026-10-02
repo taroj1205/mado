@@ -88,16 +88,39 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build and test
+      - name: Restore build cache
+        id: build-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/CompilationCache.noindex
+          key: xcode-cache-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: xcode-cache-${{ runner.arch }}-
+
+      - name: Build
         run: |
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project Mado.xcodeproj \
             -scheme Mado \
             -destination 'platform=macOS' \
             -derivedDataPath build \
-            -parallel-testing-enabled YES \
             CODE_SIGNING_ALLOWED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
+            COMPILATION_CACHE_LIMIT_SIZE=1G
+
+      - name: Save build cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/CompilationCache.noindex
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}
+
+      - name: Test
+        run: |
+          xcodebuild test-without-building \
+            -xctestrun build/Build/Products/*.xctestrun \
+            -destination 'platform=macOS' \
+            -parallel-testing-enabled YES
 
       - name: Launch smoke test
         run: |
