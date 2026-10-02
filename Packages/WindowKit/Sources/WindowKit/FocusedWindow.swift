@@ -27,6 +27,12 @@ public struct FocusedWindow {
         AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
     }
 
+    init(application: AXUIElement, element: AXUIElement) {
+        self.application = application
+        self.element = element
+        AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
+    }
+
     public static func frontmost() throws(Failure) -> Self {
         guard let app = NSWorkspace.shared.frontmostApplication else { throw .noWindow }
         return try Self(pid: app.processIdentifier)
@@ -55,7 +61,7 @@ public struct FocusedWindow {
         return CGRect(origin: origin, size: extent)
     }
 
-    private static func copy(_ name: String, of element: AXUIElement) throws(Failure) -> CFTypeRef {
+    static func copy(_ name: String, of element: AXUIElement) throws(Failure) -> CFTypeRef {
         var value: CFTypeRef?
         let error = unsafe AXUIElementCopyAttributeValue(element, name as CFString, &value)
         guard error == .success else { throw failure(error) }

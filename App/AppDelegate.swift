@@ -85,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
             try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
-                try manager.register(descriptor.makeModule(in: manager))
+                try manager.register(descriptor.makeModule(in: manager, hotKeys: registry))
             }
             try manager.startEnabledModules()
             return manager
