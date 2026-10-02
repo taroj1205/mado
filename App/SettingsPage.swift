@@ -50,6 +50,12 @@ struct SettingsPage {
                 Tab(title: "Layouts", sections: nil),
                 Tab(title: "Apps") { [$0.apps.section] },
                 Tab(title: "Radial Menu") { $0.radial.sections },
+                Tab(title: "Switcher") { context in
+                    [
+                        SettingsSection(
+                            "Window switcher", [.init("Order", orderPopUp(context.modules))])
+                    ]
+                },
                 Tab(title: "Drag & Snap", sections: nil),
             ]),
         Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
@@ -111,6 +117,22 @@ struct SettingsPage {
             let choices = Setting.allCases.map { choice in
                 SettingsPopUp.Choice(title: choice.title, isSelected: choice == current) {
                     try choice.save(to: modules)
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: choices)]
+        }
+        popUp.isEnabled = modules != nil
+        return popUp
+    }
+
+    private static func orderPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
+        let popUp = SettingsPopUp {
+            let current = SwitcherSettings.load(from: modules)
+            let choices = SwitcherSettings.Order.allCases.map { order in
+                SettingsPopUp.Choice(title: order.title, isSelected: order == current.order) {
+                    var settings = SwitcherSettings.load(from: modules)
+                    settings.order = order
+                    settings.save(to: modules)
                 }
             }
             return [SettingsPopUp.Section(title: nil, choices: choices)]

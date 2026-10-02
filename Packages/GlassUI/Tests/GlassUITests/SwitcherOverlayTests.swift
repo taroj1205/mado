@@ -41,14 +41,13 @@ import Testing
         #expect(grid.rows == 1)
     }
 
-    @Test func showsTheSelectedCardAndCountAboveTheDimmedScreen() throws {
+    @Test func showsTheSelectedCardAndCountOnTheScreen() throws {
         let overlay = SwitcherOverlay()
         let screen = try #require(NSScreen.screens.first)
         overlay.show(Self.cards(6), selected: 1, on: screen)
         defer { overlay.hide() }
 
         #expect(overlay.isVisible)
-        #expect(overlay.dim.isVisible)
         #expect(overlay.hint.isVisible)
         #expect(overlay.cards.map(\.selected) == [false, true, false, false, false, false])
         #expect(overlay.count.stringValue == "2 of 6 windows")
@@ -56,7 +55,6 @@ import Testing
         #expect(overlay.hint.frame.width > 400)
         #expect(abs(overlay.hint.frame.midX - overlay.panel.frame.midX) <= 1)
         #expect(screen.visibleFrame.contains(overlay.panel.frame))
-        #expect(overlay.dim.frame.maxY == screen.visibleFrame.maxY)
 
         overlay.select(5)
         #expect(overlay.cards.map(\.selected) == [false, false, false, false, false, true])
@@ -94,7 +92,7 @@ import Testing
         overlay.showThumbnail(image, at: 1)
         overlay.showThumbnail(image, at: 3)
         #expect(overlay.cards.map { $0.thumbnail.image != nil } == [false, true, false])
-        #expect(SwitcherOverlay.thumbnailSize == CGSize(width: 152, height: 100))
+        #expect(SwitcherOverlay.thumbnailSize == CGSize(width: 272, height: 170))
     }
 
     @Test func hideTakesDownEveryWindow() {
@@ -103,7 +101,6 @@ import Testing
         #expect(overlay.count.stringValue == "1 of 1 window")
         overlay.hide()
         #expect(!overlay.isVisible)
-        #expect(!overlay.dim.isVisible)
         #expect(!overlay.hint.isVisible)
     }
 }

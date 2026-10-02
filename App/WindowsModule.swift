@@ -10,6 +10,7 @@ struct WindowsModule: Module {
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
     let radialSettings: @MainActor () -> RadialSettings
+    let switcherSettings: @MainActor () -> SwitcherSettings
     let radialRing = OverlayPanel()
     let radialPreview = SnapPreview()
 
@@ -45,7 +46,7 @@ struct WindowsModule: Module {
 
     private func startSwitcher(context: ModuleContext) {
         guard let hotKeys else { return }
-        let switcher = WindowSwitcher(logger: context.logger)
+        let switcher = WindowSwitcher(logger: context.logger) { switcherSettings().order }
         context.own(.other, "window switcher") { switcher.stop() }
         do {
             for backward in [false, true] {

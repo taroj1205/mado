@@ -27,14 +27,12 @@ public final class SwitcherOverlay {
     private static let hintInset: CGFloat = 16
     private static let hintSpacing: CGFloat = 14
     private static let hintSize: CGFloat = 12.5
-    private static let dimAlpha: CGFloat = 0.25
     private static let half: CGFloat = 0.5
 
     public static var thumbnailSize: CGSize { SwitcherCard.thumbnailSize }
 
     let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .rounded(radius))
     let hint = OverlayPanel()
-    let dim = OverlayPanel()
     let count = NSTextField(labelWithString: "")
     private let grid = Grid()
     private(set) var cards: [SwitcherCard] = []
@@ -57,11 +55,6 @@ public final class SwitcherOverlay {
         grid.setAccessibilityElement(true)
         grid.setAccessibilityRole(.list)
         grid.setAccessibilityLabel("Window switcher")
-        dim.contentView = NSView()
-        dim.contentView?.wantsLayer = true
-        dim.contentView?.layer?.backgroundColor =
-            NSColor.black.withAlphaComponent(Self.dimAlpha)
-            .cgColor
         makeHint()
     }
 
@@ -124,7 +117,6 @@ public final class SwitcherOverlay {
         firstRow = 0
         place(on: screen)
         select(selected)
-        dim.orderFrontRegardless()
         panel.orderFrontRegardless()
         hint.orderFrontRegardless()
     }
@@ -156,7 +148,7 @@ public final class SwitcherOverlay {
     }
 
     public func hide() {
-        for window in [hint, panel, dim] {
+        for window in [hint, panel] {
             window.orderOut(nil)
         }
     }
@@ -170,11 +162,6 @@ public final class SwitcherOverlay {
                 x: (visible.midX - size.width * Self.half).rounded(),
                 y: (visible.midY + group * Self.half - size.height).rounded(),
                 width: size.width, height: size.height),
-            display: false)
-        dim.setFrame(
-            CGRect(
-                x: screen.frame.minX, y: screen.frame.minY, width: screen.frame.width,
-                height: visible.maxY - screen.frame.minY),
             display: false)
     }
 
