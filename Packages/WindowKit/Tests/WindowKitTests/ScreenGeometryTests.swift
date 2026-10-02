@@ -1,4 +1,4 @@
-import CoreGraphics
+import AppKit
 import Testing
 
 @testable import WindowKit
@@ -6,6 +6,87 @@ import Testing
 @Suite struct ScreenGeometryTests {
     static let primary = CGRect(x: 0, y: 0, width: 1_440, height: 900)
     static let above = CGRect(x: 0, y: 900, width: 1_920, height: 1_080)
+
+    static let retina = CGRect(x: 0, y: 0, width: 1_512, height: 982)
+
+    @Test func convertsSideBySideScreens() {
+        expectConversions([
+            (Self.retina, Self.retina),
+            (
+                CGRect(x: 1_512, y: 0, width: 1_920, height: 1_080),
+                CGRect(x: 1_512, y: -98, width: 1_920, height: 1_080)
+            ),
+            (
+                CGRect(x: -1_920, y: -98, width: 1_920, height: 1_080),
+                CGRect(x: -1_920, y: 0, width: 1_920, height: 1_080)
+            ),
+            (
+                CGRect(x: 1_600, y: 200, width: 800, height: 600),
+                CGRect(x: 1_600, y: 182, width: 800, height: 600)
+            ),
+        ])
+    }
+
+    @Test func convertsAPortraitScreen() {
+        expectConversions([
+            (
+                CGRect(x: -1_080, y: -400, width: 1_080, height: 1_920),
+                CGRect(x: -1_080, y: -538, width: 1_080, height: 1_920)
+            ),
+            (
+                CGRect(x: -1_000, y: 1_100, width: 900, height: 400),
+                CGRect(x: -1_000, y: -518, width: 900, height: 400)
+            ),
+        ])
+    }
+
+    @Test func convertsScreensAboveAndBelow() {
+        expectConversions([
+            (
+                CGRect(x: -204, y: 982, width: 1_920, height: 1_080),
+                CGRect(x: -204, y: -1_080, width: 1_920, height: 1_080)
+            ),
+            (
+                CGRect(x: 0, y: -1_080, width: 1_920, height: 1_080),
+                CGRect(x: 0, y: 982, width: 1_920, height: 1_080)
+            ),
+            (
+                CGRect(x: 100, y: 1_200, width: 800, height: 600),
+                CGRect(x: 100, y: -818, width: 800, height: 600)
+            ),
+            (
+                CGRect(x: 100, y: -900, width: 800, height: 600),
+                CGRect(x: 100, y: 1_282, width: 800, height: 600)
+            ),
+        ])
+    }
+
+    @MainActor
+    @Test func matchesTheBoundsOfConnectedDisplays() throws {
+        let screens = NSScreen.screens
+        let primaryFrame = try #require(screens.first).frame
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        for screen in screens {
+            let display = try #require(screen.deviceDescription[key] as? CGDirectDisplayID)
+            #expect(
+                ScreenGeometry.quartzRect(fromAppKit: screen.frame, primary: primaryFrame)
+                    == CGDisplayBounds(display))
+        }
+    }
+
+    private func expectConversions(
+        _ pairs: [(appKit: CGRect, quartz: CGRect)],
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+        for pair in pairs {
+            #expect(
+                ScreenGeometry.quartzRect(fromAppKit: pair.appKit, primary: Self.retina)
+                    == pair.quartz, sourceLocation: sourceLocation)
+            #expect(
+                ScreenGeometry.appKitRect(fromQuartz: pair.quartz, primary: Self.retina)
+                    == pair.appKit, sourceLocation: sourceLocation)
+        }
+    }
 
     @Test func picksTheScreenShowingMostOfAQuartzRect() {
         let frames = [Self.primary, Self.above]
