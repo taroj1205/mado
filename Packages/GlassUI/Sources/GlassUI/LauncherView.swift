@@ -5,6 +5,8 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchInset: CGFloat = 20
     private static let searchFontSize: CGFloat = 20
     private static let searchIconGap: CGFloat = 12
+    static let searchPlaceholder = "Search apps and commands…"
+    private static let backInset: CGFloat = 14
     private static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
     private static let previewHint = "⌘Y to preview"
@@ -12,6 +14,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
     public let field = NSTextField()
+    private(set) lazy var back = BackButton(target: self, action: #selector(leave))
     public let results = ResultList()
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
@@ -33,20 +36,26 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
     private var browsing = false
+    var rootQuery: String?
+    let icon = NSImageView()
+    lazy var fieldAfterIcon = field.leadingAnchor.constraint(
+        equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
+    lazy var fieldAfterBack = field.leadingAnchor.constraint(
+        equalTo: back.trailingAnchor, constant: Self.searchIconGap)
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
     public var choosingAction: Bool { actionPanel?.isVisible == true }
+    public var scoped: Bool { rootQuery != nil }
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
         contextCapsule = Self.makeContextCapsule(contextIcon, contextLabel)
         super.init(frame: frame)
-        let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
-        field.placeholderString = "Search apps and commands…"
+        field.placeholderString = Self.searchPlaceholder
         field.font = .systemFont(ofSize: Self.searchFontSize)
         field.isBordered = false
         field.drawsBackground = false
@@ -56,7 +65,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         separator.boxType = .separator
         let bar = NSLayoutGuide()
         addLayoutGuide(bar)
-        for view in [icon, field, separator, results] {
+        for view in [icon, back, field, separator, results] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -65,8 +74,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             bar.heightAnchor.constraint(equalToConstant: Self.searchBarHeight),
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.searchInset),
             icon.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            field.leadingAnchor.constraint(
-                equalTo: icon.trailingAnchor, constant: Self.searchIconGap),
+            back.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.backInset),
+            back.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            fieldAfterIcon,
             field.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.searchInset),
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -171,7 +181,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
         case #selector(NSResponder.cancelOperation) where previewing: closePreview()
+        case #selector(NSResponder.cancelOperation) where scoped: leave()
         case #selector(NSResponder.cancelOperation): onCancel?()
+        case #selector(NSResponder.deleteBackward) where scoped && textView.string.isEmpty: leave()
 
         default:
             endBrowsing()
@@ -180,7 +192,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         return true
     }
 
-    private func replaceQuery(with query: String) {
+    func replaceQuery(with query: String) {
         field.stringValue = query
         field.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
         endBrowsing()

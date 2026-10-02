@@ -86,7 +86,7 @@ enum LauncherResult {
 
     static func isRanked(_ item: ResultList.Item) -> Bool {
         item.answer == nil && !DictionaryAnswer.ids.contains(item.id) && !ColourAnswer.owns(item.id)
-            && !Fallback.all.contains { $0.item.id == item.id }
+            && !CalculatorHistory.owns(item.id) && !Fallback.all.contains { $0.item.id == item.id }
     }
 
     static func actions(

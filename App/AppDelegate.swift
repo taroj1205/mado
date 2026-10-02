@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let files = FileIndex()
     private let rates = ExchangeRateFeed()
     private var usage = Usage()
+    private var history = CalculatorHistory()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: makeHotKeyRegistry()
     ) { [weak self] in self?.toggleLauncher() }
@@ -45,7 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
         usage = loadUsage()
-        NSApp.mainMenu = makeMainMenu()
+        history = CalculatorHistory.load(from: modules)
+        NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
         statusItem = StatusMenu.makeItem(
             target: self, open: #selector(showLauncher), settings: #selector(showSettings),
             hide: #selector(hideStatusItem))
@@ -72,48 +74,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return true
     }
 
-    private func makeMainMenu() -> NSMenu {
-        let app = NSMenu()
-        let settingsItem = app.addItem(
-            withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        app.addItem(.separator())
-        app.addItem(
-            withTitle: "Hide Mado", action: #selector(NSApplication.hide), keyEquivalent: "h")
-        app.addItem(
-            withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
-        let window = NSMenu(title: "Window")
-        window.addItem(
-            withTitle: "Close", action: #selector(NSWindow.performClose), keyEquivalent: "w")
-        window.addItem(
-            withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize),
-            keyEquivalent: "m")
-        NSApp.windowsMenu = window
-        let edit = NSMenu(title: "Edit")
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
-        edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste), keyEquivalent: "v")
-        edit.addItem(
-            withTitle: "Paste and Match Style", action: #selector(NSTextView.pasteAsPlainText),
-            keyEquivalent: "v"
-        ).keyEquivalentModifierMask = [.command, .option, .shift]
-        edit.addItem(
-            withTitle: "Select All", action: #selector(NSText.selectAll), keyEquivalent: "a")
-
-        let menu = NSMenu()
-        for submenu in [app, edit, window] {
-            menu.addItem(withTitle: submenu.title, action: nil, keyEquivalent: "").submenu = submenu
-        }
-        return menu
-    }
-
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
-            try SystemCommands.all.forEach(manager.commands.register)
+            let openHistory = CalculatorHistory.command { [weak self] in self?.openHistory() }
+            try (SystemCommands.all + [openHistory]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(descriptor.makeModule())
             }
@@ -166,25 +131,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         SearchRunner(
             search: { [weak self] query in
                 guard let self else { return [] }
+                if launcherView.scoped {
+                    return history.sections(for: query, now: .now, calendar: .current)
+                }
                 return signposter.withIntervalSignpost("search") {
                     LauncherResult.sections(for: query, in: sources, usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
                 launcherView.show(sections)
-                (launcherView.context, launcherView.contextSymbol) = LauncherResult.context(
-                    for: sections)
+                (launcherView.context, launcherView.contextSymbol) =
+                    launcherView.scoped
+                    ? (CalculatorHistory.title, CalculatorHistory.symbol)
+                    : LauncherResult.context(for: sections)
             })
     }
 
     private func actions(for item: ResultList.Item) -> [CommandAction] {
-        LauncherResult.actions(for: item.id, query: launcherView.field.stringValue, in: sources)
+        if launcherView.scoped { return history.actions(for: item.id) }
+        return LauncherResult.actions(
+            for: item.id, query: launcherView.field.stringValue, in: sources)
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
         let actions = actions(for: item)
         guard actions.indices.contains(index) else { return }
-        hideLauncher()
+        if !CalculatorHistory.opens(item.id) {
+            hideLauncher()
+        }
         let action = actions[index]
         Task { [weak self, logger] in
             do {
@@ -192,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if LauncherResult.isRanked(item) {
                     self?.recordUse(of: item.id)
                 }
+                self?.history.remember(item, in: self?.modules)
             } catch CocoaError.userCancelled {
                 logger.debug("Result \(item.id, privacy: .private) was canceled")
             } catch {
@@ -208,6 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             logger.error("Saving usage failed: \(error, privacy: .public)")
         }
+    }
+
+    private func openHistory() {
+        launcherView.enter(placeholder: CalculatorHistory.placeholder)
     }
 
     private func searchAgain() {
@@ -231,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     #endif
 
     private func hideLauncher() {
+        launcherView.leave()
         launcherView.endBrowsing()
         launcher?.orderOut(nil)
         launcherClosed = .now

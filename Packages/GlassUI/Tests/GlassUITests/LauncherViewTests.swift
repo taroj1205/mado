@@ -177,6 +177,49 @@ import Testing
         #expect(view.results.contentView.bounds.maxY > table.frame.maxY)
     }
 
+    @Test func goingIntoAViewSwapsTheSearchIconForBackAndEscapeComesBack() {
+        var queries: [String] = []
+        var cancels = 0
+        view.onQuery = { queries.append($0) }
+        view.onCancel = { cancels += 1 }
+        press(kVK_ANSI_C, "c")
+        view.enter(placeholder: "Type to filter calculations…")
+        view.layoutSubtreeIfNeeded()
+        #expect(view.scoped)
+        #expect(!view.back.isHidden)
+        let back = view.back.alignmentRect(forFrame: view.back.frame)
+        #expect(back.minX == 14)
+        #expect(back.width == 28)
+        #expect(view.field.alignmentRect(forFrame: view.field.frame).minX == back.maxX + 12)
+        #expect(view.field.placeholderString == "Type to filter calculations…")
+        press(kVK_ANSI_X, "x")
+        press(kVK_Escape, "\u{1B}")
+        view.layoutSubtreeIfNeeded()
+        #expect(queries == ["c", "", "x", "c"])
+        #expect(cancels == 0)
+        #expect(!view.scoped)
+        #expect(view.back.isHidden)
+        #expect(view.field.stringValue == "c")
+        #expect(view.field.placeholderString == "Search apps and commands…")
+        press(kVK_Escape, "\u{1B}")
+        #expect(cancels == 1)
+    }
+
+    @Test func deleteOnAnEmptyFilterOrTheBackButtonGoesBack() {
+        var queries: [String] = []
+        view.onQuery = { queries.append($0) }
+        view.enter(placeholder: "Filter")
+        press(kVK_ANSI_X, "x")
+        press(kVK_Delete, "\u{7F}")
+        #expect(view.scoped)
+        press(kVK_Delete, "\u{7F}")
+        #expect(!view.scoped)
+        view.enter(placeholder: "Filter")
+        view.back.performClick(nil)
+        #expect(!view.scoped)
+        #expect(queries == ["", "x", "", "", "", ""])
+    }
+
     private func actionCapsule() -> GlassView {
         view.layoutSubtreeIfNeeded()
         return view.actionCapsule

@@ -142,14 +142,15 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     }
 
     static func rows(for sections: [Section]) -> [Row] {
-        sections.filter { !$0.items.isEmpty }
+        sections.filter { !$0.items.isEmpty || $0.notice != nil }
             .flatMap { section in
                 let above: [Row?] = [
                     section.notice.map(Row.notice), section.card.map(Row.card),
                     section.colour.map(Row.colour),
                 ]
-                return above.compactMap(\.self) + [.header(section.title)]
-                    + section.items.map(Row.item)
+                let items = section.items.map(Row.item)
+                return above.compactMap(\.self) + (items.isEmpty ? [] : [.header(section.title)])
+                    + items
             }
     }
 
