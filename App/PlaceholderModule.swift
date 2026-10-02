@@ -21,9 +21,10 @@ extension ModuleDescriptor {
         case KeyboardModule.id: KeyboardModule(descriptor: self)
 
         case WindowsModule.id:
-            WindowsModule(descriptor: self, hotKeys: hotKeys) { [weak modules] in
-                .load(from: modules)
-            }
+            WindowsModule(
+                descriptor: self, hotKeys: hotKeys,
+                radialSettings: { [weak modules] in .load(from: modules) },
+                switcherSettings: { [weak modules] in .load(from: modules) })
 
         default: PlaceholderModule(descriptor: self)
         }
