@@ -49,7 +49,7 @@ extension ItemSheet {
             layoutHeader(), height: Self.headerHeight, form: layoutForm(), top: Self.formTop,
             in: self)
         SheetForm.placeCapsules(
-            LauncherView.makeContextCapsule(contextIcon, contextLabel),
+            contextPill,
             SheetForm.buttons(cancel, save), in: self)
     }
 

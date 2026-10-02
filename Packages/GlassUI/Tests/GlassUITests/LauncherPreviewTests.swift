@@ -34,7 +34,7 @@ import Testing
     @Test func commandYPreviewsTheTopFileWithoutMoving() {
         defer { view.closePreview() }
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
         previewKey()
         #expect(view.previewing)
         #expect(view.preview?.title.stringValue == "a.txt")
@@ -48,9 +48,9 @@ import Testing
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
         view.contextSymbol = "paintpalette.fill"
         press(kVK_DownArrow, "\u{F701}")
-        #expect(view.contextLabel.stringValue == "⌘Y to preview")
-        #expect(view.contextIcon.image?.isTemplate == true)
-        #expect(!view.contextCapsule.isHidden)
+        #expect(view.contextPill.text == "⌘Y to preview")
+        #expect(view.contextPill.symbol == "eye")
+        #expect(!view.contextPill.isHidden)
         previewKey()
         #expect(view.previewing)
         #expect(view.preview?.view?.previewItem?.previewItemURL?.lastPathComponent == "b.txt")
@@ -77,7 +77,7 @@ import Testing
         previewKey()
         press(kVK_ANSI_A, "a")
         #expect(!view.previewing)
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
         #expect(view.field.stringValue == "a")
     }
 
@@ -117,14 +117,14 @@ import Testing
         click()
         view.show([.init(title: "Files", items: [file("new.txt")] + files)])
         #expect(view.results.selectedItem?.id == "b.txt")
-        #expect(view.contextLabel.stringValue == "⌘Y to preview")
+        #expect(view.contextPill.text == "⌘Y to preview")
     }
 
     @Test func movingTheCaretOrClickingTheFieldEndsBrowsing() throws {
         view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
         press(kVK_DownArrow, "\u{F701}")
         press(kVK_LeftArrow, "\u{F702}")
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
 
         press(kVK_DownArrow, "\u{F701}")
         let field = view.field.convert(view.field.bounds, to: nil)
@@ -134,13 +134,13 @@ import Testing
                 modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil,
                 eventNumber: 0, clickCount: 1, pressure: 1))
         #expect(!view.handle(click))
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
     }
 
     @Test func clickingTheAlreadySelectedFileShowsTheHint() {
         view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
         click()
-        #expect(view.contextLabel.stringValue == "⌘Y to preview")
+        #expect(view.contextPill.text == "⌘Y to preview")
     }
 
     @Test func aRefreshRedrawsTheCardForAFileEditedInPlace() throws {
@@ -170,12 +170,12 @@ import Testing
         previewKey()
         view.endBrowsing()
         #expect(!view.previewing)
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
     }
 
     @Test func commandYDoesNothingWhenTheSelectedRowIsNotAFile() {
         press(kVK_DownArrow, "\u{F701}")
-        #expect(view.contextCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
         previewKey()
         #expect(!view.previewing)
         #expect(view.field.stringValue.isEmpty)

@@ -16,6 +16,12 @@ enum FloatingCapsule {
     }
 
     static func make(_ stack: NSStackView, leading: CGFloat, trailing: CGFloat) -> GlassView {
+        make(stack, leading: leading, trailing: trailing, height: height, radius: radius)
+    }
+
+    static func make(
+        _ stack: NSStackView, leading: CGFloat, trailing: CGFloat, height: CGFloat, radius: CGFloat
+    ) -> GlassView {
         let glass = GlassView(shape: .rounded(radius))
         glass.sheen.isHidden = true
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)

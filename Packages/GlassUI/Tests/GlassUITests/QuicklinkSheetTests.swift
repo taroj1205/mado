@@ -42,7 +42,7 @@ import Testing
         #expect(sheet.aliasHint.stringValue == "Type “yt cats” in root search to jump straight in.")
         #expect(sheet.hotkey.accessibilityValue() as? String == "⌃ ⌥ Y")
         #expect(sheet.problemLabel.isHidden)
-        #expect(sheet.contextLabel.stringValue == "Quicklinks")
+        #expect(sheet.contextPill.text == "Quicklinks")
         #expect(sheet.save.accessibilityLabel() == "Save Quicklink")
         #expect(panel.firstResponder === sheet.nameField.currentEditor())
 
@@ -164,12 +164,15 @@ import Testing
     @Test func layoutFollowsTheCanvas() {
         sheet.show(youtube, editing: false)
         sheet.layoutSubtreeIfNeeded()
-        let capsules = sheet.subviews.compactMap { $0 as? GlassView }.map(\.frame)
+        let buttons = sheet.subviews.compactMap { $0 as? GlassView }.map(\.frame)
+        let pill = sheet.contextPill.frame
         let box = { (field: NSTextField) in
             sequence(first: field as NSView) { unsafe $0.superview }.first { $0 is NSBox }?.frame
         }
 
-        #expect(capsules.map(\.minY) == [10, 10])
+        #expect(buttons.map(\.minY) == [10])
+        #expect(pill.minX == 10)
+        #expect(abs(pill.midY - (buttons.first?.midY ?? 0)) < 1)
         #expect(box(sheet.aliasField)?.size == NSSize(width: 120, height: 28))
         #expect(box(sheet.nameField)?.width == 566)
         #expect(box(sheet.linkField)?.width == box(sheet.nameField)?.width)

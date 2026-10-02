@@ -173,7 +173,7 @@ enum SheetForm {
         }
         NSLayoutConstraint.activate([
             context.leadingAnchor.constraint(equalTo: sheet.leadingAnchor, constant: capsuleInset),
-            context.bottomAnchor.constraint(equalTo: sheet.bottomAnchor, constant: -capsuleInset),
+            context.centerYAnchor.constraint(equalTo: buttons.centerYAnchor),
             buttons.trailingAnchor.constraint(
                 equalTo: sheet.trailingAnchor, constant: -capsuleInset),
             buttons.bottomAnchor.constraint(equalTo: sheet.bottomAnchor, constant: -capsuleInset),

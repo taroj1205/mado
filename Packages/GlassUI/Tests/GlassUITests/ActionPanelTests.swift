@@ -61,7 +61,7 @@ import Testing
         let menu = try #require(view.actionPanel)
         #expect(menu.glass.sheen.isHidden)
         #expect(view.actionCapsule.sheen.isHidden)
-        #expect(view.contextCapsule.sheen.isHidden)
+        #expect(view.contextPill.glass.sheen.isHidden)
         #expect(!panel.glass.sheen.isHidden)
     }
 

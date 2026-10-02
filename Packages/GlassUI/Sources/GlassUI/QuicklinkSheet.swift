@@ -48,8 +48,7 @@ public final class QuicklinkSheet: NSView, NSTextFieldDelegate {
     let aliasHint = SheetForm.hint()
     let hotkey = HotKeyButton()
     let problemLabel = SheetForm.hint()
-    let contextIcon = LauncherView.makeContextIcon()
-    let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
+    let contextPill = StatusPill()
     let cancel = CapsuleButton("Cancel", keys: ["esc"])
     let save = CapsuleButton("Save Quicklink", keys: ["↵"])
     private(set) var icon: Data? {
@@ -82,8 +81,7 @@ public final class QuicklinkSheet: NSView, NSTextFieldDelegate {
         save.onPress = { [weak self] in self?.saveValues() }
         useWebsiteIcon.target = self
         useWebsiteIcon.action = #selector(fetchWebsiteIcon)
-        contextIcon.image = LauncherView.contextImage(Self.symbol)
-        contextLabel.stringValue = "Quicklinks"
+        contextPill.show("Quicklinks", symbol: Self.symbol)
         layoutSheet()
     }
 

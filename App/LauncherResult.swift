@@ -25,6 +25,8 @@ enum LauncherResult {
     private static let openApp = "Open Application"
     private static let answerID = "calculator"
     private static let fileLimit = 20
+    private static let searchSymbol = "magnifyingglass"
+    private static let answerSymbol = "plus.forwardslash.minus"
 
     var id: String {
         switch self {
@@ -154,19 +156,21 @@ enum LauncherResult {
     static func context(
         for sections: [ResultList.Section], query: String
     ) -> (title: String?, symbol: String?) {
-        if sections.contains(where: { $0.notice != nil }) { return ("No results", nil) }
+        if sections.contains(where: { $0.notice != nil }) { return ("No results", searchSymbol) }
         if sections.contains(where: { $0.colour != nil }) {
             return (ColourAnswer.context, ColourAnswer.symbol)
         }
         let answer = sections.first { section in
             section.card != nil || section.items.contains { $0.answer != nil }
         }
-        if let answer { return (answer.title, nil) }
+        if let answer {
+            return (answer.title, answer.card == nil ? answerSymbol : DictionaryAnswer.symbol)
+        }
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return (nil, nil)
         }
         let count = sections.reduce(0) { $0 + $1.items.count }
-        return (count == 1 ? "1 result" : "\(count) results", nil)
+        return (count == 1 ? "1 result" : "\(count) results", searchSymbol)
     }
 
     static func actions(

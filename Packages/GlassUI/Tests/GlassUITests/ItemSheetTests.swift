@@ -43,7 +43,7 @@ import Testing
         #expect(sheet.favourite.accessibilityLabel() == "Pin Terminal to Favourites")
         #expect(sheet.ranking.stringValue == "Opened 214 times · last today, 9:12")
         #expect(sheet.resetRanking.isEnabled)
-        #expect(sheet.contextLabel.stringValue == "⌘K › Assign Hotkey")
+        #expect(sheet.contextPill.text == "⌘K › Assign Hotkey")
         #expect(panel.firstResponder === sheet.hotkey)
         #expect(sheet.hotkey.isRecording)
     }
@@ -51,7 +51,7 @@ import Testing
     @Test func eachActionFocusesItsOwnField() {
         sheet.show(terminal, values: .init(), ranking: nil, opening: .aliases)
         #expect(panel.firstResponder === sheet.aliasField.currentEditor())
-        #expect(sheet.contextLabel.stringValue == "⌘K › Add Alias")
+        #expect(sheet.contextPill.text == "⌘K › Add Alias")
         #expect(sheet.aliasHintLabel.stringValue == "An exact alias match always ranks first.")
         #expect(sheet.ranking.stringValue == "Not opened yet")
         #expect(!sheet.resetRanking.isEnabled)
@@ -59,11 +59,11 @@ import Testing
 
         sheet.show(terminal, values: .init(), ranking: nil, opening: .favourite)
         #expect(sheet.favourite.state == .on)
-        #expect(sheet.contextLabel.stringValue == "⌘K › Add to Favourites")
+        #expect(sheet.contextPill.text == "⌘K › Add to Favourites")
 
         sheet.show(terminal, values: .init(favourite: true), ranking: nil, opening: .favourite)
         #expect(sheet.favourite.state == .off)
-        #expect(sheet.contextLabel.stringValue == "⌘K › Remove from Favourites")
+        #expect(sheet.contextPill.text == "⌘K › Remove from Favourites")
     }
 
     @Test func returnAddsTheTypedAliasAndSavesOnceTheFieldIsEmpty() {
@@ -236,14 +236,17 @@ import Testing
     @Test func layoutFollowsTheCanvas() {
         sheet.show(terminal, values: .init(aliases: ["t"]), ranking: nil, opening: .aliases)
         sheet.layoutSubtreeIfNeeded()
-        let capsules = sheet.subviews.compactMap { $0 as? GlassView }.map(\.frame)
+        let buttons = sheet.subviews.compactMap { $0 as? GlassView }.map(\.frame)
+        let pill = sheet.contextPill.frame
         let hotkey = sheet.convert(sheet.hotkey.bounds, from: sheet.hotkey)
         let aliasBox = sequence(first: sheet.aliasField as NSView) { unsafe $0.superview }
             .first { $0 is NSBox }
 
-        #expect(capsules.map(\.minY) == [10, 10])
-        #expect(capsules.map(\.minX).min() == 10)
-        #expect(capsules.map(\.maxX).max() == sheet.bounds.maxX - 10)
+        #expect(buttons.map(\.minY) == [10])
+        #expect(buttons.map(\.maxX) == [sheet.bounds.maxX - 10])
+        #expect(pill.minX == 10)
+        #expect(pill.height == 36)
+        #expect(abs(pill.midY - (buttons.first?.midY ?? 0)) < 1)
         #expect(sheet.hotkey.frame.height == 26)
         #expect(hotkey.maxY < sheet.bounds.height - 64)
         #expect(aliasBox?.frame.size == NSSize(width: 120, height: 28))
