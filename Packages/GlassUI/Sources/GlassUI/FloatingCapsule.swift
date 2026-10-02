@@ -15,10 +15,14 @@ enum FloatingCapsule {
 
     static func make(_ stack: NSStackView, leading: CGFloat, trailing: CGFloat) -> GlassView {
         let glass = GlassView(shape: .capsule)
-        glass.sheen.rimmed = true
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
         stack.setHuggingPriority(.defaultHigh, for: .horizontal)
         glass.contentView = stack
+        let border = GlassBorder(
+            radius: GlassView.Shape.capsule.radius(in: NSSize(width: height, height: height)))
+        border.frame = glass.container.bounds
+        border.autoresizingMask = [.width, .height]
+        glass.container.addSubview(border)
         glass.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

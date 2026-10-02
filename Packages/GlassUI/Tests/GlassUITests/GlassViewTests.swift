@@ -75,10 +75,9 @@ import Testing
         #expect(GlassSheen.tone(for: light).sheen == GlassSheen.light.sheen)
     }
 
-    @Test func onlyFloatingCapsulesGetTheRim() {
+    @Test func capsuleHasTheActionPanelsBorder() {
         let capsule = FloatingCapsule.make(NSStackView(), leading: 0, trailing: 0)
-        #expect(capsule.sheen.rimmed)
-        #expect(!GlassView(shape: .rounded(28)).sheen.rimmed)
+        #expect(capsule.container.subviews.last is GlassBorder)
     }
 
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {
