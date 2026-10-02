@@ -15,6 +15,7 @@ public final class ModuleManager {
     public let commands: CommandRegistry
 
     private let store: SettingsStore
+    private let eventTap = EventTap()
     private var settings: Settings
     private var states: States
     private var registered: [Registered] = []
@@ -38,7 +39,8 @@ public final class ModuleManager {
         }
         registered.append(
             Registered(
-                module: module, context: ModuleContext(moduleID: id, commands: commands),
+                module: module,
+                context: ModuleContext(moduleID: id, commands: commands, eventTap: eventTap),
                 isRunning: false))
     }
 
