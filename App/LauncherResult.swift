@@ -99,7 +99,9 @@ enum LauncherResult {
         let ranked = rank(candidates)
         let found = rank(aliased.isEmpty ? files : files.filter { !aliased.contains($0.id) })
         let favourites = typed ? [] : items.favourites.compactMap { result(for: $0, in: sources) }
-        let item = { (result: Self) in result.item(icons: sources.apps, at: now) }
+        let item = { (result: Self) in
+            result.item(icons: sources.apps, hotkey: items.hotkeys[result.id], at: now)
+        }
         let results = [
             ResultList.Section(title: "Favourites", items: favourites.map(item)),
             ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
@@ -198,23 +200,26 @@ enum LauncherResult {
             answer: ResultList.Answer(value: answer.result, detail: answer.resultDetail))
     }
 
-    private func item(icons apps: AppIndex, at now: Date) -> ResultList.Item {
-        switch self {
-        case .app(let app):
-            ResultList.Item(
-                id: id, title: app.name, subtitle: app.folder, kind: "Application", symbol: "",
-                action: Self.openApp, icon: apps.icon(for: app))
+    private func item(icons apps: AppIndex, hotkey: Shortcut?, at now: Date) -> ResultList.Item {
+        var item: ResultList.Item =
+            switch self {
+            case .app(let app):
+                ResultList.Item(
+                    id: id, title: app.name, subtitle: app.folder, kind: "Application", symbol: "",
+                    action: Self.openApp, icon: apps.icon(for: app))
 
-        case .command(let command):
-            ResultList.Item(
-                id: id, title: command.name, subtitle: "", kind: "Command", symbol: command.icon,
-                action: "Run Command")
+            case .command(let command):
+                ResultList.Item(
+                    id: id, title: command.name, subtitle: "", kind: "Command",
+                    symbol: command.icon, action: "Run Command")
 
-        case .pane(let pane):
-            pane.item
+            case .pane(let pane):
+                pane.item
 
-        case .file(let file):
-            Self.item(for: file, at: now)
-        }
+            case .file(let file):
+                Self.item(for: file, at: now)
+            }
+        item.hotkey = hotkey
+        return item
     }
 }
