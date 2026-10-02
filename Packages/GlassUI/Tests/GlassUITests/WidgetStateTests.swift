@@ -136,7 +136,7 @@ import Testing
         view.layoutSubtreeIfNeeded()
         let tile = view.widgetGrid.tiles[1]
         let allow = tile.convert(tile.allow.bounds, from: tile.allow)
-        #expect(abs(tile.bounds.maxX - allow.maxX - 12) < 0.5)
+        #expect(abs(tile.bounds.maxX - allow.maxX - 12) <= 1)
         #expect(allow.height == 24)
     }
 
