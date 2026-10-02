@@ -20,9 +20,13 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var context: String? {
         didSet { showContext() }
     }
+    public var contextSymbol: String? {
+        didSet { showContext() }
+    }
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
+    let contextIcon = LauncherView.makeContextIcon()
     let actionsToggle = LauncherView.makeActionsToggle()
     let actionCapsule: GlassView
     let contextCapsule: GlassView
@@ -36,7 +40,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
-        contextCapsule = Self.makeContextCapsule(contextLabel)
+        contextCapsule = Self.makeContextCapsule(contextIcon, contextLabel)
         super.init(frame: frame)
         let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
@@ -115,8 +119,18 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         case let key where Self.returnKeys.contains(key): run(1)
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
+        case let key?: return runShortcut(key) || super.performKeyEquivalent(with: event)
         default: return super.performKeyEquivalent(with: event)
         }
+        return true
+    }
+
+    private func runShortcut(_ key: String) -> Bool {
+        let items = results.rows.lazy.compactMap { row in
+            if case .item(let item) = row { item } else { nil }
+        }
+        guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
+        onRun?(item, 0)
         return true
     }
 
@@ -189,6 +203,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private func showContext() {
         let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
         let text = hintsPreview ? Self.previewHint : context
+        contextIcon.image = Self.contextImage(hintsPreview ? nil : contextSymbol)
         contextLabel.stringValue = text ?? ""
         contextCapsule.isHidden = text == nil
     }

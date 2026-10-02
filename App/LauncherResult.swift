@@ -51,7 +51,8 @@ enum LauncherResult {
                 title: "Files", items: found.prefix(fileLimit).map { item(for: $0, at: now) }),
         ]
         let answer =
-            Calculator.answer(for: trimmed).map { answer in
+            ColourAnswer.section(for: trimmed)
+            ?? Calculator.answer(for: trimmed).map { answer in
                 ResultList.Section(title: answer.kind, items: [item(for: answer)])
             } ?? DictionaryAnswer.section(for: trimmed)
         guard let answer else {
@@ -63,15 +64,19 @@ enum LauncherResult {
         return [answer] + results + [Fallback.section(for: trimmed, matched: true)]
     }
 
-    static func context(for sections: [ResultList.Section]) -> String? {
-        if sections.contains(where: { $0.notice != nil }) { return "No results" }
-        return sections.first { section in
+    static func context(for sections: [ResultList.Section]) -> (title: String?, symbol: String?) {
+        if sections.contains(where: { $0.notice != nil }) { return ("No results", nil) }
+        if sections.contains(where: { $0.colour != nil }) {
+            return (ColourAnswer.context, ColourAnswer.symbol)
+        }
+        let answer = sections.first { section in
             section.card != nil || section.items.contains { $0.answer != nil }
-        }?.title
+        }
+        return (answer?.title, nil)
     }
 
     static func isRanked(_ item: ResultList.Item) -> Bool {
-        item.answer == nil && !DictionaryAnswer.ids.contains(item.id)
+        item.answer == nil && !DictionaryAnswer.ids.contains(item.id) && !ColourAnswer.owns(item.id)
             && !Fallback.all.contains { $0.item.id == item.id }
     }
 
@@ -97,6 +102,9 @@ enum LauncherResult {
         }
         if DictionaryAnswer.ids.contains(id) {
             return DictionaryAnswer.actions(for: id, query: query)
+        }
+        if ColourAnswer.owns(id) {
+            return ColourAnswer.actions(for: id, query: query)
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
         if let fallback = Fallback.all.first(where: { $0.item.id == id }) {
