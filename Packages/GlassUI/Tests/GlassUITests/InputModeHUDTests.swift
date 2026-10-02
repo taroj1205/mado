@@ -7,22 +7,22 @@ import Testing
 @Suite struct InputModeHUDTests {
     private let visible = CGRect(x: 0, y: 0, width: 1_440, height: 875)
     private let size = CGSize(width: 130, height: InputModeHUD.height)
+    private let caret = CGRect(x: 400, y: 500, width: 2, height: 18)
 
     @Test func sitsJustBelowTheCaretFromItsLeftEdge() {
-        let caret = CGRect(x: 400, y: 500, width: 2, height: 18)
         let frame = InputModeHUD.frame(of: size, below: caret, in: visible)
         #expect(frame == CGRect(x: 400, y: 458, width: 130, height: 34))
     }
 
     @Test func movesAboveTheCaretWhenThereIsNoRoomBelow() {
-        let caret = CGRect(x: 400, y: 20, width: 2, height: 18)
-        let frame = InputModeHUD.frame(of: size, below: caret, in: visible)
-        #expect(frame.minY == caret.maxY + InputModeHUD.gap)
+        let low = CGRect(x: 400, y: 20, width: 2, height: 18)
+        let frame = InputModeHUD.frame(of: size, below: low, in: visible)
+        #expect(frame.minY == low.maxY + InputModeHUD.gap)
     }
 
     @Test func staysOnScreenNearTheRightEdge() {
-        let caret = CGRect(x: 1_430, y: 500, width: 2, height: 18)
-        let frame = InputModeHUD.frame(of: size, below: caret, in: visible)
+        let nearEdge = CGRect(x: 1_430, y: 500, width: 2, height: 18)
+        let frame = InputModeHUD.frame(of: size, below: nearEdge, in: visible)
         #expect(frame.maxX == visible.maxX)
         #expect(visible.contains(frame))
     }
@@ -30,38 +30,35 @@ import Testing
     @Test func showsTheModeAndFadesOut() async throws {
         let hud = InputModeHUD()
         defer { hud.close() }
-        hud.show(
-            glyph: "あ", title: "かな", detail: "right ⌘",
-            below: CGRect(x: 400, y: 500, width: 2, height: 18))
+        hud.show(glyph: "あ", title: "かな", detail: "right ⌘", below: caret)
         #expect([hud.glyph, hud.title, hud.detail].map(\.stringValue) == ["あ", "かな", "right ⌘"])
         #expect(hud.panel.isVisible)
         #expect(hud.panel.frame.height == InputModeHUD.height)
-        try await Task.sleep(for: InputModeHUD.visibleFor + .seconds(1))
+        #expect(try await timeUntil(hud) { $0.panel.alphaValue < 1 } >= InputModeHUD.visibleFor)
+        _ = try await timeUntil(hud) { !$0.panel.isVisible }
         #expect(!hud.panel.isVisible)
     }
 
-    @Test func aNewSwitchKeepsTheHUDUp() async throws {
+    @Test(arguments: [Duration.zero, .milliseconds(80)])
+    func aNewSwitchAsTheFadeStartsStaysUpForItsOwnTime(_ late: Duration) async throws {
         let hud = InputModeHUD()
         defer { hud.close() }
-        let caret = CGRect(x: 400, y: 500, width: 2, height: 18)
         hud.show(glyph: "あ", title: "かな", detail: "right ⌘", below: caret)
-        try await Task.sleep(for: InputModeHUD.visibleFor)
+        try await Task.sleep(for: InputModeHUD.visibleFor + late)
         hud.show(glyph: "A", title: "英数", detail: "left ⌘", below: caret)
-        try await Task.sleep(for: InputModeHUD.visibleFor / 2)
         #expect(hud.panel.isVisible)
-        #expect(hud.panel.alphaValue == 1)
         #expect(hud.title.stringValue == "英数")
+        #expect(try await timeUntil(hud) { $0.panel.alphaValue < 1 } >= InputModeHUD.visibleFor)
     }
 
-    @Test func aSwitchDuringTheFadeBringsTheHUDBack() async throws {
-        let hud = InputModeHUD()
-        defer { hud.close() }
-        let caret = CGRect(x: 400, y: 500, width: 2, height: 18)
-        hud.show(glyph: "あ", title: "かな", detail: "right ⌘", below: caret)
-        try await Task.sleep(for: InputModeHUD.visibleFor + .milliseconds(80))
-        hud.show(glyph: "A", title: "英数", detail: "left ⌘", below: caret)
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(hud.panel.isVisible)
-        #expect(hud.panel.alphaValue == 1)
+    private func timeUntil(
+        _ hud: InputModeHUD, _ condition: (InputModeHUD) -> Bool
+    ) async throws -> Duration {
+        let clock = ContinuousClock()
+        let start = clock.now
+        while !condition(hud), start.duration(to: clock.now) < .seconds(10) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        return start.duration(to: clock.now)
     }
 }
