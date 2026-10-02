@@ -16,7 +16,10 @@ struct PlaceholderModule: Module {
 extension ModuleDescriptor {
     @MainActor
     func makeModule() -> any Module {
-        id == KeyboardModule.id
-            ? KeyboardModule(descriptor: self) : PlaceholderModule(descriptor: self)
+        switch id {
+        case KeyboardModule.id: KeyboardModule(descriptor: self)
+        case WindowsModule.id: WindowsModule(descriptor: self)
+        default: PlaceholderModule(descriptor: self)
+        }
     }
 }
