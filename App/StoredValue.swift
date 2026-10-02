@@ -1,4 +1,5 @@
 import AppCore
+import ClipboardKit
 import GlassUI
 import os
 import SearchKit
@@ -51,6 +52,10 @@ extension Quicklinks: StoredValue {
 
 extension RadialSettings: StoredValue {
     static let key = "radial"
+}
+
+extension ClipboardSettings: StoredValue {
+    static let key = "clipboard"
 }
 
 extension GestureSettings: StoredValue {

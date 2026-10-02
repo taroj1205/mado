@@ -117,18 +117,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         items: ItemEditor
     ) {
         let recorder = HotKeyPopover(items: items)
+        let ignoredApps = IgnoredAppsSettings(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
-            radial: RadialMenuSettings(modules: modules),
+            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps,
             gallery: WidgetGalleryWindow(modules: modules))
-        let pages = NSTabViewController()
-        pages.tabStyle = .unspecified
-        for page in SettingsPage.all {
-            pages.addTabViewItem(
-                NSTabViewItem(
-                    viewController: SettingsPageController(page: page, context: context)))
-        }
+        let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
         sidebar.minimumThickness = Self.sidebarWidth
@@ -157,11 +152,23 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         tabs = pages
         super.init(window: window)
         window.delegate = self
+        ignoredApps.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    private static func pages(_ context: SettingsPage.Context) -> NSTabViewController {
+        let pages = NSTabViewController()
+        pages.tabStyle = .unspecified
+        for page in SettingsPage.all {
+            pages.addTabViewItem(
+                NSTabViewItem(
+                    viewController: SettingsPageController(page: page, context: context)))
+        }
+        return pages
     }
 
     override func showWindow(_ sender: Any?) {

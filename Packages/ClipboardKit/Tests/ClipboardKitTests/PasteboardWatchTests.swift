@@ -21,7 +21,7 @@ import Testing
         func start(context: ModuleContext) {
             PasteboardWatch.install(
                 name: "pasteboard watch", context: context, pasteboard: pasteboard
-            ) { [weak self] in self?.changes += 1 }
+            ) { [weak self] _ in self?.changes += 1 }
         }
 
         func stop() {
@@ -42,6 +42,28 @@ import Testing
         let again = watch.poll()
 
         #expect([unchanged, changed, again] == [false, true, false])
+    }
+
+    @Test func takesTheSourceFromTheMarkerOrTheAppsInFrontSinceTheLastPoll() {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let front = "com.example.front"
+        let switched = "com.example.switched"
+
+        pasteboard.setString("copied", forType: .string)
+        let stayed = PasteboardWatch.sourceApps(of: pasteboard, frontmost: front, before: front)
+        let moved = PasteboardWatch.sourceApps(of: pasteboard, frontmost: switched, before: front)
+        let none = PasteboardWatch.sourceApps(of: pasteboard, frontmost: nil, before: nil)
+        pasteboard.setString("com.example.source", forType: PasteboardWatch.sourceType)
+        let marked = PasteboardWatch.sourceApps(of: pasteboard, frontmost: front, before: front)
+        pasteboard.setString("", forType: PasteboardWatch.sourceType)
+        let unknown = PasteboardWatch.sourceApps(of: pasteboard, frontmost: front, before: front)
+
+        #expect(stayed == [front])
+        #expect(moved == [front, switched])
+        #expect(none.isEmpty)
+        #expect(marked == ["com.example.source"])
+        #expect(unknown.isEmpty)
     }
 
     @Test(arguments: PasteboardWatch.privateTypes)
