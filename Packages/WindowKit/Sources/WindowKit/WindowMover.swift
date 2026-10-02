@@ -18,11 +18,9 @@ public final class WindowMover {
     nonisolated static func placement(
         after previous: Placement?, from current: CGRect, to placed: CGRect
     ) -> Placement? {
-        guard placed != current else { return previous }
-        guard let previous, previous.placed == current else {
-            return Placement(restore: current, placed: placed)
-        }
-        return Placement(restore: previous.restore, placed: placed)
+        let kept = previous?.placed == current ? previous : nil
+        guard placed != current else { return kept }
+        return Placement(restore: kept?.restore ?? current, placed: placed)
     }
 
     public func move(_ window: FocusedWindow, to quartzFrame: CGRect) throws(Failure) -> CGRect {

@@ -32,4 +32,9 @@ import Testing
             WindowMover.placement(after: Self.first, from: Self.snapped, to: Self.snapped)
                 == Self.first)
     }
+
+    @Test func dropsAStaleRestorePointWhenTheWindowRefusedToMove() {
+        let dragged = CGRect(x: 300, y: 200, width: 720, height: 875)
+        #expect(WindowMover.placement(after: Self.first, from: dragged, to: dragged) == nil)
+    }
 }
