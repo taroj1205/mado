@@ -134,7 +134,7 @@ final class SettingsPageController: NSViewController {
     private func sectionView(_ section: SettingsSection) -> NSView {
         var parts: [NSView] = []
         if let title = section.title {
-            parts.append(header(title, note: section.note))
+            parts.append(header(title, note: section.note, accessory: section.headerAccessory))
         }
         if !section.rows.isEmpty {
             parts.append(Self.columns(section.columnRows.map(box)))
@@ -197,7 +197,7 @@ final class SettingsPageController: NSViewController {
         return box
     }
 
-    private func header(_ title: String, note: String?) -> NSView {
+    private func header(_ title: String, note: String?, accessory: NSView?) -> NSView {
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: Self.headerSize, weight: .semibold)
         label.textColor = .secondaryLabelColor
@@ -210,6 +210,10 @@ final class SettingsPageController: NSViewController {
             noteLabel.textColor = .secondaryLabelColor
             header.addArrangedSubview(NSView())
             header.addArrangedSubview(noteLabel)
+        }
+        if let accessory {
+            header.addArrangedSubview(NSView())
+            header.addArrangedSubview(accessory)
         }
         return header
     }

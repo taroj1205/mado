@@ -5,6 +5,7 @@ final class WidgetTile: NSView {
 
     static let radius: CGFloat = 16
     private static let horizontal: CGFloat = 12
+    private static let trackLeading: CGFloat = 10
     private static let vertical: CGFloat = 10
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
@@ -38,9 +39,16 @@ final class WidgetTile: NSView {
     let detail = NSTextField(labelWithString: "")
     let icon = NSImageView()
     let meters = NSStackView()
+    let track = WidgetTrack()
+    private lazy var trackPlacement = [
+        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
+        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+        track.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ]
     private let box = NSBox()
     private let looks: (resting: Look, picked: Look)
     var onPress: (() -> Void)?
+    var onSkip: ((WidgetGrid.Skip) -> Void)?
 
     var selected = false {
         didSet { paint() }
@@ -69,7 +77,7 @@ final class WidgetTile: NSView {
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(meters)
+        [meters, track].forEach(addSubview)
         NSLayoutConstraint.activate([
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -122,8 +130,15 @@ final class WidgetTile: NSView {
         icon.image = widget.symbol.flatMap { name in
             NSImage(systemSymbolName: name, accessibilityDescription: nil)
         }
-        value.isHidden = !widget.meters.isEmpty
-        detail.isHidden = !widget.meters.isEmpty
+        value.isHidden = !widget.meters.isEmpty || widget.track != nil
+        detail.isHidden = value.isHidden
+        track.isHidden = widget.track == nil
+        if let playing = widget.track {
+            track.show(playing)
+            NSLayoutConstraint.activate(trackPlacement)
+        } else {
+            NSLayoutConstraint.deactivate(trackPlacement)
+        }
         if meters.arrangedSubviews.count != widget.meters.count {
             meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
             for _ in widget.meters {
@@ -136,6 +151,17 @@ final class WidgetTile: NSView {
             (view as? WidgetMeter)?.show(meter)
         }
         setAccessibilityLabel(widget.spoken)
+        setAccessibilityCustomActions(
+            widget.track == nil
+                ? []
+                : [skip("Previous Track", .previous), skip("Next Track", .next)])
+    }
+
+    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
+        NSAccessibilityCustomAction(name: name) { [weak self] in
+            self?.onSkip?(skip)
+            return true
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -146,8 +172,13 @@ final class WidgetTile: NSView {
         true
     }
 
-    override func mouseDown(with _: NSEvent) {
-        onPress?()
+    override func mouseDown(with event: NSEvent) {
+        let point = track.convert(event.locationInWindow, from: nil)
+        if !track.isHidden, let skip = track.skip(at: point) {
+            onSkip?(skip)
+        } else {
+            onPress?()
+        }
     }
 
     override func accessibilityPerformPress() -> Bool {

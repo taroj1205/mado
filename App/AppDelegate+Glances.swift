@@ -30,7 +30,16 @@ extension AppDelegate {
             self?.runGlance(StatusPills.action(for: pill), for: pill.id)
         }
         launcherView.onWidget = { [weak self] widget in
-            self?.runGlance(Widgets.action(for: widget), for: widget.id)
+            guard let self else { return }
+            if widget.id == Widgets.music {
+                widgets.control(.playPause, in: launcherView)
+            } else {
+                runGlance(Widgets.action(for: widget), for: widget.id)
+            }
+        }
+        launcherView.onSkip = { [weak self] skip in
+            guard let self else { return }
+            widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
     }
 

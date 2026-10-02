@@ -7,8 +7,13 @@ public final class WidgetGrid: NSView {
         public let detail: String
         public let symbol: String?
         public let meters: [Meter]
+        public let track: Track?
         public let action: String
         public let spoken: String
+
+        var span: Int {
+            track == nil ? 1 : WidgetGrid.trackSpan
+        }
 
         public init(
             id: String, value: String, detail: String, action: String, spoken: String,
@@ -21,6 +26,7 @@ public final class WidgetGrid: NSView {
             self.action = action
             self.spoken = spoken
             meters = []
+            track = nil
         }
 
         public init(id: String, meters: [Meter], action: String, spoken: String) {
@@ -31,6 +37,18 @@ public final class WidgetGrid: NSView {
             value = ""
             detail = ""
             symbol = nil
+            track = nil
+        }
+
+        public init(id: String, track: Track, action: String, spoken: String) {
+            self.id = id
+            self.track = track
+            self.action = action
+            self.spoken = spoken
+            value = ""
+            detail = ""
+            symbol = nil
+            meters = []
         }
     }
 
@@ -55,7 +73,27 @@ public final class WidgetGrid: NSView {
         var floating: Bool { self == .above || self == .around }
     }
 
+    public enum Skip: Sendable {
+        case previous
+        case next
+    }
+
+    public struct Track: Sendable, Equatable {
+        public let title: String
+        public let artist: String
+        public let artwork: Data?
+        public let isPlaying: Bool
+
+        public init(title: String, artist: String, artwork: Data?, isPlaying: Bool) {
+            self.title = title
+            self.artist = artist
+            self.artwork = artwork
+            self.isPlaying = isPlaying
+        }
+    }
+
     static let columns = 6
+    static let trackSpan = 2
     static let rowHeight: CGFloat = 78
     static let stripHeight: CGFloat = 72
     static let gap: CGFloat = 8
@@ -81,13 +119,14 @@ public final class WidgetGrid: NSView {
     }
 
     var onPress: ((Int) -> Void)?
+    var onSkip: ((Int, Skip) -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
 
     var shown: [Widget] {
         switch tileLayout {
         case .grid, .above, .around: widgets
-        case .strip: Array(widgets.prefix(Self.columns))
+        case .strip: Array(widgets.prefix(Self.cells(of: widgets).count { $0.row == 0 }))
         case nil: []
         }
     }
@@ -99,7 +138,7 @@ public final class WidgetGrid: NSView {
     private var floating: Bool { tileLayout?.floating == true }
 
     var overhang: CGFloat {
-        let rows = CGFloat((tiles.count + Self.columns - 1) / Self.columns)
+        let rows = CGFloat(Self.cells(of: shown).last.map { $0.row + 1 } ?? 0)
         guard tileLayout == .above, rows > 0 else { return 0 }
         return Self.lift + rows * Self.rowHeight + (rows - 1) * Self.floatingGap
     }
@@ -114,7 +153,7 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = (tiles.count + Self.columns - 1) / Self.columns
+        let rows = Self.cells(of: shown).last.map { $0.row + 1 } ?? 0
         guard !isHidden, !floating, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
@@ -137,23 +176,40 @@ public final class WidgetGrid: NSView {
         nil
     }
 
-    static func floatingFrames(_ layout: Layout, count: Int, beside panel: CGRect) -> [CGRect] {
+    private static func cells(of widgets: [Widget]) -> [(row: Int, columns: Range<Int>)] {
+        var row = 0
+        var column = 0
+        return widgets.map { widget in
+            if column + widget.span > columns {
+                row += 1
+                column = 0
+            }
+            defer { column += widget.span }
+            return (row, column..<column + widget.span)
+        }
+    }
+
+    static func floatingFrames(
+        _ layout: Layout, for widgets: [Widget], beside panel: CGRect
+    ) -> [CGRect] {
         let step = rowHeight + floatingGap
         switch layout {
         case .above:
-            let rows = (count + columns - 1) / columns
+            let cells = cells(of: widgets)
+            let rows = cells.last.map { $0.row + 1 } ?? 0
             let area = panel.insetBy(dx: inset, dy: 0)
             let width = (area.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
-            return (0..<count).map { index in
+            return cells.map { cell in
                 CGRect(
-                    x: area.minX + CGFloat(index % columns) * (width + floatingGap),
-                    y: panel.maxY + lift + CGFloat(rows - 1 - index / columns) * step,
-                    width: width, height: rowHeight)
+                    x: area.minX + CGFloat(cell.columns.lowerBound) * (width + floatingGap),
+                    y: panel.maxY + lift + CGFloat(rows - 1 - cell.row) * step,
+                    width: CGFloat(cell.columns.count) * (width + floatingGap) - floatingGap,
+                    height: rowHeight)
             }
 
         case .around:
-            let left = (count + sides - 1) / sides
-            return (0..<count).map { index in
+            let left = (widgets.count + sides - 1) / sides
+            return widgets.indices.map { index in
                 let leftSide = index < left
                 return CGRect(
                     x: leftSide ? panel.minX - sideGap - sideWidth : panel.maxX + sideGap,
@@ -179,13 +235,12 @@ public final class WidgetGrid: NSView {
         let area = bounds.insetBy(dx: Self.inset, dy: 0)
         let gaps = CGFloat(Self.columns - 1) * Self.gap
         let width = (area.width - gaps) / CGFloat(Self.columns)
-        for (index, tile) in tiles.enumerated() {
-            let column = CGFloat(index % Self.columns)
-            let row = CGFloat(index / Self.columns)
+        for (tile, cell) in zip(tiles, Self.cells(of: shown)) {
             tile.frame = NSRect(
-                x: area.minX + column * (width + Self.gap),
-                y: Self.top + row * (rowHeight + Self.gap),
-                width: width, height: rowHeight)
+                x: area.minX + CGFloat(cell.columns.lowerBound) * (width + Self.gap),
+                y: Self.top + CGFloat(cell.row) * (rowHeight + Self.gap),
+                width: CGFloat(cell.columns.count) * (width + Self.gap) - Self.gap,
+                height: rowHeight)
         }
     }
 
@@ -200,7 +255,7 @@ public final class WidgetGrid: NSView {
             floats.forEach { $0.orderOut(nil) }
             return
         }
-        let frames = Self.floatingFrames(tileLayout, count: floats.count, beside: window.frame)
+        let frames = Self.floatingFrames(tileLayout, for: shown, beside: window.frame)
         for (float, frame) in zip(floats, frames) {
             float.setFrame(frame, display: false)
             if float.parent !== window {
@@ -217,6 +272,7 @@ public final class WidgetGrid: NSView {
             tiles = visible.indices.map { index in
                 let tile = WidgetTile(floating: floating)
                 tile.onPress = { [weak self] in self?.onPress?(index) }
+                tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
                 return tile
             }
             floats = floating ? tiles.map(Self.makeFloat) : []

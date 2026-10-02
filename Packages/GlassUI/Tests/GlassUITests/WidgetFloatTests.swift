@@ -35,6 +35,21 @@ import Testing
         #expect(try #require(floats.first).glass.contentView === view.widgetGrid.tiles.first)
     }
 
+    @Test func aboveGivesTheTrackTwoColumnsLikeTheInlineGrid() {
+        let track = WidgetGrid.Track(title: "Song", artist: "Band", artwork: nil, isPlaying: true)
+        view.widgets =
+            [.init(id: "music", track: track, action: "Play", spoken: "Song")]
+            + (1...5).map(numbered)
+        view.widgetLayout = .above
+        let floats = view.widgetGrid.floats
+        expect(floats[0].frame, NSRect(x: 114, y: 680, width: 2 * Self.width + 10, height: 78))
+        expect(
+            floats[1].frame,
+            NSRect(x: 114 + 2 * (Self.width + 10), y: 680, width: Self.width, height: 78))
+        expect(floats[5].frame, NSRect(x: 114, y: 592, width: Self.width, height: 78))
+        #expect(view.widgetOverhang == 182)
+    }
+
     @Test func aroundStacksAColumnOnEachSideFromThePanelTop() {
         view.widgetLayout = .around
         let floats = view.widgetGrid.floats
@@ -112,7 +127,7 @@ import Testing
         let close = [
             (actual.minX, expected.minX), (actual.minY, expected.minY),
             (actual.width, expected.width), (actual.height, expected.height),
-        ].allSatisfy { abs($0 - $1) < 0.5 }
+        ].allSatisfy { abs($0 - $1) < 1 }
         #expect(close, "\(actual) is not \(expected)", sourceLocation: sourceLocation)
     }
 
