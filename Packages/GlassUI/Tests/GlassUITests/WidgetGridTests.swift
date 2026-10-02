@@ -135,7 +135,7 @@ import Testing
         #expect(view.widgetGrid.isHidden)
     }
 
-    @Test func aWidgetAndAPillAreNeverSelectedTogether() throws {
+    @Test func aWidgetAndAPillAreNeverSelectedTogether() {
         view.pressWidget(1)
         view.pressPill(0)
         #expect(view.selectedWidget == nil)
@@ -145,9 +145,15 @@ import Testing
         #expect(view.selectedPill == nil)
         #expect(view.results.hidesSelection)
         #expect(view.actionLabel.stringValue == "Open Weather")
+    }
+
+    @Test func clickingAWidgetSelectsAndRunsIt() throws {
+        var ran: [String] = []
+        view.onWidget = { ran.append($0.id) }
         #expect(try #require(view.widgetGrid.tiles.last).accessibilityPerformPress())
-        #expect(view.selectedWidget == nil)
-        #expect(!view.results.hidesSelection)
+        #expect(view.selectedWidget == 1)
+        #expect(view.results.hidesSelection)
+        #expect(ran == ["weather"])
     }
 
     @Test func refreshedValuesKeepTheSelectedTile() throws {
