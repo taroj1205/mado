@@ -3,6 +3,11 @@ public import CoreGraphics
 public struct RadialResolver: Sendable {
     public enum Direction: Sendable {
         case bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight
+
+        public var degrees: CGFloat {
+            CGFloat(RadialResolver.directions.firstIndex(of: self) ?? 0)
+                * RadialResolver.sectorDegrees
+        }
     }
 
     public enum Zone: Equatable, Sendable {
