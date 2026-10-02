@@ -21,6 +21,7 @@ public final class LauncherView: NSView {
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
+    public var onPill: ((StatusBar.Pill) -> Void)?
     public var context: String? {
         didSet { showContext() }
     }
@@ -32,6 +33,8 @@ public final class LauncherView: NSView {
     let actionsToggle = LauncherView.makeActionsToggle()
     let actionCapsule: GlassView
     let contextPill = StatusPill()
+    let statusBar = StatusBar()
+    var selectedPill: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
     private var browsing = false
@@ -93,8 +96,13 @@ public final class LauncherView: NSView {
 
     private func placeCapsules() {
         addSubview(contextPill)
+        addSubview(statusBar)
         addSubview(actionCapsule)
         NSLayoutConstraint.activate([
+            statusBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.capsuleInset),
+            statusBar.trailingAnchor.constraint(
+                lessThanOrEqualTo: actionCapsule.leadingAnchor, constant: -Self.capsuleInset),
+            statusBar.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
             contextPill.leadingAnchor.constraint(
                 equalTo: leadingAnchor, constant: Self.capsuleInset),
             contextPill.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
@@ -109,6 +117,7 @@ public final class LauncherView: NSView {
         results.onMove = { [weak self] in self?.selectionMoved() }
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
         actionsToggle.onPress = { [weak self] in self?.toggleActions() }
+        statusBar.onPress = { [weak self] index in self?.pressPill(index) }
         field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
     }
@@ -116,6 +125,9 @@ public final class LauncherView: NSView {
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
+        }
+        if !event.modifierFlags.isDisjoint(with: Self.modifierKeys) {
+            selectPill(nil)
         }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
@@ -131,24 +143,6 @@ public final class LauncherView: NSView {
 
         default: return super.performKeyEquivalent(with: event)
         }
-        return true
-    }
-
-    private func runActionShortcut(_ event: NSEvent) -> Bool {
-        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
-            let item = results.selectedItem,
-            let index = actions?(item).firstIndex(where: { $0.matches(event) })
-        else { return false }
-        onRun?(item, index)
-        return true
-    }
-
-    private func runShortcut(_ key: String) -> Bool {
-        let items = results.rows.lazy.compactMap { row in
-            if case .item(let item) = row { item } else { nil }
-        }
-        guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
-        onRun?(item, 0)
         return true
     }
 
@@ -186,22 +180,25 @@ public final class LauncherView: NSView {
         }
     }
 
-    private func showAction(of item: ResultList.Item?) {
-        actionLabel.stringValue = item?.action ?? ""
-        actionCapsule.isHidden = item == nil
+    func showAction(of item: ResultList.Item?) {
+        let action = selectedPill.map { pills[$0].action } ?? item?.action
+        actionLabel.stringValue = action ?? ""
+        actionCapsule.isHidden = action == nil
         showContext()
     }
 
-    private func showContext() {
+    func showContext() {
+        statusBar.isHidden = !showsStatusBar
         let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
+        let text = hintsPreview ? Self.previewHint : context
         contextPill.show(
-            hintsPreview ? Self.previewHint : context,
+            statusBar.isHidden ? text : nil,
             symbol: hintsPreview ? Self.previewSymbol : contextSymbol)
     }
 
     public func show(_ sections: [ResultList.Section]) {
         let previewed = results.selectedItem?.file
-        let keep = browsing || choosingAction
+        let keep = browsing || choosingAction || selectedPill != nil
         results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
         if results.selectedItem?.file != previewed {
             closePreview()
@@ -210,6 +207,7 @@ public final class LauncherView: NSView {
 
     public func endBrowsing() {
         browsing = false
+        selectPill(nil)
         closePreview()
         closeActions()
         showContext()
@@ -250,6 +248,7 @@ public final class LauncherView: NSView {
     }
 
     func selectionMoved() {
+        selectPill(nil)
         browsing = true
         showContext()
     }

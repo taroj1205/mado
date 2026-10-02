@@ -102,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
+        launcherView.onPill = { [weak self] in self?.run($0) }
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
@@ -156,6 +157,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let ranking = usage.summary(of: item.id, at: .now)
             editor.perform(edits[index - actions.count], for: item, ranking: ranking, in: launcher)
         }
+    }
+
+    private func run(_ pill: StatusBar.Pill) {
+        hideLauncher()
+        perform(StatusPills.action(for: pill), for: pill.id, recordingUse: false)
     }
 
     private func createQuicklink() {
@@ -253,6 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
         }
+        launcherView.pills = StatusPills.current()
         search?.run(launcherView.field.stringValue)
         #if DEBUG
             NoFocus.show(panel)

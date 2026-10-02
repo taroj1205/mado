@@ -25,8 +25,27 @@ extension LauncherView {
         }
     }
 
+    func runActionShortcut(_ event: NSEvent) -> Bool {
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
+            let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.matches(event) })
+        else { return false }
+        onRun?(item, index)
+        return true
+    }
+
+    func runShortcut(_ key: String) -> Bool {
+        let items = results.rows.lazy.compactMap { row in
+            if case .item(let item) = row { item } else { nil }
+        }
+        guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
+        onRun?(item, 0)
+        return true
+    }
+
     func showActions() {
         guard let item = results.selectedItem else { return }
+        selectPill(nil)
         closePreview()
         let menu = actionPanel ?? ActionPanel()
         menu.onRun = { [weak self] index in

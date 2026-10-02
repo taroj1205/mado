@@ -194,7 +194,7 @@ import Testing
         ])
         var titles: [String?] = []
         for move in [list.selectNext, list.selectNext, list.selectNext] {
-            move()
+            _ = move()
             titles.append(list.selectedItem?.title)
         }
         for move in [list.selectPrevious, list.selectPrevious, list.selectPrevious] {
