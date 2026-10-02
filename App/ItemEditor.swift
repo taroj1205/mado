@@ -4,6 +4,7 @@ import GlassUI
 import InputKit
 import os
 import SearchKit
+import WindowKit
 
 @MainActor
 final class ItemEditor {
@@ -32,7 +33,7 @@ final class ItemEditor {
         self.modules = modules
         self.registry = registry
         self.name = name
-        sheet.onRecording = { [registry] in registry?.isSuspended = $0 }
+        sheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         sheet.onCancel = { [weak self] in self?.close() }
     }
 
@@ -51,13 +52,14 @@ final class ItemEditor {
             panel: panel, content: panel.glass.contentView, focus: panel.initialFirstResponder)
         panel.glass.contentView = sheet
         let current = settings[item.id]
-        sheet.conflict = { [weak self] in self?.owner(of: $0, besides: item.id) }
+        sheet.conflict = { [weak self] in self?.conflict(for: $0, besides: item.id) }
         sheet.onSave = { [weak self] in self?.save($0, for: item.id) }
         sheet.show(
             item,
             values: ItemSheet.Values(
                 aliases: current.aliases, hotkey: current.hotkey, favourite: current.favourite),
-            ranking: ranking, opening: field)
+            ranking: ranking, opening: field,
+            isApp: AppToggle.app(for: item.id) != nil)
     }
 
     func close() {
@@ -69,7 +71,21 @@ final class ItemEditor {
         (host.focus as? NSTextField)?.selectText(nil)
     }
 
-    private func owner(of hotkey: Shortcut, besides id: String) -> String? {
+    func assign(_ hotkey: Shortcut?, to id: String) -> String? {
+        if let problem = bind(hotkey, to: id) {
+            return problem
+        }
+        settings[id].hotkey = hotkey
+        settings.save(to: modules)
+        onSave?(id, false)
+        return nil
+    }
+
+    func suspendHotKeys(_ suspended: Bool) {
+        registry?.isSuspended = suspended
+    }
+
+    func conflict(for hotkey: Shortcut, besides id: String) -> String? {
         if LauncherHotKeys.Key.allCases.contains(where: { $0.shortcut == hotkey }) {
             return "Mado"
         }
@@ -84,23 +100,29 @@ final class ItemEditor {
     }
 
     private func save(_ values: ItemSheet.Values, for id: String) -> String? {
-        let saved = settings[id].hotkey
-        if values.hotkey != saved {
-            if let registration = registrations.removeValue(forKey: id) {
-                registry?.unregister(registration)
-            }
-            if let hotkey = values.hotkey, !register(hotkey, for: id) {
-                if let saved {
-                    register(saved, for: id)
-                }
-                return "macOS wouldn’t register this hotkey. Try another."
-            }
+        if let problem = bind(values.hotkey, to: id) {
+            return problem
         }
         settings[id] = ItemSettings.Item(
             aliases: values.aliases, hotkey: values.hotkey, favourite: values.favourite)
         settings.save(to: modules)
         close()
         onSave?(id, values.resetsRanking)
+        return nil
+    }
+
+    private func bind(_ hotkey: Shortcut?, to id: String) -> String? {
+        let saved = settings[id].hotkey
+        guard hotkey != saved else { return nil }
+        if let registration = registrations.removeValue(forKey: id) {
+            registry?.unregister(registration)
+        }
+        if let hotkey, !register(hotkey, for: id) {
+            if let saved {
+                register(saved, for: id)
+            }
+            return "macOS wouldn’t register this hotkey. Try another."
+        }
         return nil
     }
 

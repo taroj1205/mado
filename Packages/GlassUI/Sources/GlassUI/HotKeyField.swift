@@ -41,13 +41,17 @@ final class HotKeyField: NSView {
         didSet { needsDisplay = true }
     }
 
-    init() {
+    convenience init() {
+        self.init(height: Self.height)
+    }
+
+    init(height: CGFloat) {
         super.init(frame: .zero)
         content.spacing = Self.gap
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: Self.height),
+            heightAnchor.constraint(equalToConstant: height),
             content.centerXAnchor.constraint(equalTo: centerXAnchor),
             content.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])

@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import GlassUI
 import SearchKit
+import WindowKit
 
 @MainActor
 enum LauncherResult {
@@ -133,6 +134,13 @@ enum LauncherResult {
             return .app(app)
         }
         return sources.commands.first { $0.id == id }.map(Self.command)
+    }
+
+    static func hotKeyAction(for id: String, in sources: Sources) -> CommandAction? {
+        if let app = AppToggle.app(for: id) {
+            return CommandAction(id: "toggle", title: "Toggle") { try await AppToggle.toggle(app) }
+        }
+        return result(for: id, in: sources)?.actions.first
     }
 
     static func context(
