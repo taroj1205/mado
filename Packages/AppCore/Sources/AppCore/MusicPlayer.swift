@@ -1,0 +1,187 @@
+import AppKit
+import CoreServices
+public import Foundation
+
+public actor MusicPlayer {
+    typealias Send = @Sendable (NSAppleEventDescriptor, String) throws -> NSAppleEventDescriptor
+    typealias Load = @Sendable (URL) async throws -> Data
+
+    public struct Track: Equatable, Sendable {
+        public let id: String
+        public let title: String
+        public let artist: String
+        public let isPlaying: Bool
+        public var artwork: Data?
+    }
+
+    public enum Failure: Error {
+        case notRunning
+        case noResult
+        case noTrack
+        case badResponse
+    }
+
+    enum Artwork: Equatable, Sendable {
+        case rawData
+        case link
+    }
+
+    struct Source: Equatable, Sendable {
+        static let music = Source(
+            bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook")
+        static let spotify = Source(
+            bundleID: "com.spotify.client", trackID: "ID  ", artwork: .link, suite: "spfy")
+
+        let bundleID: String
+        let trackID: String
+        let artwork: Artwork
+        let suite: String
+    }
+
+    private static let sources = [Source.music, .spotify]
+    private static let timeout: TimeInterval = 2
+    private static let loadTimeout: TimeInterval = 5
+    private static let httpOK = 200
+    private static let stopped = code("kPSS")
+    private static let paused = code("kPSp")
+
+    private static let toApp: Send = { event, bundleID in
+        guard
+            let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .first(where: { !$0.isTerminated })
+        else { throw Failure.notRunning }
+        event.setAttribute(
+            NSAppleEventDescriptor(processIdentifier: app.processIdentifier),
+            forKeyword: AEKeyword(keyAddressAttr))
+        let reply = try event.sendEvent(options: .waitForReply, timeout: timeout)
+        return reply.paramDescriptor(forKeyword: AEKeyword(keyDirectObject)) ?? .null()
+    }
+
+    private static let fromWeb: Load = { url in
+        let (data, response) = try await URLSession.shared.data(
+            for: URLRequest(url: url, timeoutInterval: loadTimeout))
+        guard (response as? HTTPURLResponse)?.statusCode == httpOK else {
+            throw Failure.badResponse
+        }
+        return data
+    }
+
+    private static var currentTrack: NSAppleEventDescriptor { property("pTrk") }
+
+    private static var firstArtwork: NSAppleEventDescriptor {
+        specifier(
+            want: code("cArt"), form: OSType(formAbsolutePosition),
+            data: NSAppleEventDescriptor(int32: 1), of: currentTrack)
+    }
+
+    private let send: Send
+    private let load: Load
+    private var source: Source?
+    private var artwork: (id: String, data: Data?)?
+
+    public init() {
+        self.init(send: Self.toApp, load: Self.fromWeb)
+    }
+
+    init(send: @escaping Send, load: @escaping Load) {
+        self.send = send
+        self.load = load
+    }
+
+    static func code(_ text: String) -> FourCharCode {
+        text.utf8.reduce(0) { $0 << UInt8.bitWidth | FourCharCode($1) }
+    }
+
+    private static func property(
+        _ name: String, of container: NSAppleEventDescriptor = .null()
+    ) -> NSAppleEventDescriptor {
+        specifier(
+            want: OSType(cProperty), form: OSType(formPropertyID),
+            data: NSAppleEventDescriptor(typeCode: code(name)), of: container)
+    }
+
+    private static func specifier(
+        want: DescType, form: DescType, data: NSAppleEventDescriptor,
+        of container: NSAppleEventDescriptor
+    ) -> NSAppleEventDescriptor {
+        let record = NSAppleEventDescriptor.record()
+        record.setDescriptor(
+            NSAppleEventDescriptor(typeCode: want), forKeyword: AEKeyword(keyAEDesiredClass))
+        record.setDescriptor(
+            NSAppleEventDescriptor(enumCode: form), forKeyword: AEKeyword(keyAEKeyForm))
+        record.setDescriptor(data, forKeyword: AEKeyword(keyAEKeyData))
+        record.setDescriptor(container, forKeyword: AEKeyword(keyAEContainer))
+        return record.coerce(toDescriptorType: DescType(typeObjectSpecifier)) ?? record
+    }
+
+    private static func event(_ eventClass: String, _ id: String) -> NSAppleEventDescriptor {
+        NSAppleEventDescriptor(
+            eventClass: code(eventClass), eventID: code(id), targetDescriptor: nil,
+            returnID: AEReturnID(kAutoGenerateReturnID),
+            transactionID: AETransactionID(kAnyTransactionID))
+    }
+
+    public func track() async -> Track? {
+        let found = Self.sources.compactMap { app in read(app).map { (app, $0) } }
+        guard let (app, current) = found.first(where: \.1.isPlaying) ?? found.first else {
+            source = nil
+            return nil
+        }
+        source = app
+        var playing = current
+        if artwork?.id != playing.id, let art = await artwork(of: playing.id, in: app) {
+            artwork = art
+        }
+        playing.artwork = artwork?.id == playing.id ? artwork?.data : nil
+        return playing
+    }
+
+    public func playPause() throws {
+        guard let source else { throw Failure.noTrack }
+        _ = try send(Self.event(source.suite, "PlPs"), source.bundleID)
+    }
+
+    private func read(_ app: Source) -> Track? {
+        guard let state = try? get(Self.property("pPlS"), from: app).enumCodeValue,
+            state != Self.stopped,
+            let id = try? string(app.trackID, from: app),
+            let title = try? string("pnam", from: app),
+            let artist = try? string("pArt", from: app)
+        else { return nil }
+        return Track(id: id, title: title, artist: artist, isPlaying: state != Self.paused)
+    }
+
+    private func artwork(of id: String, in app: Source) async -> (id: String, data: Data?)? {
+        switch app.artwork {
+        case .rawData:
+            do {
+                let found = try get(Self.property("pRaw", of: Self.firstArtwork), from: app)
+                return (id, found.descriptorType == typeType ? nil : found.data)
+            } catch {
+                let failure = error as NSError
+                let missing =
+                    failure.domain == NSOSStatusErrorDomain && failure.code == errAENoSuchObject
+                return missing ? (id, nil) : nil
+            }
+
+        case .link:
+            guard let link = try? string("aUrl", from: app) else { return nil }
+            guard let url = URL(string: link), url.scheme == "https" else { return (id, nil) }
+            return (try? await load(url)).map { (id, $0) }
+        }
+    }
+
+    private func string(_ name: String, from app: Source) throws -> String {
+        let reply = try get(Self.property(name, of: Self.currentTrack), from: app)
+        guard let text = reply.stringValue else { throw Failure.noResult }
+        return text
+    }
+
+    private func get(
+        _ specifier: NSAppleEventDescriptor, from app: Source
+    ) throws -> NSAppleEventDescriptor {
+        let event = Self.event("core", "getd")
+        event.setParam(specifier, forKeyword: AEKeyword(keyDirectObject))
+        return try send(event, app.bundleID)
+    }
+}

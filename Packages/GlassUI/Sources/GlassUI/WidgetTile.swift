@@ -3,6 +3,7 @@ import AppKit
 final class WidgetTile: NSView {
     private static let radius: CGFloat = 16
     private static let horizontal: CGFloat = 12
+    private static let trackLeading: CGFloat = 10
     private static let vertical: CGFloat = 10
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
@@ -20,6 +21,7 @@ final class WidgetTile: NSView {
     let value = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")
     let meters = NSStackView()
+    let track = WidgetTrack()
     private let box = NSBox()
     var onPress: (() -> Void)?
 
@@ -51,7 +53,11 @@ final class WidgetTile: NSView {
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
         addSubview(meters)
+        addSubview(track)
         NSLayoutConstraint.activate([
+            track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
+            track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            track.centerYAnchor.constraint(equalTo: centerYAnchor),
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
             meters.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -91,8 +97,12 @@ final class WidgetTile: NSView {
                 .kern: Self.valueKern,
             ])
         detail.stringValue = widget.detail
-        value.isHidden = !widget.meters.isEmpty
-        detail.isHidden = !widget.meters.isEmpty
+        value.isHidden = !widget.meters.isEmpty || widget.track != nil
+        detail.isHidden = value.isHidden
+        track.isHidden = widget.track == nil
+        if let playing = widget.track {
+            track.show(playing)
+        }
         if meters.arrangedSubviews.count != widget.meters.count {
             meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
             for _ in widget.meters {
