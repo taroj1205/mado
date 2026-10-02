@@ -38,3 +38,7 @@ extension Usage: StoredValue {
 extension ItemSettings: StoredValue {
     static let key = "items"
 }
+
+extension AnswerSettings: StoredValue {
+    static let key = "answers"
+}

@@ -15,6 +15,7 @@ enum LauncherResult {
         let files: FileIndex
         let commands: [Command]
         let rates: ExchangeRates?
+        let answers: AnswerSettings
     }
 
     private static let openApp = "Open Application"
@@ -104,11 +105,12 @@ enum LauncherResult {
             ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
             ResultList.Section(title: "Files", items: found.prefix(fileLimit).map(item)),
         ]
+        let shows = sources.answers.shows
         let answer =
-            ColourAnswer.section(for: trimmed)
-            ?? Calculator.answer(for: trimmed, rates: sources.rates).map { answer in
+            (shows(.colours) ? ColourAnswer.section(for: trimmed) : nil)
+            ?? Self.answer(for: trimmed, in: sources).map { answer in
                 ResultList.Section(title: answer.kind, items: [Self.item(for: answer)])
-            } ?? DictionaryAnswer.section(for: trimmed)
+            } ?? (shows(.dictionary) ? DictionaryAnswer.section(for: trimmed) : nil)
         guard let answer else {
             if typed, ranked.isEmpty, found.isEmpty {
                 return [Fallback.section(for: trimmed, matched: false)]
@@ -152,7 +154,7 @@ enum LauncherResult {
     static func actions(
         for id: String, query: String, in sources: Sources
     ) -> [CommandAction] {
-        if id == answerID, let answer = Calculator.answer(for: query, rates: sources.rates) {
+        if id == answerID, let answer = answer(for: query, in: sources) {
             return [
                 CommandAction(id: "copy", title: "Copy Answer") {
                     NSPasteboard.general.clearContents()
@@ -170,6 +172,10 @@ enum LauncherResult {
             return [fallback.action(for: query.trimmingCharacters(in: .whitespacesAndNewlines))]
         }
         return result(for: id, in: sources)?.actions ?? []
+    }
+
+    private static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
+        Calculator.answer(for: query, rates: sources.rates, settings: sources.answers)
     }
 
     private static func reveal(_ url: URL) -> CommandAction {

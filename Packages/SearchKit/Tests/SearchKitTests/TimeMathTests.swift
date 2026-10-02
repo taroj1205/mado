@@ -130,7 +130,7 @@ import Testing
     }
 
     @Test(arguments: [
-        "9am", "45m", "2h 30m", "13pm to 5pm", "0am to 5pm", "9:60am to 5pm", "24:00 to 1:00",
+        "9am", "45min", "2h 30m", "13pm to 5pm", "0am to 5pm", "9:60am to 5pm", "24:00 to 1:00",
         "9 to 5", "2h + ", "5 parsecs + 2h", "45 days", "days until 30 feb 2028",
         "days until 1 jan 2020", "days until 32 dec", "days until 25 de",
         "9am + 1" + String(repeating: "0", count: 400) + "d",
