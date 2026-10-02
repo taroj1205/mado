@@ -23,7 +23,10 @@ import Testing
                 ])
         ]
         view.actions = { _ in
-            [.init("Open", keys: ["↵"]), .init("Create Quicklink", keys: ["⌘", "⇧", "L"])]
+            [
+                .init("Open", keys: ["↵"]), .init("Create Quicklink", keys: ["⌘", "⇧", "L"]),
+                .init("Show Info in Finder", keys: ["⌘", "I"]),
+            ]
         }
         panel.makeFirstResponder(view.field)
     }
@@ -43,6 +46,9 @@ import Testing
         press(kVK_ANSI_L, "L", [.command, .shift])
         #expect(runs == ["Terminal 1", "Terminal 1"])
         #expect(!view.choosingAction)
+
+        press(kVK_ANSI_I, "i", [.command])
+        #expect(runs == ["Terminal 1", "Terminal 1", "Terminal 2"])
     }
 
     private func press(_ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags) {

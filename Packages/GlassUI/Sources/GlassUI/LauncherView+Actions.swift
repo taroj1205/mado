@@ -1,7 +1,19 @@
-import AppKit
+public import AppKit
+
+public struct ActionChoice {
+    public let title: String
+    public let icon: NSImage?
+    public let run: @MainActor () -> Void
+
+    public init(_ title: String, icon: NSImage?, run: @escaping @MainActor () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.run = run
+    }
+}
 
 extension LauncherView {
-    public struct Action: Equatable, Sendable {
+    public struct Action {
         public static let primaryKeys = ["↵"]
         public static let secondaryKeys = ["⌘", "↵"]
         private static let modifiers: [(NSEvent.ModifierFlags, String)] = [
@@ -10,10 +22,18 @@ extension LauncherView {
 
         public let title: String
         public let keys: [String]
+        public let isDestructive: Bool
+        public let choices: (@MainActor () -> [ActionChoice])?
+        public var group = 0
 
-        public init(_ title: String, keys: [String] = []) {
+        public init(
+            _ title: String, keys: [String] = [], isDestructive: Bool = false,
+            choices: (@MainActor () -> [ActionChoice])? = nil
+        ) {
             self.title = title
             self.keys = keys
+            self.isDestructive = isDestructive
+            self.choices = choices
         }
 
         func matches(_ event: NSEvent) -> Bool {

@@ -52,7 +52,7 @@ public final class AppIndex {
                 let parent = url.deletingLastPathComponent().path
                 found.append(
                     App(
-                        name: name(files.displayName(atPath: url.path)),
+                        name: name(of: url),
                         folder: items.level == 1 ? "" : files.displayName(atPath: parent),
                         url: url))
             }
@@ -60,8 +60,8 @@ public final class AppIndex {
         return found.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    nonisolated private static func name(_ displayName: String) -> String {
-        displayName.replacing(/\.app$/, with: "")
+    nonisolated public static func name(of url: URL) -> String {
+        FileManager.default.displayName(atPath: url.path).replacing(/\.app$/, with: "")
     }
 
     public func start() {

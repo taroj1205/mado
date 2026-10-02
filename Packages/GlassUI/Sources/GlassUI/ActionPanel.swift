@@ -5,7 +5,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let width: CGFloat = 316
     static let radius: CGFloat = 18
     static let inset: CGFloat = 6
-    private static let rowGap: CGFloat = 1
     private static let headerTop: CGFloat = 6
     private static let headerSide: CGFloat = 10
     private static let headerBottom: CGFloat = 4
@@ -19,15 +18,15 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     let glass = GlassView(shape: .rounded(radius))
     let header = NSTextField(labelWithString: "")
     let field = NSTextField()
-    private let list = NSStackView()
-    let empty = ActionRow.note("No matching actions")
+    private let list = ActionList()
     var onRun: ((Int) -> Void)?
     var onClose: (() -> Void)?
-    private(set) var rows: [ActionRow] = []
-    private var shown: [Int] = []
-    private var selected = 0
+    private var title = ""
     private var actions: [LauncherView.Action] = []
+    private var choices: (title: String, items: [ActionChoice])?
 
+    var rows: [ActionRow] { list.rows }
+    var empty: ActionRow { list.empty }
     var isVisible: Bool { unsafe glass.superview != nil }
 
     override init() {
@@ -41,10 +40,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         field.drawsBackground = false
         field.focusRingType = .none
         field.delegate = self
-        list.orientation = .vertical
-        list.spacing = Self.rowGap
-        list.setAccessibilityElement(true)
-        list.setAccessibilityRole(.menu)
         glass.translatesAutoresizingMaskIntoConstraints = false
         glass.sheen.isHidden = true
         layout()
@@ -64,16 +59,16 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     ) {
         guard let host = unsafe anchor.superview else { return }
         self.actions = actions
-        header.stringValue = title
-        list.setAccessibilityLabel("Actions for \(title)")
-        field.stringValue = ""
+        self.title = title
+        choices = nil
         host.addSubview(glass)
         NSLayoutConstraint.activate([
             glass.widthAnchor.constraint(equalToConstant: Self.width),
             glass.trailingAnchor.constraint(equalTo: anchor.trailingAnchor),
             glass.bottomAnchor.constraint(equalTo: anchor.topAnchor, constant: -gap),
+            glass.topAnchor.constraint(greaterThanOrEqualTo: host.topAnchor, constant: gap),
         ])
-        filter()
+        refresh()
         unsafe host.window?.makeFirstResponder(field)
     }
 
@@ -93,10 +88,10 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
 
     func control(_: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         switch selector {
-        case #selector(NSResponder.moveUp): select(selected - 1)
-        case #selector(NSResponder.moveDown): select(selected + 1)
-        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): runSelected()
-        case #selector(NSResponder.cancelOperation): close()
+        case #selector(NSResponder.moveUp): list.moveSelection(by: -1)
+        case #selector(NSResponder.moveDown): list.moveSelection(by: 1)
+        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): list.press()
+        case #selector(NSResponder.cancelOperation): cancel()
         default: return false
         }
         return true
@@ -105,7 +100,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     func performShortcut(_ event: NSEvent) -> Bool {
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() != true else { return false }
         if let index = actions.firstIndex(where: { $0.matches(event) }) {
-            onRun?(index)
+            run(index)
             return true
         }
         guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command else {
@@ -120,45 +115,66 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             guard let index = actions.firstIndex(where: { $0.keys == secondary }) else {
                 return false
             }
-            onRun?(index)
+            run(index)
 
         default: return false
         }
         return true
     }
 
+    private func refresh() {
+        header.stringValue = choices?.title ?? title
+        field.stringValue = ""
+        filter()
+    }
+
     private func filter() {
         let query = field.stringValue.trimmingCharacters(in: .whitespaces)
-        shown = actions.indices.filter { index in
-            query.isEmpty || actions[index].title.localizedStandardContains(query)
-        }
-        for row in list.arrangedSubviews {
-            row.removeFromSuperview()
-        }
-        rows = shown.map { index in
-            let row = ActionRow(title: actions[index].title, keys: actions[index].keys)
-            row.onPress = { [weak self] in self?.onRun?(index) }
-            return row
-        }
-        for row in rows.isEmpty ? [empty] : rows {
-            list.addArrangedSubview(row)
-            row.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
-        }
-        selected = 0
-        rows.first?.isSelected = true
-    }
-
-    private func runSelected() {
-        if shown.indices.contains(selected) {
-            onRun?(shown[selected])
+        let matches = { (title: String) in query.isEmpty || title.localizedStandardContains(query) }
+        if let choices {
+            let matched = choices.items.filter { matches($0.title) }.map(row)
+            list.show(matched, groups: matched.map { _ in 0 }, label: choices.title)
+        } else {
+            let shown = actions.indices.filter { matches(actions[$0].title) }
+            list.show(
+                shown.map(row), groups: shown.map { actions[$0].group },
+                label: "Actions for \(title)")
         }
     }
 
-    private func select(_ index: Int) {
-        guard rows.indices.contains(index) else { return }
-        rows[selected].isSelected = false
-        selected = index
-        rows[index].isSelected = true
+    private func row(for index: Int) -> ActionRow {
+        let action = actions[index]
+        let row = ActionRow(
+            title: action.title, keys: action.keys, icon: nil, isDestructive: action.isDestructive)
+        row.onPress = { [weak self] in self?.run(index) }
+        return row
+    }
+
+    private func row(for choice: ActionChoice) -> ActionRow {
+        let row = ActionRow(title: choice.title, keys: [], icon: choice.icon, isDestructive: false)
+        row.onPress = { [weak self] in
+            self?.close()
+            choice.run()
+        }
+        return row
+    }
+
+    private func run(_ index: Int) {
+        guard let choose = actions[index].choices else {
+            onRun?(index)
+            return
+        }
+        choices = (actions[index].title.trimmingCharacters(in: ["…"]), choose())
+        refresh()
+    }
+
+    private func cancel() {
+        guard choices != nil else {
+            close()
+            return
+        }
+        choices = nil
+        refresh()
     }
 
     private func layout() {

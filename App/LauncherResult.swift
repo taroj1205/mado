@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import ClipboardKit
 import GlassUI
 import SearchKit
 import WindowKit
@@ -174,19 +175,19 @@ enum LauncherResult {
     }
 
     static func actions(
-        for id: String, query: String, in sources: Sources
+        for id: String, query: String, in sources: Sources, pastingInto target: PasteTarget?
     ) -> [CommandAction] {
         if let link = sources.quicklinks.first(where: { $0.id == id }) {
             let aliases = sources.items[id].aliases
             return [link.open(query: link.query(in: query, aliases: aliases) ?? "")]
         }
         if id == answerID, let answer = answer(for: query, in: sources) {
-            return [
-                CommandAction(id: "copy", title: "Copy Answer") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(answer.result, forType: .string)
-                }
-            ]
+            let copy = CommandAction(id: "copy", title: "Copy Answer") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(answer.result, forType: .string)
+            }
+            guard let target else { return [copy] }
+            return [copy, target.action(pasting: answer.result)]
         }
         if DictionaryAnswer.ids.contains(id) {
             return DictionaryAnswer.actions(for: id, query: query)

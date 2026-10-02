@@ -1,3 +1,4 @@
+public import AppCore
 public import AppKit
 import Carbon.HIToolbox
 import InputKit
@@ -48,6 +49,14 @@ public struct PasteTarget {
         }
         guard events.count == keyDowns.count else { throw Failure.noKeyEvents }
         return events
+    }
+
+    public func action(pasting text: String) -> CommandAction {
+        CommandAction(id: "paste", title: "Paste to \(app.localizedName ?? "Previous App")") {
+            let item = NSPasteboardItem()
+            item.setString(text, forType: .string)
+            try await paste([item])
+        }
     }
 
     public func paste(_ items: [any NSPasteboardWriting]) async throws {
