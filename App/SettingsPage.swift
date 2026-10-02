@@ -1,11 +1,13 @@
 import AppCore
 import AppKit
+import SearchKit
 
 @MainActor
 struct SettingsPage {
     struct Context {
         let modules: ModuleManager?
         let hotKeys: LauncherHotKeys
+        let rates: ExchangeRateFeed
         let apps: AppHotKeys
     }
 
@@ -35,7 +37,7 @@ struct SettingsPage {
                     ]),
             ]
         },
-        Self("Search", "magnifyingglass"),
+        Self("Search", "magnifyingglass") { answers($0.modules, $0.rates) },
         Self("Widgets", "square.grid.2x2", module: module("widgets", "Widgets", enabled: true)),
         Self(
             "Clipboard", "clipboard",

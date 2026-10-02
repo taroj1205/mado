@@ -1,3 +1,4 @@
+import AppCore
 import AppKit
 
 final class ResultCell: NSTableCellView {
@@ -21,6 +22,7 @@ final class ResultCell: NSTableCellView {
     let subtitle = NSTextField(labelWithString: "")
     let kind = NSTextField(labelWithString: "")
     let shortcut = NSStackView()
+    let hotkey = NSStackView()
     private let accessory = NSStackView()
 
     override init(frame: NSRect) {
@@ -44,9 +46,11 @@ final class ResultCell: NSTableCellView {
         subtitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
         kind.font = .systemFont(ofSize: Self.kindSize)
         kind.textColor = .secondaryLabelColor
-        shortcut.spacing = Self.keyGap
-        shortcut.setHuggingPriority(.defaultHigh, for: .horizontal)
-        accessory.setViews([kind, shortcut], in: .leading)
+        for keys in [hotkey, shortcut] {
+            keys.spacing = Self.keyGap
+            keys.setHuggingPriority(.defaultHigh, for: .horizontal)
+        }
+        accessory.setViews([kind, hotkey, shortcut], in: .leading)
         accessory.spacing = Self.gap
         accessory.setHuggingPriority(.defaultHigh, for: .horizontal)
         setAccessibilityChildren([])
@@ -67,11 +71,15 @@ final class ResultCell: NSTableCellView {
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
-        kind.isHidden = item.kind.isEmpty
+        kind.isHidden = item.kind.isEmpty || item.hotkey != nil
+        let hotkeyKeys = item.hotkey.map { HotKeyLabel.keycaps(.shortcut($0)) } ?? []
+        hotkey.setViews(hotkeyKeys.map(FloatingCapsule.keycap), in: .leading)
+        hotkey.isHidden = hotkeyKeys.isEmpty
         shortcut.setViews(item.shortcut.map(FloatingCapsule.keycap), in: .leading)
         shortcut.isHidden = item.shortcut.isEmpty
+        let detail = item.hotkey.map { "hotkey \(HotKeyLabel.spoken($0))" } ?? item.kind
         setAccessibilityLabel(
-            [item.title, item.kind, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
+            [item.title, detail, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
     private func layout(_ views: NSView...) {

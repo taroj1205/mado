@@ -57,7 +57,7 @@ import Testing
     }
 
     @Test(arguments: [
-        "5 ft in kg", "30 c to mb", "5 ft in parsecs", "5 parsecs in ft", "5 ft", "ft in cm",
+        "5 ft in kg", "30 c to mb", "5 ft in parsecs", "5 parsecs in ft", "5 gb", "ft in cm",
         "5 ft in", "1.2.3 ft in cm", ". ft in cm", "5 ft into cm", "5 ft in cm cm",
         "1" + String(repeating: "0", count: 400) + " tb in kb",
     ])
@@ -134,7 +134,7 @@ import Testing
 
     @Test(arguments: [
         "5 ft + 2 kg", "5 ft + 5 cm in kg", "30 c + 5 c", "30 c + 5 c to f", "2 ft × 3 ft",
-        "10 ft ÷ 2 ft", "6 ÷ 2 ft", "5 ft + 3", "3 + 5 ft", "5 ft", "5 ft 2", "5 2 ft",
+        "10 ft ÷ 2 ft", "6 ÷ 2 ft", "5 ft + 3", "3 + 5 ft", "5 ft 2", "5 2 ft",
         "5 ft +", "+ 5 ft", "5 ft + + 2 ft", "5 ft + 2 parsecs", "5 ft + 2 ft in parsecs",
         "5 ft ÷ 0", "1.2.3 ft + 1 ft", "-5 ft + 2 ft", "5 ft + (2 ft)",
         "1" + String(repeating: "0", count: 400) + " tb - 1 tb",

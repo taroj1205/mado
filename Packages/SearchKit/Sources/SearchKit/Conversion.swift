@@ -7,11 +7,22 @@ enum Conversion {
         let keys: [String]
         let unit: Dimension
         let name: String
+        let toMetric: String?
+        let toUS: String?
 
-        init(_ keys: [String], _ unit: Dimension, _ name: String) {
+        init(
+            _ keys: [String], _ unit: Dimension, _ name: String, toMetric: String? = nil,
+            toUS: String? = nil
+        ) {
             self.keys = keys
             self.unit = unit
             self.name = name
+            self.toMetric = toMetric
+            self.toUS = toUS
+        }
+
+        func counterpart(in system: AnswerSettings.UnitSystem) -> String? {
+            system == .metric ? toMetric ?? toUS : toUS ?? toMetric
         }
     }
 
@@ -120,33 +131,46 @@ enum Conversion {
     private static let britishEnglish = Locale(identifier: "en_GB")
 
     private static let units = [
-        Named(["mm"], UnitLength.millimeters, "Millimetres"),
-        Named(["cm"], UnitLength.centimeters, "Centimetres"),
-        Named(["m"], UnitLength.meters, "Metres"),
-        Named(["km"], UnitLength.kilometers, "Kilometres"),
-        Named(["in", "inch", "inches"], UnitLength.inches, "Inches"),
-        Named(["ft", "foot", "feet"], UnitLength.feet, "Feet"),
-        Named(["yd"], UnitLength.yards, "Yards"),
-        Named(["mi", "mile", "miles"], UnitLength.miles, "Miles"),
-        Named(["g"], UnitMass.grams, "Grams"),
-        Named(["kg"], UnitMass.kilograms, "Kilograms"),
-        Named(["lb", "lbs"], UnitMass(symbol: "lb", converter: linear(pound)), "Pounds"),
-        Named(["oz"], UnitMass(symbol: "oz", converter: linear(ounce)), "Ounces"),
-        Named(["st"], UnitMass(symbol: "st", converter: linear(stone)), "Stone"),
-        Named(["ml"], UnitVolume.milliliters, "Millilitres"),
-        Named(["l", "litre", "litres"], UnitVolume.liters, "Litres"),
-        Named(["cup", "cups"], UnitVolume(symbol: "cup", converter: linear(cup)), "Cups (US)"),
-        Named(["tbsp"], UnitVolume(symbol: "tbsp", converter: linear(tablespoon)), "Tablespoons"),
-        Named(["tsp"], UnitVolume(symbol: "tsp", converter: linear(teaspoon)), "Teaspoons"),
-        Named(["gal"], UnitVolume(symbol: "gal", converter: linear(gallon)), "Gallons (US)"),
+        Named(["mm"], UnitLength.millimeters, "Millimetres", toUS: "in"),
+        Named(["cm"], UnitLength.centimeters, "Centimetres", toUS: "in"),
+        Named(["m"], UnitLength.meters, "Metres", toUS: "ft"),
+        Named(["km"], UnitLength.kilometers, "Kilometres", toUS: "mi"),
+        Named(["in", "inch", "inches"], UnitLength.inches, "Inches", toMetric: "cm"),
+        Named(["ft", "foot", "feet"], UnitLength.feet, "Feet", toMetric: "m"),
+        Named(["yd"], UnitLength.yards, "Yards", toMetric: "m"),
+        Named(["mi", "mile", "miles"], UnitLength.miles, "Miles", toMetric: "km"),
+        Named(["g"], UnitMass.grams, "Grams", toUS: "oz"),
+        Named(["kg"], UnitMass.kilograms, "Kilograms", toUS: "lb"),
         Named(
-            ["fl oz"], UnitVolume(symbol: "fl oz", converter: linear(fluidOunce)), "Fluid ounces"),
+            ["lb", "lbs"], UnitMass(symbol: "lb", converter: linear(pound)), "Pounds",
+            toMetric: "kg"),
+        Named(["oz"], UnitMass(symbol: "oz", converter: linear(ounce)), "Ounces", toMetric: "g"),
+        Named(["st"], UnitMass(symbol: "st", converter: linear(stone)), "Stone", toMetric: "kg"),
+        Named(["ml"], UnitVolume.milliliters, "Millilitres", toUS: "fl oz"),
+        Named(["l", "litre", "litres"], UnitVolume.liters, "Litres", toUS: "gal"),
+        Named(
+            ["cup", "cups"], UnitVolume(symbol: "cup", converter: linear(cup)), "Cups (US)",
+            toMetric: "ml"),
+        Named(
+            ["tbsp"], UnitVolume(symbol: "tbsp", converter: linear(tablespoon)), "Tablespoons",
+            toMetric: "ml"),
+        Named(
+            ["tsp"], UnitVolume(symbol: "tsp", converter: linear(teaspoon)), "Teaspoons",
+            toMetric: "ml"),
+        Named(
+            ["gal"], UnitVolume(symbol: "gal", converter: linear(gallon)), "Gallons (US)",
+            toMetric: "l"),
+        Named(
+            ["fl oz"], UnitVolume(symbol: "fl oz", converter: linear(fluidOunce)), "Fluid ounces",
+            toMetric: "ml"),
         Named(
             ["kmh", "km/h"], UnitSpeed(symbol: "km/h", converter: linear(kilometrePerHour)),
-            "Kilometres per hour"),
-        Named(["mph"], UnitSpeed.milesPerHour, "Miles per hour"),
-        Named(["m/s"], UnitSpeed.metersPerSecond, "Metres per second"),
-        Named(["knots"], UnitSpeed(symbol: "kn", converter: linear(knot)), "Knots"),
+            "Kilometres per hour", toUS: "mph"),
+        Named(["mph"], UnitSpeed.milesPerHour, "Miles per hour", toMetric: "km/h"),
+        Named(["m/s"], UnitSpeed.metersPerSecond, "Metres per second", toUS: "mph"),
+        Named(
+            ["knots"], UnitSpeed(symbol: "kn", converter: linear(knot)), "Knots", toMetric: "km/h",
+            toUS: "mph"),
         Named(["kb"], UnitInformationStorage.kilobytes, "Kilobytes"),
         Named(["mb"], UnitInformationStorage.megabytes, "Megabytes"),
         Named(["gb"], UnitInformationStorage.gigabytes, "Gigabytes"),
@@ -154,9 +178,9 @@ enum Conversion {
         Named(["kib"], UnitInformationStorage.kibibytes, "Kibibytes"),
         Named(["mib"], UnitInformationStorage.mebibytes, "Mebibytes"),
         Named(["gib"], UnitInformationStorage.gibibytes, "Gibibytes"),
-        Named(["c", "°c", "celsius"], UnitTemperature.celsius, "Celsius"),
-        Named(["f", "°f", "fahrenheit"], UnitTemperature.fahrenheit, "Fahrenheit"),
-        Named(["k", "kelvin"], UnitTemperature.kelvin, "Kelvin"),
+        Named(["c", "°c", "celsius"], UnitTemperature.celsius, "Celsius", toUS: "f"),
+        Named(["f", "°f", "fahrenheit"], UnitTemperature.fahrenheit, "Fahrenheit", toMetric: "c"),
+        Named(["k", "kelvin"], UnitTemperature.kelvin, "Kelvin", toMetric: "c", toUS: "f"),
     ]
 
     static func answer(for text: String) -> Calculator.Answer? {
@@ -164,25 +188,47 @@ enum Conversion {
             let match = text.wholeMatch(
                 of: /(-?[\d.]+) ?([a-z°\/ ]+?) (?:to|in|as|->|=) ?([a-z°\/ ]+)/),
             let value = Double(match.1),
-            let source = named(match.2), let target = named(match.3),
-            sameDimension(source, target)
+            let source = named(match.2), let target = named(match.3)
         else { return nil }
-        let converted = Measurement(value: value, unit: source.unit).converted(to: target.unit)
-            .value
+        return answer(value, from: (match.2, source), to: (match.3, target))
+    }
+
+    static func answer(
+        for text: String, preferring settings: AnswerSettings, in region: Locale
+    ) -> Calculator.Answer? {
+        guard let match = text.wholeMatch(of: /(-?[\d.]+) ?([a-z°\/ ]+)/),
+            let value = Double(match.1), let source = named(match.2)
+        else { return nil }
+        let system =
+            source.unit is UnitTemperature
+            ? settings.temperature(in: region) : settings.measures(in: region)
+        guard let key = source.counterpart(in: system), let target = named(Substring(key)) else {
+            return nil
+        }
+        return answer(value, from: (match.2, source), to: (Substring(key), target))
+    }
+
+    private static func answer(
+        _ value: Double, from source: Keyed, to target: Keyed
+    ) -> Calculator.Answer? {
+        guard sameDimension(source.unit, target.unit) else { return nil }
+        let converted = Measurement(value: value, unit: source.unit.unit)
+            .converted(to: target.unit.unit).value
         guard converted.isFinite else { return nil }
-        if source.unit is UnitTemperature {
+        if source.unit.unit is UnitTemperature {
             let rounded = (converted * temperatureDigits).rounded() / temperatureDigits
             return Calculator.Answer(
                 kind: "Temperature",
-                expression: "\(Calculator.format(value)) \(source.unit.symbol)",
-                expressionDetail: source.name,
-                result: "\(Calculator.format(rounded)) \(target.unit.symbol)",
-                resultDetail: target.name)
+                expression: "\(Calculator.format(value)) \(source.unit.unit.symbol)",
+                expressionDetail: source.unit.name,
+                result: "\(Calculator.format(rounded)) \(target.unit.unit.symbol)",
+                resultDetail: target.unit.name)
         }
         return Calculator.Answer(
-            kind: source.unit is UnitInformationStorage ? "Data size" : "Units",
-            expression: "\(Calculator.format(value)) \(match.2)", expressionDetail: source.name,
-            result: "\(Calculator.format(converted)) \(match.3)", resultDetail: target.name)
+            kind: source.unit.unit is UnitInformationStorage ? "Data size" : "Units",
+            expression: "\(Calculator.format(value)) \(source.key)",
+            expressionDetail: source.unit.name,
+            result: "\(Calculator.format(converted)) \(target.key)", resultDetail: target.unit.name)
     }
 
     static func maths(for text: String) -> Calculator.Answer? {

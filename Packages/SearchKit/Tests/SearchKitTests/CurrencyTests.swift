@@ -78,10 +78,51 @@ import Testing
             [.modificationDate: fetched], ofItemAtPath: cache.path(percentEncoded: false))
         let feed = ExchangeRateFeed(cache: cache, source: root.appending(path: "offline.xml"))
 
-        feed.start()
-        await feed.refresh()
+        feed.start(every: nil)
+        await #expect(throws: URLError.self) { try await feed.refresh() }
 
         #expect(feed.rates == rates)
+    }
+
+    @Test func changingTheIntervalMovesTheNextFetch() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let cache = root.appending(path: "rates.xml")
+        try Self.xml.write(to: cache)
+        try FileManager.default.setAttributes(
+            [.modificationDate: fetched], ofItemAtPath: cache.path(percentEncoded: false))
+        let feed = ExchangeRateFeed(cache: cache, source: nil)
+
+        feed.start(every: AnswerSettings.Refresh.sixHourly.seconds)
+        #expect(feed.nextFetch == fetched.addingTimeInterval(21_600))
+
+        feed.interval = AnswerSettings.Refresh.daily.seconds
+        #expect(feed.nextFetch == fetched.addingTimeInterval(86_400))
+
+        feed.interval = AnswerSettings.Refresh.manual.seconds
+        #expect(feed.nextFetch == nil)
+    }
+
+    @Test func withoutCachedRatesTheFirstFetchIsDueAtOnce() {
+        let feed = ExchangeRateFeed(cache: root.appending(path: "missing.xml"), source: nil)
+
+        feed.start(every: AnswerSettings.Refresh.hourly.seconds)
+
+        #expect(feed.nextFetch.map { $0 <= .now } == true)
+    }
+
+    @Test func aFailedFetchWaitsAFullIntervalBeforeTryingAgain() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let cache = root.appending(path: "rates.xml")
+        try Self.xml.write(to: cache)
+        let feed = ExchangeRateFeed(cache: cache, source: root.appending(path: "gone.xml"))
+        feed.start(every: AnswerSettings.Refresh.hourly.seconds)
+        let before = Date.now
+
+        await #expect(throws: URLError.self) { try await feed.refresh() }
+
+        #expect(feed.nextFetch.map { $0 >= before.addingTimeInterval(3_600) } == true)
     }
 
     @Test func aFetchReplacesTheRatesAndCachesThem() async throws {
@@ -94,7 +135,7 @@ import Testing
         var changes = 0
         feed.onChange = { changes += 1 }
 
-        await feed.refresh()
+        try await feed.refresh()
 
         #expect(changes == 1)
         #expect(feed.rates?.perEuro == rates.perEuro)

@@ -1,5 +1,5 @@
 import AppCore
-import Foundation
+public import Foundation
 import os
 
 @MainActor
@@ -8,14 +8,20 @@ public final class ExchangeRateFeed {
         path: "Mado/eurofxref-daily.xml")
     private static let ecb = URL(
         string: "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml")
-    private static let refreshSeconds = 21_600
 
     public private(set) var rates: ExchangeRates?
     public var onChange: (() -> Void)?
+    public var interval: TimeInterval? {
+        didSet { schedule() }
+    }
 
+    private(set) var nextFetch: Date?
     private let logger = Log.logger("ExchangeRateFeed")
     private let cache: URL
     private let source: URL?
+    private var attempted: Date?
+    private var fetching = false
+    private var timer: Task<Void, Never>?
 
     public convenience init() {
         self.init(cache: Self.cache, source: Self.ecb)
@@ -26,30 +32,48 @@ public final class ExchangeRateFeed {
         self.source = source
     }
 
-    public func start() {
+    public func start(every interval: TimeInterval?) {
         rates = ExchangeRates(contentsOf: cache)
-        Task { [weak self] in
-            while await self?.refresh() != nil {
-                try? await Task.sleep(for: .seconds(Self.refreshSeconds))
-            }
-        }
+        self.interval = interval
     }
 
-    func refresh() async {
-        guard let source else { return }
+    public func refresh() async throws {
+        guard !fetching, let source else { return }
+        fetching = true
+        attempted = .now
+        defer {
+            fetching = false
+            schedule()
+        }
+        let (data, _) = try await URLSession.shared.data(from: source)
+        guard let fresh = ExchangeRates(ecb: data, fetched: .now) else {
+            throw URLError(.cannotParseResponse)
+        }
+        rates = fresh
+        onChange?()
         do {
-            let (data, _) = try await URLSession.shared.data(from: source)
-            guard let fresh = ExchangeRates(ecb: data, fetched: .now) else {
-                logger.error("The exchange rate source sent no rates")
-                return
-            }
-            rates = fresh
-            onChange?()
             try FileManager.default.createDirectory(
                 at: cache.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: cache, options: .atomic)
         } catch {
-            logger.error("Refreshing exchange rates failed: \(error, privacy: .public)")
+            logger.error("Caching exchange rates failed: \(error, privacy: .public)")
+        }
+    }
+
+    private func schedule() {
+        guard !fetching else { return }
+        timer?.cancel()
+        let last = [rates?.fetched, attempted].compactMap(\.self).max()
+        nextFetch = interval.map { last?.addingTimeInterval($0) ?? .now }
+        guard let nextFetch else { return }
+        timer = Task { [weak self, logger] in
+            guard (try? await Task.sleep(for: .seconds(nextFetch.timeIntervalSinceNow))) != nil
+            else { return }
+            do {
+                try await self?.refresh()
+            } catch {
+                logger.error("Refreshing exchange rates failed: \(error, privacy: .public)")
+            }
         }
     }
 }

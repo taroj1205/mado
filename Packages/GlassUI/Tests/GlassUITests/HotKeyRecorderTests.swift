@@ -166,4 +166,18 @@ import Testing
         #expect(HotKeyLabel.keyName(UInt32(kVK_JIS_Eisu)) == "英数")
         #expect(HotKeyLabel.keyName(UInt32(kVK_ANSI_A)).count == 1)
     }
+
+    @Test func spellsShortcutsOutForVoiceOver() {
+        let all: Shortcut.Modifiers = [.command, .shift, .option, .control]
+        #expect(
+            HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_LeftArrow), modifiers: all))
+                == "Control Option Shift Command Left Arrow")
+        #expect(
+            HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_Return), modifiers: [.command]))
+                == "Command Return")
+        #expect(
+            HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_Space), modifiers: [.option]))
+                == "Option Space")
+        #expect(HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_F5), modifiers: [])) == "F5")
+    }
 }
