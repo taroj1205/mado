@@ -5,6 +5,7 @@ import os
 @MainActor
 public struct PasteboardWatch {
     static let interval: TimeInterval = 0.5
+    static let sourceType = NSPasteboard.PasteboardType("org.nspasteboard.source")
     nonisolated static let privateTypes: Set<NSPasteboard.PasteboardType> = [
         .init("org.nspasteboard.ConcealedType"),
         .init("org.nspasteboard.TransientType"),
@@ -25,18 +26,30 @@ public struct PasteboardWatch {
 
     public static func install(
         name: String, context: ModuleContext, pasteboard: NSPasteboard = .general,
-        onChange: @escaping @MainActor () -> Void
+        onChange: @escaping @MainActor (_ sourceApps: [String]) -> Void
     ) {
         let logger = context.logger
         var watch = Self(pasteboard: pasteboard)
+        var previous = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         context.scheduleTimer(name, interval: interval) {
+            let current = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            defer { previous = current }
             guard watch.poll() else { return }
             if watch.holdsPrivateData {
                 logger.debug("Skipped a concealed, transient or auto-generated copy")
             } else {
-                onChange()
+                onChange(sourceApps(of: pasteboard, frontmost: current, before: previous))
             }
         }
+    }
+
+    static func sourceApps(
+        of pasteboard: NSPasteboard, frontmost current: String?, before previous: String?
+    ) -> [String] {
+        guard let declared = pasteboard.string(forType: sourceType) else {
+            return (previous == current ? [current] : [previous, current]).compactMap(\.self)
+        }
+        return declared.isEmpty ? [] : [declared]
     }
 
     mutating func poll() -> Bool {

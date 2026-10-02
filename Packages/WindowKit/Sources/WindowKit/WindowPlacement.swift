@@ -1,13 +1,28 @@
-public import CoreGraphics
+public import ApplicationServices
 
 public enum WindowPlacement: Hashable, Sendable {
     case display(step: Int)
     case layout(LayoutEngine.Action)
     case restore
 
+    struct Placed {
+        let window: AXUIElement
+        let frame: CGRect
+        let requested: LayoutEngine.Action
+        let applied: LayoutEngine.Action
+    }
+
     private static let sides: [LayoutEngine.Action: HalfSnap.Side] = [
         .leftHalf: .left, .rightHalf: .right,
     ]
+    private static let sizeCycles: [[LayoutEngine.Action]] = [
+        [.leftHalf, .leftThird, .leftTwoThirds],
+        [.rightHalf, .rightThird, .rightTwoThirds],
+        [.topHalf, .topThird, .topTwoThirds],
+        [.bottomHalf, .bottomThird, .bottomTwoThirds],
+    ]
+
+    @AccessibilityActor private static var lastPlaced: Placed?
 
     nonisolated static func quartzFrame(
         for action: LayoutEngine.Action, of window: CGRect, across screens: [ScreenGeometry.Screen],
@@ -21,9 +36,20 @@ public enum WindowPlacement: Hashable, Sendable {
         return ScreenGeometry.quartzRect(fromAppKit: frame, primary: primary)
     }
 
+    nonisolated static func action(
+        for requested: LayoutEngine.Action, of window: AXUIElement, at frame: CGRect,
+        after last: Placed?
+    ) -> LayoutEngine.Action {
+        guard let last, last.requested == requested, last.window == window, last.frame == frame,
+            let sizes = sizeCycles.first(where: { $0.first == requested }),
+            let index = sizes.firstIndex(of: last.applied)
+        else { return requested }
+        return sizes[(index + 1) % sizes.count]
+    }
+
     @AccessibilityActor
     public func apply(
-        gap: CGFloat, across screens: [ScreenGeometry.Screen]
+        gap: CGFloat, cyclesSizes: Bool, across screens: [ScreenGeometry.Screen]
     ) async throws(FocusedWindow.Failure) {
         let window = try FocusedWindow.frontmost()
         let mover = WindowMover.shared
@@ -34,15 +60,21 @@ public enum WindowPlacement: Hashable, Sendable {
         case .display(let step):
             _ = try await mover.move(window, displays: step, across: screens)
 
-        case .layout(let action):
+        case .layout(let requested):
             let current = try window.quartzFrame()
+            let action = Self.action(
+                for: requested, of: window.element, at: current,
+                after: cyclesSizes ? Self.lastPlaced : nil)
             guard let target = Self.quartzFrame(for: action, of: current, across: screens, gap: gap)
             else { return }
-            if let side = Self.sides[action] {
-                _ = try HalfSnap.shared.place(window, on: side, at: target, gap: gap)
-            } else {
-                _ = try mover.move(window, to: target)
-            }
+            let placed =
+                if let side = Self.sides[action] {
+                    try HalfSnap.shared.place(window, on: side, at: target, gap: gap)
+                } else {
+                    try mover.move(window, to: target)
+                }
+            Self.lastPlaced = Placed(
+                window: window.element, frame: placed, requested: requested, applied: action)
         }
     }
 }
