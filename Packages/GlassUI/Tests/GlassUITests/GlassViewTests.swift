@@ -68,11 +68,21 @@ import Testing
         #expect(view.sheen.radius == 28)
     }
 
+    @Test func tintIsPassedToTheSheen() {
+        #expect(GlassView(shape: .capsule).sheen.tint == nil)
+        #expect(GlassView(shape: .capsule, tint: .black).sheen.tint == .black)
+    }
+
     @Test func sheenFollowsTheTheme() throws {
         let dark = try #require(NSAppearance(named: .darkAqua))
         let light = try #require(NSAppearance(named: .aqua))
         #expect(GlassSheen.tone(for: dark).sheen == GlassSheen.dark.sheen)
         #expect(GlassSheen.tone(for: light).sheen == GlassSheen.light.sheen)
+    }
+
+    @Test func capsuleHasTheActionPanelsBorder() {
+        let capsule = FloatingCapsule.make(NSStackView(), leading: 0, trailing: 0)
+        #expect(capsule.container.subviews.last is GlassBorder)
     }
 
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {

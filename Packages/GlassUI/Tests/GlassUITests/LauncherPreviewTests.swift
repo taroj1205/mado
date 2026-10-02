@@ -22,23 +22,34 @@ import Testing
         panel.makeFirstResponder(view.field)
     }
 
-    @Test func spaceTypesIntoTheQueryUntilTheSelectionMoves() {
+    @Test func spaceAlwaysTypesIntoTheQuery() {
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
-        #expect(view.contextCapsule.isHidden)
         press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
+        press(kVK_DownArrow, "\u{F701}")
+        press(kVK_Space, " ")
+        #expect(view.field.stringValue == "  ")
         #expect(!view.previewing)
     }
 
-    @Test func spaceAfterMovingPreviewsTheFileAndEscapeClosesOnlyThePreview() {
+    @Test func commandYPreviewsTheTopFileWithoutMoving() {
+        defer { view.closePreview() }
+        view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
+        #expect(view.contextCapsule.isHidden)
+        previewKey()
+        #expect(view.previewing)
+        #expect(view.preview?.title.stringValue == "a.txt")
+        #expect(view.field.stringValue.isEmpty)
+    }
+
+    @Test func commandYAfterMovingPreviewsTheFileAndEscapeClosesOnlyThePreview() {
         defer { view.closePreview() }
         var cancels = 0
         view.onCancel = { cancels += 1 }
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
         press(kVK_DownArrow, "\u{F701}")
-        #expect(view.contextLabel.stringValue == "Space to preview")
+        #expect(view.contextLabel.stringValue == "⌘Y to preview")
         #expect(!view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
+        previewKey()
         #expect(view.previewing)
         #expect(view.preview?.view?.previewItem?.previewItemURL?.lastPathComponent == "b.txt")
         #expect(view.preview?.title.stringValue == "b.txt")
@@ -50,16 +61,22 @@ import Testing
         #expect(view.field.stringValue.isEmpty)
     }
 
-    @Test func typingClosesThePreviewAndSpaceTypesAgain() {
+    @Test func commandYAgainClosesThePreview() {
+        view.results.sections = [.init(title: "Files", items: [file("a.txt")])]
+        previewKey()
+        previewKey()
+        #expect(!view.previewing)
+    }
+
+    @Test func typingClosesThePreview() {
         defer { view.closePreview() }
         view.results.sections = [.init(title: "Files", items: [file("a.txt"), file("b.txt")])]
         press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
+        previewKey()
         press(kVK_ANSI_A, "a")
         #expect(!view.previewing)
         #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == "a ")
+        #expect(view.field.stringValue == "a")
     }
 
     @Test func refreshedResultsKeepTheRowThePreviewIsOn() {
@@ -67,7 +84,7 @@ import Testing
         let files = [file("a.txt"), file("b.txt")]
         view.show([.init(title: "Files", items: files)])
         press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
+        previewKey()
         view.show([.init(title: "Files", items: [file("new.txt")] + files)])
         #expect(view.results.selectedItem?.id == "b.txt")
         #expect(view.previewing)
@@ -83,7 +100,7 @@ import Testing
             .init(title: "Commands", items: [item("Sleep")]),
         ])
         press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
+        previewKey()
         view.results.table.selectRowIndexes([1], byExtendingSelection: false)
         #expect(view.preview?.title.stringValue == "a.txt")
         view.results.table.selectRowIndexes([4], byExtendingSelection: false)
@@ -98,16 +115,14 @@ import Testing
         click()
         view.show([.init(title: "Files", items: [file("new.txt")] + files)])
         #expect(view.results.selectedItem?.id == "b.txt")
-        #expect(view.contextLabel.stringValue == "Space to preview")
+        #expect(view.contextLabel.stringValue == "⌘Y to preview")
     }
 
     @Test func movingTheCaretOrClickingTheFieldEndsBrowsing() throws {
         view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
         press(kVK_DownArrow, "\u{F701}")
         press(kVK_LeftArrow, "\u{F702}")
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
-        #expect(!view.previewing)
+        #expect(view.contextCapsule.isHidden)
 
         press(kVK_DownArrow, "\u{F701}")
         let field = view.field.convert(view.field.bounds, to: nil)
@@ -118,17 +133,12 @@ import Testing
                 eventNumber: 0, clickCount: 1, pressure: 1))
         #expect(!view.handle(click))
         #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == "  ")
     }
 
-    @Test func clickingTheAlreadySelectedFileLetsSpacePreviewIt() {
-        defer { view.closePreview() }
+    @Test func clickingTheAlreadySelectedFileShowsTheHint() {
         view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
         click()
-        press(kVK_Space, " ")
-        #expect(view.previewing)
-        #expect(view.field.stringValue.isEmpty)
+        #expect(view.contextLabel.stringValue == "⌘Y to preview")
     }
 
     @Test func aRefreshRedrawsTheCardForAFileEditedInPlace() throws {
@@ -144,7 +154,7 @@ import Testing
         let sections = [ResultList.Section(title: "Files", items: [file("a.txt"), row])]
         view.show(sections)
         press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
+        previewKey()
         #expect(view.preview?.modified.stringValue == FilePreview.modifiedText(old))
         try FileManager.default.setAttributes([.modificationDate: Date.now], ofItemAtPath: url.path)
         view.show(sections)
@@ -152,23 +162,21 @@ import Testing
         #expect(view.preview?.modified.stringValue != FilePreview.modifiedText(old))
     }
 
-    @Test func closingTheLauncherEndsBrowsingSoSpaceTypesAgain() {
+    @Test func closingTheLauncherEndsBrowsingAndThePreview() {
         view.show([.init(title: "Files", items: [file("a.txt"), file("b.txt")])])
         press(kVK_DownArrow, "\u{F701}")
-        press(kVK_Space, " ")
+        previewKey()
         view.endBrowsing()
         #expect(!view.previewing)
         #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
     }
 
-    @Test func spaceTypesWhenTheSelectedRowIsNotAFile() {
+    @Test func commandYDoesNothingWhenTheSelectedRowIsNotAFile() {
         press(kVK_DownArrow, "\u{F701}")
         #expect(view.contextCapsule.isHidden)
-        press(kVK_Space, " ")
-        #expect(view.field.stringValue == " ")
+        previewKey()
         #expect(!view.previewing)
+        #expect(view.field.stringValue.isEmpty)
     }
 
     private func file(_ name: String) -> ResultList.Item {
@@ -185,10 +193,16 @@ import Testing
         view.results.table.sendAction(view.results.table.action, to: view.results.table.target)
     }
 
-    private func press(_ keyCode: Int, _ characters: String) {
+    private func previewKey() {
+        press(kVK_ANSI_Y, "y", [.command])
+    }
+
+    private func press(
+        _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
+    ) {
         guard
             let event = NSEvent.keyEvent(
-                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
                 windowNumber: panel.windowNumber, context: nil, characters: characters,
                 charactersIgnoringModifiers: characters, isARepeat: false,
                 keyCode: UInt16(keyCode))
@@ -196,6 +210,7 @@ import Testing
             Issue.record("Could not make a key event for \(keyCode)")
             return
         }
+        if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
         panel.sendEvent(event)
     }
 }

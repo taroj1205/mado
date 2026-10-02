@@ -4,7 +4,7 @@ import AppKit
 enum FloatingCapsule {
     static let height: CGFloat = 40
     private static let fontSize: CGFloat = 13
-    private static let keycapRadius: CGFloat = 10
+    private static let keycapRadius: CGFloat = 5
     private static let keycapAlpha = (dark: 0.10, light: 0.07)
     private static let dividerHeight: CGFloat = 14
     static let keycapFill = NSColor(name: nil) { appearance in
@@ -19,6 +19,11 @@ enum FloatingCapsule {
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
         stack.setHuggingPriority(.defaultHigh, for: .horizontal)
         glass.contentView = stack
+        let border = GlassBorder(
+            radius: GlassView.Shape.capsule.radius(in: NSSize(width: height, height: height)))
+        border.frame = glass.container.bounds
+        border.autoresizingMask = [.width, .height]
+        glass.container.addSubview(border)
         glass.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

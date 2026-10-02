@@ -1,5 +1,4 @@
 public import AppKit
-import Carbon.HIToolbox
 
 public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchBarHeight: CGFloat = 60
@@ -8,7 +7,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchIconGap: CGFloat = 12
     private static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
-    private static let previewHint = "Space to preview"
+    private static let previewHint = "⌘Y to preview"
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -34,10 +33,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
     public var choosingAction: Bool { actionPanel?.isVisible == true }
-
-    private var canPreview: Bool {
-        (browsing || previewing) && results.selectedItem?.file != nil
-    }
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
@@ -118,6 +113,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         switch event.charactersIgnoringModifiers {
         case let key where Self.returnKeys.contains(key): run(1)
         case "k" where results.selectedItem != nil: showActions()
+        case "y" where results.selectedItem?.file != nil: togglePreview()
         default: return super.performKeyEquivalent(with: event)
         }
         return true
@@ -125,9 +121,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     public func handle(_ event: NSEvent) -> Bool {
         switch event.type {
-        case .keyDown:
-            return previewKey(event)
-
         case .leftMouseDown
         where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
             endBrowsing()
@@ -142,15 +135,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         default:
             return false
         }
-    }
-
-    private func previewKey(_ event: NSEvent) -> Bool {
-        guard event.keyCode == kVK_Space,
-            event.modifierFlags.isDisjoint(with: Self.modifierKeys),
-            canPreview, let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
-        else { return false }
-        togglePreview()
-        return true
     }
 
     public func controlTextDidChange(_: Notification) {
@@ -195,7 +179,8 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     }
 
     private func showContext() {
-        let text = canPreview ? Self.previewHint : context
+        let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
+        let text = hintsPreview ? Self.previewHint : context
         contextLabel.stringValue = text ?? ""
         contextCapsule.isHidden = text == nil
     }

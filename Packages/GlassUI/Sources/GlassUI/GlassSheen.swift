@@ -27,6 +27,10 @@ final class GlassSheen: NSView {
         didSet { needsDisplay = true }
     }
 
+    var tint: NSColor? {
+        didSet { needsDisplay = true }
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         layerContentsRedrawPolicy = .duringViewResize
@@ -50,6 +54,10 @@ final class GlassSheen: NSView {
     override func draw(_: NSRect) {
         let tone = Self.tone(for: effectiveAppearance)
         let shape = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
+        if let tint {
+            tint.setFill()
+            shape.fill()
+        }
         Self.gradient([
             (tone.sheen.start, 0), tone.sheenMid, (0, tone.sheenClearAt), (tone.sheen.end, 1),
         ])?
