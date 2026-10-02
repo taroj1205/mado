@@ -156,6 +156,7 @@ public enum Calculator {
         if let conversion = Conversion.answer(for: text) { return conversion }
         if let time = TimeZones.answer(for: text, now: now, local: local) { return time }
         if let math = TimeMath.answer(for: text, now: now, local: local) { return math }
+        if let units = Conversion.maths(for: text) { return units }
         let home = Locale.current.currency?.identifier
         if let money = Currency.answer(for: text, rates: rates, zone: local, home: home) {
             return money

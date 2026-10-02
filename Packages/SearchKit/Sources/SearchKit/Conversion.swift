@@ -1,6 +1,8 @@
 import Foundation
 
 enum Conversion {
+    private typealias Keyed = (key: Substring, unit: Named)
+
     private struct Named {
         let keys: [String]
         let unit: Dimension
@@ -10,6 +12,97 @@ enum Conversion {
             self.keys = keys
             self.unit = unit
             self.name = name
+        }
+    }
+
+    private struct UnitSum {
+        private static let shownSymbols = ["*": "×", "/": "÷"]
+
+        private(set) var shown: [String] = []
+        private(set) var names: [String] = []
+        private(set) var first: Keyed?
+        private var running = 0.0
+        private var sign = 1.0
+        private var term: (value: Double, hasUnit: Bool)?
+        private var pending: String?
+        private var operations = 0
+        private var afterNumber = false
+        private var lastHadUnit = false
+
+        mutating func read(symbol: Substring?, number: Substring?, key: Substring?) -> Bool {
+            if let symbol { return add(String(symbol)) }
+            guard let value = number.flatMap({ Double($0) }) else { return false }
+            guard let key else { return add(value, nil) }
+            return named(key).map { add(value, (key, $0)) } ?? false
+        }
+
+        mutating func total() -> Double? {
+            guard afterNumber, operations > 0, closeTerm() else { return nil }
+            return running
+        }
+
+        private mutating func add(_ symbol: String) -> Bool {
+            guard afterNumber else { return false }
+            afterNumber = false
+            let shownSymbol = Self.shownSymbols[symbol] ?? symbol
+            shown.append(shownSymbol)
+            guard symbol == "+" || symbol == "-" else {
+                pending = shownSymbol
+                return true
+            }
+            guard closeTerm() else { return false }
+            sign = symbol == "+" ? 1 : -1
+            return true
+        }
+
+        private mutating func add(_ number: Double, _ unit: Keyed?) -> Bool {
+            if afterNumber {
+                guard lastHadUnit, unit != nil, closeTerm() else { return false }
+            }
+            guard use(unit) else { return false }
+            afterNumber = true
+            lastHadUnit = unit != nil
+            shown.append(Calculator.format(number) + (unit.map { " \($0.key)" } ?? ""))
+            let value = unit?.unit.unit.converter.baseUnitValue(fromValue: number) ?? number
+            return combine(value, hasUnit: unit != nil)
+        }
+
+        private mutating func use(_ unit: Keyed?) -> Bool {
+            guard let unit else { return true }
+            guard !(unit.unit.unit is UnitTemperature),
+                first.map({ sameDimension($0.unit, unit.unit) }) ?? true
+            else { return false }
+            first = first ?? unit
+            if !names.contains(unit.unit.name) { names.append(unit.unit.name) }
+            return true
+        }
+
+        private mutating func combine(_ value: Double, hasUnit: Bool) -> Bool {
+            guard let current = term else {
+                term = (value, hasUnit)
+                return true
+            }
+            switch pending {
+            case "×" where !(current.hasUnit && hasUnit):
+                term = (current.value * value, current.hasUnit || hasUnit)
+
+            case "÷" where !hasUnit:
+                term = (current.value / value, current.hasUnit)
+
+            default:
+                return false
+            }
+            pending = nil
+            operations += 1
+            return true
+        }
+
+        private mutating func closeTerm() -> Bool {
+            guard let term, term.hasUnit else { return false }
+            running += sign * term.value
+            self.term = nil
+            operations += 1
+            return true
         }
     }
 
@@ -24,6 +117,7 @@ enum Conversion {
     private static let kilometrePerHour = 0.2777777777777778
     private static let knot = 0.5144444444444445
     private static let temperatureDigits = 100.0
+    private static let britishEnglish = Locale(identifier: "en_GB")
 
     private static let units = [
         Named(["mm"], UnitLength.millimeters, "Millimetres"),
@@ -70,9 +164,8 @@ enum Conversion {
             let match = text.wholeMatch(
                 of: /(-?[\d.]+) ?([a-z°\/ ]+?) (?:to|in|as|->|=) ?([a-z°\/ ]+)/),
             let value = Double(match.1),
-            let source = units.first(where: { $0.keys.contains(String(match.2)) }),
-            let target = units.first(where: { $0.keys.contains(String(match.3)) }),
-            type(of: source.unit).baseUnit() == type(of: target.unit).baseUnit()
+            let source = named(match.2), let target = named(match.3),
+            sameDimension(source, target)
         else { return nil }
         let converted = Measurement(value: value, unit: source.unit).converted(to: target.unit)
             .value
@@ -90,6 +183,44 @@ enum Conversion {
             kind: source.unit is UnitInformationStorage ? "Data size" : "Units",
             expression: "\(Calculator.format(value)) \(match.2)", expressionDetail: source.name,
             result: "\(Calculator.format(converted)) \(match.3)", resultDetail: target.name)
+    }
+
+    static func maths(for text: String) -> Calculator.Answer? {
+        let (expression, target) = splitTarget(text)
+        var rest = expression
+        var sum = UnitSum()
+        let token = /\s*(?:([-+*×÷\/])|(\d*\.?\d+)(?:\s*(fl oz|[a-z\/]+))?)/
+        while let match = rest.prefixMatch(of: token) {
+            rest = rest[match.range.upperBound...]
+            guard sum.read(symbol: match.1, number: match.2, key: match.3) else { return nil }
+        }
+        guard rest.isEmpty, let first = sum.first, let total = sum.total() else { return nil }
+        let result = target ?? first
+        let value = result.unit.unit.converter.value(fromBaseUnitValue: total)
+        guard sameDimension(result.unit, first.unit), value.isFinite else { return nil }
+        let names = sum.names.enumerated().map { index, name in
+            index == 0 ? name : name.prefix(1).lowercased() + name.dropFirst()
+        }
+        return Calculator.Answer(
+            kind: first.unit.unit is UnitInformationStorage ? "Data size" : "Units",
+            expression: sum.shown.joined(separator: " "),
+            expressionDetail: names.formatted(.list(type: .and).locale(britishEnglish)),
+            result: "\(Calculator.format(value)) \(result.key)", resultDetail: result.unit.name)
+    }
+
+    private static func splitTarget(_ text: String) -> (Substring, Keyed?) {
+        guard let split = text.wholeMatch(of: /(.*) (?:to|in|as|->|=) ?([a-z°\/ ]+)/),
+            let unit = named(split.2)
+        else { return (Substring(text), nil) }
+        return (split.1, (split.2, unit))
+    }
+
+    private static func named(_ key: Substring) -> Named? {
+        units.first { $0.keys.contains(String(key)) }
+    }
+
+    private static func sameDimension(_ lhs: Named, _ rhs: Named) -> Bool {
+        type(of: lhs.unit).baseUnit() == type(of: rhs.unit).baseUnit()
     }
 
     private static func linear(_ coefficient: Double) -> UnitConverterLinear {
