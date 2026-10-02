@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import ClipboardKit
 import GlassUI
 import InputKit
 import os
@@ -15,11 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let logger = Log.logger("App")
     private let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
-    private var statusItem: NSStatusItem?
+    private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
     private(set) var settings: SettingsWindowController?
     private var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
+    private(set) var pasteTarget: PasteTarget?
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     let apps = AppIndex()
@@ -70,11 +72,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
         #endif
         signposter.endInterval("launch", launch)
-    }
-
-    func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
-        statusItem?.isVisible = true
-        return true
     }
 
     private func makeModules() -> ModuleManager? {
@@ -247,6 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc
     private func showLauncher() {
         guard let panel = launcher else { return }
+        pasteTarget = .frontmost()
         let opening = signposter.beginInterval("open launcher")
         let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
         if let visible = screen?.visibleFrame {
@@ -277,10 +275,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 modules: modules, hotKeys: hotKeys, rates: rates, items: editor)
         settings = controller
         controller.showWindow(nil)
-    }
-
-    @objc
-    private func hideStatusItem() {
-        statusItem?.isVisible = false
     }
 }
