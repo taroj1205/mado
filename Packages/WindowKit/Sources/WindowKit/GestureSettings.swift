@@ -2,8 +2,8 @@ public import AppCore
 
 public struct GestureSettings: Codable, Equatable, Sendable {
     public enum Target: String, Codable, CaseIterable, Sendable {
-        case activeWindow = "active_window"
         case underMouse = "under_mouse"
+        case activeWindow = "active_window"
     }
 
     public var move: Shortcut.Modifiers
@@ -13,7 +13,7 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     public init() {
         move = [.function, .control]
         resize = [.function, .control, .option]
-        target = .activeWindow
+        target = .underMouse
     }
 
     public init(from decoder: any Decoder) throws {
