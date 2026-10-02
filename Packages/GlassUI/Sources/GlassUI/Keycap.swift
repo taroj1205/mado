@@ -1,13 +1,12 @@
 import AppKit
 
 final class Keycap: NSBox {
-    private static let size: CGFloat = 20
     private static let inset: CGFloat = 10
     private static let fontSize: CGFloat = 11
 
     let name: NSTextField
 
-    init(_ key: String, radius: CGFloat) {
+    init(_ key: String, radius: CGFloat, size: CGFloat) {
         name = NSTextField(labelWithString: key)
         super.init(frame: .zero)
         boxType = .custom
@@ -23,8 +22,8 @@ final class Keycap: NSBox {
         compact.priority = .defaultHigh
         NSLayoutConstraint.activate([
             compact,
-            heightAnchor.constraint(equalToConstant: Self.size),
-            widthAnchor.constraint(greaterThanOrEqualToConstant: Self.size),
+            heightAnchor.constraint(equalToConstant: size),
+            widthAnchor.constraint(greaterThanOrEqualToConstant: size),
             widthAnchor.constraint(greaterThanOrEqualTo: name.widthAnchor, constant: Self.inset),
             name.centerXAnchor.constraint(equalTo: centerXAnchor),
             name.centerYAnchor.constraint(equalTo: centerYAnchor),

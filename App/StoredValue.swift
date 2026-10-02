@@ -1,0 +1,40 @@
+import AppCore
+import os
+import SearchKit
+
+protocol StoredValue: Codable {
+    static var key: String { get }
+
+    init()
+}
+
+extension StoredValue {
+    @MainActor
+    static func load(from modules: ModuleManager?) -> Self {
+        do {
+            return try modules?.value(Self.self, for: key) ?? Self()
+        } catch {
+            Log.logger("App").error(
+                "\(key, privacy: .public) failed to load: \(error, privacy: .public)")
+            return Self()
+        }
+    }
+
+    @MainActor
+    func save(to modules: ModuleManager?) {
+        do {
+            try modules?.setValue(self, for: Self.key)
+        } catch {
+            Log.logger("App").error(
+                "Saving \(Self.key, privacy: .public) failed: \(error, privacy: .public)")
+        }
+    }
+}
+
+extension Usage: StoredValue {
+    static let key = "usage"
+}
+
+extension ItemSettings: StoredValue {
+    static let key = "items"
+}

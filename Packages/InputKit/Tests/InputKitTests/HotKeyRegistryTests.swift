@@ -160,4 +160,22 @@ import Testing
         #expect(backend.registered.isEmpty)
         #expect(module.stops == 1)
     }
+
+    @Test func suspendingReleasesEveryShortcutUntilResumed() throws {
+        let backend = FakeBackend()
+        let registry = HotKeyRegistry(backend: backend)
+        let other = Shortcut(keyCode: 17, modifiers: [.control, .option])
+        let first = try registry.register(Self.shortcut) { Issue.record("First fired") }
+
+        registry.isSuspended = true
+        #expect(backend.registered.isEmpty)
+        let second = try registry.register(other) { Issue.record("Second fired") }
+        #expect(backend.registered.isEmpty)
+        registry.unregister(first)
+
+        registry.isSuspended = false
+        #expect(Array(backend.registered.values) == [other])
+        registry.unregister(second)
+        #expect(backend.registered.isEmpty)
+    }
 }

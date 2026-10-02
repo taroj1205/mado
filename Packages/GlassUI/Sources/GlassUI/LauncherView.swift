@@ -16,7 +16,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
-    public var actionTitles: ((ResultList.Item) -> [String])?
+    public var actions: ((ResultList.Item) -> [Action])?
     public var context: String? {
         didSet { showContext() }
     }
@@ -104,6 +104,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
+        actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
     }
@@ -116,7 +117,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
-        case let key where Self.returnKeys.contains(key): run(1)
+        case let key where Self.returnKeys.contains(key): runSecondary()
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
         case let key?: return runShortcut(key) || super.performKeyEquivalent(with: event)
@@ -142,7 +143,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             return false
 
         case .leftMouseDown:
-            if actionPanel?.contains(event.locationInWindow) != true {
+            let point = event.locationInWindow
+            let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
+            if !onToggle, actionPanel?.contains(point) != true {
                 closeActions()
             }
             return false
@@ -266,5 +269,12 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private func run(_ action: Int) {
         guard let item = results.selectedItem else { return }
         onRun?(item, action)
+    }
+
+    private func runSecondary() {
+        guard let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
+        else { return }
+        onRun?(item, index)
     }
 }
