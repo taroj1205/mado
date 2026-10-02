@@ -14,16 +14,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let fieldHeight: CGFloat = 40
     private static let fieldSide: CGFloat = 16
     private static let fieldFontSize: CGFloat = 13
-    private static let fillAlpha: CGFloat = 0.62
-    private static let darkFill = (red: 0.133, green: 0.133, blue: 0.165)
-    private static let lightFill: CGFloat = 0.97
-    private static let fill = NSColor(name: nil) { appearance in
-        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(
-                srgbRed: darkFill.red, green: darkFill.green, blue: darkFill.blue,
-                alpha: fillAlpha)
-            : NSColor(white: lightFill, alpha: fillAlpha)
-    }
 
     let panel = GlassPanel(
         kind: .hud, contentRect: NSRect(x: 0, y: 0, width: width, height: fieldHeight),
@@ -57,6 +47,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         list.setAccessibilityElement(true)
         list.setAccessibilityRole(.menu)
         panel.ignoresMouseEvents = false
+        panel.hasShadow = false
         layout()
     }
 
@@ -154,12 +145,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     private func layout() {
-        let content = NSBox()
-        content.boxType = .custom
-        content.borderWidth = 0
-        content.cornerRadius = Self.radius
-        content.fillColor = Self.fill
-        content.contentViewMargins = .zero
+        let content = NSView()
         let separator = NSBox()
         separator.boxType = .separator
         let fieldArea = NSLayoutGuide()
