@@ -9,12 +9,14 @@ struct WindowsModule: Module {
     static let id = "windows"
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
+    let layoutSettings: @MainActor () -> LayoutSettings
     let radialSettings: @MainActor () -> RadialSettings
     let switcherSettings: @MainActor () -> SwitcherSettings
     let radialRing = OverlayPanel()
     let radialPreview = SnapPreview()
 
     func start(context: ModuleContext) {
+        registerLayouts(context: context)
         let radial = radialSettings()
         if radial.isEnabled {
             startRadialMenu(trigger: radial.trigger, context: context)
@@ -25,6 +27,17 @@ struct WindowsModule: Module {
 
     func stop() {
         Log.logger(descriptor.id).debug("Stopped")
+    }
+
+    private func registerLayouts(context: ModuleContext) {
+        do {
+            for command in WindowLayouts.commands(gap: { layoutSettings().gap }) {
+                try context.register(command)
+            }
+        } catch {
+            context.logger.error(
+                "Layout commands failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     private func startRadialMenu(trigger: Shortcut.Modifiers, context: ModuleContext) {

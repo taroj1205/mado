@@ -8,6 +8,7 @@ struct SettingsPage {
         let modules: ModuleManager?
         let hotKeys: LauncherHotKeys
         let rates: ExchangeRateFeed
+        let recorder: HotKeyPopover
         let apps: AppHotKeys
         let radial: RadialMenuSettings
     }
@@ -47,7 +48,9 @@ struct SettingsPage {
             "Windows", "rectangle.split.2x1",
             module: module("windows", "Windows", enabled: true),
             tabs: [
-                Tab(title: "Layouts", sections: nil),
+                Tab(title: "Layouts") { context in
+                    WindowLayouts.sections(recorder: context.recorder, modules: context.modules)
+                },
                 Tab(title: "Apps") { [$0.apps.section] },
                 Tab(title: "Radial Menu") { $0.radial.sections },
                 Tab(title: "Switcher") { context in

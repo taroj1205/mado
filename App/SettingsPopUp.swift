@@ -23,6 +23,7 @@ final class SettingsPopUp: NSPopUpButton {
         self.sections = sections
         super.init(frame: .zero, pullsDown: false)
         autoenablesItems = false
+        setContentHuggingPriority(.defaultHigh, for: .horizontal)
         target = self
         action = #selector(changed)
         refresh()
