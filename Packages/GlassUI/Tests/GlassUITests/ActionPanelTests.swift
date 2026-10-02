@@ -50,6 +50,16 @@ import Testing
         #expect(view.actionsToggle.fillColor == ResultRowView.fill)
     }
 
+    @Test func glassInsideTheLauncherHasNoSheen() throws {
+        defer { view.closeActions() }
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        #expect(menu.glass.sheen.isHidden)
+        #expect(view.actionCapsule.sheen.isHidden)
+        #expect(view.contextCapsule.sheen.isHidden)
+        #expect(!panel.glass.sheen.isHidden)
+    }
+
     @Test func typingFiltersAndReturnRunsTheChosenAction() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
