@@ -120,7 +120,7 @@ import Testing
     }
 
     @MainActor
-    @Test func everyEventPassesAndTapsArriveAfterTheCallbackReturns() async throws {
+    @Test func tapsArriveOnlyAfterTheCallbackReturns() async throws {
         let inbox = Inbox()
         let observe = ModifierTap.observe(window: ModifierTap.defaultWindow) { key in
             inbox.taps.append(key)
@@ -133,13 +133,10 @@ import Testing
             .maskShift, .maskNonCoalesced, CGEventFlags(rawValue: ModifierTap.Key.rightShift.flag),
         ]
         event.timestamp = 1_000_000_000
-        #expect(!observe(.flagsChanged, event))
+        observe(.flagsChanged, event)
         event.flags = .maskNonCoalesced
         event.timestamp += 50_000_000
-        #expect(!observe(.flagsChanged, event))
-        for type in ModifierTap.types {
-            #expect(!observe(type, event))
-        }
+        observe(.flagsChanged, event)
         #expect(inbox.taps.isEmpty)
         await withCheckedContinuation { continuation in
             DispatchQueue.main.async { continuation.resume() }

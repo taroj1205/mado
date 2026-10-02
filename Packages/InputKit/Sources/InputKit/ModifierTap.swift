@@ -65,13 +65,14 @@ public struct ModifierTap {
         name: String, context: ModuleContext, window: Duration = defaultWindow,
         onTap: @escaping @MainActor (Key) -> Void
     ) throws(ModuleError) {
-        try context.tapEvents(name, matching: types, swallow: observe(window: window, onTap: onTap))
+        try context.observeEvents(
+            name, matching: types, observe: observe(window: window, onTap: onTap))
     }
 
     @MainActor
     static func observe(
         window: Duration, onTap: @escaping @MainActor (Key) -> Void
-    ) -> @MainActor (CGEventType, CGEvent) -> Bool {
+    ) -> @MainActor (CGEventType, CGEvent) -> Void {
         var tap = Self(window: window)
         return { type, event in
             let key = tap.handle(
@@ -81,7 +82,6 @@ public struct ModifierTap {
             if let key {
                 DispatchQueue.main.async { onTap(key) }
             }
-            return false
         }
     }
 
