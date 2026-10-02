@@ -9,8 +9,6 @@ import WindowKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    private static let launcherWidth: CGFloat = 760
-    private static let launcherHeight: CGFloat = 548
     private static let launcherRadius: CGFloat = 20
 
     private let logger = Log.logger("App")
@@ -98,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeLauncher() -> GlassPanel {
         let panel = GlassPanel(
             kind: .panel,
-            contentRect: NSRect(x: 0, y: 0, width: Self.launcherWidth, height: Self.launcherHeight),
+            contentRect: NSRect(origin: .zero, size: launcherSize),
             shape: .rounded(Self.launcherRadius))
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
@@ -252,9 +250,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         pasteTarget = .frontmost()
         let opening = signposter.beginInterval("open launcher")
         let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
+        launcherView.widgetLayout = widgetPlacement?.layout
         if let visible = screen?.visibleFrame {
-            let size = CGSize(width: Self.launcherWidth, height: Self.launcherHeight)
-            panel.setFrame(ScreenGeometry.centeredFrame(of: size, in: visible), display: false)
+            panel.setFrame(
+                ScreenGeometry.centeredFrame(of: launcherSize, in: visible), display: false)
         }
         let lifetime = QueryLifetime.load(from: modules).duration
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {

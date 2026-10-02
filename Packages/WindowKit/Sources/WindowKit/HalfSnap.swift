@@ -6,6 +6,16 @@ public final class HalfSnap {
         case left, right
     }
 
+    public struct Blocker: Sendable {
+        public let side: Side
+        public let frame: CGRect
+
+        public init(side: Side, frame: CGRect) {
+            self.side = side
+            self.frame = frame
+        }
+    }
+
     private struct Refusal {
         let side: Side
         let window: FocusedWindow
@@ -28,17 +38,28 @@ public final class HalfSnap {
         return CGRect(x: minX, y: frame.minY, width: maxX - minX, height: frame.height)
     }
 
-    public func place(
-        _ window: FocusedWindow, on side: Side, at frame: CGRect, gap: CGFloat
-    ) throws(FocusedWindow.Failure) -> CGRect {
+    nonisolated public static func target(
+        _ frame: CGRect, on side: Side, beside blockers: [Blocker], gap: CGFloat
+    ) -> CGRect {
+        blockers.filter { $0.side != side }.reduce(frame) { target, blocker in
+            remaining(of: target, beside: blocker.frame, on: side, gap: gap)
+        }
+    }
+
+    public func blockers(besides window: FocusedWindow) -> [Blocker] {
         refusals.removeAll { refusal in
             refusal.window.element == window.element
                 || (try? refusal.window.quartzFrame()) != refusal.frame
         }
-        let beside = refusals.filter { $0.side != side && $0.window.isVisible }
-        let target = beside.reduce(frame) { target, refusal in
-            Self.remaining(of: target, beside: refusal.frame, on: side, gap: gap)
+        return refusals.filter(\.window.isVisible).map { refusal in
+            Blocker(side: refusal.side, frame: refusal.frame)
         }
+    }
+
+    public func place(
+        _ window: FocusedWindow, on side: Side, at frame: CGRect, gap: CGFloat
+    ) throws(FocusedWindow.Failure) -> CGRect {
+        let target = Self.target(frame, on: side, beside: blockers(besides: window), gap: gap)
         let mover = WindowMover.shared
         var placed = try mover.move(window, to: target)
         if placed.width > target.width {

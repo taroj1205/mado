@@ -39,6 +39,14 @@ public struct RadialSettings: Codable, Equatable, Sendable {
             .centreThird: .centreThird, .rightThird: .rightThird,
         ]
 
+        public var half: HalfSnap.Side? {
+            switch self {
+            case .leftHalf, .leftCycle: .left
+            case .rightHalf, .rightCycle: .right
+            default: nil
+            }
+        }
+
         public func previewFrame(
             of window: CGRect, on screen: ScreenGeometry.Screen, gap: CGFloat
         ) -> CGRect? {
@@ -46,6 +54,18 @@ public struct RadialSettings: Codable, Equatable, Sendable {
             guard let layout = Self.layouts[self] else { return nil }
             return LayoutEngine.frame(
                 for: layout, in: screen.visibleFrame, gap: gap, windowSize: window.size)
+        }
+
+        public func quartzFrame(
+            forQuartz window: CGRect, across screens: [ScreenGeometry.Screen]
+        ) -> CGRect? {
+            guard let primary = screens.first?.frame,
+                let index = ScreenGeometry.screenIndex(showing: window, in: screens.map(\.frame)),
+                let target = previewFrame(
+                    of: ScreenGeometry.appKitRect(fromQuartz: window, primary: primary),
+                    on: screens[index], gap: 0)
+            else { return nil }
+            return ScreenGeometry.quartzRect(fromAppKit: target, primary: primary)
         }
     }
 

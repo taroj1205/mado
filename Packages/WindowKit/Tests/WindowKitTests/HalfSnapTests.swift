@@ -34,6 +34,21 @@ import Testing
         #expect(Self.remaining(Self.rightHalf, beside: below, .right) == Self.rightHalf)
     }
 
+    @Test func targetNarrowsOnlyBesideAWindowOnTheOtherSide() {
+        let wideLeft = HalfSnap.Blocker(
+            side: .left, frame: CGRect(x: 12, y: 78, width: 900, height: 786))
+
+        #expect(
+            HalfSnap.target(Self.rightHalf, on: .right, beside: [wideLeft], gap: Self.gap)
+                == CGRect(x: 924, y: 78, width: 504, height: 786))
+        #expect(
+            HalfSnap.target(Self.leftHalf, on: .left, beside: [wideLeft], gap: Self.gap)
+                == Self.leftHalf)
+        #expect(
+            HalfSnap.target(Self.rightHalf, on: .right, beside: [], gap: Self.gap) == Self.rightHalf
+        )
+    }
+
     @Test func keepsTheHalfWhenNoWidthIsLeft() {
         let wide = CGRect(x: 12, y: 78, width: 1_416, height: 786)
         #expect(Self.remaining(Self.rightHalf, beside: wide, .right) == Self.rightHalf)

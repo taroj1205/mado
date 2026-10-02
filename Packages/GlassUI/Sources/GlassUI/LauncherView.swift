@@ -186,7 +186,8 @@ public final class LauncherView: NSView {
 
     func showAction(of item: ResultList.Item?) {
         let action =
-            selectedPill.map { pills[$0].action } ?? selectedWidget.map { widgets[$0].action }
+            selectedPill.map { pills[$0].action }
+            ?? selectedWidget.map { widgetGrid.shown[$0].action }
             ?? item?.action
         actionLabel.stringValue = action ?? ""
         actionCapsule.isHidden = action == nil
