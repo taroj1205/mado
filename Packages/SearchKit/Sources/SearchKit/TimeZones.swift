@@ -79,7 +79,7 @@ enum TimeZones {
         return "\(city.name) · \(format(time, date, in: city.zone)) (\(relation))"
     }
 
-    private static func format(_ time: Date, _ pattern: String, in zone: TimeZone) -> String {
+    static func format(_ time: Date, _ pattern: String, in zone: TimeZone) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = pattern

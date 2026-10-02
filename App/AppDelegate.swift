@@ -24,10 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var search: SearchRunner<[ResultList.Section]>?
     private let apps = AppIndex()
     private let files = FileIndex()
+    private let rates = ExchangeRateFeed()
     private var usage = Usage()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: makeHotKeyRegistry()
     ) { [weak self] in self?.toggleLauncher() }
+    private var sources: LauncherResult.Sources {
+        LauncherResult.Sources(
+            apps: apps, files: files, commands: modules?.commands.all ?? [], rates: rates.rates)
+    }
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
     #endif
@@ -49,8 +54,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         searchAgain()
         apps.onChange = { [weak self] in self?.searchAgain() }
         files.onChange = { [weak self] in self?.searchAgain() }
+        rates.onChange = { [weak self] in self?.searchAgain() }
         apps.start()
         files.start()
+        rates.start()
         hotKeys.onChange = { [weak self] in self?.settings?.refresh() }
         hotKeys.start()
         #if DEBUG
@@ -160,9 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             search: { [weak self] query in
                 guard let self else { return [] }
                 return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(
-                        for: query, apps: apps, files: files,
-                        commands: modules?.commands.all ?? [], usage: usage)
+                    LauncherResult.sections(for: query, in: sources, usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
@@ -173,9 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func actions(for item: ResultList.Item) -> [CommandAction] {
-        LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, apps: apps, files: files,
-            commands: modules?.commands.all ?? [])
+        LauncherResult.actions(for: item.id, query: launcherView.field.stringValue, in: sources)
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
