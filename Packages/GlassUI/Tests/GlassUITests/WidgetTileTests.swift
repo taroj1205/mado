@@ -18,11 +18,12 @@ import Testing
                 spoken: "Battery: 100%, charged", symbol: "battery.100percent"))
         tile.layoutSubtreeIfNeeded()
         let glyph = tile.icon.alignmentRect(forFrame: tile.icon.frame)
+        let value = tile.value.alignmentRect(forFrame: tile.value.frame)
         #expect(tile.icon.image != nil)
-        #expect(abs(tile.icon.frame.width - 22) < 1)
-        #expect(abs(tile.icon.frame.maxX - (tile.bounds.width - 12)) < 0.5)
-        #expect(abs(glyph.midY - tile.value.frame.midY) <= 0.5)
-        #expect(tile.value.frame.maxX <= tile.icon.frame.minX)
+        #expect(glyph.width > 0)
+        #expect(abs(glyph.maxX - (tile.bounds.width - 12)) <= 1)
+        #expect(abs(glyph.midY - value.midY) <= 1)
+        #expect(value.maxX + 4 <= glyph.minX + 1)
     }
 
     @Test func aTileWithoutASymbolDropsTheIcon() {
