@@ -1,8 +1,15 @@
 import AppCore
 import AppKit
+import GlassUI
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private final class Sidebar: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+        private static let rowHeight: CGFloat = 28
+        private static let rowGap: CGFloat = 2
+        private static let iconWidth: CGFloat = 18
+        private static let iconGap: CGFloat = 9
+        private static let topInset: CGFloat = 43
+
         private let tabs: NSTabViewController
         private let table = NSTableView()
 
@@ -16,9 +23,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             nil
         }
 
+        private static func tint(selected: Bool) -> NSColor {
+            selected ? .controlAccentColor : .secondaryLabelColor
+        }
+
         override func loadView() {
             table.style = .sourceList
             table.headerView = nil
+            table.rowSizeStyle = .custom
+            table.rowHeight = Self.rowHeight
+            table.intercellSpacing = NSSize(width: 0, height: Self.rowGap)
             table.allowsEmptySelection = false
             table.addTableColumn(NSTableColumn())
             table.dataSource = self
@@ -26,6 +40,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             let scroll = NSScrollView()
             scroll.documentView = table
             scroll.drawsBackground = false
+            scroll.automaticallyAdjustsContentInsets = false
+            scroll.contentInsets = NSEdgeInsets(top: Self.topInset, left: 0, bottom: 0, right: 0)
             view = scroll
             table.selectRowIndexes([0], byExtendingSelection: false)
         }
@@ -34,16 +50,22 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             SettingsPage.all.count
         }
 
+        func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+            SettingsSidebarRow()
+        }
+
         func tableView(_: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
             let page = SettingsPage.all[row]
             let image = NSImageView()
             image.image = NSImage(systemSymbolName: page.symbol, accessibilityDescription: nil)
+            image.contentTintColor = Self.tint(selected: row == table.selectedRow)
+            image.widthAnchor.constraint(equalToConstant: Self.iconWidth).isActive = true
             let label = NSTextField(labelWithString: page.title)
             let stack = NSStackView(views: [image, label])
+            stack.spacing = Self.iconGap
             stack.translatesAutoresizingMaskIntoConstraints = false
             let cell = NSTableCellView()
             unsafe cell.imageView = image
-            unsafe cell.textField = label
             cell.addSubview(stack)
             NSLayoutConstraint.activate([
                 stack.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
@@ -53,14 +75,24 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             return cell
         }
 
+        func tableView(_: NSTableView, typeSelectStringFor _: NSTableColumn?, row: Int) -> String? {
+            SettingsPage.all[row].title
+        }
+
         func tableViewSelectionDidChange(_: Notification) {
             tabs.selectedTabViewItemIndex = table.selectedRow
+            table.enumerateAvailableRowViews { rowView, row in
+                let cell = rowView.view(atColumn: 0) as? NSTableCellView
+                unsafe cell?.imageView?.contentTintColor = Self.tint(
+                    selected: row == table.selectedRow)
+            }
         }
     }
 
     private static let width: CGFloat = 820
     private static let height: CGFloat = 608
     private static let sidebarWidth: CGFloat = 208
+    private static let cornerRadius: CGFloat = 26
 
     private let tabs: NSTabViewController
 
@@ -80,11 +112,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         split.addSplitViewItem(sidebar)
         split.addSplitViewItem(NSSplitViewItem(viewController: pages))
 
+        let glass = GlassView(shape: .rounded(Self.cornerRadius))
+        glass.frame = split.splitView.bounds
+        glass.autoresizingMask = [.width, .height]
+        split.splitView.addSubview(glass, positioned: .below, relativeTo: nil)
+
         let window = NSWindow(contentViewController: split)
+        window.isOpaque = false
+        window.backgroundColor = .clear
         window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.title = "Settings"
+        window.toolbar = NSToolbar()
+        window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.setContentSize(NSSize(width: Self.width, height: Self.height))
         window.center()
