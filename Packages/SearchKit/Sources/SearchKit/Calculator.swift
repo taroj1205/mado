@@ -150,6 +150,7 @@ public enum Calculator {
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
             .replacing(/^what is\s/, with: "")
+        if let conversion = Conversion.answer(for: text) { return conversion }
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }
@@ -164,7 +165,8 @@ public enum Calculator {
 
     static func format(_ value: Double) -> String {
         let digits = abs(value) < 1 ? smallFractionDigits : fractionDigits
-        return value.formatted(.number.locale(locale).precision(.fractionLength(0...digits)))
+        let normalized = value == 0 ? 0 : value
+        return normalized.formatted(.number.locale(locale).precision(.fractionLength(0...digits)))
     }
 
     static func words(for value: Double) -> String? {
