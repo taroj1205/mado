@@ -9,11 +9,13 @@ enum LauncherResult {
     case command(Command)
     case file(FileIndex.File)
     case pane(SettingsPane)
+    case quicklink(Quicklink)
 
     struct Sources {
         let apps: AppIndex
         let files: FileIndex
         let commands: [Command]
+        let quicklinks: [Quicklink]
         let rates: ExchangeRates?
         let answers: AnswerSettings
     }
@@ -28,6 +30,7 @@ enum LauncherResult {
         case .command(let command): command.id
         case .pane(let pane): pane.id
         case .file(let file): file.url.path
+        case .quicklink(let link): link.id
         }
     }
 
@@ -37,6 +40,7 @@ enum LauncherResult {
         case .command(let command): command.name
         case .pane(let pane): pane.name
         case .file(let file): file.name
+        case .quicklink(let link): link.name
         }
     }
 
@@ -65,6 +69,9 @@ enum LauncherResult {
                 },
                 Self.reveal(file.url),
             ]
+
+        case .quicklink(let link):
+            [link.open(query: "")]
         }
     }
 
@@ -74,6 +81,7 @@ enum LauncherResult {
         case .command(let command): ([command.name] + command.keywords).map(Fuzzy.Key.init)
         case .pane(let pane): pane.keys.map(Fuzzy.Key.init)
         case .file(let file): [file.key]
+        case .quicklink(let link): [Fuzzy.Key(link.name)]
         }
     }
 
@@ -89,14 +97,18 @@ enum LauncherResult {
                 keys: \.keys)
         }
         let aliased = items.ids(withAlias: trimmed)
+        let filled = sources.quicklinks.filter { link in
+            link.query(in: trimmed, aliases: items[link.id].aliases) != nil
+        }
+        let links = sources.quicklinks.filter { !filled.contains($0) }
         let files = typed ? sources.files.files.map(Self.file) : []
         let hoisted = aliased.isEmpty ? [] : files.filter { aliased.contains($0.id) }
         let candidates =
             typed
             ? sources.apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane)
-                + sources.commands.map(Self.command) + hoisted
+                + sources.commands.map(Self.command) + links.map(Self.quicklink) + hoisted
             : sources.commands.filter { !items.favourites.contains($0.id) }.map(Self.command)
-        let ranked = rank(candidates)
+        let ranked = filled.map(Self.quicklink) + rank(candidates)
         let found = rank(aliased.isEmpty ? files : files.filter { !aliased.contains($0.id) })
         let favourites = typed ? [] : items.favourites.compactMap { result(for: $0, in: sources) }
         let item = { (result: Self) in
@@ -107,13 +119,7 @@ enum LauncherResult {
             ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
             ResultList.Section(title: "Files", items: found.prefix(fileLimit).map(item)),
         ]
-        let shows = sources.answers.shows
-        let answer =
-            (shows(.colours) ? ColourAnswer.section(for: trimmed) : nil)
-            ?? Self.answer(for: trimmed, in: sources).map { answer in
-                ResultList.Section(title: answer.kind, items: [Self.item(for: answer)])
-            } ?? (shows(.dictionary) ? DictionaryAnswer.section(for: trimmed) : nil)
-        guard let answer else {
+        guard let answer = answerSection(for: trimmed, in: sources) else {
             if typed, ranked.isEmpty, found.isEmpty {
                 return [Fallback.section(for: trimmed, matched: false)]
             }
@@ -131,6 +137,9 @@ enum LauncherResult {
         }
         if let app = sources.apps.apps.first(where: { $0.url.path == id }) {
             return .app(app)
+        }
+        if let link = sources.quicklinks.first(where: { $0.id == id }) {
+            return .quicklink(link)
         }
         return sources.commands.first { $0.id == id }.map(Self.command)
     }
@@ -154,8 +163,11 @@ enum LauncherResult {
     }
 
     static func actions(
-        for id: String, query: String, in sources: Sources
+        for id: String, query: String, in sources: Sources, items: ItemSettings
     ) -> [CommandAction] {
+        if let link = sources.quicklinks.first(where: { $0.id == id }) {
+            return [link.open(query: link.query(in: query, aliases: items[id].aliases) ?? "")]
+        }
         if id == answerID, let answer = answer(for: query, in: sources) {
             return [
                 CommandAction(id: "copy", title: "Copy Answer") {
@@ -174,6 +186,16 @@ enum LauncherResult {
             return [fallback.action(for: query.trimmingCharacters(in: .whitespacesAndNewlines))]
         }
         return result(for: id, in: sources)?.actions ?? []
+    }
+
+    private static func answerSection(
+        for query: String, in sources: Sources
+    ) -> ResultList.Section? {
+        let shows = sources.answers.shows
+        return (shows(.colours) ? ColourAnswer.section(for: query) : nil)
+            ?? Self.answer(for: query, in: sources).map { answer in
+                ResultList.Section(title: answer.kind, items: [Self.item(for: answer)])
+            } ?? (shows(.dictionary) ? DictionaryAnswer.section(for: query) : nil)
     }
 
     private static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
@@ -218,6 +240,11 @@ enum LauncherResult {
 
             case .file(let file):
                 Self.item(for: file, at: now)
+
+            case .quicklink(let link):
+                ResultList.Item(
+                    id: id, title: link.name, subtitle: link.link, kind: "Quicklink",
+                    symbol: "link", action: Quicklink.openTitle, icon: link.image)
             }
         item.hotkey = hotkey
         return item

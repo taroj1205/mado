@@ -4,6 +4,9 @@ extension LauncherView {
     public struct Action: Equatable, Sendable {
         public static let primaryKeys = ["↵"]
         public static let secondaryKeys = ["⌘", "↵"]
+        private static let modifiers: [(NSEvent.ModifierFlags, String)] = [
+            (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
+        ]
 
         public let title: String
         public let keys: [String]
@@ -11,6 +14,14 @@ extension LauncherView {
         public init(_ title: String, keys: [String] = []) {
             self.title = title
             self.keys = keys
+        }
+
+        func matches(_ event: NSEvent) -> Bool {
+            let held = Set(Self.modifiers.filter { event.modifierFlags.contains($0.0) }.map(\.1))
+            guard let key = keys.last, !held.isEmpty, Set(keys.dropLast()) == held else {
+                return false
+            }
+            return event.charactersIgnoringModifiers?.uppercased() == key
         }
     }
 

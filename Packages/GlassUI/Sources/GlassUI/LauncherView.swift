@@ -122,14 +122,27 @@ public final class LauncherView: NSView {
         }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
-        else { return super.performKeyEquivalent(with: event) }
+        else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
         case let key where Self.returnKeys.contains(key): runSecondary()
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
-        case let key?: return runShortcut(key) || super.performKeyEquivalent(with: event)
+
+        case let key?:
+            return runActionShortcut(event) || runShortcut(key)
+                || super.performKeyEquivalent(with: event)
+
         default: return super.performKeyEquivalent(with: event)
         }
+        return true
+    }
+
+    private func runActionShortcut(_ event: NSEvent) -> Bool {
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
+            let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.matches(event) })
+        else { return false }
+        onRun?(item, index)
         return true
     }
 

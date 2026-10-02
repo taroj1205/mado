@@ -109,6 +109,26 @@ import Testing
         #expect(runs.isEmpty)
     }
 
+    @Test func anActionsShortcutRunsItWithOrWithoutThePanel() {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        view.actions = { _ in
+            [.init("Open", keys: ["↵"]), .init("Create Quicklink", keys: ["⌘", "⇧", "L"])]
+        }
+        press(kVK_ANSI_L, "l", in: panel, [.command])
+        press(kVK_ANSI_L, "L", in: panel, [.command, .shift, .option])
+        #expect(runs.isEmpty)
+
+        press(kVK_ANSI_L, "L", in: panel, [.command, .shift])
+        #expect(runs == ["Terminal 1"])
+
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        #expect(view.choosingAction)
+        press(kVK_ANSI_L, "L", in: panel, [.command, .shift])
+        #expect(runs == ["Terminal 1", "Terminal 1"])
+        #expect(!view.choosingAction)
+    }
+
     @Test func clickingARowRunsIt() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
