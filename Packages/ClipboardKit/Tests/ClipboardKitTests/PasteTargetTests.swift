@@ -25,8 +25,8 @@ import Testing
         #expect(pasteboard.string(forType: .html) == nil)
     }
 
-    @Test func sendsCommandVDownThenUp() {
-        let events = PasteTarget.commandV()
+    @Test func sendsCommandVDownThenUp() throws {
+        let events = try PasteTarget.commandV()
 
         #expect(events.count == 2)
         let keyV = Int64(kVK_ANSI_V)

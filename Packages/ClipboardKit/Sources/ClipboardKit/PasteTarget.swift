@@ -8,6 +8,7 @@ public struct PasteTarget {
         case appQuit
         case notActivated
         case notAllowed
+        case noKeyEvents
     }
 
     private static let activationTimeout: Duration = .seconds(1)
@@ -29,14 +30,17 @@ public struct PasteTarget {
         guard pasteboard.writeObjects(items) else { throw Failure.notWritten }
     }
 
-    static func commandV() -> [CGEvent] {
+    static func commandV() throws -> [CGEvent] {
         let source = CGEventSource(stateID: .hidSystemState)
-        return [true, false].compactMap { down in
+        let keyDowns = [true, false]
+        let events = keyDowns.compactMap { down in
             let event = CGEvent(
                 keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: down)
             event?.flags = .maskCommand
             return event
         }
+        guard events.count == keyDowns.count else { throw Failure.noKeyEvents }
+        return events
     }
 
     public func paste(_ items: [any NSPasteboardWriting]) async throws {
@@ -49,7 +53,7 @@ public struct PasteTarget {
             try await Task.sleep(for: .milliseconds(Self.activationPollMilliseconds))
         }
         guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
-        for event in Self.commandV() {
+        for event in try Self.commandV() {
             event.post(tap: .cghidEventTap)
         }
     }
