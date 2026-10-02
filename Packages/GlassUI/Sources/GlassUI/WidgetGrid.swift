@@ -67,6 +67,10 @@ public final class WidgetGrid: NSView {
     public enum Layout: Sendable {
         case grid
         case strip
+        case above
+        case around
+
+        var floating: Bool { self == .above || self == .around }
     }
 
     public enum Skip: Sendable {
@@ -96,6 +100,11 @@ public final class WidgetGrid: NSView {
     static let inset: CGFloat = 14
     static let top: CGFloat = 12
     private static let bottom: CGFloat = 4
+    static let floatingGap: CGFloat = 10
+    static let lift: CGFloat = 16
+    static let sideWidth: CGFloat = 220
+    static let sideGap: CGFloat = 20
+    private static let sides = 2
 
     var widgets: [Widget] = [] {
         didSet {
@@ -105,17 +114,18 @@ public final class WidgetGrid: NSView {
 
     var tileLayout: Layout? = .grid {
         didSet {
-            if tileLayout != oldValue { update() }
+            if tileLayout != oldValue { update(rebuilding: true) }
         }
     }
 
     var onPress: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
     private(set) var tiles: [WidgetTile] = []
+    private(set) var floats: [GlassPanel] = []
 
     var shown: [Widget] {
         switch tileLayout {
-        case .grid: widgets
+        case .grid, .above, .around: widgets
         case .strip: Array(widgets.prefix(Self.cells(of: widgets).count { $0.row == 0 }))
         case nil: []
         }
@@ -125,15 +135,28 @@ public final class WidgetGrid: NSView {
         tileLayout == .strip ? Self.stripHeight : Self.rowHeight
     }
 
+    private var floating: Bool { tileLayout?.floating == true }
+
+    var overhang: CGFloat {
+        let rows = CGFloat(Self.cells(of: shown).last.map { $0.row + 1 } ?? 0)
+        guard tileLayout == .above, rows > 0 else { return 0 }
+        return Self.lift + rows * Self.rowHeight + (rows - 1) * Self.floatingGap
+    }
+
     override public var isFlipped: Bool { true }
 
     override public var isHidden: Bool {
-        didSet { invalidateIntrinsicContentSize() }
+        didSet {
+            invalidateIntrinsicContentSize()
+            placeFloats()
+        }
     }
 
     override public var intrinsicContentSize: NSSize {
         let rows = Self.cells(of: shown).last.map { $0.row + 1 } ?? 0
-        guard !isHidden, rows > 0 else { return NSSize(width: NSView.noIntrinsicMetric, height: 0) }
+        guard !isHidden, !floating, rows > 0 else {
+            return NSSize(width: NSView.noIntrinsicMetric, height: 0)
+        }
         let height = CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Self.gap
         return NSSize(width: NSView.noIntrinsicMetric, height: Self.top + height + Self.bottom)
     }
@@ -166,8 +189,49 @@ public final class WidgetGrid: NSView {
         }
     }
 
+    static func floatingFrames(
+        _ layout: Layout, for widgets: [Widget], beside panel: CGRect
+    ) -> [CGRect] {
+        let step = rowHeight + floatingGap
+        switch layout {
+        case .above:
+            let cells = cells(of: widgets)
+            let rows = cells.last.map { $0.row + 1 } ?? 0
+            let area = panel.insetBy(dx: inset, dy: 0)
+            let width = (area.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
+            return cells.map { cell in
+                CGRect(
+                    x: area.minX + CGFloat(cell.columns.lowerBound) * (width + floatingGap),
+                    y: panel.maxY + lift + CGFloat(rows - 1 - cell.row) * step,
+                    width: CGFloat(cell.columns.count) * (width + floatingGap) - floatingGap,
+                    height: rowHeight)
+            }
+
+        case .around:
+            let left = (widgets.count + sides - 1) / sides
+            return widgets.indices.map { index in
+                let leftSide = index < left
+                return CGRect(
+                    x: leftSide ? panel.minX - sideGap - sideWidth : panel.maxX + sideGap,
+                    y: panel.maxY - rowHeight - CGFloat(leftSide ? index : index - left) * step,
+                    width: sideWidth, height: rowHeight)
+            }
+
+        case .grid, .strip:
+            return []
+        }
+    }
+
+    private static func makeFloat(for tile: WidgetTile) -> GlassPanel {
+        let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .rounded(WidgetTile.radius))
+        panel.ignoresMouseEvents = false
+        panel.glass.contentView = tile
+        return panel
+    }
+
     override public func layout() {
         super.layout()
+        guard !floating else { return }
         let area = bounds.insetBy(dx: Self.inset, dy: 0)
         let gaps = CGFloat(Self.columns - 1) * Self.gap
         let width = (area.width - gaps) / CGFloat(Self.columns)
@@ -186,19 +250,36 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    private func update() {
-        let visible = shown
-        if visible.count != tiles.count {
-            tiles.forEach { $0.removeFromSuperview() }
-            tiles = visible.indices.map { index in
-                let tile = WidgetTile()
-                tile.onPress = { [weak self] in self?.onPress?(index) }
-                tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
-                addSubview(tile)
-                return tile
+    func placeFloats() {
+        guard let window = unsafe window, let tileLayout, !isHidden else {
+            floats.forEach { $0.orderOut(nil) }
+            return
+        }
+        let frames = Self.floatingFrames(tileLayout, for: shown, beside: window.frame)
+        for (float, frame) in zip(floats, frames) {
+            float.setFrame(frame, display: false)
+            if float.parent !== window {
+                window.addChildWindow(float, ordered: .above)
             }
         }
+    }
+
+    private func update(rebuilding: Bool = false) {
+        let visible = shown
+        if rebuilding || visible.count != tiles.count {
+            tiles.forEach { $0.removeFromSuperview() }
+            floats.forEach { $0.orderOut(nil) }
+            tiles = visible.indices.map { index in
+                let tile = WidgetTile(floating: floating)
+                tile.onPress = { [weak self] in self?.onPress?(index) }
+                tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
+                return tile
+            }
+            floats = floating ? tiles.map(Self.makeFloat) : []
+            if !floating { tiles.forEach(addSubview) }
+        }
         zip(tiles, visible).forEach { $0.show($1) }
+        placeFloats()
         invalidateIntrinsicContentSize()
         needsLayout = true
     }
