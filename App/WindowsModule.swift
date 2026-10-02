@@ -2,17 +2,20 @@ import AppCore
 import GlassUI
 import InputKit
 import os
+import WindowKit
 
 struct WindowsModule: Module {
     static let id = "windows"
     private static let radialTrigger: Shortcut.Modifiers = [.control, .option]
 
     let descriptor: ModuleDescriptor
+    let radialSettings: @MainActor () -> RadialSettings
     let radialRing = OverlayPanel()
     let radialPreview = OverlayPanel()
 
     func start(context: ModuleContext) {
-        let radialMenu = RadialMenu(logger: context.logger)
+        let radialMenu = RadialMenu(
+            logger: context.logger, panel: radialRing, settings: radialSettings)
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {

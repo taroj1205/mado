@@ -85,4 +85,11 @@ import Testing
     @Test func jumpsStraightFromTheHoleToADirection() {
         #expect(Self.zones([(10, 0), (Self.far, 180)]) == [.cancel, .direction(.left)])
     }
+
+    @Test func givesEachDirectionTheAngleOfItsSector() {
+        let directions: [RadialResolver.Direction] = [
+            .right, .topRight, .top, .topLeft, .left, .bottomLeft, .bottom, .bottomRight,
+        ]
+        #expect(directions.map(\.degrees) == [0, 45, 90, 135, 180, 225, 270, 315])
+    }
 }
