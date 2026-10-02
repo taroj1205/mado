@@ -65,6 +65,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: xcode-27
     timeout-minutes: 10
+    env:
+      BUILD_CACHE_PATHS: |
+        build/CompilationCache.noindex
+        ~/Library/Caches/org.swift.swiftpm/manifests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -92,9 +96,7 @@ jobs:
         id: build-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            build/CompilationCache.noindex
-            ~/Library/Caches/org.swift.swiftpm/manifests
+          path: ${{ env.BUILD_CACHE_PATHS }}
           key: xcode-cache-${{ runner.arch }}-${{ github.sha }}
           restore-keys: xcode-cache-${{ runner.arch }}-
 
@@ -124,9 +126,7 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.head_ref == 'chore/ci-compilation-cache'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            build/CompilationCache.noindex
-            ~/Library/Caches/org.swift.swiftpm/manifests
+          path: ${{ env.BUILD_CACHE_PATHS }}
           key: ${{ steps.build-cache.outputs.cache-primary-key }}
 
   verify:
