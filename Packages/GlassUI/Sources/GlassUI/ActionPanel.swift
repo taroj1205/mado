@@ -192,12 +192,13 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private func fieldLayout(below separator: NSView, in content: NSView) -> [NSLayoutConstraint] {
         let area = NSLayoutGuide()
         content.addLayoutGuide(area)
-        let capCentre = Self.fieldFont.capHeight * Self.half
+        let lowercaseCentre = Self.fieldFont.xHeight * Self.half
         return [
             area.topAnchor.constraint(equalTo: separator.bottomAnchor),
             area.heightAnchor.constraint(equalToConstant: Self.fieldHeight),
             area.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            field.firstBaselineAnchor.constraint(equalTo: area.centerYAnchor, constant: capCentre),
+            field.firstBaselineAnchor.constraint(
+                equalTo: area.centerYAnchor, constant: lowercaseCentre),
             field.leadingAnchor.constraint(
                 equalTo: content.leadingAnchor, constant: Self.fieldSide),
             field.trailingAnchor.constraint(
