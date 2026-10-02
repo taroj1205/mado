@@ -11,12 +11,17 @@ public struct FocusedWindow {
 
     static let messagingTimeout: Float = 0.25
 
+    let application: AXUIElement
     let element: AXUIElement
 
+    var isVisible: Bool {
+        !flag(kAXMinimizedAttribute, of: element) && !flag(kAXHiddenAttribute, of: application)
+    }
+
     public init(pid: pid_t) throws(Failure) {
-        let app = AXUIElementCreateApplication(pid)
-        AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
-        let window = try Self.copy(kAXFocusedWindowAttribute, of: app)
+        application = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(application, Self.messagingTimeout)
+        let window = try Self.copy(kAXFocusedWindowAttribute, of: application)
         guard CFGetTypeID(window) == AXUIElementGetTypeID() else { throw .noWindow }
         element = unsafe unsafeDowncast(window, to: AXUIElement.self)
         AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
@@ -63,6 +68,10 @@ public struct FocusedWindow {
         let size = try Self.copy(kAXSizeAttribute, of: element)
         guard let frame = Self.frame(position: position, size: size) else { throw .noWindow }
         return frame
+    }
+
+    private func flag(_ name: String, of element: AXUIElement) -> Bool {
+        (try? Self.copy(name, of: element)) as? Bool ?? false
     }
 
     public func setFrame(_ frame: CGRect) throws(Failure) -> CGRect {
