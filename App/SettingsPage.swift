@@ -4,16 +4,17 @@ import AppKit
 @MainActor
 struct SettingsPage {
     static let all: [Self] = [
-        Self("General", "gearshape") { modules in
+        Self("General", "gearshape") { modules, hotKeys in
             [
                 SettingsSection(
                     "Launcher",
                     [
+                        .init("Launcher hotkey", hotKeyPopUp(hotKeys, modules)),
                         .init(
                             "Launch at login",
                             SettingsSwitch(
                                 read: { LaunchAtLogin.isEnabled },
-                                write: LaunchAtLogin.setEnabled))
+                                write: LaunchAtLogin.setEnabled)),
                     ]),
                 SettingsSection(
                     "Window",
@@ -37,7 +38,7 @@ struct SettingsPage {
         Self("Extensions", "storefront"),
         Self("Shortcuts", "command"),
         Self("Permissions", "lock.shield"),
-        Self("Advanced", "gearshape.2") { _ in developer },
+        Self("Advanced", "gearshape.2") { _, _ in developer },
         Self("About", "person.crop.circle"),
     ]
 
@@ -62,11 +63,13 @@ struct SettingsPage {
     let title: String
     let symbol: String
     let module: ModuleDescriptor?
-    let sections: (ModuleManager?) -> [SettingsSection]
+    let sections: (ModuleManager?, LauncherHotKeys) -> [SettingsSection]
 
     private init(
         _ title: String, _ symbol: String, module: ModuleDescriptor? = nil,
-        sections: @escaping (ModuleManager?) -> [SettingsSection] = { _ in [] }
+        sections: @escaping (ModuleManager?, LauncherHotKeys) -> [SettingsSection] = { _, _ in
+            []
+        }
     ) {
         self.title = title
         self.symbol = symbol
@@ -82,6 +85,22 @@ struct SettingsPage {
             let choices = Setting.allCases.map { choice in
                 SettingsPopUp.Choice(title: choice.title, isSelected: choice == current) {
                     try choice.save(to: modules)
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: choices)]
+        }
+        popUp.isEnabled = modules != nil
+        return popUp
+    }
+
+    private static func hotKeyPopUp(
+        _ hotKeys: LauncherHotKeys, _ modules: ModuleManager?
+    ) -> SettingsPopUp {
+        let popUp = SettingsPopUp {
+            let current = hotKeys.key
+            let choices = LauncherHotKeys.Key.allCases.map { key in
+                SettingsPopUp.Choice(title: key.title, isSelected: key == current) {
+                    try hotKeys.use(key)
                 }
             }
             return [SettingsPopUp.Section(title: nil, choices: choices)]

@@ -1,6 +1,5 @@
 import AppCore
 import AppKit
-import Carbon.HIToolbox
 import GlassUI
 import InputKit
 import os
@@ -9,7 +8,6 @@ import WindowKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    private static let launcherHotKey = Shortcut(keyCode: UInt32(kVK_Space), modifiers: .option)
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let launcherRadius: CGFloat = 28
@@ -27,7 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let apps = AppIndex()
     private let files = FileIndex()
     private var usage = Usage()
-    private var hotKeys: HotKeyRegistry?
+    private lazy var hotKeys = LauncherHotKeys(
+        modules: modules, registry: makeHotKeyRegistry()
+    ) { [weak self] in self?.toggleLauncher() }
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
     #endif
@@ -51,7 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         files.onChange = { [weak self] in self?.searchAgain() }
         apps.start()
         files.start()
-        hotKeys = makeHotKeys()
+        hotKeys.onChange = { [weak self] in self?.settings?.refresh() }
+        hotKeys.start()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
@@ -122,16 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func makeHotKeys() -> HotKeyRegistry? {
+    private func makeHotKeyRegistry() -> HotKeyRegistry? {
         #if DEBUG
             if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
         #endif
         do {
-            let registry = try HotKeyRegistry()
-            try registry.register(Self.launcherHotKey) { [weak self] in
-                self?.toggleLauncher()
-            }
-            return registry
+            return try HotKeyRegistry()
         } catch {
             logger.error("Launcher hotkey failed: \(String(describing: error), privacy: .public)")
             return nil
@@ -263,7 +260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc
     private func showSettings() {
-        let controller = settings ?? SettingsWindowController(modules: modules)
+        let controller = settings ?? SettingsWindowController(modules: modules, hotKeys: hotKeys)
         settings = controller
         controller.showWindow(nil)
     }
