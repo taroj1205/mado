@@ -135,7 +135,9 @@ public final class StatusBar: NSScrollView {
 
     private func settle() {
         if followsSelection, let selected = views.first(where: \.selected) {
-            reveal(selected.frame.insetBy(dx: -Self.fade, dy: 0))
+            let frame =
+                selected === views.last ? selected.frame.union(customise.frame) : selected.frame
+            reveal(frame.insetBy(dx: -Self.fade, dy: 0))
         }
         shade()
     }
