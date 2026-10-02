@@ -92,7 +92,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             if let row = keptRow ?? rows.firstIndex(where: \.isItem) {
                 table.selectRowIndexes([row], byExtendingSelection: false)
             }
-            table.scrollRowToVisible(keptRow ?? 0)
+            reveal(keptRow ?? 0, context: [], animated: false)
             reloading = false
             onSelect?(selectedItem)
         }
@@ -113,6 +113,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     private(set) var rows: [Row] = []
     private var reloading = false
     private var kept: String?
+    var heading: NSPoint?
+    var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     public init() {
         super.init(frame: .zero)
@@ -160,6 +162,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         kept = id
         self.sections = sections
         kept = nil
+    }
+
+    override public func scrollWheel(with event: NSEvent) {
+        stopGliding()
+        super.scrollWheel(with: event)
     }
 
     @objc

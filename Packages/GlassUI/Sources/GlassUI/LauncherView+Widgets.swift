@@ -87,7 +87,7 @@ extension LauncherView {
     }
 
     func moveUp() {
-        if !results.selectPrevious(), showsWidgets {
+        if !results.selectPrevious(), showsWidgets, !isKeyRepeat() {
             selectWidget(0)
         } else {
             selectionMoved()
