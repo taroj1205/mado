@@ -7,7 +7,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchFontSize: CGFloat = 20
     private static let searchIconGap: CGFloat = 12
     private static let resultsInset: CGFloat = 8
-    private static let capsuleInset: CGFloat = 10
+    static let capsuleInset: CGFloat = 10
     private static let previewHint = "Space to preview"
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
@@ -17,7 +17,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
-    public var onFocusLost: (() -> Void)?
     public var actionTitles: ((ResultList.Item) -> [String])?
     public var context: String? {
         didSet { showContext() }
@@ -29,7 +28,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     let actionCapsule: GlassView
     let contextCapsule: GlassView
     private(set) var preview: FilePreview?
-    private(set) var actionPanel: ActionPanel?
+    var actionPanel: ActionPanel?
     private var browsing = false
 
     var previewing: Bool { preview?.isVisible == true }
@@ -110,6 +109,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if choosingAction, let actionPanel {
+            return actionPanel.handle(event)
+        }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return super.performKeyEquivalent(with: event) }
@@ -123,6 +125,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     public func handle(_ event: NSEvent) -> Bool {
         switch event.type {
+        case .keyDown where choosingAction:
+            return actionPanel?.handle(event) ?? false
+
         case .keyDown:
             return previewKey(event)
 
@@ -244,31 +249,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         } else {
             unsafe window?.makeKey()
         }
-    }
-
-    private func showActions() {
-        guard let item = results.selectedItem, let window = unsafe window else { return }
-        closePreview()
-        let capsule = window.convertToScreen(actionCapsule.convert(actionCapsule.bounds, to: nil))
-        let menu = actionPanel ?? ActionPanel()
-        menu.onRun = { [weak self] index in
-            self?.closeActions()
-            self?.onRun?(item, index)
-        }
-        menu.onClose = { [weak self] in self?.actionsToggle.fillColor = .clear }
-        menu.onLeave = { [weak self] in
-            self?.closeActions()
-            self?.onFocusLost?()
-        }
-        actionPanel = menu
-        actionsToggle.fillColor = ResultRowView.fill
-        menu.show(
-            actionTitles?(item) ?? [], for: item.title,
-            at: NSPoint(x: capsule.maxX, y: capsule.maxY + Self.capsuleInset), over: window)
-    }
-
-    func closeActions() {
-        actionPanel?.close()
     }
 
     private func selectionMoved() {

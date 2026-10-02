@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
+final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let width: CGFloat = 316
     private static let shortcuts = [["↵"], ["⌘", "↵"]]
     private static let radius: CGFloat = 18
@@ -14,16 +14,25 @@ final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     private static let fieldHeight: CGFloat = 40
     private static let fieldSide: CGFloat = 16
     private static let fieldFontSize: CGFloat = 13
+    private static let fillAlpha: CGFloat = 0.62
+    private static let darkFill = (red: 0.133, green: 0.133, blue: 0.165)
+    private static let lightFill: CGFloat = 0.97
+    private static let fill = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(
+                srgbRed: darkFill.red, green: darkFill.green, blue: darkFill.blue,
+                alpha: fillAlpha)
+            : NSColor(white: lightFill, alpha: fillAlpha)
+    }
 
     let panel = GlassPanel(
-        kind: .panel, contentRect: NSRect(x: 0, y: 0, width: width, height: fieldHeight),
+        kind: .hud, contentRect: NSRect(x: 0, y: 0, width: width, height: fieldHeight),
         shape: .rounded(radius))
     let header = NSTextField(labelWithString: "")
     let field = NSTextField()
     private let list = NSStackView()
     var onRun: ((Int) -> Void)?
     var onClose: (() -> Void)?
-    var onLeave: (() -> Void)?
     private(set) var rows: [ActionRow] = []
     private var shown: [Int] = []
     private var selected = 0
@@ -47,8 +56,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         list.spacing = Self.rowGap
         list.setAccessibilityElement(true)
         list.setAccessibilityRole(.menu)
-        panel.delegate = self
-        panel.onEvent = { [weak self] event in self?.handle(event) ?? false }
+        panel.ignoresMouseEvents = false
         layout()
     }
 
@@ -60,29 +68,15 @@ final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         field.stringValue = ""
         filter()
         parent.addChildWindow(panel, ordered: .above)
-        if parent.isKeyWindow {
-            panel.makeKeyAndOrderFront(nil)
-        } else {
-            panel.orderFront(nil)
-        }
+        panel.orderFront(nil)
         panel.makeFirstResponder(field)
     }
 
     func close() {
         guard let parent = panel.parent else { return }
-        let wasKey = panel.isKeyWindow
         parent.removeChildWindow(panel)
         panel.orderOut(nil)
-        if wasKey {
-            parent.makeKey()
-        }
         onClose?()
-    }
-
-    func windowDidResignKey(_: Notification) {
-        if panel.parent != nil {
-            onLeave?()
-        }
     }
 
     func controlTextDidChange(_: Notification) {
@@ -100,15 +94,17 @@ final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         return true
     }
 
-    private func handle(_ event: NSEvent) -> Bool {
-        guard event.type == .keyDown,
-            event.modifierFlags.intersection(LauncherView.modifierKeys) == .command,
-            (field.currentEditor() as? NSTextView)?.hasMarkedText() != true
-        else { return false }
+    func handle(_ event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command else {
+            panel.firstResponder?.keyDown(with: event)
+            return true
+        }
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() != true else { return true }
         switch event.charactersIgnoringModifiers {
         case "k": close()
         case let key where LauncherView.returnKeys.contains(key) && titles.count > 1: onRun?(1)
-        default: return false
+        default: break
         }
         return true
     }
@@ -158,7 +154,12 @@ final class ActionPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     }
 
     private func layout() {
-        let content = NSView()
+        let content = NSBox()
+        content.boxType = .custom
+        content.borderWidth = 0
+        content.cornerRadius = Self.radius
+        content.fillColor = Self.fill
+        content.contentViewMargins = .zero
         let separator = NSBox()
         separator.boxType = .separator
         let fieldArea = NSLayoutGuide()

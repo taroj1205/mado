@@ -206,6 +206,12 @@ import Testing
         #expect(list.selectedItem == nil)
     }
 
+    @Test func clickingEmptySpaceKeepsTheSelection() {
+        let list = shown([.init(title: "Results", items: [item("A"), item("B")])])
+        list.table.deselectAll(nil)
+        #expect(list.selectedItem?.id == "A")
+    }
+
     @Test func aThousandRowsOnlyBuildTheVisibleViews() {
         let list = shown(manyItems)
         let visible = list.table.rows(in: list.contentView.documentVisibleRect)

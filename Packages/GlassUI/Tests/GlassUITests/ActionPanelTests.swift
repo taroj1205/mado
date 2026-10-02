@@ -39,6 +39,8 @@ import Testing
         #expect(!menu.rows.flatMap(\.keycaps).map(\.hasAmbiguousLayout).contains(true))
         #expect(menu.rows.flatMap(\.keycaps).allSatisfy { $0.frame.width < 30 })
         #expect(menu.panel.firstResponder === menu.field.currentEditor())
+        #expect(!menu.panel.canBecomeKey)
+        #expect(panel.firstResponder === panel)
         let capsule = panel.convertToScreen(
             view.actionCapsule.convert(view.actionCapsule.bounds, to: nil))
         #expect(menu.panel.frame.maxX == capsule.maxX)
@@ -57,11 +59,11 @@ import Testing
         #expect(menu.rows.map(\.label.stringValue) == ["Copy Path"])
         #expect(menu.panel.frame.height < height)
         type("", in: menu)
-        press(kVK_DownArrow, "\u{F701}", in: menu.panel)
-        press(kVK_DownArrow, "\u{F701}", in: menu.panel)
-        press(kVK_DownArrow, "\u{F701}", in: menu.panel)
+        press(kVK_DownArrow, "\u{F701}", in: panel)
+        press(kVK_DownArrow, "\u{F701}", in: panel)
+        press(kVK_DownArrow, "\u{F701}", in: panel)
         #expect(menu.rows.map(\.isSelected) == [false, false, true])
-        press(kVK_Return, "\r", in: menu.panel)
+        press(kVK_Return, "\r", in: panel)
         #expect(runs == ["Terminal 2"])
         #expect(!view.choosingAction)
         #expect(view.actionsToggle.fillColor == .clear)
@@ -73,7 +75,7 @@ import Testing
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
         type("copy", in: menu)
-        press(kVK_Return, "\r", in: menu.panel, [.command])
+        press(kVK_Return, "\r", in: panel, [.command])
         #expect(runs == ["Terminal 1"])
     }
 
@@ -90,14 +92,18 @@ import Testing
     @Test func escapeAndCommandKCloseThePanelButKeepTheLauncher() throws {
         var cancels = 0
         view.onCancel = { cancels += 1 }
+        view.field.stringValue = "term"
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
-        press(kVK_Escape, "\u{1B}", in: menu.panel)
+        press(kVK_Escape, "\u{1B}", in: panel)
         #expect(!view.choosingAction)
         #expect(menu.panel.parent == nil)
+        let editor = try #require(view.field.currentEditor())
+        #expect(panel.firstResponder === editor)
+        #expect(editor.selectedRange == NSRange(location: 4, length: 0))
         press(kVK_ANSI_K, "k", in: panel, [.command])
         #expect(view.choosingAction)
-        press(kVK_ANSI_K, "k", in: menu.panel, [.command])
+        press(kVK_ANSI_K, "k", in: panel, [.command])
         #expect(!view.choosingAction)
         #expect(cancels == 0)
     }
@@ -119,16 +125,14 @@ import Testing
         #expect(!view.choosingAction)
     }
 
-    @Test func losingFocusToAnotherAppClosesThePanelAndReportsIt() throws {
-        var lost = 0
-        view.onFocusLost = { lost += 1 }
+    @Test func typingInTheLauncherFiltersThePanelAndLeavesTheQuery() throws {
+        view.field.stringValue = "term"
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
-        menu.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
-        #expect(!view.choosingAction)
-        #expect(lost == 1)
-        menu.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
-        #expect(lost == 1)
+        press(kVK_ANSI_P, "p", in: panel)
+        #expect(menu.field.stringValue == "p")
+        #expect(view.field.stringValue == "term")
+        #expect(menu.rows.map(\.label.stringValue) == ["Open Application", "Copy Path"])
     }
 
     private func type(_ text: String, in menu: ActionPanel) {
