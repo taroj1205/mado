@@ -7,24 +7,20 @@ import WindowKit
 
 @MainActor
 final class AppHotKeys: NSObject, NSPopoverDelegate {
-    private static let mode = "Toggle"
-    private static let summary = ": launch if closed → bring to front → hide if already in front."
-    static let toggleHint = mode + summary
-
     private static let modeWidth: CGFloat = 118
     private static let controlGap: CGFloat = 10
     private static let footerSize: CGFloat = 12
 
     private static var footer: NSAttributedString {
         let text = NSMutableAttributedString(
-            string: mode,
+            string: AppHotKeyMode.toggle,
             attributes: [
                 .font: NSFont.systemFont(ofSize: footerSize, weight: .semibold),
                 .foregroundColor: NSColor.labelColor,
             ])
         text.append(
             NSAttributedString(
-                string: summary,
+                string: AppHotKeyMode.summary,
                 attributes: [
                     .font: NSFont.systemFont(ofSize: footerSize),
                     .foregroundColor: NSColor.secondaryLabelColor,
@@ -78,10 +74,7 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
 
     private func row(for app: URL, hotkey: Shortcut) -> SettingsSection.Row {
         let name = Self.name(of: app)
-        let modes = NSPopUpButton(frame: .zero, pullsDown: false)
-        modes.autoenablesItems = false
-        modes.addItems(withTitles: [Self.mode, "Quick Peek"])
-        modes.lastItem?.isEnabled = false
+        let modes = AppHotKeyMode.menu()
         modes.setAccessibilityLabel("\(name) mode")
         modes.widthAnchor.constraint(equalToConstant: Self.modeWidth).isActive = true
         let button = HotKeyButton()

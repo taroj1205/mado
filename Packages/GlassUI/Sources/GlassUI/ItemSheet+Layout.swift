@@ -163,6 +163,7 @@ extension ItemSheet {
         let form = NSStackView(views: [
             row("Aliases", [Self.line([chips, aliasBox()]), aliasHintLabel]),
             row("Hotkey", [Self.line([hotkey, clear]), hotkeyHintLabel]),
+            modeRow,
             row("Favourite", [Self.line([favourite, Self.label("Show on the empty query")])]),
             row("Ranking", [Self.line([ranking, resetRanking])]),
         ])
@@ -174,7 +175,8 @@ extension ItemSheet {
         }
         unsafe nextKeyView = aliasField
         unsafe aliasField.nextKeyView = hotkey
-        unsafe hotkey.nextKeyView = favourite
+        unsafe hotkey.nextKeyView = mode
+        unsafe mode.nextKeyView = favourite
         unsafe favourite.nextKeyView = resetRanking
         unsafe resetRanking.nextKeyView = aliasField
         return form
@@ -206,7 +208,7 @@ extension ItemSheet {
         return header
     }
 
-    private func row(_ name: String, _ lines: [NSView]) -> NSView {
+    func row(_ name: String, _ lines: [NSView]) -> NSView {
         let label = Self.label(name, color: .secondaryLabelColor)
         label.alignment = .right
         let gutter = NSStackView(views: [label])

@@ -59,7 +59,7 @@ final class ItemEditor {
             values: ItemSheet.Values(
                 aliases: current.aliases, hotkey: current.hotkey, favourite: current.favourite),
             ranking: ranking, opening: field,
-            hotkeyHint: AppToggle.app(for: item.id) == nil ? nil : AppHotKeys.toggleHint)
+            isApp: AppToggle.app(for: item.id) != nil)
     }
 
     func close() {

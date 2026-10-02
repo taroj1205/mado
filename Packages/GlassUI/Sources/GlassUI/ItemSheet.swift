@@ -64,6 +64,9 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     let hotkey = HotKeyButton()
     let clear = NSButton(title: "Clear", target: nil, action: nil)
     let hotkeyHintLabel = ItemSheet.hint()
+    let mode = AppHotKeyMode.menu()
+    let modeHint = ItemSheet.hint()
+    private(set) lazy var modeRow = row("Mode", [mode, modeHint])
     let favourite = NSSwitch()
     let ranking = NSTextField(labelWithString: "")
     let resetRanking = NSButton(title: "Reset Ranking", target: nil, action: nil)
@@ -79,7 +82,6 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     }
     private var itemTitle = ""
     private var savedHotkey: Shortcut?
-    private var hotkeyHintText = ItemSheet.hotkeyHint
     private var resetsRanking = false
 
     override public var acceptsFirstResponder: Bool { true }
@@ -102,6 +104,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         }
         clear.action = #selector(clearHotkey)
         resetRanking.action = #selector(resetUsage)
+        modeHint.stringValue = AppHotKeyMode.toggle + AppHotKeyMode.summary
         layoutSheet()
     }
 
@@ -112,10 +115,10 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
 
     public func show(
         _ item: ResultList.Item, values: Values, ranking summary: String?, opening field: Field,
-        hotkeyHint: String? = nil
+        isApp: Bool = false
     ) {
         itemTitle = item.title
-        hotkeyHintText = hotkeyHint ?? Self.hotkeyHint
+        modeRow.isHidden = !isApp
         showHeader(item)
         aliasField.stringValue = ""
         aliases = values.aliases
@@ -243,7 +246,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
 
     private func showProblem() {
         hotkey.conflict = problem != nil
-        hotkeyHintLabel.stringValue = problem ?? hotkeyHintText
+        hotkeyHintLabel.stringValue = problem ?? Self.hotkeyHint
         hotkeyHintLabel.textColor = problem == nil ? .secondaryLabelColor : .systemOrange
         clear.isHidden = hotkey.shortcut == nil
     }
