@@ -9,20 +9,24 @@ final class ActionRow: NSBox {
     private static let keyRadius: CGFloat = 5
     private static let keySize: CGFloat = 20
     private static let fontSize: CGFloat = 13
+    private static let iconSize: CGFloat = 16
+    private static let iconGap: CGFloat = 8
     private static let selectedKeyAlpha = 0.22
     private static let highlightWidth: CGFloat = 0.5
     private static let highlightAlpha = 0.45
 
     let label: NSTextField
     let keycaps: [Keycap]
+    let isDestructive: Bool
     var onPress: (() -> Void)?
     var isSelected = false {
         didSet { restyle() }
     }
 
-    init(title text: String, keys: [String]) {
+    init(title text: String, keys: [String], icon: NSImage?, isDestructive: Bool) {
         label = NSTextField(labelWithString: text)
         keycaps = keys.map { Keycap($0, radius: Self.keyRadius, size: Self.keySize) }
+        self.isDestructive = isDestructive
         super.init(frame: .zero)
         boxType = .custom
         borderWidth = 0
@@ -39,7 +43,7 @@ final class ActionRow: NSBox {
         }
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: Self.height),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.leading),
+            labelLeading(after: icon),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
             shortcut.leadingAnchor.constraint(
                 greaterThanOrEqualTo: label.trailingAnchor, constant: Self.leading),
@@ -58,7 +62,7 @@ final class ActionRow: NSBox {
     }
 
     static func note(_ text: String) -> ActionRow {
-        let row = ActionRow(title: text, keys: [])
+        let row = ActionRow(title: text, keys: [], icon: nil, isDestructive: false)
         row.label.textColor = .secondaryLabelColor
         row.setAccessibilityRole(.staticText)
         return row
@@ -91,9 +95,27 @@ final class ActionRow: NSBox {
         edge.fill()
     }
 
+    private func labelLeading(after icon: NSImage?) -> NSLayoutConstraint {
+        guard let icon else {
+            return label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.leading)
+        }
+        let image = NSImageView(image: icon)
+        image.imageScaling = .scaleProportionallyUpOrDown
+        image.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(image)
+        NSLayoutConstraint.activate([
+            image.widthAnchor.constraint(equalToConstant: Self.iconSize),
+            image.heightAnchor.constraint(equalToConstant: Self.iconSize),
+            image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.leading),
+            image.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        return label.leadingAnchor.constraint(
+            equalTo: image.trailingAnchor, constant: Self.iconGap)
+    }
+
     private func restyle() {
         fillColor = isSelected ? .controlAccentColor : .clear
-        label.textColor = isSelected ? .white : .labelColor
+        label.textColor = isSelected ? .white : isDestructive ? .systemRed : .labelColor
         for keycap in keycaps {
             keycap.fillColor =
                 isSelected

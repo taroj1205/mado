@@ -128,34 +128,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             })
     }
 
-    private func menu(
-        for item: ResultList.Item
-    ) -> (run: [CommandAction], edit: [ItemEditor.Edit]) {
-        if launcherView.scoped { return (history.actions(for: item.id), []) }
-        let run = LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, in: sources)
-        let editable = LauncherResult.result(for: item.id, in: sources) != nil
-        return (run, editable ? editor.edits(for: item.id) : [])
+    private func menu(for item: ResultList.Item) -> LauncherMenu {
+        launcherView.scoped
+            ? LauncherMenu(actions: history.actions(for: item.id))
+            : LauncherMenu(
+                for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor)
     }
 
     private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
-        let (actions, edits) = menu(for: item)
-        let keys = [LauncherView.Action.primaryKeys, LauncherView.Action.secondaryKeys]
-        return actions.enumerated().map { index, action in
-            LauncherView.Action(action.title, keys: keys.indices.contains(index) ? keys[index] : [])
-        } + edits.map { editor.action(for: $0, on: item.id) }
+        menu(for: item).actions(
+            labelling: { editor.action(for: $0, on: item.id) },
+            running: { [weak self] in self?.run($0, for: item, recordingUse: $1) })
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
-        let (actions, edits) = menu(for: item)
-        if actions.indices.contains(index) {
-            if !CalculatorHistory.opens(item.id), item.id != Quicklink.createID { hideLauncher() }
-            history.remember(item, in: modules)
-            perform(actions[index], for: item.id, recordingUse: !edits.isEmpty)
-        } else if edits.indices.contains(index - actions.count), let launcher {
+        let menu = menu(for: item)
+        switch menu.entry(at: index) {
+        case let .run(action, _, _): run(action, for: item, recordingUse: menu.recordsUse)
+        case .openWith, nil: break
+
+        case .edit(let edit):
+            guard let launcher else { return }
             let ranking = usage.summary(of: item.id, at: .now)
-            editor.perform(edits[index - actions.count], for: item, ranking: ranking, in: launcher)
+            editor.perform(edit, for: item, ranking: ranking, in: launcher)
         }
+    }
+
+    private func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
+        if !CalculatorHistory.opens(item.id), item.id != Quicklink.createID { hideLauncher() }
+        history.remember(item, in: modules)
+        perform(action, for: item.id, recordingUse: recordingUse)
     }
 
     private func createQuicklink() {
