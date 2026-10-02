@@ -4,6 +4,7 @@ import GlassUI
 
 @MainActor
 final class Widgets {
+    static let moduleID = "widgets"
     private static let clockApp = "com.apple.clock"
     private static let minute: TimeInterval = 60
     private static let time = Date.FormatStyle().hour(.defaultDigits(amPM: .omitted)).minute()

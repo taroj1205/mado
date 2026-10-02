@@ -40,7 +40,16 @@ struct SettingsPage {
             ]
         },
         Self("Search", "magnifyingglass") { answers($0.modules, $0.rates) },
-        Self("Widgets", "square.grid.2x2", module: module("widgets", "Widgets", enabled: true)),
+        Self(
+            "Widgets", "square.grid.2x2",
+            module: module(Widgets.moduleID, "Widgets", enabled: true)
+        ) { context in
+            [
+                SettingsSection(
+                    "Layout",
+                    [.init("Placement", popUp(WidgetPlacement.self, context.modules))])
+            ]
+        },
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)),

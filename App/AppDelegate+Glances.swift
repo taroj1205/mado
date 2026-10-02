@@ -1,7 +1,23 @@
 import AppCore
+import AppKit
 import GlassUI
 
 extension AppDelegate {
+    private static let launcherWidth: CGFloat = 760
+    private static let launcherHeight: CGFloat = 476
+    private static let gridLauncherHeight: CGFloat = 548
+
+    var widgetPlacement: WidgetPlacement? {
+        modules?.isEnabled(Widgets.moduleID) == false ? nil : .load(from: modules)
+    }
+
+    var launcherSize: CGSize {
+        let grid = launcherView.widgetLayout == .grid
+        return CGSize(
+            width: Self.launcherWidth,
+            height: grid ? Self.gridLauncherHeight : Self.launcherHeight)
+    }
+
     func connectGlances() {
         launcherView.onPill = { [weak self] pill in
             self?.runGlance(StatusPills.action(for: pill), for: pill.id)
