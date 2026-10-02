@@ -18,12 +18,14 @@ final class SettingsPageController: NSViewController {
 
     private let page: SettingsPage
     private let modules: ModuleManager?
+    private let hotKeys: LauncherHotKeys
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
 
-    init(page: SettingsPage, modules: ModuleManager?) {
+    init(page: SettingsPage, modules: ModuleManager?, hotKeys: LauncherHotKeys) {
         self.page = page
         self.modules = modules
+        self.hotKeys = hotKeys
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -33,7 +35,7 @@ final class SettingsPageController: NSViewController {
     }
 
     override func loadView() {
-        var sections = page.sections(modules)
+        var sections = page.sections(modules, hotKeys)
         if let module = page.module {
             sections.insert(moduleSection(module), at: 0)
         }
