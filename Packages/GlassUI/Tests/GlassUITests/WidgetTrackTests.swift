@@ -78,6 +78,33 @@ import Testing
         #expect(tile.track.isHidden && !tile.value.isHidden)
     }
 
+    @Test func prevAndNextSkipAndSelectTheTileWhileTheRestPlaysOrPauses() throws {
+        var skips: [WidgetGrid.Skip] = []
+        var pressed: [String] = []
+        view.onSkip = { skips.append($0) }
+        view.onWidget = { pressed.append($0.id) }
+        view.widgets = [clock, song(isPlaying: true)]
+        view.layoutSubtreeIfNeeded()
+        let track = try #require(view.widgetGrid.tiles.last?.track)
+        let centre = { (glyph: NSView) in
+            let frame = track.convert(glyph.bounds, from: glyph)
+            return NSPoint(x: frame.midX, y: frame.midY)
+        }
+        #expect(track.skip(at: centre(track.previous)) == .previous)
+        #expect(track.skip(at: centre(track.next)) == .next)
+        #expect(track.skip(at: centre(track.toggle)) == nil)
+        #expect(track.skip(at: centre(track.art)) == nil)
+        let tile = try #require(view.widgetGrid.tiles.last)
+        let actions = tile.accessibilityCustomActions() ?? []
+        #expect(actions.map(\.name) == ["Previous Track", "Next Track"])
+        #expect(actions.last?.handler?() == true)
+        #expect(skips == [.next])
+        #expect(view.selectedWidget == 1)
+        #expect(pressed.isEmpty)
+        view.widgets = [clock, clock]
+        #expect(tile.accessibilityCustomActions()?.isEmpty != false)
+    }
+
     private func song(isPlaying: Bool, artwork: Data? = nil) -> WidgetGrid.Widget {
         .init(
             id: "music",

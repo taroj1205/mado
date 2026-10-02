@@ -24,6 +24,7 @@ final class WidgetTile: NSView {
     let track = WidgetTrack()
     private let box = NSBox()
     var onPress: (() -> Void)?
+    var onSkip: ((WidgetGrid.Skip) -> Void)?
 
     var selected = false {
         didSet {
@@ -115,6 +116,17 @@ final class WidgetTile: NSView {
             (view as? WidgetMeter)?.show(meter)
         }
         setAccessibilityLabel(widget.spoken)
+        setAccessibilityCustomActions(
+            widget.track == nil
+                ? []
+                : [skip("Previous Track", .previous), skip("Next Track", .next)])
+    }
+
+    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
+        NSAccessibilityCustomAction(name: name) { [weak self] in
+            self?.onSkip?(skip)
+            return true
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -125,8 +137,13 @@ final class WidgetTile: NSView {
         true
     }
 
-    override func mouseDown(with _: NSEvent) {
-        onPress?()
+    override func mouseDown(with event: NSEvent) {
+        let point = track.convert(event.locationInWindow, from: nil)
+        if !track.isHidden, let skip = track.skip(at: point) {
+            onSkip?(skip)
+        } else {
+            onPress?()
+        }
     }
 
     override func accessibilityPerformPress() -> Bool {

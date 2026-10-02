@@ -23,6 +23,7 @@ public final class LauncherView: NSView {
     public var actions: ((ResultList.Item) -> [Action])?
     public var onPill: ((StatusBar.Pill) -> Void)?
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
+    public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var context: String? {
         didSet { showContext() }
     }

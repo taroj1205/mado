@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import os
 
 @MainActor
 final class Widgets {
@@ -12,9 +13,10 @@ final class Widgets {
     private static let day = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
     private static let spokenDay = Date.FormatStyle().weekday(.wide).day().month(.wide)
     private static let system = "system"
-    private static let music = "music"
+    static let music = "music"
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
+    private static let logger = Log.logger("Widgets")
 
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
@@ -28,11 +30,6 @@ final class Widgets {
     static func action(for widget: WidgetGrid.Widget) -> CommandAction {
         if widget.id == system {
             return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
-        }
-        if widget.id == music {
-            return CommandAction(id: "playpause", title: widget.action) {
-                try await player.playPause()
-            }
         }
         guard let clock else { return SettingsPane.dateAndTime.open }
         return CommandAction(id: "open", title: widget.action) {
@@ -105,6 +102,19 @@ final class Widgets {
     func show(_ stats: SystemStats, in view: LauncherView) {
         self.stats = stats
         refresh(view)
+    }
+
+    func control(_ control: MusicPlayer.Control, in view: LauncherView) {
+        Task { [weak self, weak view] in
+            do {
+                let found = try await Self.player.perform(control)
+                guard let self, let view else { return }
+                playing = found
+                refresh(view)
+            } catch {
+                Self.logger.error("Music control failed: \(error, privacy: .private)")
+            }
+        }
     }
 
     func stop() {

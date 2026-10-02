@@ -36,6 +36,10 @@ extension LauncherView {
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
+        widgetGrid.onSkip = { [weak self] index, skip in
+            self?.selectWidget(index)
+            self?.onSkip?(skip)
+        }
     }
 
     func leavePillsAndWidgets() {

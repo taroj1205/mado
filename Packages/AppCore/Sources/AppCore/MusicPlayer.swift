@@ -14,6 +14,20 @@ public actor MusicPlayer {
         public var artwork: Data?
     }
 
+    public enum Control: Sendable {
+        case playPause
+        case previous
+        case next
+
+        var eventID: String {
+            switch self {
+            case .playPause: "PlPs"
+            case .previous: "Prev"
+            case .next: "Next"
+            }
+        }
+    }
+
     public enum Failure: Error {
         case notRunning
         case noResult
@@ -42,6 +56,8 @@ public actor MusicPlayer {
     private static let timeout: TimeInterval = 2
     private static let loadTimeout: TimeInterval = 5
     private static let httpOK = 200
+    private static let settleTries = 10
+    private static let settleStep = Duration.milliseconds(100)
     private static let stopped = code("kPSS")
     private static let paused = code("kPSp")
 
@@ -123,7 +139,8 @@ public actor MusicPlayer {
 
     public func track() async -> Track? {
         let found = Self.sources.compactMap { app in read(app).map { (app, $0) } }
-        guard let (app, current) = found.first(where: \.1.isPlaying) ?? found.first else {
+        let shown = found.first(where: \.1.isPlaying) ?? found.first { $0.0 == source }
+        guard let (app, current) = shown ?? found.first else {
             source = nil
             return nil
         }
@@ -136,9 +153,15 @@ public actor MusicPlayer {
         return playing
     }
 
-    public func playPause() throws {
+    public func perform(_ control: Control) async throws -> Track? {
         guard let source else { throw Failure.noTrack }
-        _ = try send(Self.event(source.suite, "PlPs"), source.bundleID)
+        let before = read(source)
+        _ = try send(Self.event(source.suite, control.eventID), source.bundleID)
+        for _ in 0..<Self.settleTries {
+            guard read(source) == before else { break }
+            try await Task.sleep(for: Self.settleStep)
+        }
+        return await track()
     }
 
     private func read(_ app: Source) -> Track? {

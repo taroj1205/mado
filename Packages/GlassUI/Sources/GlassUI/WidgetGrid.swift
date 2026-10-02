@@ -62,6 +62,11 @@ public final class WidgetGrid: NSView {
         case strip
     }
 
+    public enum Skip: Sendable {
+        case previous
+        case next
+    }
+
     public struct Track: Sendable, Equatable {
         public let title: String
         public let artist: String
@@ -98,6 +103,7 @@ public final class WidgetGrid: NSView {
     }
 
     var onPress: ((Int) -> Void)?
+    var onSkip: ((Int, Skip) -> Void)?
     private(set) var tiles: [WidgetTile] = []
 
     var shown: [Widget] {
@@ -180,6 +186,7 @@ public final class WidgetGrid: NSView {
             tiles = visible.indices.map { index in
                 let tile = WidgetTile()
                 tile.onPress = { [weak self] in self?.onPress?(index) }
+                tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
                 addSubview(tile)
                 return tile
             }

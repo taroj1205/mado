@@ -8,6 +8,7 @@ final class WidgetTrack: NSView {
     private static let artistSize: CGFloat = 12
     private static let lineGap: CGFloat = 2
     private static let gap: CGFloat = 10
+    private static let skipReach: CGFloat = 5
     private static let skipSize: CGFloat = 13
     private static let toggleSize: CGFloat = 15
     private static let toggleWidth: CGFloat = 20
@@ -18,6 +19,8 @@ final class WidgetTrack: NSView {
     let title = NSTextField(labelWithString: "")
     let artist = NSTextField(labelWithString: "")
     let toggle = NSImageView()
+    let previous = WidgetTrack.symbol("backward.end", size: skipSize)
+    let next = WidgetTrack.symbol("forward.end", size: skipSize)
     private let placeholder = NSBox()
     private var artwork: Data?
 
@@ -39,10 +42,7 @@ final class WidgetTrack: NSView {
         lines.orientation = .vertical
         lines.alignment = .leading
         lines.spacing = Self.lineGap
-        let controls = NSStackView(views: [
-            Self.symbol("backward.end", size: Self.skipSize), toggle,
-            Self.symbol("forward.end", size: Self.skipSize),
-        ])
+        let controls = NSStackView(views: [previous, toggle, next])
         controls.spacing = Self.gap
         controls.setContentCompressionResistancePriority(.required, for: .horizontal)
         toggle.symbolConfiguration = .init(pointSize: Self.toggleSize, weight: .semibold)
@@ -90,6 +90,17 @@ final class WidgetTrack: NSView {
             topAnchor.constraint(equalTo: placeholder.topAnchor),
             bottomAnchor.constraint(equalTo: placeholder.bottomAnchor),
         ])
+    }
+
+    func skip(at point: NSPoint) -> WidgetGrid.Skip? {
+        let reach = -Self.skipReach
+        if convert(previous.bounds, from: previous).insetBy(dx: reach, dy: reach).contains(point) {
+            return .previous
+        }
+        if convert(next.bounds, from: next).insetBy(dx: reach, dy: reach).contains(point) {
+            return .next
+        }
+        return nil
     }
 
     func show(_ track: WidgetGrid.Track) {

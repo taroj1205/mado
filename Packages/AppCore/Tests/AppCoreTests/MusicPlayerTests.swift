@@ -14,12 +14,25 @@ import Testing
         var asked: [String] = []
         var timingOut: Set<String> = []
         var covers: [URL: Data] = [:]
+        var lagReads = 0
+        private var pending: (() -> Void)?
 
         func answer(_ event: Event, to app: String) throws -> Event {
             guard let properties = answers[app] else { throw MusicPlayer.Failure.notRunning }
             guard event.eventID == MusicPlayer.code("getd") else {
-                asked.append("\(app) toggle \(event.eventClass == MusicPlayer.code("spfy"))")
+                let suite = event.eventClass == MusicPlayer.code("spfy") ? "spfy" : "hook"
+                let id = ["PlPs", "Prev", "Next"].first { MusicPlayer.code($0) == event.eventID }
+                asked.append("\(app) \(suite)\(id ?? "?")")
+                let change = { [self] in react(to: id ?? "", in: app) }
+                if lagReads > 0 { pending = change } else { change() }
                 return .null()
+            }
+            if let change = pending {
+                lagReads -= 1
+                if lagReads <= 0 {
+                    change()
+                    pending = nil
+                }
             }
             let property =
                 event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?
@@ -33,6 +46,20 @@ import Testing
                 throw NSError(domain: NSOSStatusErrorDomain, code: errAENoSuchObject)
             }
             return found
+        }
+
+        private func react(to control: String, in app: String) {
+            guard var properties = answers[app] else { return }
+            if control == "PlPs" {
+                let playing = properties["pPlS"]?.enumCodeValue == MusicPlayer.code("kPSP")
+                properties["pPlS"] = NSAppleEventDescriptor(
+                    enumCode: MusicPlayer.code(playing ? "kPSp" : "kPSP"))
+            } else {
+                let key = properties["pPIS"] == nil ? "ID  " : "pPIS"
+                let id = properties[key]?.stringValue ?? ""
+                properties[key] = NSAppleEventDescriptor(string: "\(id) \(control)")
+            }
+            answers[app] = properties
         }
 
         func cover(_ url: URL) throws -> Data {
@@ -99,7 +126,9 @@ import Testing
         #expect(await player.track() == nil)
         apps.answers = [:]
         #expect(await player.track() == nil)
-        await #expect(throws: MusicPlayer.Failure.noTrack) { try await player.playPause() }
+        await #expect(throws: MusicPlayer.Failure.noTrack) {
+            _ = try await player.perform(.playPause)
+        }
     }
 
     @Test func artworkIsReadOncePerTrack() async {
@@ -146,17 +175,28 @@ import Testing
         #expect(count("aUrl") == 3)
     }
 
-    @Test func thePlayingAppWinsAndPlayPauseGoesToIt() async throws {
+    @Test func thePlayingAppWinsAndControlsGoToIt() async throws {
         apps.answers[Self.music]?["pPlS"] = state("kPSp")
         playSpotify()
         #expect(await player.track()?.title == "Night Drive")
-        try await player.playPause()
-        playSpotify("kPSp")
+        let paused = try await player.perform(.playPause)
+        #expect(paused?.title == "Night Drive" && paused?.isPlaying == false)
+        _ = try await player.perform(.next)
+        apps.answers[Self.spotify] = nil
         #expect(await player.track()?.title == "Low Tide")
-        try await player.playPause()
+        _ = try await player.perform(.previous)
         #expect(
-            apps.asked.filter { $0.contains("toggle") } == [
-                "\(Self.spotify) toggle true", "\(Self.music) toggle false",
+            apps.asked.filter { $0.hasPrefix("com.") } == [
+                "\(Self.spotify) spfyPlPs", "\(Self.spotify) spfyNext", "\(Self.music) hookPrev",
             ])
+    }
+
+    @Test func aControlWaitsForThePlayerToCatchUpBeforeReadingBack() async throws {
+        apps.answers[Self.music] = nil
+        playSpotify()
+        _ = await player.track()
+        apps.lagReads = 12
+        #expect(try await player.perform(.playPause)?.isPlaying == false)
+        #expect(try await player.perform(.next)?.id == "spotify:track:6rq Next")
     }
 }
