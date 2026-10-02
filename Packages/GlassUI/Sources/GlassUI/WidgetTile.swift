@@ -1,18 +1,16 @@
 import AppKit
 
 final class WidgetTile: NSView {
-    private static let radius: CGFloat = 16
-    private static let horizontal: CGFloat = 12
+    private typealias Look = (fill: NSColor, edge: NSColor)
+
+    static let radius: CGFloat = 16
+    static let horizontal: CGFloat = 12
     private static let trackLeading: CGFloat = 10
-    private static let vertical: CGFloat = 10
-    private static let valueSize: CGFloat = 22
-    private static let valueKern: CGFloat = -0.4
+    static let vertical: CGFloat = 10
+    static let noteSize: CGFloat = 12
     private static let detailSize: CGFloat = 11.5
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
-    private static let noteSize: CGFloat = 12
-    private static let titleSize: CGFloat = 11
-    private static let titleKern: CGFloat = 0.4
     private static let headlineSize: CGFloat = 14
     private static let requestSize: CGFloat = 13
     private static let meterGap: CGFloat = 8
@@ -26,6 +24,19 @@ final class WidgetTile: NSView {
     private static let edge = tone(.white, .black, edgeAlpha)
     private static let selectedFill = tone(.white, .black, selectedFillAlpha)
     private static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
+    private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
+    private static let floatingSelectedFill = tone(
+        NSColor(
+            srgbRed: floatingSelectedTint.red, green: floatingSelectedTint.green,
+            blue: floatingSelectedTint.blue, alpha: 1),
+        .white, floatingSelectedAlpha)
+    private static let inlineLooks: (resting: Look, picked: Look) = (
+        (fill, edge), (selectedFill, selectedEdge)
+    )
+    private static let floatingLooks: (resting: Look, picked: Look) = (
+        (.clear, .clear), (floatingSelectedFill, selectedEdge)
+    )
 
     let title = NSTextField(labelWithString: "")
     let value = NSTextField(labelWithString: "")
@@ -45,26 +56,23 @@ final class WidgetTile: NSView {
         track.centerYAnchor.constraint(equalTo: centerYAnchor),
     ]
     private let box = NSBox()
-    private let lines = NSStackView()
-    private let request = NSStackView()
+    let lines = NSStackView()
+    let request = NSStackView()
+    private let looks: (resting: Look, picked: Look)
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
 
     var selected = false {
-        didSet {
-            box.fillColor = selected ? Self.selectedFill : Self.fill
-            box.borderColor = selected ? Self.selectedEdge : Self.edge
-            setAccessibilitySelected(selected)
-        }
+        didSet { paint() }
     }
 
-    init() {
+    init(floating: Bool) {
+        looks = floating ? Self.floatingLooks : Self.inlineLooks
         super.init(frame: .zero)
         box.boxType = .custom
         box.cornerRadius = Self.radius
         box.borderWidth = 1
-        box.fillColor = Self.fill
-        box.borderColor = Self.edge
+        paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
         arrangeLines()
@@ -103,38 +111,11 @@ final class WidgetTile: NSView {
         }
     }
 
-    private func arrangeLines() {
-        reason.font = .systemFont(ofSize: Self.noteSize)
-        detail.textColor = .secondaryLabelColor
-        reason.textColor = .secondaryLabelColor
-        for label in [title, value, headline, detail, reason] {
-            label.lineBreakMode = .byTruncatingTail
-            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        }
-        reason.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        [reason, allow].forEach(request.addArrangedSubview)
-        request.distribution = .fill
-        request.spacing = 0
-        ([title, value, headline] + skeleton + [detail, request]).forEach(lines.addArrangedSubview)
-        lines.orientation = .vertical
-        lines.alignment = .leading
-        lines.distribution = .equalSpacing
-        lines.spacing = 0
-        lines.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(lines)
-        let width = lines.widthAnchor
-        NSLayoutConstraint.activate(
-            [
-                lines.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
-                lines.trailingAnchor.constraint(
-                    equalTo: trailingAnchor, constant: -Self.horizontal),
-                lines.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
-                lines.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
-                request.widthAnchor.constraint(equalTo: width),
-            ]
-                + skeleton.map { bar in
-                    bar.widthAnchor.constraint(equalTo: width, multiplier: bar.fraction)
-                })
+    private func paint() {
+        let look = selected ? looks.picked : looks.resting
+        box.fillColor = look.fill
+        box.borderColor = look.edge
+        setAccessibilitySelected(selected)
     }
 
     func show(_ widget: WidgetGrid.Widget) {
@@ -199,36 +180,6 @@ final class WidgetTile: NSView {
             self?.onSkip?(skip)
             return true
         }
-    }
-
-    private func showValue(_ text: String) {
-        value.attributedStringValue = NSAttributedString(
-            string: text,
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: Self.valueSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
-                .kern: Self.valueKern,
-            ])
-    }
-
-    private func showTitle(_ name: String) {
-        title.attributedStringValue = NSAttributedString(
-            string: name.localizedUppercase,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: Self.titleSize, weight: .semibold),
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .kern: Self.titleKern,
-            ])
-    }
-
-    private func showHeadline(_ line: String, size: CGFloat) {
-        headline.font = .systemFont(ofSize: size, weight: .semibold)
-        headline.stringValue = line
-    }
-
-    private func showDetail(_ note: String, size: CGFloat) {
-        detail.font = .systemFont(ofSize: size)
-        detail.stringValue = note
     }
 
     private func showMeters(_ readings: [WidgetGrid.Meter]) {

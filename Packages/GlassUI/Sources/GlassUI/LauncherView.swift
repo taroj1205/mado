@@ -127,6 +127,11 @@ public final class LauncherView: NSView {
         showAction(of: nil)
     }
 
+    override public func layout() {
+        super.layout()
+        widgetGrid.placeFloats()
+    }
+
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)

@@ -5,7 +5,7 @@ import Testing
 
 @MainActor
 @Suite struct WidgetTileTests {
-    private let tile = WidgetTile()
+    private let tile = WidgetTile(floating: false)
 
     init() {
         tile.frame = NSRect(x: 0, y: 0, width: 115, height: 78)
