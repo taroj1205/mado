@@ -1,6 +1,7 @@
 import AppKit
 public import ApplicationServices
 
+@AccessibilityActor
 public struct FocusedWindow {
     public enum Failure: Error, Equatable {
         case notAllowed
@@ -8,12 +9,17 @@ public struct FocusedWindow {
         case failed(AXError)
     }
 
+    static let messagingTimeout: Float = 0.25
+
     let element: AXUIElement
 
     public init(pid: pid_t) throws(Failure) {
-        let window = try Self.copy(kAXFocusedWindowAttribute, of: AXUIElementCreateApplication(pid))
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
+        let window = try Self.copy(kAXFocusedWindowAttribute, of: app)
         guard CFGetTypeID(window) == AXUIElementGetTypeID() else { throw .noWindow }
         element = unsafe unsafeDowncast(window, to: AXUIElement.self)
+        AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
     }
 
     public static func frontmost() throws(Failure) -> Self {
@@ -21,15 +27,19 @@ public struct FocusedWindow {
         return try Self(pid: app.processIdentifier)
     }
 
-    static func failure(_ error: AXError) -> Failure {
+    nonisolated static func failure(_ error: AXError) -> Failure {
         switch error {
         case .apiDisabled: .notAllowed
-        case .noValue, .attributeUnsupported: .noWindow
+        case .noValue, .attributeUnsupported, .invalidUIElement: .noWindow
         default: .failed(error)
         }
     }
 
-    static func frame(position: CFTypeRef, size: CFTypeRef) -> CGRect? {
+    nonisolated static func refusal(_ error: AXError) -> Bool {
+        error == .failure || error == .attributeUnsupported || error == .illegalArgument
+    }
+
+    nonisolated static func frame(position: CFTypeRef, size: CFTypeRef) -> CGRect? {
         let axValue = AXValueGetTypeID()
         guard CFGetTypeID(position) == axValue, CFGetTypeID(size) == axValue else { return nil }
         var origin = CGPoint.zero
@@ -53,5 +63,22 @@ public struct FocusedWindow {
         let size = try Self.copy(kAXSizeAttribute, of: element)
         guard let frame = Self.frame(position: position, size: size) else { throw .noWindow }
         return frame
+    }
+
+    public func setFrame(_ frame: CGRect) throws(Failure) -> CGRect {
+        var origin = frame.origin
+        var size = frame.size
+        guard let position = unsafe AXValueCreate(.cgPoint, &origin),
+            let extent = unsafe AXValueCreate(.cgSize, &size)
+        else { throw .failed(.illegalArgument) }
+        try set(kAXSizeAttribute, extent)
+        try set(kAXPositionAttribute, position)
+        try set(kAXSizeAttribute, extent)
+        return try quartzFrame()
+    }
+
+    private func set(_ name: String, _ value: AXValue) throws(Failure) {
+        let error = AXUIElementSetAttributeValue(element, name as CFString, value)
+        guard error == .success || Self.refusal(error) else { throw Self.failure(error) }
     }
 }

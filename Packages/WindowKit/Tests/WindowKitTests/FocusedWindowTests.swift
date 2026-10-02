@@ -33,6 +33,16 @@ import Testing
         #expect(FocusedWindow.failure(.apiDisabled) == .notAllowed)
         #expect(FocusedWindow.failure(.noValue) == .noWindow)
         #expect(FocusedWindow.failure(.attributeUnsupported) == .noWindow)
+        #expect(FocusedWindow.failure(.invalidUIElement) == .noWindow)
         #expect(FocusedWindow.failure(.cannotComplete) == .failed(.cannotComplete))
+    }
+
+    @Test func keepsMovingWhenTheWindowRefusesAnAttribute() {
+        #expect(FocusedWindow.refusal(.failure))
+        #expect(FocusedWindow.refusal(.attributeUnsupported))
+        #expect(FocusedWindow.refusal(.illegalArgument))
+        #expect(!FocusedWindow.refusal(.cannotComplete))
+        #expect(!FocusedWindow.refusal(.invalidUIElement))
+        #expect(!FocusedWindow.refusal(.apiDisabled))
     }
 }
