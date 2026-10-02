@@ -168,6 +168,47 @@ import Testing
         #expect(!view.results.hidesSelection)
     }
 
+    @Test func aMeterWidgetDrawsOneBarPerMeterAndUpdatesInPlace() throws {
+        let system = WidgetGrid.Widget(
+            id: "system",
+            meters: [
+                .init(name: "CPU", value: "23%", level: 0.23),
+                .init(name: "RAM", value: "–", level: 0),
+            ],
+            action: "Open Activity Monitor", spoken: "System: CPU 23%, memory –")
+        view.widgets = [widgets[0], system]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.last)
+        let meters = tile.meters.arrangedSubviews.compactMap { $0 as? WidgetMeter }
+        #expect(meters.map(\.name.stringValue) == ["CPU", "RAM"])
+        #expect(meters.map(\.value.stringValue) == ["23%", "–"])
+        #expect(meters.map(\.level) == [0.23, 0])
+        #expect(tile.value.isHidden && tile.detail.isHidden)
+        #expect(tile.accessibilityLabel() == "System: CPU 23%, memory –")
+        let first = try #require(meters.first)
+        #expect(abs(first.frame.width - (tile.bounds.width - 24)) < 1)
+        #expect(abs(tile.meters.frame.midY - tile.bounds.midY) < 0.5)
+        view.pressWidget(1)
+        view.widgets = [
+            widgets[0],
+            .init(
+                id: "system",
+                meters: [
+                    .init(name: "CPU", value: "140%", level: 1.4),
+                    .init(name: "RAM", value: "61%", level: 0.61),
+                ],
+                action: "Open Activity Monitor", spoken: "System: CPU 140%, memory 61%"),
+        ]
+        #expect(view.widgetGrid.tiles.last === tile)
+        #expect(tile.meters.arrangedSubviews.first === first)
+        #expect(meters.map(\.level) == [1, 0.61])
+        #expect(view.selectedWidget == 1)
+        #expect(view.actionLabel.stringValue == "Open Activity Monitor")
+        view.widgets = [widgets[0], widgets[0]]
+        #expect(tile.meters.arrangedSubviews.isEmpty)
+        #expect(!tile.value.isHidden && !tile.detail.isHidden)
+    }
+
     private func press(
         _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
     ) {

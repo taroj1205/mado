@@ -3,11 +3,9 @@ import AppKit
 import GlassUI
 
 @MainActor
-final class StatusPills {
-    private static let warmUpSeconds = 0.5
-    private static let intervalSeconds = 2.0
-    private static let unknown = "–"
-    private static let percent = FloatingPointFormatStyle<Double>.Percent()
+enum StatusPills {
+    static let unknown = "–"
+    static let percent = FloatingPointFormatStyle<Double>.Percent()
         .precision(.fractionLength(0))
     private static let whole = FloatingPointFormatStyle<Double>().precision(.fractionLength(0))
     private static let gigabyte = 1_000_000_000.0
@@ -21,7 +19,7 @@ final class StatusPills {
     private static let uptimeStyle = Duration.UnitsFormatStyle(
         allowedUnits: [.days, .hours, .minutes], width: .narrow, maximumUnitCount: 1,
         fractionalPart: .hide(rounded: .down))
-    private static let activityMonitor = "com.apple.ActivityMonitor"
+    static let activityMonitor = "com.apple.ActivityMonitor"
     private static let apps = [
         "cpu": activityMonitor,
         "mem": activityMonitor,
@@ -34,20 +32,21 @@ final class StatusPills {
         "net": .network,
     ]
 
-    private let sampler = SystemSampler()
-    private var ticking: Task<Void, Never>?
-
     static func action(for pill: StatusBar.Pill) -> CommandAction {
         if let pane = panes[pill.id] { return pane.open }
-        return CommandAction(id: "open", title: pill.action) {
-            guard let app = apps[pill.id].flatMap(NSWorkspace.shared.urlForApplication)
+        return open(apps[pill.id], title: pill.action)
+    }
+
+    static func open(_ bundleID: String?, title: String) -> CommandAction {
+        CommandAction(id: "open", title: title) {
+            guard let app = bundleID.flatMap(NSWorkspace.shared.urlForApplication)
             else { throw CocoaError(.fileNoSuchFile) }
             _ = try await NSWorkspace.shared.openApplication(
                 at: app, configuration: NSWorkspace.OpenConfiguration())
         }
     }
 
-    private static func pills(for stats: SystemStats) -> [StatusBar.Pill] {
+    static func pills(for stats: SystemStats) -> [StatusBar.Pill] {
         let info = ProcessInfo.processInfo
         let free = stats.diskFree.map { (Double($0) / gigabyte).formatted(whole) }
         return [
@@ -109,24 +108,5 @@ final class StatusPills {
         case .critical: "Critical"
         @unknown default: "Unknown"
         }
-    }
-
-    func show(in view: LauncherView) {
-        stop()
-        ticking = Task { [sampler, weak view] in
-            var wait = Self.warmUpSeconds
-            while !Task.isCancelled {
-                let stats = await sampler.sample()
-                guard !Task.isCancelled else { return }
-                view?.pills = Self.pills(for: stats)
-                try? await Task.sleep(for: .seconds(wait))
-                wait = Self.intervalSeconds
-            }
-        }
-    }
-
-    func stop() {
-        ticking?.cancel()
-        ticking = nil
     }
 }

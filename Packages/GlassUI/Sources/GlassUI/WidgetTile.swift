@@ -7,6 +7,7 @@ final class WidgetTile: NSView {
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
     private static let detailSize: CGFloat = 11.5
+    private static let meterGap: CGFloat = 8
     private static let fillAlpha = (dark: 0.055, light: 0.55)
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
     private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
@@ -18,6 +19,7 @@ final class WidgetTile: NSView {
 
     let value = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")
+    let meters = NSStackView()
     private let box = NSBox()
     var onPress: (() -> Void)?
 
@@ -45,7 +47,14 @@ final class WidgetTile: NSView {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
+        meters.orientation = .vertical
+        meters.spacing = Self.meterGap
+        meters.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(meters)
         NSLayoutConstraint.activate([
+            meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
+            meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            meters.centerYAnchor.constraint(equalTo: centerYAnchor),
             value.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             value.trailingAnchor.constraint(
                 lessThanOrEqualTo: trailingAnchor, constant: -Self.horizontal),
@@ -64,7 +73,7 @@ final class WidgetTile: NSView {
         nil
     }
 
-    private static func tone(
+    static func tone(
         _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
     ) -> NSColor {
         NSColor(name: nil) { appearance in
@@ -82,6 +91,19 @@ final class WidgetTile: NSView {
                 .kern: Self.valueKern,
             ])
         detail.stringValue = widget.detail
+        value.isHidden = !widget.meters.isEmpty
+        detail.isHidden = !widget.meters.isEmpty
+        if meters.arrangedSubviews.count != widget.meters.count {
+            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            for _ in widget.meters {
+                let meter = WidgetMeter()
+                meters.addArrangedSubview(meter)
+                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
+            }
+        }
+        for (view, meter) in zip(meters.arrangedSubviews, widget.meters) {
+            (view as? WidgetMeter)?.show(meter)
+        }
         setAccessibilityLabel(widget.spoken)
     }
 
