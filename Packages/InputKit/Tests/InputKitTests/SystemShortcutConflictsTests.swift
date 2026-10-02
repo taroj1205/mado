@@ -1,4 +1,5 @@
 import AppCore
+import Foundation
 import Testing
 
 @testable import InputKit
@@ -46,5 +47,20 @@ import Testing
     @Test func unrelatedShortcutHasNoConflict() {
         let shortcut = Shortcut(keyCode: 0, modifiers: .command)
         #expect(SystemShortcutConflicts.conflict(for: shortcut, symbolicHotKeys: [:]) == nil)
+    }
+
+    @MainActor
+    @Test(.timeLimit(.minutes(1))) func symbolicHotKeyChangesReachTheObserver() async throws {
+        let suite = "com.taroj1205.mado.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let changed = AsyncStream<Void>.makeStream()
+        let observation = SystemShortcutConflicts.observe(defaults) {
+            changed.continuation.yield()
+        }
+        defaults.set(["64": ["enabled": false]], forKey: "AppleSymbolicHotKeys")
+        var changes = changed.stream.makeAsyncIterator()
+        #expect(await changes.next() != nil)
+        observation.invalidate()
     }
 }
