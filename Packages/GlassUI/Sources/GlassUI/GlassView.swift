@@ -34,7 +34,7 @@ public final class GlassView: NSView {
     let container = NSView()
     private var radius: CGFloat?
 
-    public init(shape: Shape) {
+    public init(shape: Shape, tint: NSColor? = nil) {
         self.shape = shape
         if #available(macOS 26, *) {
             effect = NSGlassEffectView()
@@ -53,6 +53,7 @@ public final class GlassView: NSView {
         }
         effect.autoresizingMask = [.width, .height]
         addSubview(effect)
+        sheen.tint = tint
         sheen.autoresizingMask = [.width, .height]
         container.addSubview(sheen)
         if #available(macOS 26, *), let glass = effect as? NSGlassEffectView {
