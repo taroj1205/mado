@@ -127,9 +127,8 @@ extension ItemSheet {
         separator.boxType = .separator
         let header = layoutHeader()
         let form = layoutForm()
-        let context = LauncherView.makeContextCapsule(contextIcon, contextLabel)
         let buttons = layoutButtons()
-        for view in [header, separator, form, context, buttons] {
+        for view in [header, separator, form, contextPill, buttons] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -145,8 +144,9 @@ extension ItemSheet {
             form.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: Self.formTop),
             form.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.formLeading),
             form.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.formTrailing),
-            context.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.capsuleInset),
-            context.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.capsuleInset),
+            contextPill.leadingAnchor.constraint(
+                equalTo: leadingAnchor, constant: Self.capsuleInset),
+            contextPill.centerYAnchor.constraint(equalTo: buttons.centerYAnchor),
             buttons.trailingAnchor.constraint(
                 equalTo: trailingAnchor, constant: -Self.capsuleInset),
             buttons.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.capsuleInset),

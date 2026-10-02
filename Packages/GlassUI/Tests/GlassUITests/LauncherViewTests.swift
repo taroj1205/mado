@@ -121,17 +121,19 @@ import Testing
         #expect(actionCapsule().isHidden)
     }
 
-    @Test func theContextCapsuleShowsOnlyWhileThereIsContext() {
-        #expect(view.contextCapsule.isHidden)
+    @Test func theContextPillShowsOnlyWhileThereIsContext() {
+        let pill = view.contextPill
+        #expect(pill.isHidden)
         view.context = "No results"
         view.layoutSubtreeIfNeeded()
-        let capsule = view.contextCapsule
-        #expect(!capsule.isHidden)
-        #expect(view.contextLabel.stringValue == "No results")
-        #expect(capsule.frame.minX == 10)
-        #expect(capsule.frame.width >= view.contextLabel.fittingSize.width)
+        #expect(!pill.isHidden)
+        #expect(pill.text == "No results")
+        #expect(pill.frame.minX == 10)
+        #expect(pill.frame.height == 36)
+        #expect(abs(pill.frame.midY - actionCapsule().frame.midY) < 1)
+        #expect(pill.frame.width >= pill.label.fittingSize.width)
         view.context = nil
-        #expect(capsule.isHidden)
+        #expect(pill.isHidden)
     }
 
     @Test func commandDigitsRunTheRowWithThatShortcut() {
@@ -154,14 +156,30 @@ import Testing
         #expect(view.results.selectedItem?.id == "hex")
     }
 
-    @Test func aContextSymbolReplacesTheChevronWithABadge() {
+    @Test func theContextPillShowsItsGlyphInGreyWithoutABadge() {
+        let pill = view.contextPill
         view.context = "Colour"
-        #expect(view.contextIcon.image?.isTemplate == true)
+        #expect(pill.icon.isHidden)
         view.contextSymbol = "paintpalette.fill"
-        #expect(view.contextIcon.image?.isTemplate == false)
-        #expect(view.contextIcon.image?.size == NSSize(width: 18, height: 18))
+        #expect(!pill.icon.isHidden)
+        #expect(pill.symbol == "paintpalette.fill")
+        #expect(pill.icon.image?.isTemplate == true)
+        #expect(pill.icon.contentTintColor == .secondaryLabelColor)
         view.contextSymbol = nil
-        #expect(view.contextIcon.image?.isTemplate == true)
+        #expect(pill.icon.isHidden)
+    }
+
+    @Test func theContextPillBoldsOnlyALeadingCount() {
+        func colour(_ text: String, at index: Int) -> NSColor? {
+            unsafe StatusPill.styled(text).attribute(
+                .foregroundColor, at: index, effectiveRange: nil)
+                as? NSColor
+        }
+        #expect(colour("5 results", at: 0) == .labelColor)
+        #expect(colour("5 results", at: 2) == .secondaryLabelColor)
+        #expect(colour("12 selected", at: 1) == .labelColor)
+        #expect(colour("No results", at: 0) == .secondaryLabelColor)
+        #expect(colour("1080p", at: 0) == .secondaryLabelColor)
     }
 
     @Test func rowsScrollUnderTheCapsuleButTheSelectionStopsAboveIt() {

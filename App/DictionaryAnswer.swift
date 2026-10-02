@@ -13,7 +13,7 @@ enum DictionaryAnswer {
     private static let open = "Open in Dictionary"
     private static let copy = "Copy Definition"
     private static let japanese = "Look Up in 大辞林"
-    private static let book = "book.closed"
+    static let symbol = "book.closed"
     private static let dictionaryRed: CGFloat = 0.42
     private static let dictionaryGreen: CGFloat = 0.31
     private static let dictionaryBlue: CGFloat = 0.165
@@ -36,7 +36,7 @@ enum DictionaryAnswer {
             opposite: entry.opposite)
         let rows = [
             ResultList.Item(
-                id: openID, title: open, subtitle: entry.dictionary, kind: "", symbol: book,
+                id: openID, title: open, subtitle: entry.dictionary, kind: "", symbol: symbol,
                 action: open, tint: dictionaryTint, shortcut: ["↵"]),
             ResultList.Item(
                 id: copyID, title: copy, subtitle: "", kind: "", symbol: "doc.on.doc",
@@ -44,7 +44,7 @@ enum DictionaryAnswer {
         ]
         let japaneseRow = ResultList.Item(
             id: japaneseID, title: japanese, subtitle: "Japanese dictionary", kind: "",
-            symbol: book, action: japanese, tint: japaneseTint)
+            symbol: symbol, action: japanese, tint: japaneseTint)
         return ResultList.Section(
             title: title, items: rows + (entry.japaneseURL == nil ? [] : [japaneseRow]),
             card: card)

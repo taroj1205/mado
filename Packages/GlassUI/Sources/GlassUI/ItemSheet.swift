@@ -70,8 +70,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     let favourite = NSSwitch()
     let ranking = NSTextField(labelWithString: "")
     let resetRanking = NSButton(title: "Reset Ranking", target: nil, action: nil)
-    let contextIcon = LauncherView.makeContextIcon()
-    let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
+    let contextPill = StatusPill()
     let cancel = CapsuleButton("Cancel", keys: ["esc"])
     let save = CapsuleButton("Save", keys: ["↵"])
     private(set) var aliases: [String] = [] {
@@ -131,9 +130,9 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         resetsRanking = false
         ranking.stringValue = summary ?? Self.neverOpened
         resetRanking.isEnabled = summary != nil
-        contextIcon.image = LauncherView.contextImage(field.symbol)
         let action = field.title(favourite: values.favourite)
-        contextLabel.stringValue = "⌘K › " + action.trimmingCharacters(in: .init(charactersIn: "…"))
+        contextPill.show(
+            "⌘K › " + action.trimmingCharacters(in: .init(charactersIn: "…")), symbol: field.symbol)
         let target: NSResponder =
             switch field {
             case .aliases: aliasField

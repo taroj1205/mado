@@ -10,6 +10,7 @@ public final class LauncherView: NSView {
     private static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
     private static let previewHint = "⌘Y to preview"
+    private static let previewSymbol = "eye"
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -28,11 +29,9 @@ public final class LauncherView: NSView {
     }
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
-    let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
-    let contextIcon = LauncherView.makeContextIcon()
     let actionsToggle = LauncherView.makeActionsToggle()
     let actionCapsule: GlassView
-    let contextCapsule: GlassView
+    let contextPill = StatusPill()
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
     private var browsing = false
@@ -47,7 +46,6 @@ public final class LauncherView: NSView {
 
     override public init(frame: NSRect) {
         actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
-        contextCapsule = Self.makeContextCapsule(contextIcon, contextLabel)
         super.init(frame: frame)
         icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
@@ -94,13 +92,12 @@ public final class LauncherView: NSView {
     }
 
     private func placeCapsules() {
-        addSubview(contextCapsule)
+        addSubview(contextPill)
         addSubview(actionCapsule)
         NSLayoutConstraint.activate([
-            contextCapsule.leadingAnchor.constraint(
+            contextPill.leadingAnchor.constraint(
                 equalTo: leadingAnchor, constant: Self.capsuleInset),
-            contextCapsule.bottomAnchor.constraint(
-                equalTo: bottomAnchor, constant: -Self.capsuleInset),
+            contextPill.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
             actionCapsule.trailingAnchor.constraint(
                 equalTo: trailingAnchor, constant: -Self.capsuleInset),
             actionCapsule.bottomAnchor.constraint(
@@ -184,10 +181,9 @@ public final class LauncherView: NSView {
 
     private func showContext() {
         let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
-        let text = hintsPreview ? Self.previewHint : context
-        contextIcon.image = Self.contextImage(hintsPreview ? nil : contextSymbol)
-        contextLabel.stringValue = text ?? ""
-        contextCapsule.isHidden = text == nil
+        contextPill.show(
+            hintsPreview ? Self.previewHint : context,
+            symbol: hintsPreview ? Self.previewSymbol : contextSymbol)
     }
 
     public func show(_ sections: [ResultList.Section]) {
