@@ -1,6 +1,6 @@
 import AppKit
 
-final class AllowCapsule: NSBox {
+final class AllowCapsule: NSView {
     private static let height: CGFloat = 24
     private static let radius: CGFloat = 12
     private static let padding: CGFloat = 12
@@ -10,11 +10,6 @@ final class AllowCapsule: NSBox {
 
     init() {
         super.init(frame: .zero)
-        boxType = .custom
-        borderWidth = 0
-        cornerRadius = Self.radius
-        fillColor = .controlAccentColor
-        contentViewMargins = .zero
         label.font = .systemFont(ofSize: Self.textSize, weight: .medium)
         label.textColor = .white
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -32,5 +27,10 @@ final class AllowCapsule: NSBox {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func draw(_: NSRect) {
+        NSColor.controlAccentColor.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: Self.radius, yRadius: Self.radius).fill()
     }
 }
