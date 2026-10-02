@@ -61,6 +61,15 @@ public struct FocusedWindow {
         return CGRect(origin: origin, size: extent)
     }
 
+    private static func values(_ frame: CGRect) throws(Failure) -> (AXValue, AXValue) {
+        var origin = frame.origin
+        var size = frame.size
+        guard let position = unsafe AXValueCreate(.cgPoint, &origin),
+            let extent = unsafe AXValueCreate(.cgSize, &size)
+        else { throw .failed(.illegalArgument) }
+        return (position, extent)
+    }
+
     static func copy(_ name: String, of element: AXUIElement) throws(Failure) -> CFTypeRef {
         var value: CFTypeRef?
         let error = unsafe AXUIElementCopyAttributeValue(element, name as CFString, &value)
@@ -81,15 +90,21 @@ public struct FocusedWindow {
     }
 
     public func setFrame(_ frame: CGRect) throws(Failure) -> CGRect {
-        var origin = frame.origin
-        var size = frame.size
-        guard let position = unsafe AXValueCreate(.cgPoint, &origin),
-            let extent = unsafe AXValueCreate(.cgSize, &size)
-        else { throw .failed(.illegalArgument) }
+        let (position, extent) = try Self.values(frame)
         try set(kAXSizeAttribute, extent)
         try set(kAXPositionAttribute, position)
         try set(kAXSizeAttribute, extent)
         return try quartzFrame()
+    }
+
+    public func setFrame(_ frame: CGRect, changedFrom previous: CGRect) throws(Failure) {
+        let (position, extent) = try Self.values(frame)
+        if frame.size != previous.size {
+            try set(kAXSizeAttribute, extent)
+        }
+        if frame.origin != previous.origin {
+            try set(kAXPositionAttribute, position)
+        }
     }
 
     private func set(_ name: String, _ value: AXValue) throws(Failure) {

@@ -51,3 +51,7 @@ extension Quicklinks: StoredValue {
 extension RadialSettings: StoredValue {
     static let key = "radial"
 }
+
+extension GestureSettings: StoredValue {
+    static let key = "gestures"
+}
