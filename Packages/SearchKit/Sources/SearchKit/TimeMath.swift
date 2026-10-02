@@ -37,15 +37,12 @@ enum TimeMath {
     private static let monthAbbreviation = 3
     private static let minuteDigits = 2
 
-    private static let calendar = {
-        var gregorian = Calendar(identifier: .gregorian)
-        gregorian.timeZone = .autoupdatingCurrent
-        return gregorian
-    }()
-
-    static func answer(for text: String, now: Date) -> Calculator.Answer? {
-        hoursBetween(text) ?? timeOfDay(text) ?? duration(text) ?? date(text, now: now)
-            ?? countdown(text, now: now)
+    static func answer(for text: String, now: Date, local: TimeZone) -> Calculator.Answer? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = local
+        return hoursBetween(text) ?? timeOfDay(text) ?? duration(text)
+            ?? date(text, now: now, calendar: calendar)
+            ?? countdown(text, now: now, calendar: calendar)
     }
 
     private static func hoursBetween(_ text: String) -> Calculator.Answer? {
@@ -119,7 +116,9 @@ enum TimeMath {
                 "\(Calculator.format(hours)) hours · \(Calculator.format(minutes)) minutes")
     }
 
-    private static func date(_ text: String, now: Date) -> Calculator.Answer? {
+    private static func date(
+        _ text: String, now: Date, calendar: Calendar
+    ) -> Calculator.Answer? {
         let pattern = /(in )?(\d+) ?(day|week|month|year)s?(?: (from today|from now|later|ago))?/
         guard let match = text.wholeMatch(of: pattern), match.1 != nil || match.4 != nil,
             let amount = Int(match.2), let step = steps[String(match.3)]
@@ -131,26 +130,29 @@ enum TimeMath {
         else { return nil }
         return Calculator.Answer(
             kind: "Dates", expression: text.prefix(1).uppercased() + text.dropFirst(),
-            expressionDetail: "From \(label(today, "EEE, d MMM yyyy"))",
-            result: label(day, "d MMM yyyy"), resultDetail: label(day, "EEEE"))
+            expressionDetail: "From \(label(today, "EEE, d MMM yyyy", calendar))",
+            result: label(day, "d MMM yyyy", calendar), resultDetail: label(day, "EEEE", calendar))
     }
 
-    private static func countdown(_ text: String, now: Date) -> Calculator.Answer? {
+    private static func countdown(
+        _ text: String, now: Date, calendar: Calendar
+    ) -> Calculator.Answer? {
         let today = calendar.startOfDay(for: now)
         guard
             let match = text.wholeMatch(
                 of: /(?:how many )?(?:days? )?(?:until|till|to) (.+?)\??/),
-            let target = day(match.1, after: today),
+            let target = day(match.1, after: today, calendar: calendar),
             let days = calendar.dateComponents([.day], from: today, to: target).day
         else { return nil }
         return Calculator.Answer(
-            kind: "Dates", expression: "Until \(label(target, "d MMM"))",
-            expressionDetail: label(target, "EEE, d MMM yyyy"), result: count(days, "day"),
+            kind: "Dates", expression: "Until \(label(target, "d MMM", calendar))",
+            expressionDetail: label(target, "EEE, d MMM yyyy", calendar),
+            result: count(days, "day"),
             resultDetail:
                 "\(count(days / daysPerWeek, "week")) \(count(days % daysPerWeek, "day"))")
     }
 
-    private static func day(_ text: Substring, after today: Date) -> Date? {
+    private static func day(_ text: Substring, after today: Date, calendar: Calendar) -> Date? {
         let named = text.replacing(/^(christmas|xmas)$/, with: "25 dec")
             .replacing(/^new years?( day)?$/, with: "1 jan")
             .replacing(/(\d)(?:st|nd|rd|th)\b/) { $0.1 }
@@ -243,7 +245,7 @@ enum TimeMath {
         "\(Calculator.format(Double(value))) \(unit)\(value == 1 ? "" : "s")"
     }
 
-    private static func label(_ date: Date, _ format: String) -> String {
+    private static func label(_ date: Date, _ format: String, _ calendar: Calendar) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.timeZone = calendar.timeZone

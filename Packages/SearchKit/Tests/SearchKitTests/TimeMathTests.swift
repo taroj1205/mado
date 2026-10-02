@@ -118,6 +118,18 @@ import Testing
     }
 
     @Test(arguments: [
+        ("UTC", "From Fri, 2 Oct 2026", "16 Nov 2026"),
+        ("Pacific/Kiritimati", "From Sat, 3 Oct 2026", "17 Nov 2026"),
+    ])
+    func datesUseTheLocalTimeZone(zone: String, detail: String, result: String) throws {
+        let noonUTC = Date(timeIntervalSince1970: 1_790_942_400)
+        let local = try #require(TimeZone(identifier: zone))
+        let answer = Calculator.answer(for: "45 days from today", now: noonUTC, local: local)
+        #expect(answer?.expressionDetail == detail)
+        #expect(answer?.result == result)
+    }
+
+    @Test(arguments: [
         "9am", "45m", "2h 30m", "13pm to 5pm", "0am to 5pm", "9:60am to 5pm", "24:00 to 1:00",
         "9 to 5", "2h + ", "5 parsecs + 2h", "45 days", "days until 30 feb 2028",
         "days until 1 jan 2020", "days until 32 dec", "days until 25 de",
