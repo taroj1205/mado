@@ -153,6 +153,20 @@ import Testing
         #expect(!sheet.hotkey.conflict)
     }
 
+    @Test func appsShowTheirModeAndOtherItemsDoNot() {
+        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey, isApp: true)
+        #expect(!sheet.modeRow.isHidden)
+        #expect(sheet.mode.titleOfSelectedItem == "Toggle")
+        #expect(sheet.mode.itemArray.map(\.isEnabled) == [true, false])
+        #expect(
+            sheet.modeHint.stringValue
+                == "Toggle: launch if closed → bring to front → hide if already in front.")
+        #expect(sheet.hotkeyHintLabel.stringValue == ItemSheet.hotkeyHint)
+
+        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey)
+        #expect(sheet.modeRow.isHidden)
+    }
+
     @Test func aProblemFromSavingStaysOnScreen() {
         let problem = "macOS wouldn’t register this hotkey. Try another."
         sheet.onSave = { _ in problem }
@@ -202,6 +216,21 @@ import Testing
 
         press(kVK_Return, "\r")
         #expect(saved == [.init(resetsRanking: true)])
+    }
+
+    @Test func theModeRowStillFitsAboveTheCapsules() throws {
+        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey, isApp: true)
+        sheet.layoutSubtreeIfNeeded()
+        let capsuleTop = try #require(
+            sheet.subviews.compactMap { $0 as? GlassView }.map(\.frame.maxY).max())
+        let ranking = sheet.convert(sheet.resetRanking.bounds, from: sheet.resetRanking)
+        let mode = sheet.convert(sheet.mode.bounds, from: sheet.mode)
+        let hotkey = sheet.convert(sheet.hotkey.bounds, from: sheet.hotkey)
+
+        #expect(mode.maxY < hotkey.minY)
+        #expect(ranking.minY > capsuleTop)
+        let ambiguous = sheet.subviews.contains(where: \.hasAmbiguousLayout)
+        #expect(!ambiguous)
     }
 
     @Test func layoutFollowsTheCanvas() {

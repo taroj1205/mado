@@ -10,6 +10,10 @@ final class SettingsPageController: NSViewController {
     private static let headerInset: CGFloat = 4
     private static let captionSize: CGFloat = 11
     private static let rowHeight: CGFloat = 40
+    private static let iconRowHeight: CGFloat = 44
+    private static let iconSize: CGFloat = 26
+    private static let iconGap: CGFloat = 10
+    private static let footerSize: CGFloat = 12
     private static let rowPadding: CGFloat = 12
     private static let cornerRadius: CGFloat = 10
     private static let sectionSpacing: CGFloat = 14
@@ -19,21 +23,17 @@ final class SettingsPageController: NSViewController {
     private static let bottom: CGFloat = 16
 
     private let page: SettingsPage
-    private let modules: ModuleManager?
-    private let hotKeys: LauncherHotKeys
-    private let rates: ExchangeRateFeed
+    private let context: SettingsPage.Context
+    private let stack = NSStackView()
+    private var tab: Int
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
     private var details: [(label: NSTextField, text: () -> String)] = []
 
-    init(
-        page: SettingsPage, modules: ModuleManager?, hotKeys: LauncherHotKeys,
-        rates: ExchangeRateFeed
-    ) {
+    init(page: SettingsPage, context: SettingsPage.Context) {
         self.page = page
-        self.modules = modules
-        self.hotKeys = hotKeys
-        self.rates = rates
+        self.context = context
+        tab = page.tabs.firstIndex { $0.sections != nil } ?? 0
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -43,19 +43,11 @@ final class SettingsPageController: NSViewController {
     }
 
     override func loadView() {
-        var sections = page.sections(modules, hotKeys, rates)
-        if let module = page.module {
-            sections.insert(moduleSection(module), at: 0)
-        }
-        let controls = sections.flatMap(\.rows).map(\.control)
-        switches = controls.compactMap { $0 as? SettingsSwitch }
-        popUps = controls.compactMap { $0 as? SettingsPopUp }
-
         let heading = NSTextField(labelWithString: page.title)
         heading.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
         heading.translatesAutoresizingMaskIntoConstraints = false
-        let stack = NSStackView(views: sections.map(sectionView))
         stack.orientation = .vertical
+        stack.alignment = .leading
         stack.spacing = Self.sectionSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         let view = NSView()
@@ -70,10 +62,8 @@ final class SettingsPageController: NSViewController {
             stack.bottomAnchor.constraint(
                 lessThanOrEqualTo: view.bottomAnchor, constant: -Self.bottom),
         ])
-        for section in stack.arrangedSubviews {
-            section.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        }
         self.view = view
+        reload()
     }
 
     override func viewWillAppear() {
@@ -93,20 +83,92 @@ final class SettingsPageController: NSViewController {
         }
     }
 
+    func reload() {
+        var sections = page.tabs[tab].sections?(context) ?? []
+        if let module = page.module {
+            sections.insert(moduleSection(module), at: 0)
+        }
+        let controls = sections.flatMap(\.rows).map(\.control)
+        switches = controls.compactMap { $0 as? SettingsSwitch }
+        popUps = controls.compactMap { $0 as? SettingsPopUp }
+        details = []
+        for view in stack.arrangedSubviews {
+            view.removeFromSuperview()
+        }
+        for section in sections.map(sectionView) {
+            stack.addArrangedSubview(section)
+            section.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+        if page.tabs.count > 1 {
+            stack.insertArrangedSubview(tabPicker(), at: page.module == nil ? 0 : 1)
+        }
+    }
+
     private func moduleSection(_ module: ModuleDescriptor) -> SettingsSection {
+        let modules = context.modules
         let toggle = SettingsSwitch(
-            read: { [modules] in modules?.isEnabled(module.id) ?? false },
-            write: { [modules] in try modules?.setEnabled(module.id, $0) })
+            read: { modules?.isEnabled(module.id) ?? false },
+            write: { try modules?.setEnabled(module.id, $0) })
         toggle.isEnabled = modules != nil
         return SettingsSection(nil, [.init(module.name, toggle)])
     }
 
+    private func tabPicker() -> NSSegmentedControl {
+        let picker = NSSegmentedControl(
+            labels: page.tabs.map(\.title), trackingMode: .selectOne, target: self,
+            action: #selector(pickTab))
+        for (index, entry) in page.tabs.enumerated() {
+            picker.setEnabled(entry.sections != nil, forSegment: index)
+        }
+        picker.selectedSegment = tab
+        return picker
+    }
+
+    @objc
+    private func pickTab(_ picker: NSSegmentedControl) {
+        tab = picker.selectedSegment
+        reload()
+    }
+
     private func sectionView(_ section: SettingsSection) -> NSView {
+        var parts: [NSView] = []
+        if let title = section.title {
+            parts.append(header(title, note: section.note))
+        }
+        if !section.rows.isEmpty {
+            parts.append(box(section.rows))
+        }
+        if let footer = section.footer {
+            let label = NSTextField(wrappingLabelWithString: "")
+            label.font = .systemFont(ofSize: Self.footerSize)
+            label.textColor = .secondaryLabelColor
+            label.attributedStringValue = footer
+            let inset = NSStackView(views: [label])
+            inset.edgeInsets = NSEdgeInsets(top: 0, left: Self.headerInset, bottom: 0, right: 0)
+            parts.append(inset)
+        }
+        let group = NSStackView(views: parts)
+        group.orientation = .vertical
+        group.alignment = .leading
+        group.spacing = Self.headerSpacing
+        for part in parts {
+            part.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
+        }
+        if let accessory = section.accessory {
+            if let last = parts.last {
+                group.setCustomSpacing(Self.sectionSpacing, after: last)
+            }
+            group.addArrangedSubview(accessory)
+        }
+        return group
+    }
+
+    private func box(_ sectionRows: [SettingsSection.Row]) -> NSView {
         let rows = NSStackView()
         rows.orientation = .vertical
         rows.spacing = 0
         rows.translatesAutoresizingMaskIntoConstraints = false
-        for (index, row) in section.rows.enumerated() {
+        for (index, row) in sectionRows.enumerated() {
             if index > 0 {
                 rows.addArrangedSubview(separator())
             }
@@ -128,16 +190,7 @@ final class SettingsPageController: NSViewController {
             rows.leadingAnchor.constraint(equalTo: box.leadingAnchor),
             rows.trailingAnchor.constraint(equalTo: box.trailingAnchor),
         ])
-        guard let title = section.title else { return box }
-
-        let header = header(title, note: section.note)
-        let group = NSStackView(views: [header, box])
-        group.orientation = .vertical
-        group.alignment = .leading
-        group.spacing = Self.headerSpacing
-        box.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
-        header.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
-        return group
+        return box
     }
 
     private func header(_ title: String, note: String?) -> NSView {
@@ -184,7 +237,15 @@ final class SettingsPageController: NSViewController {
         view.distribution = .fill
         view.edgeInsets = NSEdgeInsets(
             top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
-        view.heightAnchor.constraint(equalToConstant: Self.rowHeight).isActive = true
+        if let icon = row.icon {
+            let image = NSImageView(image: icon)
+            image.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
+            image.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
+            view.insertArrangedSubview(image, at: 0)
+            view.setCustomSpacing(Self.iconGap, after: image)
+        }
+        let height = row.icon == nil ? Self.rowHeight : Self.iconRowHeight
+        view.heightAnchor.constraint(equalToConstant: height).isActive = true
         return view
     }
 

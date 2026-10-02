@@ -66,6 +66,7 @@ extension ItemSheet {
         let form = SheetForm.form([
             SheetForm.row("Aliases", [SheetForm.line([chips, aliasBox]), aliasHintLabel]),
             SheetForm.row("Hotkey", [SheetForm.line([hotkey, clear]), hotkeyHintLabel]),
+            modeRow,
             SheetForm.row(
                 "Favourite",
                 [
@@ -77,7 +78,8 @@ extension ItemSheet {
         ])
         unsafe nextKeyView = aliasField
         unsafe aliasField.nextKeyView = hotkey
-        unsafe hotkey.nextKeyView = favourite
+        unsafe hotkey.nextKeyView = mode
+        unsafe mode.nextKeyView = favourite
         unsafe favourite.nextKeyView = resetRanking
         unsafe resetRanking.nextKeyView = aliasField
         return form

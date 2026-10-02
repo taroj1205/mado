@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import GlassUI
 import SearchKit
+import WindowKit
 
 @MainActor
 enum LauncherResult {
@@ -16,6 +17,7 @@ enum LauncherResult {
         let files: FileIndex
         let commands: [Command]
         let quicklinks: [Quicklink]
+        let items: ItemSettings
         let rates: ExchangeRates?
         let answers: AnswerSettings
     }
@@ -86,8 +88,9 @@ enum LauncherResult {
     }
 
     static func sections(
-        for query: String, in sources: Sources, usage: Usage, items: ItemSettings
+        for query: String, in sources: Sources, usage: Usage
     ) -> [ResultList.Section] {
+        let items = sources.items
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let typed = !trimmed.isEmpty
         let now = Date.now
@@ -97,10 +100,7 @@ enum LauncherResult {
                 keys: \.keys)
         }
         let aliased = items.ids(withAlias: trimmed)
-        let filled = sources.quicklinks.filter { link in
-            link.query(in: trimmed, aliases: items[link.id].aliases) != nil
-        }
-        let links = sources.quicklinks.filter { !filled.contains($0) }
+        let (filled, links) = quicklinks(for: trimmed, in: sources)
         let files = typed ? sources.files.files.map(Self.file) : []
         let hoisted = aliased.isEmpty ? [] : files.filter { aliased.contains($0.id) }
         let candidates =
@@ -144,6 +144,13 @@ enum LauncherResult {
         return sources.commands.first { $0.id == id }.map(Self.command)
     }
 
+    static func hotKeyAction(for id: String, in sources: Sources) -> CommandAction? {
+        if let app = AppToggle.app(for: id) {
+            return CommandAction(id: "toggle", title: "Toggle") { try await AppToggle.toggle(app) }
+        }
+        return result(for: id, in: sources)?.actions.first
+    }
+
     static func context(
         for sections: [ResultList.Section], query: String
     ) -> (title: String?, symbol: String?) {
@@ -163,10 +170,11 @@ enum LauncherResult {
     }
 
     static func actions(
-        for id: String, query: String, in sources: Sources, items: ItemSettings
+        for id: String, query: String, in sources: Sources
     ) -> [CommandAction] {
         if let link = sources.quicklinks.first(where: { $0.id == id }) {
-            return [link.open(query: link.query(in: query, aliases: items[id].aliases) ?? "")]
+            let aliases = sources.items[id].aliases
+            return [link.open(query: link.query(in: query, aliases: aliases) ?? "")]
         }
         if id == answerID, let answer = answer(for: query, in: sources) {
             return [
@@ -186,6 +194,15 @@ enum LauncherResult {
             return [fallback.action(for: query.trimmingCharacters(in: .whitespacesAndNewlines))]
         }
         return result(for: id, in: sources)?.actions ?? []
+    }
+
+    private static func quicklinks(
+        for query: String, in sources: Sources
+    ) -> (filled: [Quicklink], others: [Quicklink]) {
+        let filled = sources.quicklinks.filter { link in
+            link.query(in: query, aliases: sources.items[link.id].aliases) != nil
+        }
+        return (filled, sources.quicklinks.filter { !filled.contains($0) })
     }
 
     private static func answerSection(

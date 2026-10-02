@@ -4,6 +4,7 @@ import GlassUI
 import InputKit
 import os
 import SearchKit
+import WindowKit
 
 @MainActor
 final class ItemEditor {
@@ -19,7 +20,6 @@ final class ItemEditor {
         let focus: NSView?
     }
 
-    private static let hotkeyFailed = "macOS wouldn’t register this hotkey. Try another."
     private static let badLink = "Mado can’t open this link. Use a web address or a folder path."
 
     let sheet = ItemSheet()
@@ -44,9 +44,9 @@ final class ItemEditor {
         self.modules = modules
         self.registry = registry
         self.name = name
-        sheet.onRecording = { [registry] in registry?.isSuspended = $0 }
+        sheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         sheet.onCancel = { [weak self] in self?.close() }
-        quicklinkSheet.onRecording = { [registry] in registry?.isSuspended = $0 }
+        quicklinkSheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         quicklinkSheet.onCancel = { [weak self] in self?.close() }
         quicklinkSheet.applications = { Quicklink.applications(for: $0) }
         quicklinkSheet.websiteIcon = { await Quicklink.websiteIcon(for: $0) }
@@ -93,7 +93,7 @@ final class ItemEditor {
     func openQuicklink(_ link: Quicklink, in panel: GlassPanel) {
         present(quicklinkSheet, in: panel)
         let current = settings[link.id]
-        quicklinkSheet.conflict = { [weak self] in self?.owner(of: $0, besides: link.id) }
+        quicklinkSheet.conflict = { [weak self] in self?.conflict(for: $0, besides: link.id) }
         quicklinkSheet.onSave = { [weak self] in self?.save($0, as: link) }
         quicklinkSheet.show(
             QuicklinkSheet.Values(
@@ -117,13 +117,14 @@ final class ItemEditor {
     ) {
         present(sheet, in: panel)
         let current = settings[item.id]
-        sheet.conflict = { [weak self] in self?.owner(of: $0, besides: item.id) }
+        sheet.conflict = { [weak self] in self?.conflict(for: $0, besides: item.id) }
         sheet.onSave = { [weak self] in self?.save($0, for: item.id) }
         sheet.show(
             item,
             values: ItemSheet.Values(
                 aliases: current.aliases, hotkey: current.hotkey, favourite: current.favourite),
-            ranking: ranking, opening: field)
+            ranking: ranking, opening: field,
+            isApp: AppToggle.app(for: item.id) != nil)
     }
 
     private func present(_ view: NSView, in panel: GlassPanel) {
@@ -133,7 +134,21 @@ final class ItemEditor {
         panel.glass.contentView = view
     }
 
-    private func owner(of hotkey: Shortcut, besides id: String) -> String? {
+    func assign(_ hotkey: Shortcut?, to id: String) -> String? {
+        if let problem = bind(hotkey, to: id) {
+            return problem
+        }
+        settings[id].hotkey = hotkey
+        settings.save(to: modules)
+        onSave?(id, false)
+        return nil
+    }
+
+    func suspendHotKeys(_ suspended: Bool) {
+        registry?.isSuspended = suspended
+    }
+
+    func conflict(for hotkey: Shortcut, besides id: String) -> String? {
         if LauncherHotKeys.Key.allCases.contains(where: { $0.shortcut == hotkey }) {
             return "Mado"
         }
@@ -148,7 +163,9 @@ final class ItemEditor {
     }
 
     private func save(_ values: ItemSheet.Values, for id: String) -> String? {
-        guard use(values.hotkey, for: id) else { return Self.hotkeyFailed }
+        if let problem = bind(values.hotkey, to: id) {
+            return problem
+        }
         settings[id] = ItemSettings.Item(
             aliases: values.aliases, hotkey: values.hotkey, favourite: values.favourite)
         settings.save(to: modules)
@@ -161,7 +178,9 @@ final class ItemEditor {
         let saved = Quicklink(
             name: values.name, link: values.link, app: values.app, icon: values.icon, id: link.id)
         guard saved.url(for: "") != nil else { return Self.badLink }
-        guard use(values.hotkey, for: link.id) else { return Self.hotkeyFailed }
+        if let problem = bind(values.hotkey, to: link.id) {
+            return problem
+        }
         var item = settings[link.id]
         item.aliases = values.alias.isEmpty ? [] : [values.alias]
         item.hotkey = values.hotkey
@@ -174,9 +193,9 @@ final class ItemEditor {
         return nil
     }
 
-    private func use(_ hotkey: Shortcut?, for id: String) -> Bool {
+    private func bind(_ hotkey: Shortcut?, to id: String) -> String? {
         let saved = settings[id].hotkey
-        guard hotkey != saved else { return true }
+        guard hotkey != saved else { return nil }
         if let registration = registrations.removeValue(forKey: id) {
             registry?.unregister(registration)
         }
@@ -184,9 +203,9 @@ final class ItemEditor {
             if let saved {
                 register(saved, for: id)
             }
-            return false
+            return "macOS wouldn’t register this hotkey. Try another."
         }
-        return true
+        return nil
     }
 
     @discardableResult

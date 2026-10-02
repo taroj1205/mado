@@ -32,8 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
     lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
-        guard let self else { return nil }
-        return LauncherResult.result(for: id, in: sources)?.name
+        (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
     }
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -119,8 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { return [] }
                 if launcherView.scoped { return history.sections(for: query) }
                 return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(
-                        for: query, in: sources, usage: usage, items: editor.settings)
+                    LauncherResult.sections(for: query, in: sources, usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
@@ -138,8 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     ) -> (run: [CommandAction], edit: [ItemEditor.Edit]) {
         if launcherView.scoped { return (history.actions(for: item.id), []) }
         let run = LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, in: sources,
-            items: editor.settings)
+            for: item.id, query: launcherView.field.stringValue, in: sources)
         let editable = LauncherResult.result(for: item.id, in: sources) != nil
         return (run, editable ? editor.edits(for: item.id) : [])
     }
@@ -170,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func runHotKey(of id: String) {
-        guard let action = LauncherResult.result(for: id, in: sources)?.actions.first else {
+        guard let action = LauncherResult.hotKeyAction(for: id, in: sources) else {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
@@ -201,6 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             usage.save(to: modules)
         }
         searchAgain()
+        settings?.reload()
     }
 
     private func recordUse(of id: String) {
@@ -272,7 +270,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc
     private func showSettings() {
         let controller =
-            settings ?? SettingsWindowController(modules: modules, hotKeys: hotKeys, rates: rates)
+            settings
+            ?? SettingsWindowController(
+                modules: modules, hotKeys: hotKeys, rates: rates, items: editor)
         settings = controller
         controller.showWindow(nil)
     }
