@@ -21,9 +21,7 @@ public struct FocusedWindow {
     public init(pid: pid_t) throws(Failure) {
         application = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(application, Self.messagingTimeout)
-        let window = try Self.copy(kAXFocusedWindowAttribute, of: application)
-        guard CFGetTypeID(window) == AXUIElementGetTypeID() else { throw .noWindow }
-        element = unsafe unsafeDowncast(window, to: AXUIElement.self)
+        element = try Self.element(Self.copy(kAXFocusedWindowAttribute, of: application))
         AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
     }
 
@@ -36,6 +34,25 @@ public struct FocusedWindow {
     public static func frontmost() throws(Failure) -> Self {
         guard let app = NSWorkspace.shared.frontmostApplication else { throw .noWindow }
         return try Self(pid: app.processIdentifier)
+    }
+
+    public static func under(quartzPoint point: CGPoint) throws(Failure) -> Self {
+        let systemWide = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(systemWide, messagingTimeout)
+        var hit: AXUIElement?
+        let error = unsafe AXUIElementCopyElementAtPosition(
+            systemWide, Float(point.x), Float(point.y), &hit)
+        guard error == .success else { throw failure(error) }
+        guard let hit else { throw .noWindow }
+        let role = (try? copy(kAXRoleAttribute, of: hit)) as? String
+        let window = role == kAXWindowRole ? hit : try element(copy(kAXWindowAttribute, of: hit))
+        guard (try? copy(kAXSubroleAttribute, of: window)) as? String == kAXStandardWindowSubrole
+        else { throw .noWindow }
+        var pid: pid_t = 0
+        guard unsafe AXUIElementGetPid(window, &pid) == .success else { throw .noWindow }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, messagingTimeout)
+        return Self(application: app, element: window)
     }
 
     nonisolated static func failure(_ error: AXError) -> Failure {
@@ -68,6 +85,11 @@ public struct FocusedWindow {
             let extent = unsafe AXValueCreate(.cgSize, &size)
         else { throw .failed(.illegalArgument) }
         return (position, extent)
+    }
+
+    private static func element(_ value: CFTypeRef) throws(Failure) -> AXUIElement {
+        guard CFGetTypeID(value) == AXUIElementGetTypeID() else { throw .noWindow }
+        return unsafe unsafeDowncast(value, to: AXUIElement.self)
     }
 
     static func copy(_ name: String, of element: AXUIElement) throws(Failure) -> CFTypeRef {

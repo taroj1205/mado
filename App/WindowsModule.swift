@@ -47,7 +47,7 @@ struct WindowsModule: Module {
     }
 
     private func startGestures(_ settings: GestureSettings, context: ModuleContext) {
-        let gesture = WindowGesture(logger: context.logger)
+        let gesture = WindowGesture(logger: context.logger, settings: gestureSettings)
         context.own(.other, "window gesture") { gesture.stop() }
         let triggers: [(WindowDrag.Mode, Shortcut.Modifiers)] = [
             (.move, settings.move), (.resize, settings.resize),

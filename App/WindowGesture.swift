@@ -15,6 +15,7 @@ final class WindowGesture {
     }
 
     private let logger: Logger
+    private let settings: @MainActor () -> GestureSettings
     private let overlay = GestureOverlay()
     private var drag: Drag?
     private var follower: WindowFollower?
@@ -23,15 +24,21 @@ final class WindowGesture {
         self?.follow(location)
     }
 
-    init(logger: Logger) {
+    init(logger: Logger, settings: @escaping @MainActor () -> GestureSettings) {
         self.logger = logger
+        self.settings = settings
     }
 
     @AccessibilityActor
-    private static func focused() -> (window: FocusedWindow, frame: CGRect)? {
-        guard let window = try? FocusedWindow.frontmost(),
-            let frame = try? window.quartzFrame()
-        else { return nil }
+    private static func window(
+        _ target: GestureSettings.Target, at quartzPoint: CGPoint
+    ) -> (window: FocusedWindow, frame: CGRect)? {
+        let window =
+            switch target {
+            case .activeWindow: try? FocusedWindow.frontmost()
+            case .underMouse: try? FocusedWindow.under(quartzPoint: quartzPoint)
+            }
+        guard let window, let frame = try? window.quartzFrame() else { return nil }
         return (window, frame)
     }
 
@@ -81,12 +88,17 @@ final class WindowGesture {
 
     private func begin(_ mode: WindowDrag.Mode, held: Shortcut.Modifiers) {
         stop()
+        guard let primary = NSScreen.screens.first?.frame else { return }
+        let target = settings().target
+        let point = ScreenGeometry.quartzRect(
+            fromAppKit: CGRect(origin: NSEvent.mouseLocation, size: .zero), primary: primary
+        ).origin
         let previous = follower
         lookup = Task { [weak self] in
             await previous?.finish()
-            guard !Task.isCancelled, let found = await Self.focused(), !Task.isCancelled else {
-                return
-            }
+            guard !Task.isCancelled, let found = await Self.window(target, at: point),
+                !Task.isCancelled
+            else { return }
             self?.start(mode, held: held, window: found.window, quartzFrame: found.frame)
         }
     }
