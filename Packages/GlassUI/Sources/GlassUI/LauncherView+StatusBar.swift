@@ -35,7 +35,8 @@ extension LauncherView {
     }
 
     func pressPill(_ index: Int) {
-        selectPill(selectedPill == index ? nil : index)
+        selectPill(index)
+        onPill?(pills[index])
     }
 
     func moveDown() {

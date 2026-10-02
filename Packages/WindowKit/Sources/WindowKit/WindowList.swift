@@ -3,6 +3,7 @@ public import ApplicationServices
 @AccessibilityActor
 public final class WindowList {
     public typealias Failure = FocusedWindow.Failure
+    typealias Match = (window: Int, stack: Int?)
 
     public struct Window: Equatable, Sendable {
         public let id: Int
@@ -11,9 +12,14 @@ public final class WindowList {
         public internal(set) var number: CGWindowID?
     }
 
-    struct Placement: Equatable {
+    struct Placement {
         let pid: pid_t
         let frame: CGRect?
+        let title: String
+
+        func fits(_ other: Self, byTitle: Bool) -> Bool {
+            pid == other.pid && frame == other.frame && (!byTitle || title == other.title)
+        }
     }
 
     public static let shared = WindowList()
@@ -21,22 +27,43 @@ public final class WindowList {
     private var listed: [Int: FocusedWindow] = [:]
     private var nextID = 0
 
-    nonisolated static func frontToBack(_ windows: [Placement], onScreen: [Placement]) -> [Int] {
-        let ranks = windows.map { onScreen.firstIndex(of: $0) ?? onScreen.count }
-        return windows.indices.sorted { (ranks[$0], $0) < (ranks[$1], $1) }
+    nonisolated static func frontToBack(_ windows: [Placement], in stack: [Placement]) -> [Match] {
+        var matches = [Int?](repeating: nil, count: windows.count)
+        var taken = Set<Int>()
+        for byTitle in [true, false] {
+            for (index, window) in windows.enumerated() where matches[index] == nil {
+                matches[index] = stack.indices.first { candidate in
+                    !taken.contains(candidate) && window.fits(stack[candidate], byTitle: byTitle)
+                }
+                if let match = matches[index] { taken.insert(match) }
+            }
+        }
+        let rank = { (index: Int) in (matches[index] ?? stack.count, index) }
+        return windows.indices.sorted { rank($0) < rank($1) }.map { ($0, matches[$0]) }
     }
 
-    nonisolated private static func onScreen() -> [(placement: Placement, number: CGWindowID)] {
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    nonisolated public static func groupedByApp(_ windows: [Window]) -> [Window] {
+        var apps: [pid_t] = []
+        for window in windows where !apps.contains(window.pid) {
+            apps.append(window.pid)
+        }
+        return apps.flatMap { pid in windows.filter { $0.pid == pid } }
+    }
+
+    nonisolated private static func stack() -> [(placement: Placement, number: CGWindowID)] {
+        let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         let info = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]]
-        return (info ?? []).compactMap { entry in
-            guard entry[kCGWindowLayer as String] as? Int == 0,
-                let pid = entry[kCGWindowOwnerPID as String] as? pid_t,
+        let windows = (info ?? []).filter { $0[kCGWindowLayer as String] as? Int == 0 }
+        let visible = windows.filter { $0[kCGWindowIsOnscreen as String] as? Bool == true }
+        let hidden = windows.filter { $0[kCGWindowIsOnscreen as String] as? Bool != true }
+        return (visible + hidden).compactMap { entry in
+            guard let pid = entry[kCGWindowOwnerPID as String] as? pid_t,
                 let bounds = entry[kCGWindowBounds as String] as? [String: CGFloat],
                 let frame = CGRect(dictionaryRepresentation: bounds as CFDictionary),
                 let number = entry[kCGWindowNumber as String] as? CGWindowID
             else { return nil }
-            return (Placement(pid: pid, frame: frame), number)
+            let title = entry[kCGWindowName as String] as? String ?? ""
+            return (Placement(pid: pid, frame: frame, title: title), number)
         }
     }
 
@@ -76,15 +103,16 @@ public final class WindowList {
                 let id = nextID
                 nextID += 1
                 listed[id] = window
-                let placement = Placement(pid: pid, frame: try? window.quartzFrame())
-                found.append((Window(id: id, pid: pid, title: title ?? ""), placement))
+                let placement = Placement(
+                    pid: pid, frame: try? window.quartzFrame(), title: title ?? "")
+                found.append((Window(id: id, pid: pid, title: placement.title), placement))
             }
         }
-        let onScreen = Self.onScreen()
-        let order = Self.frontToBack(found.map(\.placement), onScreen: onScreen.map(\.placement))
-        return order.map { index in
+        let stack = Self.stack()
+        let order = Self.frontToBack(found.map(\.placement), in: stack.map(\.placement))
+        return order.map { index, match in
             var window = found[index].window
-            window.number = onScreen.first { $0.placement == found[index].placement }?.number
+            window.number = match.map { stack[$0].number }
             return window
         }
     }

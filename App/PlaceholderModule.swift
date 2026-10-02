@@ -24,7 +24,8 @@ extension ModuleDescriptor {
             WindowsModule(
                 descriptor: self, hotKeys: hotKeys,
                 radialSettings: { [weak modules] in .load(from: modules) },
-                gestureSettings: { [weak modules] in .load(from: modules) })
+                gestureSettings: { [weak modules] in .load(from: modules) },
+                switcherSettings: { [weak modules] in .load(from: modules) })
 
         default: PlaceholderModule(descriptor: self)
         }

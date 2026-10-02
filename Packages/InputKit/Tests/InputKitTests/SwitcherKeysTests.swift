@@ -5,6 +5,8 @@ import Testing
 @testable import InputKit
 
 @Suite struct SwitcherKeysTests {
+    typealias Key = SwitcherKeys.Key
+
     final class Recorder {
         var keys = SwitcherKeys()
         var events: [SwitcherKeys.Event] = []
@@ -15,7 +17,15 @@ import Testing
         }
 
         func send(_ type: CGEventType, _ flags: CGEventFlags, keyCode: Int) -> Bool {
-            keys.handle(type, flags: flags, keyCode: Int64(keyCode), isOpen: isOpen) { event in
+            send(type, flags, Key(code: Int64(keyCode), isRepeat: false))
+        }
+
+        func holdTab(_ flags: CGEventFlags) -> Bool {
+            send(.keyDown, flags, Key(code: Int64(kVK_Tab), isRepeat: true))
+        }
+
+        private func send(_ type: CGEventType, _ flags: CGEventFlags, _ key: Key) -> Bool {
+            keys.handle(type, flags: flags, key: key, isOpen: isOpen) { event in
                 events.append(event)
             }
         }
@@ -46,6 +56,22 @@ import Testing
         let recorder = Recorder()
         #expect(!recorder.send(.keyDown, Self.option, keyCode: kVK_Tab))
         #expect(!recorder.send(.keyUp, Self.option, keyCode: kVK_Tab))
+        #expect(recorder.events.isEmpty)
+    }
+
+    @Test func holdingTabStepsOnEachRepeatAndSwallowsIt() {
+        let recorder = Recorder()
+        #expect(!recorder.send(.keyDown, Self.option, keyCode: kVK_Tab))
+        #expect(recorder.holdTab(Self.option))
+        #expect(recorder.holdTab([.maskAlternate, .maskShift]))
+        #expect(!recorder.send(.keyUp, Self.option, keyCode: kVK_Tab))
+        #expect(recorder.events == [.stepped(backward: false), .stepped(backward: true)])
+    }
+
+    @Test func tabRepeatsPassThroughWhileClosed() {
+        let recorder = Recorder()
+        recorder.isOpen = false
+        #expect(!recorder.holdTab(Self.option))
         #expect(recorder.events.isEmpty)
     }
 

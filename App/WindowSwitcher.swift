@@ -13,6 +13,7 @@ final class WindowSwitcher {
     }
 
     private let logger: Logger
+    private let order: () -> SwitcherSettings.Order
     private let overlay = SwitcherOverlay()
     private var phase = Phase.idle
     private var windows: [WindowList.Window] = []
@@ -26,8 +27,9 @@ final class WindowSwitcher {
         if case .idle = phase { false } else { true }
     }
 
-    init(logger: Logger) {
+    init(logger: Logger, order: @escaping () -> SwitcherSettings.Order) {
         self.logger = logger
+        self.order = order
         overlay.onPick = { [weak self] index in
             self?.select(index)
             self?.choose()
@@ -82,6 +84,9 @@ final class WindowSwitcher {
         case .pressed(let keyCode):
             if case .shown = phase { press(keyCode) }
 
+        case .stepped(let backward):
+            step(backward: backward)
+
         case .chosen:
             choose()
 
@@ -95,7 +100,6 @@ final class WindowSwitcher {
         loading = nil
         capturing?.cancel()
         capturing = nil
-        thumbnails = [:]
         phase = .idle
         windows = []
         overlay.hide()
@@ -124,7 +128,9 @@ final class WindowSwitcher {
             stop()
             return
         }
-        windows = list
+        windows = order() == .byApp ? WindowList.groupedByApp(list) : list
+        let numbers = Set(list.compactMap(\.number))
+        thumbnails = thumbnails.filter { numbers.contains($0.key) }
         selected = Self.step(
             Self.first(backward: backward, count: list.count), by: steps, count: list.count)
         phase = .shown

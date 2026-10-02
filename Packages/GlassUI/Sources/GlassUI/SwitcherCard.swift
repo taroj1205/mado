@@ -1,12 +1,12 @@
 import AppKit
 
 final class SwitcherCard: NSView {
-    private static let width: CGFloat = 168
+    private static let width: CGFloat = 288
     private static let padding: CGFloat = 8
     private static let radius: CGFloat = 18
     private static let ringWidth: CGFloat = 1.5
     private static let half: CGFloat = 0.5
-    private static let thumbnailHeight: CGFloat = 100
+    private static let thumbnailHeight: CGFloat = 170
     private static let textGap: CGFloat = 8
     private static let lineGap: CGFloat = 1
     private static let titleSize: CGFloat = 12.5
