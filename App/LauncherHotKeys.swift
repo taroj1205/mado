@@ -62,6 +62,19 @@ final class LauncherHotKeys {
         self.pressed = pressed
     }
 
+    static func makeRegistry() -> HotKeyRegistry? {
+        #if DEBUG
+            if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
+        #endif
+        do {
+            return try HotKeyRegistry()
+        } catch {
+            Log.logger("App").error(
+                "Launcher hotkey failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     func start() {
         observation = SystemShortcutConflicts.observe { [weak self] in self?.update() }
         update()

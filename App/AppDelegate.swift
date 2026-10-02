@@ -26,7 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let files = FileIndex()
     private let rates = ExchangeRateFeed()
     private var usage = Usage()
-    private lazy var registry = makeHotKeyRegistry()
+    private var history = CalculatorHistory()
+    private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
@@ -50,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
         usage = Usage.load(from: modules)
+        history = CalculatorHistory.load(from: modules)
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
         statusItem = StatusMenu.makeItem(
             target: self, open: #selector(showLauncher), settings: #selector(showSettings),
@@ -83,7 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
-            try SystemCommands.all.forEach(manager.commands.register)
+            let openHistory = CalculatorHistory.command { [weak self] in
+                self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
+            }
+            try (SystemCommands.all + [openHistory]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(descriptor.makeModule())
             }
@@ -91,18 +96,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return manager
         } catch {
             logger.error("Modules failed to load: \(error, privacy: .public)")
-            return nil
-        }
-    }
-
-    private func makeHotKeyRegistry() -> HotKeyRegistry? {
-        #if DEBUG
-            if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
-        #endif
-        do {
-            return try HotKeyRegistry()
-        } catch {
-            logger.error("Launcher hotkey failed: \(String(describing: error), privacy: .public)")
             return nil
         }
     }
@@ -127,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         SearchRunner(
             search: { [weak self] query in
                 guard let self else { return [] }
+                if launcherView.scoped { return history.sections(for: query) }
                 return signposter.withIntervalSignpost("search") {
                     LauncherResult.sections(
                         for: query, in: sources, usage: usage, items: editor.settings)
@@ -134,14 +128,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             },
             deliver: { [launcherView] sections in
                 launcherView.show(sections)
-                (launcherView.context, launcherView.contextSymbol) = LauncherResult.context(
-                    for: sections)
+                (launcherView.context, launcherView.contextSymbol) =
+                    launcherView.scoped
+                    ? (CalculatorHistory.title, CalculatorHistory.symbol)
+                    : LauncherResult.context(
+                        for: sections, query: launcherView.field.stringValue)
             })
     }
 
     private func menu(
         for item: ResultList.Item
     ) -> (run: [CommandAction], edit: [ItemSheet.Field]) {
+        if launcherView.scoped { return (history.actions(for: item.id), []) }
         let run = LauncherResult.actions(
             for: item.id, query: launcherView.field.stringValue, in: sources)
         let editable = LauncherResult.result(for: item.id, in: sources) != nil
@@ -160,7 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func run(_ item: ResultList.Item, action index: Int) {
         let (actions, edits) = menu(for: item)
         if actions.indices.contains(index) {
-            hideLauncher()
+            if !CalculatorHistory.opens(item.id) { hideLauncher() }
+            history.remember(item, in: modules)
             perform(actions[index], for: item.id, recordingUse: !edits.isEmpty)
         } else if edits.indices.contains(index - actions.count), let launcher {
             let ranking = usage.summary(of: item.id, at: .now)
@@ -229,6 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func hideLauncher() {
         editor.close()
+        launcherView.leave()
         launcherView.endBrowsing()
         launcher?.orderOut(nil)
         launcherClosed = .now

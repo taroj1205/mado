@@ -44,6 +44,15 @@ import Testing
         #expect(cell.detail.stringValue == notice.detail)
     }
 
+    @Test func aNoticeShowsAloneWhenItsSectionHasNoRows() {
+        let notice = ResultList.Notice(title: "No calculations yet", detail: "They land here.")
+        let list = shown([
+            .init(title: "Today", items: [], notice: notice), .init(title: "Empty", items: []),
+        ])
+        #expect(list.rows == [.notice(notice)])
+        #expect(list.selectedItem == nil)
+    }
+
     @Test func rowsAreFortyTwoPointsAndHeadersCannotBeSelected() {
         let list = shown([.init(title: "Commands", items: [item("A"), item("B")])])
         #expect(list.table.numberOfRows == 3)
