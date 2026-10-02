@@ -1,4 +1,5 @@
 import AppCore
+import ClipboardKit
 import os
 import SearchKit
 import WindowKit
@@ -50,4 +51,8 @@ extension Quicklinks: StoredValue {
 
 extension RadialSettings: StoredValue {
     static let key = "radial"
+}
+
+extension ClipboardSettings: StoredValue {
+    static let key = "clipboard"
 }

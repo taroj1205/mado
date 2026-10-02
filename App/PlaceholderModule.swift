@@ -18,7 +18,8 @@ extension ModuleDescriptor {
     @MainActor
     func makeModule(in modules: ModuleManager, hotKeys: HotKeyRegistry?) -> any Module {
         switch id {
-        case ClipboardModule.id: ClipboardModule(descriptor: self)
+        case ClipboardModule.id:
+            ClipboardModule(descriptor: self) { [weak modules] in .load(from: modules) }
 
         case KeyboardModule.id: KeyboardModule(descriptor: self)
 

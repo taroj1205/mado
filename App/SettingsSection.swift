@@ -20,6 +20,10 @@ struct SettingsSection {
             self.init(label, control, icon: nil, example: example, detail: detail)
         }
 
+        init(_ label: String, _ control: NSView, icon: NSImage?, detail: (() -> String)?) {
+            self.init(label, control, icon: icon, example: nil, detail: detail)
+        }
+
         private init(
             _ label: String, _ control: NSView, icon: NSImage?, example: String?,
             detail: (() -> String)?
@@ -37,6 +41,7 @@ struct SettingsSection {
     let rows: [Row]
     let footer: NSAttributedString?
     let accessory: NSView?
+    let headerAccessory: NSView?
     let content: NSView?
 
     init(_ title: String?, _ rows: [Row]) {
@@ -51,19 +56,26 @@ struct SettingsSection {
         self.init(title, note: nil, rows, footer: footer, accessory: accessory, content: nil)
     }
 
+    init(_ title: String, headerAccessory: NSView, _ rows: [Row]) {
+        self.init(
+            title, note: nil, rows, footer: nil, accessory: nil, content: nil,
+            headerAccessory: headerAccessory)
+    }
+
     init(content: NSView) {
         self.init(nil, note: nil, [], footer: nil, accessory: nil, content: content)
     }
 
     private init(
         _ title: String?, note: String?, _ rows: [Row], footer: NSAttributedString?,
-        accessory: NSView?, content: NSView?
+        accessory: NSView?, content: NSView?, headerAccessory: NSView? = nil
     ) {
         self.title = title
         self.note = note
         self.rows = rows
         self.footer = footer
         self.accessory = accessory
+        self.headerAccessory = headerAccessory
         self.content = content
     }
 }

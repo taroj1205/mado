@@ -116,9 +116,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
         items: ItemEditor
     ) {
+        let ignoredApps = IgnoredAppsSettings(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, apps: AppHotKeys(items: items),
-            radial: RadialMenuSettings(modules: modules))
+            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps)
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {
@@ -154,6 +155,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         tabs = pages
         super.init(window: window)
         window.delegate = self
+        ignoredApps.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
