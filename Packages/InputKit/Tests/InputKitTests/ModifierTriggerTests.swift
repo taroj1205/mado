@@ -41,6 +41,11 @@ import Testing
         }
     }
 
+    @MainActor
+    final class Inbox {
+        var events: [ModifierTrigger.Event] = []
+    }
+
     static let chord: Shortcut.Modifiers = [.control, .option]
     static let held: CGEventFlags = [.maskControl, .maskAlternate]
 
@@ -93,6 +98,21 @@ import Testing
         #expect(!recorder.send(.flagsChanged, []))
         #expect(!recorder.send(.leftMouseDown, []))
         #expect(recorder.events.isEmpty)
+    }
+
+    @MainActor
+    @Test func eventsReachTheModuleOnlyAfterTheTapCallbackReturns() async throws {
+        let inbox = Inbox()
+        let swallow = ModifierTrigger.swallow(Self.chord) { inbox.events.append($0) }
+        let event = try #require(CGEvent(source: nil))
+        event.flags = Self.held
+
+        #expect(!swallow(.flagsChanged, event))
+        #expect(inbox.events.isEmpty)
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        #expect(inbox.events == [.pressed])
     }
 
     @MainActor

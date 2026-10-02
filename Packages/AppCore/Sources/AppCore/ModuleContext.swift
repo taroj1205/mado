@@ -15,6 +15,7 @@ public final class ModuleContext {
 
     private let moduleID: String
     private let commands: CommandRegistry
+    private let eventTap: EventTap
     private var entries: [UInt: Entry] = [:]
     private var nextID: UInt = 0
 
@@ -22,9 +23,10 @@ public final class ModuleContext {
         entries.keys.sorted().compactMap { entries[$0]?.resource }
     }
 
-    init(moduleID: String, commands: CommandRegistry) {
+    init(moduleID: String, commands: CommandRegistry, eventTap: EventTap) {
         self.moduleID = moduleID
         self.commands = commands
+        self.eventTap = eventTap
         logger = Log.logger(moduleID)
         signposter = Log.signposter(moduleID)
     }
@@ -54,10 +56,10 @@ public final class ModuleContext {
         _ name: String, matching types: [CGEventType],
         swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
     ) throws(ModuleError) {
-        guard let tap = EventTap(types: types, swallow: swallow) else {
+        guard let id = eventTap.add(types: types, swallow: swallow) else {
             throw .eventTapRefused(name)
         }
-        own(.eventTap, name) { tap.invalidate() }
+        own(.eventTap, name) { [eventTap] in eventTap.remove(id) }
     }
 
     public func run(_ name: String, operation: @escaping @MainActor @Sendable () async -> Void) {
