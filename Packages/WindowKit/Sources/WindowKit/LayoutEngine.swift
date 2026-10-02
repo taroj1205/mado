@@ -2,9 +2,9 @@ public import CoreGraphics
 
 public enum LayoutEngine {
     public enum Action: CaseIterable, Sendable {
-        case almostMaximize, bottomHalf, bottomLeftQuarter, bottomRightQuarter, center
-        case centerThird, firstThird, firstTwoThirds, lastThird, lastTwoThirds, leftHalf
-        case maximize, rightHalf, topHalf, topLeftQuarter, topRightQuarter
+        case almostMaximize, bottomHalf, bottomLeftQuarter, bottomRightQuarter, centre
+        case centreThird, leftHalf, leftThird, leftTwoThirds, maximize, rightHalf, rightThird
+        case rightTwoThirds, topHalf, topLeftQuarter, topRightQuarter
     }
 
     private static let half: CGFloat = 0.5
@@ -23,11 +23,11 @@ public enum LayoutEngine {
         .topRightQuarter: CGRect(x: halfColumns, y: 1, width: halfColumns, height: 1),
         .bottomLeftQuarter: CGRect(x: 0, y: 0, width: halfColumns, height: 1),
         .bottomRightQuarter: CGRect(x: halfColumns, y: 0, width: halfColumns, height: 1),
-        .firstThird: CGRect(x: 0, y: 0, width: thirdColumns, height: rows),
-        .centerThird: CGRect(x: thirdColumns, y: 0, width: thirdColumns, height: rows),
-        .lastThird: CGRect(x: twoThirdColumns, y: 0, width: thirdColumns, height: rows),
-        .firstTwoThirds: CGRect(x: 0, y: 0, width: twoThirdColumns, height: rows),
-        .lastTwoThirds: CGRect(x: thirdColumns, y: 0, width: twoThirdColumns, height: rows),
+        .leftThird: CGRect(x: 0, y: 0, width: thirdColumns, height: rows),
+        .centreThird: CGRect(x: thirdColumns, y: 0, width: thirdColumns, height: rows),
+        .rightThird: CGRect(x: twoThirdColumns, y: 0, width: thirdColumns, height: rows),
+        .leftTwoThirds: CGRect(x: 0, y: 0, width: twoThirdColumns, height: rows),
+        .rightTwoThirds: CGRect(x: thirdColumns, y: 0, width: twoThirdColumns, height: rows),
         .maximize: CGRect(x: 0, y: 0, width: columns, height: rows),
     ]
 

@@ -41,27 +41,27 @@ import Testing
             CGRect(x: 720, y: 66, width: 720, height: 405),
             CGRect(x: 726, y: 78, width: 702, height: 387)
         ),
-        .firstThird: (
+        .leftThird: (
             CGRect(x: 0, y: 66, width: 480, height: 810),
             CGRect(x: 12, y: 78, width: 464, height: 786)
         ),
-        .centerThird: (
+        .centreThird: (
             CGRect(x: 480, y: 66, width: 480, height: 810),
             CGRect(x: 488, y: 78, width: 464, height: 786)
         ),
-        .lastThird: (
+        .rightThird: (
             CGRect(x: 960, y: 66, width: 480, height: 810),
             CGRect(x: 964, y: 78, width: 464, height: 786)
         ),
-        .firstTwoThirds: (
+        .leftTwoThirds: (
             CGRect(x: 0, y: 66, width: 960, height: 810),
             CGRect(x: 12, y: 78, width: 940, height: 786)
         ),
-        .lastTwoThirds: (
+        .rightTwoThirds: (
             CGRect(x: 480, y: 66, width: 960, height: 810),
             CGRect(x: 488, y: 78, width: 940, height: 786)
         ),
-        .center: (
+        .centre: (
             CGRect(x: 320, y: 171, width: 800, height: 600),
             CGRect(x: 320, y: 171, width: 800, height: 600)
         ),
@@ -86,11 +86,11 @@ import Testing
         #expect(Self.frame(action, gap: Self.gap, window: Self.window) == frames.gapped)
     }
 
-    @Test func centerShrinksAWindowLargerThanTheGappedArea() {
+    @Test func centreShrinksAWindowLargerThanTheGappedArea() {
         let large = CGSize(width: 1_600, height: 1_000)
-        #expect(Self.frame(.center, gap: 0, window: large) == Self.visibleFrame)
+        #expect(Self.frame(.centre, gap: 0, window: large) == Self.visibleFrame)
         #expect(
-            Self.frame(.center, gap: Self.gap, window: large)
+            Self.frame(.centre, gap: Self.gap, window: large)
                 == CGRect(x: 12, y: 78, width: 1_416, height: 786))
     }
 
