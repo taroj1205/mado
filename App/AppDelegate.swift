@@ -5,7 +5,6 @@ import GlassUI
 import InputKit
 import os
 import SearchKit
-import WindowKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -251,15 +250,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let opening = signposter.beginInterval("open launcher")
         let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
         launcherView.widgetLayout = widgetPlacement?.layout
+        showGlances()
         if let visible = screen?.visibleFrame {
-            panel.setFrame(
-                ScreenGeometry.centeredFrame(of: launcherSize, in: visible), display: false)
+            panel.setFrame(launcherFrame(in: visible), display: false)
         }
         let lifetime = QueryLifetime.load(from: modules).duration
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
         }
-        showGlances()
         search?.run(launcherView.field.stringValue)
         #if DEBUG
             NoFocus.show(panel)

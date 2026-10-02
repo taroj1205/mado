@@ -1,7 +1,9 @@
 import AppKit
 
 final class WidgetTile: NSView {
-    private static let radius: CGFloat = 16
+    private typealias Look = (fill: NSColor, edge: NSColor)
+
+    static let radius: CGFloat = 16
     private static let horizontal: CGFloat = 12
     private static let vertical: CGFloat = 10
     private static let valueSize: CGFloat = 22
@@ -14,33 +16,43 @@ final class WidgetTile: NSView {
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
     private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
+    private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
+    private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
     private static let fill = tone(.white, .white, fillAlpha)
     private static let edge = tone(.white, .black, edgeAlpha)
     private static let selectedFill = tone(.white, .black, selectedFillAlpha)
     private static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    private static let floatingSelectedFill = tone(
+        NSColor(
+            srgbRed: floatingSelectedTint.red, green: floatingSelectedTint.green,
+            blue: floatingSelectedTint.blue, alpha: 1),
+        .white, floatingSelectedAlpha)
+    private static let inlineLooks: (resting: Look, picked: Look) = (
+        (fill, edge), (selectedFill, selectedEdge)
+    )
+    private static let floatingLooks: (resting: Look, picked: Look) = (
+        (.clear, .clear), (floatingSelectedFill, selectedEdge)
+    )
 
     let value = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")
     let icon = NSImageView()
     let meters = NSStackView()
     private let box = NSBox()
+    private let looks: (resting: Look, picked: Look)
     var onPress: (() -> Void)?
 
     var selected = false {
-        didSet {
-            box.fillColor = selected ? Self.selectedFill : Self.fill
-            box.borderColor = selected ? Self.selectedEdge : Self.edge
-            setAccessibilitySelected(selected)
-        }
+        didSet { paint() }
     }
 
-    init() {
+    init(floating: Bool) {
+        looks = floating ? Self.floatingLooks : Self.inlineLooks
         super.init(frame: .zero)
         box.boxType = .custom
         box.cornerRadius = Self.radius
         box.borderWidth = 1
-        box.fillColor = Self.fill
-        box.borderColor = Self.edge
+        paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
         detail.font = .systemFont(ofSize: Self.detailSize)
@@ -89,6 +101,13 @@ final class WidgetTile: NSView {
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
                 ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
         }
+    }
+
+    private func paint() {
+        let look = selected ? looks.picked : looks.resting
+        box.fillColor = look.fill
+        box.borderColor = look.edge
+        setAccessibilitySelected(selected)
     }
 
     func show(_ widget: WidgetGrid.Widget) {
