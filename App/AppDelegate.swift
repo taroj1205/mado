@@ -10,7 +10,7 @@ import WindowKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherWidth: CGFloat = 760
-    private static let launcherHeight: CGFloat = 476
+    private static let launcherHeight: CGFloat = 548
     private static let launcherRadius: CGFloat = 20
 
     private let logger = Log.logger("App")
@@ -22,11 +22,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private(set) var pasteTarget: PasteTarget?
-    private let launcherView = LauncherView()
+    let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
     let apps = AppIndex()
     let files = FileIndex()
     let rates = ExchangeRateFeed()
+    let widgets = Widgets()
     private var usage = Usage()
     private var history = CalculatorHistory()
     private lazy var registry = LauncherHotKeys.makeRegistry()
@@ -102,10 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
-        launcherView.onPill = { [weak self] pill in
-            self?.hideLauncher()
-            self?.perform(StatusPills.action(for: pill), for: pill.id, recordingUse: false)
-        }
+        connectGlances()
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
         panel.initialFirstResponder = launcherView.field
@@ -181,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         perform(action, for: id, recordingUse: true)
     }
 
-    private func perform(_ action: CommandAction, for id: String, recordingUse: Bool) {
+    func perform(_ action: CommandAction, for id: String, recordingUse: Bool) {
         Task { [weak self, logger] in
             do {
                 try await action.perform()
@@ -230,11 +228,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     #endif
 
-    private func hideLauncher() {
+    func hideLauncher() {
         editor.close()
         launcherView.leave()
         launcherView.endBrowsing()
         launcher?.orderOut(nil)
+        widgets.stop()
         launcherClosed = .now
     }
 
@@ -260,7 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let closed = launcherClosed, let lifetime, closed.duration(to: .now) > lifetime {
             launcherView.field.stringValue = ""
         }
-        launcherView.pills = StatusPills.current()
+        showGlances()
         search?.run(launcherView.field.stringValue)
         #if DEBUG
             NoFocus.show(panel)

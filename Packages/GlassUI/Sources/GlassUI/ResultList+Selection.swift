@@ -6,8 +6,15 @@ extension ResultList {
         set { table.selectionHighlightStyle = newValue ? .none : .regular }
     }
 
-    public func selectPrevious() {
+    @discardableResult
+    public func selectPrevious() -> Bool {
         moveSelection(by: -1)
+    }
+
+    func selectFirst() {
+        guard let row = rows.firstIndex(where: \.isItem) else { return }
+        table.selectRowIndexes([row], byExtendingSelection: false)
+        table.scrollRowToVisible(0)
     }
 
     @discardableResult

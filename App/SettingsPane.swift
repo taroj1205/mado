@@ -4,6 +4,7 @@ import GlassUI
 
 @MainActor
 struct SettingsPane {
+    static let dateAndTime = Self("Date & Time", "com.apple.Date-Time-Settings.extension")
     static let all = [
         Self("Wi-Fi", "com.apple.wifi-settings-extension"),
         Self("Bluetooth", "com.apple.BluetoothSettings"),
@@ -18,7 +19,7 @@ struct SettingsPane {
             aliases: "AirDrop & Handoff"),
         Self("Login Items", "com.apple.LoginItems-Settings.extension"),
         Self("Language & Region", "com.apple.Localization-Settings.extension"),
-        Self("Date & Time", "com.apple.Date-Time-Settings.extension"),
+        dateAndTime,
         Self("Sharing", "com.apple.Sharing-Settings.extension"),
         Self("Time Machine", "com.apple.Time-Machine-Settings.extension"),
         Self("Transfer or Reset", "com.apple.Transfer-Reset-Settings.extension"),
