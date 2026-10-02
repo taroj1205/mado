@@ -2,7 +2,7 @@ import AppKit
 
 final class ResultRowView: NSTableRowView {
     static let id = NSUserInterfaceItemIdentifier("row")
-    static let radius: CGFloat = 10
+    static let radius: CGFloat = 12
     static let fill = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? .systemFill : .secondarySystemFill

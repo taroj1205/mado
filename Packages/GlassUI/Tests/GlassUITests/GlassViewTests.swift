@@ -80,9 +80,13 @@ import Testing
         #expect(GlassSheen.tone(for: light).sheen == GlassSheen.light.sheen)
     }
 
-    @Test func capsuleHasTheActionPanelsBorder() {
+    @Test func capsuleHasTheActionPanelsBorder() throws {
         let capsule = FloatingCapsule.make(NSStackView(), leading: 0, trailing: 0)
-        #expect(capsule.container.subviews.last is GlassBorder)
+        capsule.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        capsule.layoutSubtreeIfNeeded()
+        let border = try #require(capsule.container.subviews.last as? GlassBorder)
+        #expect(appliedRadius(capsule) == 14)
+        #expect(border.layer?.cornerRadius == 14)
     }
 
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {

@@ -9,7 +9,7 @@ extension LauncherView {
     private static let toggleLeading: CGFloat = 12
     private static let toggleTrailing: CGFloat = 5
     private static let toggleHeight: CGFloat = 30
-    private static let toggleRadius: CGFloat = 15
+    private static let toggleRadius: CGFloat = 9
     private static let shortcutGap: CGFloat = 3
     private static let contextLeading: CGFloat = 11
     private static let contextTrailing: CGFloat = 16
