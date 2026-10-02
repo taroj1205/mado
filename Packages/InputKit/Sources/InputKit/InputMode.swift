@@ -12,15 +12,15 @@ public enum InputMode: Sendable {
     }
 
     @MainActor
-    public func select() -> Bool {
+    public func select() {
         let current = unsafe TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
         guard let target = source(current: current),
             Self.property(target, kTISPropertyInputSourceID)
                 != current.flatMap({ Self.property($0, kTISPropertyInputSourceID) })
         else {
-            return false
+            return
         }
-        return TISSelectInputSource(target) == noErr
+        TISSelectInputSource(target)
     }
 
     private func source(current: TISInputSource?) -> TISInputSource? {
