@@ -4,25 +4,25 @@ import Carbon.HIToolbox
 
 public final class HotKeyButton: NSView {
     private static let height: CGFloat = 26
-    private static let inset: CGFloat = 7
+    static let inset: CGFloat = 7
     private static let radius: CGFloat = 8
     private static let keyRadius: CGFloat = 5
     private static let keySize: CGFloat = 18
-    private static let keyGap: CGFloat = 3
-    private static let fontSize: CGFloat = 12.5
+    static let keyGap: CGFloat = 3
+    static let fontSize: CGFloat = 12.5
     private static let lineWidth: CGFloat = 1
     private static let recordingLineWidth: CGFloat = 1.5
-    private static let recordingInset: CGFloat = 10
+    static let recordingInset: CGFloat = 10
     private static let recordingFill: CGFloat = 0.14
     private static let dotSize: CGFloat = 7
-    private static let recordingGap: CGFloat = 6
+    static let recordingGap: CGFloat = 6
     private static let half: CGFloat = 0.5
     static let chordModifiers: Shortcut.Modifiers = [.command, .control, .option]
     private static let fillAlpha = (dark: 0.06, light: 0.04)
     private static let borderAlpha = (dark: 0.10, light: 0.12)
     private static let keycapAlpha = (dark: 0.12, light: 0.08)
     private static let fill = adaptive(fillAlpha)
-    private static let border = adaptive(borderAlpha)
+    static let border = adaptive(borderAlpha)
     private static let keycapFill = adaptive(keycapAlpha)
 
     public var shortcut: Shortcut? {
@@ -51,22 +51,8 @@ public final class HotKeyButton: NSView {
 
     public init() {
         super.init(frame: .zero)
-        content.setHuggingPriority(.defaultHigh, for: .horizontal)
-        content.translatesAutoresizingMaskIntoConstraints = false
         prompt.font = .systemFont(ofSize: Self.fontSize)
-        dot.boxType = .custom
-        dot.borderWidth = 0
-        dot.cornerRadius = Self.dotSize * Self.half
-        dot.fillColor = .systemRed
-        addSubview(content)
-        NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: Self.height),
-            content.leadingAnchor.constraint(equalTo: leadingAnchor),
-            content.trailingAnchor.constraint(equalTo: trailingAnchor),
-            content.centerYAnchor.constraint(equalTo: centerYAnchor),
-            dot.widthAnchor.constraint(equalToConstant: Self.dotSize),
-            dot.heightAnchor.constraint(equalToConstant: Self.dotSize),
-        ])
+        Self.layOut(content, in: self, dot: dot)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityLabel("Hotkey")
@@ -82,6 +68,47 @@ public final class HotKeyButton: NSView {
         NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
                 ? .white.withAlphaComponent(alpha.dark) : .black.withAlphaComponent(alpha.light)
+        }
+    }
+
+    static func layOut(_ content: NSStackView, in view: NSView, dot: NSBox) {
+        content.setHuggingPriority(.defaultHigh, for: .horizontal)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        dot.boxType = .custom
+        dot.borderWidth = 0
+        dot.cornerRadius = dotSize * half
+        dot.fillColor = .systemRed
+        view.addSubview(content)
+        NSLayoutConstraint.activate([
+            view.heightAnchor.constraint(equalToConstant: height),
+            content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            content.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            dot.widthAnchor.constraint(equalToConstant: dotSize),
+            dot.heightAnchor.constraint(equalToConstant: dotSize),
+        ])
+    }
+
+    static func drawFrame(in bounds: NSRect, recording: Bool, stroke: NSColor) {
+        let width = recording ? recordingLineWidth : lineWidth
+        let edge = width * half
+        let path = NSBezierPath(
+            roundedRect: bounds.insetBy(dx: edge, dy: edge), xRadius: radius, yRadius: radius)
+        let background =
+            recording ? NSColor.controlAccentColor.withAlphaComponent(recordingFill) : fill
+        background.setFill()
+        path.fill()
+        stroke.setStroke()
+        path.lineWidth = width
+        path.stroke()
+    }
+
+    static func keycaps(_ keys: [String]) -> [NSView] {
+        keys.map { key in
+            let keycap = Keycap(key, radius: keyRadius, size: keySize)
+            keycap.fillColor = keycapFill
+            keycap.name.textColor = .labelColor
+            return keycap
         }
     }
 
@@ -137,16 +164,6 @@ public final class HotKeyButton: NSView {
     }
 
     override public func draw(_: NSRect) {
-        let width = showsRecording ? Self.recordingLineWidth : Self.lineWidth
-        let edge = width * Self.half
-        let path = NSBezierPath(
-            roundedRect: bounds.insetBy(dx: edge, dy: edge), xRadius: Self.radius,
-            yRadius: Self.radius)
-        let background =
-            showsRecording
-            ? NSColor.controlAccentColor.withAlphaComponent(Self.recordingFill) : Self.fill
-        background.setFill()
-        path.fill()
         let stroke: NSColor =
             if conflict {
                 .systemOrange
@@ -155,9 +172,7 @@ public final class HotKeyButton: NSView {
             } else {
                 Self.border
             }
-        stroke.setStroke()
-        path.lineWidth = width
-        path.stroke()
+        Self.drawFrame(in: bounds, recording: showsRecording, stroke: stroke)
     }
 
     private func press() {
@@ -194,13 +209,7 @@ public final class HotKeyButton: NSView {
             return
         }
         let keys = HotKeyLabel.keycaps(.shortcut(shortcut))
-        content.setViews(
-            keys.map { key in
-                let keycap = Keycap(key, radius: Self.keyRadius, size: Self.keySize)
-                keycap.fillColor = Self.keycapFill
-                keycap.name.textColor = .labelColor
-                return keycap
-            }, in: .leading)
+        content.setViews(Self.keycaps(keys), in: .leading)
         setAccessibilityValue(keys.joined(separator: " "))
     }
 }

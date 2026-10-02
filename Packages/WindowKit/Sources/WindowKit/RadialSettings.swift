@@ -1,6 +1,12 @@
+public import AppCore
 public import CoreGraphics
 
 public struct RadialSettings: Codable, Equatable, Sendable {
+    public enum Origin: String, Codable, CaseIterable, Sendable {
+        case pointer = "pointer"
+        case screenCentre = "screen_centre"
+    }
+
     public enum Action: String, Codable, CaseIterable, Sendable {
         case maximize = "maximize"
         case almostMaximize = "almost_maximize"
@@ -58,6 +64,12 @@ public struct RadialSettings: Codable, Equatable, Sendable {
     public var left: Action
     public var topLeft: Action
     public var haptics: Bool
+    public var isEnabled: Bool
+    public var trigger: Shortcut.Modifiers
+    public var opensAt: Origin
+    public var showsPreview: Bool
+    public var showsLabel: Bool
+    public var clickStepsCycle: Bool
 
     public init() {
         ring = .maximize
@@ -70,6 +82,34 @@ public struct RadialSettings: Codable, Equatable, Sendable {
         left = .leftCycle
         topLeft = .topLeftQuarter
         haptics = true
+        isEnabled = true
+        trigger = [.function]
+        opensAt = .pointer
+        showsPreview = true
+        showsLabel = false
+        clickStepsCycle = true
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        ring = try values.decodeIfPresent(Action.self, forKey: .ring) ?? ring
+        top = try values.decodeIfPresent(Action.self, forKey: .top) ?? top
+        topRight = try values.decodeIfPresent(Action.self, forKey: .topRight) ?? topRight
+        right = try values.decodeIfPresent(Action.self, forKey: .right) ?? right
+        bottomRight = try values.decodeIfPresent(Action.self, forKey: .bottomRight) ?? bottomRight
+        bottom = try values.decodeIfPresent(Action.self, forKey: .bottom) ?? bottom
+        bottomLeft = try values.decodeIfPresent(Action.self, forKey: .bottomLeft) ?? bottomLeft
+        left = try values.decodeIfPresent(Action.self, forKey: .left) ?? left
+        topLeft = try values.decodeIfPresent(Action.self, forKey: .topLeft) ?? topLeft
+        haptics = try values.decodeIfPresent(Bool.self, forKey: .haptics) ?? haptics
+        isEnabled = try values.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? isEnabled
+        trigger = try values.decodeIfPresent(Shortcut.Modifiers.self, forKey: .trigger) ?? trigger
+        opensAt = try values.decodeIfPresent(Origin.self, forKey: .opensAt) ?? opensAt
+        showsPreview = try values.decodeIfPresent(Bool.self, forKey: .showsPreview) ?? showsPreview
+        showsLabel = try values.decodeIfPresent(Bool.self, forKey: .showsLabel) ?? showsLabel
+        clickStepsCycle =
+            try values.decodeIfPresent(Bool.self, forKey: .clickStepsCycle) ?? clickStepsCycle
     }
 
     public func action(in zone: RadialResolver.Zone) -> Action {

@@ -83,6 +83,15 @@ public final class ModuleManager {
         settings = nextSettings
     }
 
+    public func restart(_ id: String) throws {
+        guard let index = registered.firstIndex(where: { $0.module.descriptor.id == id }) else {
+            throw ModuleError.unknownModule(id)
+        }
+        guard registered[index].isRunning else { return }
+        stop(at: index)
+        try start(at: index)
+    }
+
     public func value<Value: Decodable>(_ type: Value.Type, for key: String) throws -> Value? {
         try settings.value(type, for: key)
     }

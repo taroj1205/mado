@@ -9,6 +9,7 @@ struct SettingsPage {
         let hotKeys: LauncherHotKeys
         let rates: ExchangeRateFeed
         let apps: AppHotKeys
+        let radial: RadialMenuSettings
     }
 
     struct Tab {
@@ -48,7 +49,7 @@ struct SettingsPage {
             tabs: [
                 Tab(title: "Layouts", sections: nil),
                 Tab(title: "Apps") { [$0.apps.section] },
-                Tab(title: "Radial Menu", sections: nil),
+                Tab(title: "Radial Menu") { $0.radial.sections },
                 Tab(title: "Drag & Snap", sections: nil),
             ]),
         Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),

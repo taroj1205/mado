@@ -43,15 +43,18 @@ final class RadialMenu {
     func handle(_ event: ModifierTrigger.Event) {
         switch event {
         case .pressed:
+            guard !(NSApp.keyWindow?.firstResponder is TriggerButton) else { return }
             resolver = nil
             settings = loadSettings()
             pointer.start()
             if pointer.isTracking {
                 logger.debug("Pointer tracking started")
-                lookup = Task { [weak self] in
-                    let frame = await Self.focusedFrame()
-                    guard !Task.isCancelled, let frame else { return }
-                    self?.begin(quartzFrame: frame)
+                if settings.showsPreview {
+                    lookup = Task { [weak self] in
+                        let frame = await Self.focusedFrame()
+                        guard !Task.isCancelled, let frame else { return }
+                        self?.begin(quartzFrame: frame)
+                    }
                 }
             }
 
@@ -94,7 +97,7 @@ final class RadialMenu {
 
     private func move(to location: CGPoint) {
         if resolver == nil {
-            panel.setFrame(RadialRing.frame(centredOn: location), display: false)
+            panel.setFrame(RadialRing.frame(centredOn: ringCentre(for: location)), display: false)
             panel.orderFrontRegardless()
             ring.appear()
         }
@@ -111,6 +114,13 @@ final class RadialMenu {
             }
             showPreview()
         }
+    }
+
+    private func ringCentre(for location: CGPoint) -> CGPoint {
+        guard settings.opensAt == .screenCentre,
+            let screen = NSScreen.screens.first(where: { NSMouseInRect(location, $0.frame, false) })
+        else { return location }
+        return CGPoint(x: screen.visibleFrame.midX, y: screen.visibleFrame.midY)
     }
 
     private func showPreview() {

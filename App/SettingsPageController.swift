@@ -49,18 +49,20 @@ final class SettingsPageController: NSViewController {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = Self.sectionSpacing
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        let scroll = Self.scrolling(
+            stack,
+            insets: NSEdgeInsets(
+                top: 0, left: Self.leading, bottom: Self.bottom, right: Self.trailing))
         let view = NSView()
         view.addSubview(heading)
-        view.addSubview(stack)
+        view.addSubview(scroll)
         NSLayoutConstraint.activate([
             heading.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Self.leading),
             heading.centerYAnchor.constraint(equalTo: view.topAnchor, constant: Self.titleCenter),
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.titleHeight),
-            stack.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Self.trailing),
-            stack.bottomAnchor.constraint(
-                lessThanOrEqualTo: view.bottomAnchor, constant: -Self.bottom),
+            scroll.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.titleHeight),
+            scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         self.view = view
         reload()
@@ -137,6 +139,9 @@ final class SettingsPageController: NSViewController {
         }
         if !section.rows.isEmpty {
             parts.append(box(section.rows))
+        }
+        if let content = section.content {
+            parts.append(content)
         }
         if let footer = section.footer {
             let label = NSTextField(wrappingLabelWithString: "")
