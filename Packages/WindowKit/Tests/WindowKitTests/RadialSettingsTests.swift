@@ -123,6 +123,45 @@ import Testing
         #expect(preview(.centreThird) == layout(.centreThird))
     }
 
+    @Test func releasePlacesTheWindowOnTheScreenItIsOnWithoutAGap() {
+        let primary = ScreenGeometry.Screen(
+            frame: CGRect(x: 0, y: 0, width: 1_440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 66, width: 1_440, height: 810))
+        let secondary = ScreenGeometry.Screen(
+            frame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080),
+            visibleFrame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_050))
+        let screens = [primary, secondary]
+        let window = CGRect(x: 1_600, y: 300, width: 800, height: 600)
+        func quartz(_ appKit: CGRect) -> CGRect {
+            ScreenGeometry.quartzRect(fromAppKit: appKit, primary: primary.frame)
+        }
+        func target(_ action: RadialSettings.Action) -> CGRect? {
+            action.quartzFrame(forQuartz: window, across: screens)
+        }
+
+        #expect(
+            target(.rightCycle)
+                == quartz(
+                    LayoutEngine.frame(
+                        for: .rightHalf, in: secondary.visibleFrame, gap: 0,
+                        windowSize: window.size)))
+        #expect(target(.fullScreen) == quartz(secondary.frame))
+        #expect(target(.nothing) == nil)
+        #expect(
+            RadialSettings.Action.maximize.quartzFrame(
+                forQuartz: CGRect(x: -5_000, y: 0, width: 100, height: 100), across: screens)
+                == nil)
+        #expect(RadialSettings.Action.maximize.quartzFrame(forQuartz: window, across: []) == nil)
+    }
+
+    @Test func onlyLeftAndRightHalvesFillBesideAWindowThatRefusedItsHalf() {
+        let halves = RadialSettings.Action.allCases.filter { $0.half != nil }
+
+        #expect(halves == [.rightCycle, .leftCycle, .rightHalf, .leftHalf])
+        #expect(RadialSettings.Action.leftCycle.half == .left)
+        #expect(RadialSettings.Action.rightHalf.half == .right)
+    }
+
     @Test func turningHapticsOffSurvivesSavingAndLoading() throws {
         var radial = RadialSettings()
         radial.haptics = false

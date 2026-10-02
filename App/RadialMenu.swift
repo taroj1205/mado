@@ -11,6 +11,8 @@ final class RadialMenu {
         let screen: ScreenGeometry.Screen
     }
 
+    @AccessibilityActor private static let halves = HalfSnap()
+
     private let logger: Logger
     private let panel: OverlayPanel
     private let ring = RadialRing()
@@ -40,6 +42,24 @@ final class RadialMenu {
         try? FocusedWindow.frontmost().quartzFrame()
     }
 
+    @AccessibilityActor
+    private static func place(
+        _ action: RadialSettings.Action, across screens: [ScreenGeometry.Screen]
+    ) throws(FocusedWindow.Failure) {
+        let window = try FocusedWindow.frontmost()
+        if action == .fullScreen {
+            try window.enterFullScreen()
+            return
+        }
+        let current = try window.quartzFrame()
+        guard let target = action.quartzFrame(forQuartz: current, across: screens) else { return }
+        if let side = action.half {
+            _ = try halves.place(window, on: side, at: target, gap: 0)
+        } else {
+            _ = try WindowMover.shared.move(window, to: target)
+        }
+    }
+
     func handle(_ event: ModifierTrigger.Event) {
         switch event {
         case .pressed:
@@ -58,7 +78,10 @@ final class RadialMenu {
                 }
             }
 
-        case .released, .cancelled:
+        case .released:
+            release()
+
+        case .cancelled:
             stop()
 
         case .clicked:
@@ -75,6 +98,25 @@ final class RadialMenu {
         preview.end()
         logger.debug("Pointer tracking stopped")
         ring.disappear { [panel] in panel.orderOut(nil) }
+    }
+
+    private func release() {
+        guard pointer.isTracking else { return }
+        let action = resolver.map { settings.action(in: $0.zone) } ?? .nothing
+        stop()
+        guard action != .nothing else { return }
+        let screens = NSScreen.screens.map { screen in
+            ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame)
+        }
+        logger.debug("Radial action: \(action.rawValue, privacy: .public)")
+        Task { [logger] in
+            do throws(FocusedWindow.Failure) {
+                try await Self.place(action, across: screens)
+            } catch {
+                logger.error(
+                    "Radial action failed: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     private func begin(quartzFrame: CGRect) {
