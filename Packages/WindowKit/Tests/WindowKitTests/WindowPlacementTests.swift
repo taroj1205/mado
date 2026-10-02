@@ -1,4 +1,4 @@
-import CoreGraphics
+import ApplicationServices
 import Testing
 
 @testable import WindowKit
@@ -41,5 +41,51 @@ import Testing
         #expect(
             WindowPlacement.quartzFrame(for: .maximize, of: window, across: Self.screens, gap: 8)
                 == CGRect(x: 8, y: 33, width: 1_424, height: 859))
+    }
+
+    @Test func repeatingAHalfStepsThroughThirdsAndBack() {
+        let window = AXUIElementCreateApplication(1)
+        let frame = CGRect(x: 0, y: 25, width: 720, height: 875)
+        var last: WindowPlacement.Placed?
+        var applied: [LayoutEngine.Action] = []
+        for _ in 0..<4 {
+            let action = WindowPlacement.action(for: .leftHalf, of: window, at: frame, after: last)
+            applied.append(action)
+            last = .init(window: window, frame: frame, requested: .leftHalf, applied: action)
+        }
+
+        #expect(applied == [.leftHalf, .leftThird, .leftTwoThirds, .leftHalf])
+    }
+
+    @Test func startsOverUnlessTheSameKeyLastPlacedThisWindowWhereItIs() {
+        let window = AXUIElementCreateApplication(1)
+        let frame = CGRect(x: 0, y: 25, width: 720, height: 875)
+        let last = WindowPlacement.Placed(
+            window: window, frame: frame, requested: .topHalf, applied: .topThird)
+
+        func action(
+            _ requested: LayoutEngine.Action, of target: AXUIElement = window,
+            at here: CGRect = frame
+        ) -> LayoutEngine.Action {
+            WindowPlacement.action(for: requested, of: target, at: here, after: last)
+        }
+
+        #expect(action(.topHalf) == .topTwoThirds)
+        #expect(action(.bottomHalf) == .bottomHalf)
+        #expect(action(.topHalf, of: AXUIElementCreateApplication(2)) == .topHalf)
+        #expect(action(.topHalf, at: frame.offsetBy(dx: 10, dy: 0)) == .topHalf)
+        #expect(
+            WindowPlacement.action(for: .topHalf, of: window, at: frame, after: nil) == .topHalf)
+    }
+
+    @Test func leavesLayoutsWithoutSizesAsTheyAre() {
+        let window = AXUIElementCreateApplication(1)
+        let frame = CGRect(x: 0, y: 25, width: 480, height: 875)
+        let last = WindowPlacement.Placed(
+            window: window, frame: frame, requested: .leftThird, applied: .leftThird)
+
+        #expect(
+            WindowPlacement.action(for: .leftThird, of: window, at: frame, after: last)
+                == .leftThird)
     }
 }
