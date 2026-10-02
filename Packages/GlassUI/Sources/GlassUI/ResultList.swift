@@ -122,6 +122,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         table.addTableColumn(column)
         table.headerView = nil
         table.style = .plain
+        table.allowsEmptySelection = false
         table.backgroundColor = .clear
         table.intercellSpacing = NSSize(width: 0, height: Self.rowGap)
         table.columnAutoresizingStyle = .uniformColumnAutoresizingStyle

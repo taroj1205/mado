@@ -7,45 +7,40 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     private static let searchFontSize: CGFloat = 20
     private static let searchIconGap: CGFloat = 12
     private static let resultsInset: CGFloat = 8
-    private static let capsuleInset: CGFloat = 10
-    private static let actionGap: CGFloat = 8
-    private static let actionLeading: CGFloat = 17
-    private static let actionTrailing: CGFloat = 10
-    private static let dividerGap: CGFloat = 11
-    private static let actionsGap: CGFloat = 18
-    private static let shortcutGap: CGFloat = 3
-    private static let contextLeading: CGFloat = 11
-    private static let contextTrailing: CGFloat = 16
-    private static let contextIconSize: CGFloat = 17
+    static let capsuleInset: CGFloat = 10
     private static let previewHint = "Space to preview"
-    private static let returnKeys: Set<String?> = ["\r", "\u{3}"]
-    private static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
+    static let returnKeys: Set<String?> = ["\r", "\u{3}"]
+    static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
     public let field = NSTextField()
     public let results = ResultList()
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
+    public var actionTitles: ((ResultList.Item) -> [String])?
     public var context: String? {
         didSet { showContext() }
     }
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let contextLabel = FloatingCapsule.label(weight: .regular, color: .secondaryLabelColor)
+    let actionsToggle = LauncherView.makeActionsToggle()
     let actionCapsule: GlassView
     let contextCapsule: GlassView
     private(set) var preview: FilePreview?
+    var actionPanel: ActionPanel?
     private var browsing = false
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
+    public var choosingAction: Bool { actionPanel?.isVisible == true }
 
     private var canPreview: Bool {
         (browsing || previewing) && results.selectedItem?.file != nil
     }
 
     override public init(frame: NSRect) {
-        actionCapsule = Self.makeActionCapsule(actionLabel)
+        actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
         contextCapsule = Self.makeContextCapsule(contextLabel)
         super.init(frame: frame)
         let icon = NSImageView()
@@ -92,37 +87,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         nil
     }
 
-    private static func makeActionCapsule(_ label: NSTextField) -> GlassView {
-        let enter = FloatingCapsule.keycap("↵")
-        let divider = FloatingCapsule.divider()
-        let actions = FloatingCapsule.label(weight: .medium, color: .labelColor)
-        actions.stringValue = "Actions"
-        let command = FloatingCapsule.keycap("⌘")
-        let stack = NSStackView(views: [
-            label, enter, divider, actions, command, FloatingCapsule.keycap("K"),
-        ])
-        stack.spacing = Self.actionGap
-        stack.setCustomSpacing(Self.dividerGap, after: enter)
-        stack.setCustomSpacing(Self.actionsGap, after: divider)
-        stack.setCustomSpacing(Self.shortcutGap, after: command)
-        return FloatingCapsule.make(
-            stack, leading: Self.actionLeading, trailing: Self.actionTrailing)
-    }
-
-    private static func makeContextCapsule(_ label: NSTextField) -> GlassView {
-        let icon = NSImageView()
-        icon.image = NSImage(
-            systemSymbolName: "chevron.forward.circle.fill", accessibilityDescription: nil)
-        icon.symbolConfiguration = NSImage.SymbolConfiguration(
-            pointSize: Self.contextIconSize, weight: .semibold
-        )
-        .applying(.init(paletteColors: [.white, .controlAccentColor]))
-        let stack = NSStackView(views: [icon, label])
-        stack.spacing = Self.actionGap
-        return FloatingCapsule.make(
-            stack, leading: Self.contextLeading, trailing: Self.contextTrailing)
-    }
-
     private func placeCapsules() {
         addSubview(contextCapsule)
         addSubview(actionCapsule)
@@ -145,11 +109,17 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if choosingAction, let actionPanel {
+            return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
+        }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
-            Self.returnKeys.contains(event.charactersIgnoringModifiers),
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return super.performKeyEquivalent(with: event) }
-        run(1)
+        switch event.charactersIgnoringModifiers {
+        case let key where Self.returnKeys.contains(key): run(1)
+        case "k" where results.selectedItem != nil: showActions()
+        default: return super.performKeyEquivalent(with: event)
+        }
         return true
     }
 
@@ -161,6 +131,12 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
         case .leftMouseDown
         where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
             endBrowsing()
+            return false
+
+        case .leftMouseDown:
+            if actionPanel?.contains(event.locationInWindow) != true {
+                closeActions()
+            }
             return false
 
         default:
@@ -226,7 +202,8 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     public func show(_ sections: [ResultList.Section]) {
         let previewed = results.selectedItem?.file
-        results.update(sections, keepingSelectionOf: browsing ? results.selectedItem?.id : nil)
+        let keep = browsing || choosingAction
+        results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
         if results.selectedItem?.file != previewed {
             closePreview()
         }
@@ -235,6 +212,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
     public func endBrowsing() {
         browsing = false
         closePreview()
+        closeActions()
         showContext()
     }
 

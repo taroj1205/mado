@@ -69,9 +69,7 @@ enum LauncherResult {
                     _ = try await NSWorkspace.shared.open(
                         file.url, configuration: NSWorkspace.OpenConfiguration())
                 },
-                CommandAction(id: "reveal", title: "Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([file.url])
-                },
+                reveal(file.url),
             ]
         }
         if id == answerID, let answer = Calculator.answer(for: query) {
@@ -93,8 +91,15 @@ enum LauncherResult {
             CommandAction(id: "open", title: Self.openApp) {
                 _ = try await NSWorkspace.shared.openApplication(
                     at: app.url, configuration: NSWorkspace.OpenConfiguration())
-            }
+            },
+            reveal(app.url),
         ]
+    }
+
+    private static func reveal(_ url: URL) -> CommandAction {
+        CommandAction(id: "reveal", title: "Show in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
     }
 
     private static func item(for file: FileIndex.File, at now: Date) -> ResultList.Item {
