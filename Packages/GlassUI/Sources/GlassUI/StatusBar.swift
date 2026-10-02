@@ -29,10 +29,16 @@ public final class StatusBar: NSScrollView {
     static let height: CGFloat = 60
     private static let gap: CGFloat = 6
     private static let edge: CGFloat = 2
+    private static let fade: CGFloat = 28
+    private static let middle = 0.5
 
     var pills: [Pill] = [] {
         didSet {
             guard pills != oldValue else { return }
+            if pills.map(\.id) == oldValue.map(\.id) {
+                zip(pills, views).forEach(show)
+                return
+            }
             stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
             for (index, pill) in pills.enumerated() {
                 stack.addArrangedSubview(makeView(for: pill, at: index))
@@ -41,7 +47,9 @@ public final class StatusBar: NSScrollView {
     }
 
     var onPress: ((Int) -> Void)?
+    let edges = CAGradientLayer()
     private let stack = NSStackView()
+    private var followsSelection = false
 
     var views: [StatusPill] {
         stack.arrangedSubviews.compactMap { $0 as? StatusPill }
@@ -66,6 +74,10 @@ public final class StatusBar: NSScrollView {
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             fit,
         ])
+        wantsLayer = true
+        edges.startPoint = CGPoint(x: 0, y: Self.middle)
+        edges.endPoint = CGPoint(x: 1, y: Self.middle)
+        layer?.mask = edges
         setAccessibilityRole(.group)
         setAccessibilityLabel("Status widgets")
     }
@@ -75,23 +87,57 @@ public final class StatusBar: NSScrollView {
         nil
     }
 
+    override public func reflectScrolledClipView(_ clipView: NSClipView) {
+        super.reflectScrolledClipView(clipView)
+        settle()
+    }
+
+    override public func scrollWheel(with event: NSEvent) {
+        followsSelection = false
+        super.scrollWheel(with: event)
+    }
+
     func highlight(_ index: Int?) {
         for (position, view) in views.enumerated() {
-            view.selected = position == index
-            if position == index {
-                view.scrollToVisible(view.bounds)
+            if position == index, !view.selected {
+                followsSelection = true
             }
+            view.selected = position == index
         }
+        settle()
+    }
+
+    private func settle() {
+        if followsSelection, let selected = views.first(where: \.selected) {
+            stack.scrollToVisible(selected.frame.insetBy(dx: -Self.fade, dy: 0))
+        }
+        let visible = documentVisibleRect
+        let stop = min(Double(Self.fade / max(bounds.width, 1)), Self.middle)
+        let clear = NSColor.clear.cgColor
+        let opaque = NSColor.black.cgColor
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        edges.frame = bounds
+        edges.locations = [0, stop, 1 - stop, 1].map { .init(value: $0) }
+        edges.colors = [
+            visible.minX > stack.frame.minX ? clear : opaque, opaque, opaque,
+            visible.maxX < stack.frame.maxX ? clear : opaque,
+        ]
+        CATransaction.commit()
     }
 
     private func makeView(for pill: Pill, at index: Int) -> StatusPill {
         let view = StatusPill()
-        let unit = pill.unit.isEmpty ? "" : " \(pill.unit)"
-        view.show(StatusPill.styled(bold: pill.value, rest: unit), symbol: pill.symbol)
         view.onPress = { [weak self] in self?.onPress?(index) }
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
-        view.setAccessibilityLabel(pill.spoken)
+        show(pill, in: view)
         return view
+    }
+
+    private func show(_ pill: Pill, in view: StatusPill) {
+        let unit = pill.unit.isEmpty ? "" : " \(pill.unit)"
+        view.show(StatusPill.styled(bold: pill.value, rest: unit), symbol: pill.symbol)
+        view.setAccessibilityLabel(pill.spoken)
     }
 }
