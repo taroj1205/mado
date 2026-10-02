@@ -132,6 +132,23 @@ import Testing
         #expect(!view.choosingAction)
     }
 
+    @Test func reopeningForARowWithMoreActionsGrowsThePanel() throws {
+        view.actionTitles = { $0.id == "Notes" ? ["Open Application"] : ["One", "Two", "Three"] }
+        press(kVK_DownArrow, "\u{F701}", in: panel)
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        view.layoutSubtreeIfNeeded()
+        let short = menu.glass.frame.height
+        press(kVK_Escape, "\u{1B}", in: panel)
+        press(kVK_UpArrow, "\u{F700}", in: panel)
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        view.layoutSubtreeIfNeeded()
+        #expect(menu.rows.count == 3)
+        #expect(menu.glass.frame.height > short)
+        let header = menu.glass.convert(menu.header.bounds, from: menu.header)
+        #expect(menu.glass.bounds.contains(header))
+    }
+
     @Test func commandKDoesNothingWithoutASelection() {
         view.results.sections = []
         press(kVK_ANSI_K, "k", in: panel, [.command])

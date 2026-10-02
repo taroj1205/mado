@@ -25,7 +25,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private var shown: [Int] = []
     private var selected = 0
     private var titles: [String] = []
-    private var height: NSLayoutConstraint?
 
     var isVisible: Bool { unsafe glass.superview != nil }
 
@@ -48,6 +47,15 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         layout()
     }
 
+    private static func edges(of view: NSView, to other: NSView) -> [NSLayoutConstraint] {
+        [
+            view.leadingAnchor.constraint(equalTo: other.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: other.trailingAnchor),
+            view.topAnchor.constraint(equalTo: other.topAnchor),
+            view.bottomAnchor.constraint(equalTo: other.bottomAnchor),
+        ]
+    }
+
     func show(_ titles: [String], for title: String, above anchor: NSView, gap: CGFloat) {
         guard let host = unsafe anchor.superview else { return }
         self.titles = titles
@@ -55,14 +63,11 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         list.setAccessibilityLabel("Actions for \(title)")
         field.stringValue = ""
         host.addSubview(glass)
-        let fit = glass.heightAnchor.constraint(equalToConstant: Self.fieldHeight)
         NSLayoutConstraint.activate([
             glass.widthAnchor.constraint(equalToConstant: Self.width),
             glass.trailingAnchor.constraint(equalTo: anchor.trailingAnchor),
             glass.bottomAnchor.constraint(equalTo: anchor.topAnchor, constant: -gap),
-            fit,
         ])
-        height = fit
         filter()
         unsafe host.window?.makeFirstResponder(field)
     }
@@ -125,7 +130,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         }
         selected = 0
         rows.first?.isSelected = true
-        resize()
     }
 
     private func runSelected() {
@@ -141,10 +145,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         rows[index].isSelected = true
     }
 
-    private func resize() {
-        height?.constant = glass.contentView?.fittingSize.height ?? Self.fieldHeight
-    }
-
     private func layout() {
         let content = NSView()
         let separator = NSBox()
@@ -157,31 +157,33 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             content.addSubview(view)
         }
         let headerInset = Self.inset + Self.headerSide
-        NSLayoutConstraint.activate([
-            header.topAnchor.constraint(
-                equalTo: content.topAnchor, constant: Self.inset + Self.headerTop),
-            header.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: headerInset),
-            header.trailingAnchor.constraint(
-                lessThanOrEqualTo: content.trailingAnchor, constant: -headerInset),
-            list.topAnchor.constraint(equalTo: header.bottomAnchor, constant: Self.headerBottom),
-            list.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Self.inset),
-            list.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -Self.inset),
-            separator.topAnchor.constraint(equalTo: list.bottomAnchor, constant: Self.inset),
-            separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            fieldArea.topAnchor.constraint(equalTo: separator.bottomAnchor),
-            fieldArea.heightAnchor.constraint(equalToConstant: Self.fieldHeight),
-            fieldArea.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            field.centerYAnchor.constraint(equalTo: fieldArea.centerYAnchor),
-            field.leadingAnchor.constraint(
-                equalTo: content.leadingAnchor, constant: Self.fieldSide),
-            field.trailingAnchor.constraint(
-                equalTo: content.trailingAnchor, constant: -Self.fieldSide),
-            border.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            border.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            border.topAnchor.constraint(equalTo: content.topAnchor),
-            border.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-        ])
+        NSLayoutConstraint.activate(
+            [
+                header.topAnchor.constraint(
+                    equalTo: content.topAnchor, constant: Self.inset + Self.headerTop),
+                header.leadingAnchor.constraint(
+                    equalTo: content.leadingAnchor, constant: headerInset),
+                header.trailingAnchor.constraint(
+                    lessThanOrEqualTo: content.trailingAnchor, constant: -headerInset),
+                list.topAnchor.constraint(
+                    equalTo: header.bottomAnchor, constant: Self.headerBottom),
+                list.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Self.inset),
+                list.trailingAnchor.constraint(
+                    equalTo: content.trailingAnchor, constant: -Self.inset),
+                separator.topAnchor.constraint(equalTo: list.bottomAnchor, constant: Self.inset),
+                separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+                separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+                fieldArea.topAnchor.constraint(equalTo: separator.bottomAnchor),
+                fieldArea.heightAnchor.constraint(equalToConstant: Self.fieldHeight),
+                fieldArea.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+                field.centerYAnchor.constraint(equalTo: fieldArea.centerYAnchor),
+                field.leadingAnchor.constraint(
+                    equalTo: content.leadingAnchor, constant: Self.fieldSide),
+                field.trailingAnchor.constraint(
+                    equalTo: content.trailingAnchor, constant: -Self.fieldSide),
+            ] + Self.edges(of: border, to: content))
         glass.contentView = content
+        content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate(Self.edges(of: content, to: glass))
     }
 }
