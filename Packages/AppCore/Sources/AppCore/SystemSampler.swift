@@ -43,17 +43,27 @@ public actor SystemSampler {
         else { return nil }
         return sources.lazy.compactMap { source -> SystemStats.Battery? in
             let found = unsafe IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue()
-            guard let power = found as? [String: Any],
-                power[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
-                power[kIOPSIsPresentKey] as? Bool == true,
-                let charge = power[kIOPSCurrentCapacityKey] as? Double,
-                let full = power[kIOPSMaxCapacityKey] as? Double, full > 0
-            else { return nil }
-            return SystemStats.Battery(
-                level: min(max(charge / full, 0), 1),
-                isCharging: power[kIOPSIsChargingKey] as? Bool == true)
+            return (found as? [String: Any]).flatMap(battery(from:))
         }
         .first
+    }
+
+    static func battery(from power: [String: Any]) -> SystemStats.Battery? {
+        guard power[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
+            power[kIOPSIsPresentKey] as? Bool == true,
+            let charge = power[kIOPSCurrentCapacityKey] as? Double,
+            let full = power[kIOPSMaxCapacityKey] as? Double, full > 0
+        else { return nil }
+        let minutesLeft = power[kIOPSTimeToEmptyKey] as? Int ?? 0
+        let state: SystemStats.Power =
+            if power[kIOPSIsChargingKey] as? Bool == true {
+                .charging
+            } else if power[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue {
+                power[kIOPSIsChargedKey] as? Bool == true ? .charged : .notCharging
+            } else {
+                .draining(minutesLeft: minutesLeft > 0 ? minutesLeft : nil)
+            }
+        return SystemStats.Battery(level: min(max(charge / full, 0), 1), power: state)
     }
 
     private static func diskFree() -> Int64? {

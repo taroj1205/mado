@@ -3,26 +3,24 @@ import AppKit
 extension LauncherView {
     public var widgets: [WidgetGrid.Widget] {
         get { widgetGrid.widgets }
-        set {
-            widgetGrid.widgets = newValue
-            widgetsChanged()
-        }
+        set { changeWidgets { widgetGrid.widgets = newValue } }
     }
 
     public var widgetLayout: WidgetGrid.Layout? {
         get { widgetGrid.tileLayout }
-        set {
-            widgetGrid.tileLayout = newValue
-            widgetsChanged()
-        }
+        set { changeWidgets { widgetGrid.tileLayout = newValue } }
     }
 
     var showsWidgets: Bool {
         onEmptyRootQuery && !widgetGrid.shown.isEmpty
     }
 
-    private func widgetsChanged() {
-        if let selectedWidget, !widgetGrid.shown.indices.contains(selectedWidget) {
+    private func changeWidgets(_ change: () -> Void) {
+        let selected = selectedWidget.map { widgetGrid.shown[$0].id }
+        change()
+        if let index = widgetGrid.shown.firstIndex(where: { $0.id == selected }) {
+            selectedWidget = index
+        } else {
             selectWidget(nil)
         }
         widgetGrid.highlight(selectedWidget)
