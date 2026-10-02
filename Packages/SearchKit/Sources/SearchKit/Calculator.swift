@@ -154,6 +154,7 @@ public enum Calculator {
             .replacing(/^what is\s/, with: "")
         if let conversion = Conversion.answer(for: text) { return conversion }
         if let time = TimeZones.answer(for: text, now: now, local: local) { return time }
+        if let math = TimeMath.answer(for: text, now: now, local: local) { return math }
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }
