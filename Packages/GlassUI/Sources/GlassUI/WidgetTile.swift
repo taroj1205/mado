@@ -14,8 +14,8 @@ final class WidgetTile: NSView {
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
     private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
-    private static let fill = tone(.white, .white, fillAlpha)
-    private static let edge = tone(.white, .black, edgeAlpha)
+    static let fill = tone(.white, .white, fillAlpha)
+    static let edge = tone(.white, .black, edgeAlpha)
     private static let selectedFill = tone(.white, .black, selectedFillAlpha)
     private static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
 

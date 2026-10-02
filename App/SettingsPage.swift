@@ -12,6 +12,7 @@ struct SettingsPage {
         let recorder: HotKeyPopover
         let apps: AppHotKeys
         let radial: RadialMenuSettings
+        let gallery: WidgetGalleryWindow
     }
 
     struct Tab {
@@ -48,7 +49,10 @@ struct SettingsPage {
             [
                 SettingsSection(
                     "Layout",
-                    [.init("Placement", popUp(WidgetPlacement.self, context.modules))])
+                    [.init("Placement", popUp(WidgetPlacement.self, context.modules))]),
+                SettingsSection(
+                    "Gallery",
+                    [.init("Widgets on the empty query", galleryButton(context))]),
             ]
         },
         Self(
@@ -142,6 +146,12 @@ struct SettingsPage {
         }
         popUp.isEnabled = modules != nil
         return popUp
+    }
+
+    private static func galleryButton(_ context: Context) -> SettingsButton {
+        let button = SettingsButton("Add Widgets…") { context.gallery.show() }
+        button.isEnabled = context.modules != nil
+        return button
     }
 
     private static func orderPopUp(_ modules: ModuleManager?) -> SettingsPopUp {

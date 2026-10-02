@@ -1,4 +1,5 @@
 import AppCore
+import GlassUI
 import os
 import SearchKit
 import WindowKit
@@ -63,4 +64,8 @@ extension GestureSettings.Target {
         case .underMouse: "Window Under Mouse"
         }
     }
+}
+
+extension WidgetSettings: StoredValue {
+    static let key = "widgets"
 }
