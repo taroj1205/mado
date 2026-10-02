@@ -53,6 +53,13 @@ import Testing
     }
 
     @Test(arguments: [
+        "define ephemeral", "define today", "ephemeral?", "tomorrow?", "noon?", "美しい?",
+    ])
+    func lookupsAreNotTakenByTheCalculatorAnswers(query: String) {
+        #expect(Calculator.answer(for: query) == nil)
+    }
+
+    @Test(arguments: [
         ("fleeting", "define ephemeral", "define fleeting"),
         ("fleeting", "ephemeral?", "fleeting?"),
         ("for a short time", "ephemeral?", "define for a short time"),
