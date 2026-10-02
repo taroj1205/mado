@@ -25,6 +25,7 @@ extension ModuleDescriptor {
         case WindowsModule.id:
             WindowsModule(
                 descriptor: self, hotKeys: hotKeys,
+                layoutSettings: { [weak modules] in .load(from: modules) },
                 radialSettings: { [weak modules] in .load(from: modules) },
                 gestureSettings: { [weak modules] in .load(from: modules) },
                 switcherSettings: { [weak modules] in .load(from: modules) })

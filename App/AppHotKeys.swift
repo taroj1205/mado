@@ -1,4 +1,3 @@
-import AppCore
 import AppKit
 import GlassUI
 import SearchKit
@@ -6,10 +5,11 @@ import UniformTypeIdentifiers
 import WindowKit
 
 @MainActor
-final class AppHotKeys: NSObject, NSPopoverDelegate {
+final class AppHotKeys: NSObject {
     private static let modeWidth: CGFloat = 118
     private static let controlGap: CGFloat = 10
     private static let footerSize: CGFloat = 12
+    private static let iconSize: CGFloat = 26
 
     private static var footer: NSAttributedString {
         let text = NSMutableAttributedString(
@@ -29,14 +29,11 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
     }
 
     private let items: ItemEditor
-    private let popover = NSPopover()
-    private let prompt = HotKeyPrompt()
-    private weak var anchor: NSView?
+    private let recorder: HotKeyPopover
 
     var section: SettingsSection {
-        let rows = items.settings.hotkeys
-            .compactMap { id, hotkey in AppToggle.app(for: id).map { row(for: $0, hotkey: hotkey) }
-            }
+        let rows = items.settings.hotkeys.keys
+            .compactMap { AppToggle.app(for: $0).map(row) }
             .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
         let add = NSButton(
             title: "Add App",
@@ -46,46 +43,28 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
         return SettingsSection("App hotkeys", rows, footer: Self.footer, accessory: add)
     }
 
-    init(items: ItemEditor) {
+    init(items: ItemEditor, recorder: HotKeyPopover) {
         self.items = items
+        self.recorder = recorder
         super.init()
-        let content = NSViewController()
-        content.view = prompt
-        popover.contentViewController = content
-        popover.behavior = .transient
-        popover.delegate = self
-        prompt.onRecording = { [weak items] in items?.suspendHotKeys($0) }
-        prompt.onCancel = { [weak popover] in popover?.performClose(nil) }
     }
 
     private static func name(of app: URL) -> String {
         FileManager.default.displayName(atPath: app.path).replacing(/\.app$/, with: "")
     }
 
-    func popoverWillClose(_: Notification) {
-        unsafe prompt.window?.makeFirstResponder(nil)
-    }
-
-    func popoverDidClose(_: Notification) {
-        (anchor as? HotKeyButton)?.showsRecording = false
-    }
-
-    private func row(for app: URL, hotkey: Shortcut) -> SettingsSection.Row {
+    private func row(for app: URL) -> SettingsSection.Row {
         let name = Self.name(of: app)
         let modes = AppHotKeyMode.menu()
         modes.setAccessibilityLabel("\(name) mode")
         modes.widthAnchor.constraint(equalToConstant: Self.modeWidth).isActive = true
-        let button = HotKeyButton()
-        button.shortcut = hotkey
-        button.setAccessibilityLabel("\(name) hotkey")
-        button.onPress = { [weak self, weak button] in
-            guard let button else { return }
-            self?.record(app, from: button)
-        }
-        let controls = NSStackView(views: [modes, button])
+        let controls = NSStackView(views: [modes, recorder.button(for: app.path, named: name)])
         controls.spacing = Self.controlGap
         controls.setHuggingPriority(.defaultHigh, for: .horizontal)
-        return SettingsSection.Row(name, controls, icon: NSWorkspace.shared.icon(forFile: app.path))
+        let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: app.path))
+        icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
+        return SettingsSection.Row(name, controls, icon: icon)
     }
 
     @objc
@@ -97,27 +76,7 @@ final class AppHotKeys: NSObject, NSPopoverDelegate {
         panel.prompt = "Add"
         panel.beginSheetModal(for: window) { [weak self, weak sender] response in
             guard response == .OK, let app = panel.url, let sender else { return }
-            self?.record(app, from: sender)
+            self?.recorder.record(app.path, named: Self.name(of: app), from: sender)
         }
-    }
-
-    private func record(_ app: URL, from anchor: NSView) {
-        let id = app.path
-        prompt.conflict = { [weak items] in items?.conflict(for: $0, besides: id) }
-        prompt.onSave = { [weak self] in self?.assign($0, to: id) }
-        prompt.onClear = { [weak self] in _ = self?.assign(nil, to: id) }
-        prompt.show(for: Self.name(of: app), clearable: items.settings[id].hotkey != nil)
-        self.anchor = anchor
-        (anchor as? HotKeyButton)?.showsRecording = true
-        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
-        unsafe prompt.window?.makeFirstResponder(prompt)
-    }
-
-    private func assign(_ hotkey: Shortcut?, to id: String) -> String? {
-        let problem = items.assign(hotkey, to: id)
-        if problem == nil {
-            popover.close()
-        }
-        return problem
     }
 }
