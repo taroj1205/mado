@@ -112,8 +112,9 @@ final class WidgetTile: NSView {
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
+        reason.setContentHuggingPriority(.defaultLow, for: .horizontal)
         [reason, allow].forEach(request.addArrangedSubview)
-        request.distribution = .equalSpacing
+        request.distribution = .fill
         request.spacing = 0
         ([title, value, headline] + skeleton + [detail, request]).forEach(lines.addArrangedSubview)
         lines.orientation = .vertical
