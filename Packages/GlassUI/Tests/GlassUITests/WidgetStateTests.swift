@@ -126,16 +126,28 @@ import Testing
         #expect(tile.reason.stringValue == "To show your next meeting")
         #expect(tile.allow.label.stringValue == "Allow")
         let allow = tile.convert(tile.allow.bounds, from: tile.allow)
-        let reason = tile.convert(tile.reason.bounds, from: tile.reason)
-        #expect(abs(tile.bounds.maxX - allow.maxX - 12) < 0.5)
-        #expect(allow.height == 24)
-        #expect(reason.maxX <= allow.minX)
-        let shown = tile.reason.alignmentRect(forFrame: tile.reason.frame)
-        #expect(tile.reason.intrinsicContentSize.width <= shown.width)
         #expect(tile.hitTest(NSPoint(x: tile.frame.minX + allow.midX, y: tile.frame.midY)) === tile)
         view.pressWidget(1)
         #expect(view.actionLabel.stringValue == "Allow Calendar Access")
         #expect(ran == ["calendar"])
+    }
+
+    @Test func theAllowButtonSitsAtTheRightOfTheReason() {
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        let allow = tile.convert(tile.allow.bounds, from: tile.allow)
+        #expect(abs(tile.bounds.maxX - allow.maxX - 12) < 0.5)
+        #expect(allow.height == 24)
+    }
+
+    @Test func theReasonFitsBesideTheAllowButtonInAWideTile() {
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        let shown = tile.reason.alignmentRect(forFrame: tile.reason.frame)
+        let reason = tile.convert(tile.reason.bounds, from: tile.reason)
+        let allow = tile.convert(tile.allow.bounds, from: tile.allow)
+        #expect(tile.reason.intrinsicContentSize.width <= shown.width)
+        #expect(reason.maxX - tile.reason.alignmentRectInsets.right <= allow.minX)
     }
 
     @Test func aReusedTileHidesWhatTheLastStateShowed() {
