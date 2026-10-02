@@ -15,8 +15,12 @@ public struct ExchangeRates: Sendable, Equatable {
         }
     }
 
+    public let fetched: Date
     let perEuro: [String: Double]
-    let fetched: Date
+
+    public var codes: [String] {
+        perEuro.keys.sorted()
+    }
 
     init?(ecb data: Data, fetched: Date) {
         let reader = Reader()
