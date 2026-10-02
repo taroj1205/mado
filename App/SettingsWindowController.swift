@@ -117,10 +117,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         items: ItemEditor
     ) {
         let recorder = HotKeyPopover(items: items)
+        let ignoredApps = IgnoredAppsSettings(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
-            radial: RadialMenuSettings(modules: modules))
+            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps)
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {
@@ -156,6 +157,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         tabs = pages
         super.init(window: window)
         window.delegate = self
+        ignoredApps.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
