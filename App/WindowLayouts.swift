@@ -125,7 +125,7 @@ enum WindowLayouts {
         Shortcut(keyCode: UInt32(code), modifiers: modifiers)
     }
 
-    static func commands(gap: @escaping @MainActor () -> CGFloat) -> [Command] {
+    static func commands(settings: @escaping @MainActor () -> LayoutSettings) -> [Command] {
         all.map { entry in
             Command(
                 id: entry.id, name: entry.title, icon: entry.symbol,
@@ -135,7 +135,9 @@ enum WindowLayouts {
                             ScreenGeometry.Screen(
                                 frame: screen.frame, visibleFrame: screen.visibleFrame)
                         }
-                        try await entry.placement.apply(gap: gap(), across: screens)
+                        let current = settings()
+                        try await entry.placement.apply(
+                            gap: current.gap, cyclesSizes: current.cyclesSizes, across: screens)
                     }
                 ],
                 keywords: entry.keywords)
@@ -159,8 +161,25 @@ enum WindowLayouts {
         }
         return [
             SettingsSection("Layouts", columns: columns, rows),
-            SettingsSection("Behaviour", [.init("Gap between windows", gapPopUp(modules))]),
+            SettingsSection(
+                "Behaviour",
+                [
+                    .init("Repeat the hotkey to cycle sizes (½ → ⅓ → ⅔)", cycleSwitch(modules)),
+                    .init("Gap between windows", gapPopUp(modules)),
+                ]),
         ]
+    }
+
+    private static func cycleSwitch(_ modules: ModuleManager?) -> SettingsSwitch {
+        let toggle = SettingsSwitch(
+            read: { LayoutSettings.load(from: modules).cyclesSizes },
+            write: { isOn in
+                var settings = LayoutSettings.load(from: modules)
+                settings.cyclesSizes = isOn
+                settings.save(to: modules)
+            })
+        toggle.isEnabled = modules != nil
+        return toggle
     }
 
     private static func gapPopUp(_ modules: ModuleManager?) -> SettingsPopUp {

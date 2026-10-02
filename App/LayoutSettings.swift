@@ -9,10 +9,12 @@ struct LayoutSettings: StoredValue, Equatable {
 
     var gap: CGFloat
     var assignedDefaultHotKeys: Bool
+    var cyclesSizes: Bool
 
     init() {
         gap = Self.defaultGap
         assignedDefaultHotKeys = false
+        cyclesSizes = true
     }
 
     init(from decoder: any Decoder) throws {
@@ -22,5 +24,6 @@ struct LayoutSettings: StoredValue, Equatable {
         assignedDefaultHotKeys =
             try values.decodeIfPresent(Bool.self, forKey: .assignedDefaultHotKeys)
             ?? assignedDefaultHotKeys
+        cyclesSizes = try values.decodeIfPresent(Bool.self, forKey: .cyclesSizes) ?? cyclesSizes
     }
 }
