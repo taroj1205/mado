@@ -3,8 +3,8 @@ import AppKit
 @MainActor
 final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let width: CGFloat = 316
-    private static let radius: CGFloat = 18
-    private static let inset: CGFloat = 6
+    static let radius: CGFloat = 18
+    static let inset: CGFloat = 6
     private static let rowGap: CGFloat = 1
     private static let headerTop: CGFloat = 6
     private static let headerSide: CGFloat = 10
@@ -13,11 +13,14 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let fieldHeight: CGFloat = 40
     private static let fieldSide: CGFloat = 16
     private static let fieldFontSize: CGFloat = 13
+    private static let fieldFont = NSFont.systemFont(ofSize: fieldFontSize)
+    private static let half: CGFloat = 0.5
 
     let glass = GlassView(shape: .rounded(radius))
     let header = NSTextField(labelWithString: "")
     let field = NSTextField()
     private let list = NSStackView()
+    let empty = ActionRow.note("No matching actions")
     var onRun: ((Int) -> Void)?
     var onClose: (() -> Void)?
     private(set) var rows: [ActionRow] = []
@@ -33,7 +36,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         header.textColor = .secondaryLabelColor
         header.lineBreakMode = .byTruncatingTail
         field.placeholderString = "Search for actions…"
-        field.font = .systemFont(ofSize: Self.fieldFontSize)
+        field.font = Self.fieldFont
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
@@ -124,7 +127,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         shown = actions.indices.filter { index in
             query.isEmpty || actions[index].title.localizedStandardContains(query)
         }
-        for row in rows {
+        for row in list.arrangedSubviews {
             row.removeFromSuperview()
         }
         rows = shown.map { index in
@@ -132,7 +135,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             row.onPress = { [weak self] in self?.onRun?(index) }
             return row
         }
-        for row in rows {
+        for row in rows.isEmpty ? [empty] : rows {
             list.addArrangedSubview(row)
             row.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
         }
@@ -157,8 +160,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         let content = NSView()
         let separator = NSBox()
         separator.boxType = .separator
-        let fieldArea = NSLayoutGuide()
-        content.addLayoutGuide(fieldArea)
         let border = GlassBorder(radius: Self.radius)
         for view in [header, list, separator, field, border] {
             view.translatesAutoresizingMaskIntoConstraints = false
@@ -181,17 +182,27 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
                 separator.topAnchor.constraint(equalTo: list.bottomAnchor, constant: Self.inset),
                 separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
                 separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-                fieldArea.topAnchor.constraint(equalTo: separator.bottomAnchor),
-                fieldArea.heightAnchor.constraint(equalToConstant: Self.fieldHeight),
-                fieldArea.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-                field.centerYAnchor.constraint(equalTo: fieldArea.centerYAnchor),
-                field.leadingAnchor.constraint(
-                    equalTo: content.leadingAnchor, constant: Self.fieldSide),
-                field.trailingAnchor.constraint(
-                    equalTo: content.trailingAnchor, constant: -Self.fieldSide),
-            ] + Self.edges(of: border, to: content))
+            ] + fieldLayout(below: separator, in: content)
+                + Self.edges(of: border, to: content))
         glass.contentView = content
         content.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate(Self.edges(of: content, to: glass))
+    }
+
+    private func fieldLayout(below separator: NSView, in content: NSView) -> [NSLayoutConstraint] {
+        let area = NSLayoutGuide()
+        content.addLayoutGuide(area)
+        let lowercaseCentre = Self.fieldFont.xHeight * Self.half
+        return [
+            area.topAnchor.constraint(equalTo: separator.bottomAnchor),
+            area.heightAnchor.constraint(equalToConstant: Self.fieldHeight),
+            area.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            field.firstBaselineAnchor.constraint(
+                equalTo: area.centerYAnchor, constant: lowercaseCentre),
+            field.leadingAnchor.constraint(
+                equalTo: content.leadingAnchor, constant: Self.fieldSide),
+            field.trailingAnchor.constraint(
+                equalTo: content.trailingAnchor, constant: -Self.fieldSide),
+        ]
     }
 }
