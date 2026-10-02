@@ -48,6 +48,12 @@ import Testing
         #expect(Quicklink(name: "Empty", link: "").url(for: "x") == nil)
     }
 
+    @Test func showsTheTypedQueryInPlaceOfTheSlot() {
+        #expect(
+            youtube.text(for: "cute cats") == "https://youtube.com/results?search_query=cute cats")
+        #expect(youtube.text(for: "") == youtube.link)
+    }
+
     @Test func takesTheQueryAfterAnAliasThatOpensTheLink() {
         #expect(youtube.query(in: "yt cats", aliases: ["yt"]) == "cats")
         #expect(youtube.query(in: "  YT   cute cats ", aliases: ["yt"]) == "cute cats")

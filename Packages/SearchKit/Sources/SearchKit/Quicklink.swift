@@ -35,6 +35,10 @@ public struct Quicklink: Codable, Equatable, Sendable {
         return url.scheme == nil ? URL(string: "https://" + filled) : url
     }
 
+    public func text(for query: String) -> String {
+        query.isEmpty ? link : link.replacing(Self.placeholder, with: query)
+    }
+
     public func query(in text: String, aliases: [String]) -> String? {
         guard link.contains(Self.placeholder) else { return nil }
         let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
