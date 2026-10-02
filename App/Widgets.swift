@@ -46,7 +46,11 @@ final class Widgets {
                 id: "clock", value: date.formatted(time), detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
-            stats.flatMap(batteries),
+            stats == nil
+                ? .init(
+                    id: battery, content: .loading(title: "Battery"), action: batteryAction,
+                    spoken: "Battery: loading")
+                : stats.flatMap(batteries),
             cpu == nil
                 ? .init(
                     id: system, content: .loading(title: "System"),
