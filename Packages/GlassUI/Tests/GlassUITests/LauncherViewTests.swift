@@ -131,6 +131,36 @@ import Testing
         #expect(capsule.isHidden)
     }
 
+    @Test func commandDigitsRunTheRowWithThatShortcut() {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        view.results.sections = [
+            .init(
+                title: "Copy as",
+                items: [("hex", ["↵"]), ("rgb", ["⌘", "1"]), ("hsl", ["⌘", "2"])].map { id, keys in
+                    .init(
+                        id: id, title: id, subtitle: "", kind: "Colour", symbol: "",
+                        action: "Copy", keys: keys)
+                })
+        ]
+        press(kVK_ANSI_2, "2", [.command])
+        press(kVK_ANSI_1, "1", [.command])
+        press(kVK_ANSI_3, "3", [.command])
+        press(kVK_ANSI_1, "1", [.command, .shift])
+        #expect(runs == ["hsl 0", "rgb 0"])
+        #expect(view.results.selectedItem?.id == "hex")
+    }
+
+    @Test func aContextSymbolReplacesTheChevronWithABadge() {
+        view.context = "Colour"
+        #expect(view.contextIcon.image?.isTemplate == true)
+        view.contextSymbol = "paintpalette.fill"
+        #expect(view.contextIcon.image?.isTemplate == false)
+        #expect(view.contextIcon.image?.size == NSSize(width: 18, height: 18))
+        view.contextSymbol = nil
+        #expect(view.contextIcon.image?.isTemplate == true)
+    }
+
     @Test func rowsScrollUnderTheCapsuleButTheSelectionStopsAboveIt() {
         view.results.sections = [
             .init(title: "Commands", items: (0..<40).map { item("Command \($0)") })

@@ -13,12 +13,14 @@ final class ResultCell: NSTableCellView {
     private static let titleSize: CGFloat = 14
     private static let subtitleSize: CGFloat = 13
     private static let kindSize: CGFloat = 12
+    private static let keyGap: CGFloat = 3
 
     let tile = NSBox()
     let symbol = NSImageView()
     let title = NSTextField(labelWithString: "")
     let subtitle = NSTextField(labelWithString: "")
     let kind = NSTextField(labelWithString: "")
+    let accessory = NSStackView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -42,8 +44,10 @@ final class ResultCell: NSTableCellView {
         subtitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
         kind.font = .systemFont(ofSize: Self.kindSize)
         kind.textColor = .secondaryLabelColor
+        accessory.spacing = Self.keyGap
+        accessory.setHuggingPriority(.defaultHigh, for: .horizontal)
         setAccessibilityChildren([])
-        layout(tile, title, subtitle, kind)
+        layout(tile, title, subtitle, accessory)
     }
 
     @available(*, unavailable)
@@ -59,6 +63,8 @@ final class ResultCell: NSTableCellView {
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
         kind.stringValue = item.kind
+        accessory.setViews(
+            item.keys.isEmpty ? [kind] : item.keys.map(FloatingCapsule.keycap), in: .leading)
         setAccessibilityLabel(
             [item.title, item.kind, item.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
     }
@@ -75,8 +81,10 @@ final class ResultCell: NSTableCellView {
             tile.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.leadingInset),
             title.leadingAnchor.constraint(equalTo: tile.trailingAnchor, constant: Self.gap),
             subtitle.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: Self.gap),
-            kind.leadingAnchor.constraint(equalTo: subtitle.trailingAnchor, constant: Self.gap),
-            kind.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.trailingInset),
+            accessory.leadingAnchor.constraint(
+                equalTo: subtitle.trailingAnchor, constant: Self.gap),
+            accessory.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.trailingInset),
         ])
     }
 }

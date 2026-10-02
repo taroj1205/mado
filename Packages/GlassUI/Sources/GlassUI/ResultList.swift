@@ -11,10 +11,12 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let icon: NSImage?
         public let file: URL?
         public let answer: Answer?
+        public let keys: [String]
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil
+            action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil,
+            keys: [String] = []
         ) {
             self.id = id
             self.title = title
@@ -25,6 +27,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.icon = icon
             self.file = file
             self.answer = answer
+            self.keys = keys
         }
     }
 
@@ -52,16 +55,21 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let title: String
         public let items: [Item]
         public let notice: Notice?
+        public let colour: ColourCard?
 
-        public init(title: String, items: [Item], notice: Notice? = nil) {
+        public init(
+            title: String, items: [Item], notice: Notice? = nil, colour: ColourCard? = nil
+        ) {
             self.title = title
             self.items = items
             self.notice = notice
+            self.colour = colour
         }
     }
 
     enum Row: Equatable {
         case notice(Notice)
+        case colour(ColourCard)
         case header(String)
         case item(Item)
 
@@ -78,6 +86,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     static let answerHeight: CGFloat = 116
     static let headerHeight: CGFloat = 32
     static let noticeHeight: CGFloat = 80
+    static let colourHeight: CGFloat = 142
     static let rowGap: CGFloat = 1
     static let topInset: CGFloat = 4
     private static let headerInset: CGFloat = 12
@@ -148,6 +157,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         sections.filter { !$0.items.isEmpty }
             .flatMap { section in
                 (section.notice.map { [Row.notice($0)] } ?? [])
+                    + (section.colour.map { [Row.colour($0)] } ?? [])
                     + [.header(section.title)] + section.items.map(Row.item)
             }
     }
@@ -178,9 +188,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         }
         guard rows.indices.contains(row) else { return }
         table.selectRowIndexes([row], byExtendingSelection: false)
-        if row > 0, !rows[row - 1].isItem {
-            table.scrollRowToVisible(row - 1)
-        }
+        table.scrollRowToVisible(rows[..<row].lastIndex(where: \.isItem).map { $0 + 1 } ?? 0)
         table.scrollRowToVisible(row)
     }
 
@@ -191,6 +199,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
         switch rows[row] {
         case .notice: Self.noticeHeight
+        case .colour: Self.colourHeight
         case .header: Self.headerHeight
         case .item(let item): item.answer == nil ? Self.rowHeight : Self.answerHeight
         }
@@ -223,6 +232,13 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
                 tableView.makeView(withIdentifier: NoticeCell.id, owner: nil)
                 as? NoticeCell ?? NoticeCell()
             cell.show(notice)
+            return cell
+
+        case .colour(let card):
+            let cell =
+                tableView.makeView(withIdentifier: ColourCell.id, owner: nil)
+                as? ColourCell ?? ColourCell()
+            cell.show(card)
             return cell
 
         case .header(let title):

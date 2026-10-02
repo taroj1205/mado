@@ -11,7 +11,11 @@ enum LauncherResult {
 
     private static let openApp = "Open Application"
     private static let answerID = "calculator"
+    private static let colourPrefix = "colour."
     private static let fileLimit = 20
+    private static let byte: CGFloat = 255
+    private static let colourKind = "Colour"
+    private static let colourSymbol = "paintpalette.fill"
 
     var id: String {
         switch self {
@@ -50,6 +54,11 @@ enum LauncherResult {
             ResultList.Section(
                 title: "Files", items: found.prefix(fileLimit).map { item(for: $0, at: now) }),
         ]
+        if let colour = Colour(trimmed) {
+            return [section(for: colour)] + results + [
+                Fallback.section(for: trimmed, matched: true)
+            ]
+        }
         guard let answer = Calculator.answer(for: trimmed) else {
             if typed, ranked.isEmpty, found.isEmpty {
                 return [Fallback.section(for: trimmed, matched: false)]
@@ -73,12 +82,11 @@ enum LauncherResult {
             ]
         }
         if id == answerID, let answer = Calculator.answer(for: query) {
-            return [
-                CommandAction(id: "copy", title: "Copy Answer") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(answer.result, forType: .string)
-                }
-            ]
+            return [copy(answer.result, title: "Copy Answer")]
+        }
+        if id.hasPrefix(colourPrefix) {
+            let item = Colour(query).flatMap { colour in copies(of: colour).first { $0.id == id } }
+            return item.map { [copy($0.subtitle, title: $0.action)] } ?? []
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
         if let fallback = Fallback.all.first(where: { $0.item.id == id }) {
@@ -94,6 +102,53 @@ enum LauncherResult {
             },
             reveal(app.url),
         ]
+    }
+
+    static func context(of sections: [ResultList.Section]) -> (title: String?, symbol: String?) {
+        if sections.contains(where: { $0.notice != nil }) { return ("No results", nil) }
+        if sections.contains(where: { $0.colour != nil }) { return (colourKind, colourSymbol) }
+        return (sections.lazy.flatMap(\.items).first { $0.answer != nil }?.kind, nil)
+    }
+
+    static func remembers(_ item: ResultList.Item) -> Bool {
+        item.answer == nil && !item.id.hasPrefix(colourPrefix)
+            && !Fallback.all.contains { $0.item.id == item.id }
+    }
+
+    private static func copy(_ text: String, title: String) -> CommandAction {
+        CommandAction(id: "copy", title: title) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+
+    private static func section(for colour: Colour) -> ResultList.Section {
+        let swatch = NSColor(
+            srgbRed: CGFloat(colour.red) / byte, green: CGFloat(colour.green) / byte,
+            blue: CGFloat(colour.blue) / byte, alpha: 1)
+        return ResultList.Section(
+            title: "Copy as", items: copies(of: colour),
+            colour: ResultList.ColourCard(
+                swatch: swatch, hex: colour.hex, rgb: colour.rgb, hsl: colour.hsl,
+                closest: colour.closestSystemColour, onWhite: colour.onWhite,
+                onBlack: colour.onBlack))
+    }
+
+    private static func copies(of colour: Colour) -> [ResultList.Item] {
+        [
+            ("hex", "Copy HEX", colour.hex, "number", ["↵"]),
+            ("rgb", "Copy RGB", colour.rgb, "doc.on.doc", ["⌘", "1"]),
+            ("hsl", "Copy HSL", colour.hsl, "doc.on.doc", ["⌘", "2"]),
+            (
+                "appkit", "Copy for AppKit", colour.appKit,
+                "chevron.left.forwardslash.chevron.right",
+                ["⌘", "3"]
+            ),
+        ].map { id, title, value, symbol, keys in
+            ResultList.Item(
+                id: colourPrefix + id, title: title, subtitle: value, kind: colourKind,
+                symbol: symbol, action: title, keys: keys)
+        }
     }
 
     private static func reveal(_ url: URL) -> CommandAction {
