@@ -8,6 +8,8 @@ public actor SystemSampler {
 
     private let host = mach_host_self()
     private var meter: LoadMeter
+    private var headphones: SystemStats.Headphones?
+    private var readsHeadphones = false
 
     public init() {
         meter = LoadMeter()
@@ -64,9 +66,20 @@ public actor SystemSampler {
         if let counters = counters() {
             meter.record(counters, at: .now)
         }
+        refreshHeadphones()
         return SystemStats(
             cpu: meter.cpu, memory: memory(), battery: Self.battery(), diskFree: Self.diskFree(),
-            download: meter.download)
+            download: meter.download, headphones: headphones, vpn: Self.vpn(),
+            wifi: Self.wifi())
+    }
+
+    private func refreshHeadphones() {
+        guard !readsHeadphones else { return }
+        readsHeadphones = true
+        Task {
+            headphones = await Self.headphones()
+            readsHeadphones = false
+        }
     }
 
     private func counters() -> LoadMeter.Counters? {

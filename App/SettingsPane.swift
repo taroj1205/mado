@@ -4,16 +4,19 @@ import GlassUI
 
 @MainActor
 struct SettingsPane {
+    static let wifi = Self("Wi-Fi", "com.apple.wifi-settings-extension")
+    static let bluetooth = Self("Bluetooth", "com.apple.BluetoothSettings")
     static let network = Self("Network", "com.apple.Network-Settings.extension")
+    static let vpn = Self("VPN", "com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension")
     static let battery = Self(
         "Battery", "com.apple.Battery-Settings.extension", aliases: "Energy Saver")
     static let storage = Self("Storage", "com.apple.settings.Storage")
     static let dateAndTime = Self("Date & Time", "com.apple.Date-Time-Settings.extension")
     static let all = [
-        Self("Wi-Fi", "com.apple.wifi-settings-extension"),
-        Self("Bluetooth", "com.apple.BluetoothSettings"),
+        wifi,
+        bluetooth,
         network,
-        Self("VPN", "com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension"),
+        vpn,
         battery,
         Self("About", "com.apple.SystemProfiler.AboutExtension"),
         Self("Software Update", "com.apple.Software-Update-Settings.extension"),

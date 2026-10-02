@@ -28,9 +28,13 @@ enum StatusPills {
     ]
     private static let panes: [String: SettingsPane] = [
         "battery": .battery,
+        "airpods": .bluetooth,
         "disk": .storage,
         "net": .network,
+        "vpn": .vpn,
+        "wifi": .wifi,
     ]
+    private static let hiddenByDefault: Set = ["wifi"]
 
     static func action(for pill: StatusBar.Pill) -> CommandAction {
         if let pane = panes[pill.id] { return pane.open }
@@ -58,6 +62,7 @@ enum StatusPills {
                 value: stats.memory?.formatted(percent) ?? unknown,
                 action: "Open Activity Monitor"),
             stats.battery.map(pill),
+            stats.headphones.map(pill),
             .init(
                 id: "disk", name: "Disk free", symbol: "internaldrive", value: free ?? unknown,
                 action: "Open Storage Settings", unit: free == nil ? "" : "GB"),
@@ -69,8 +74,11 @@ enum StatusPills {
             .init(
                 id: "thermal", name: "Thermal state", symbol: "thermometer.medium",
                 value: name(of: info.thermalState), action: "Open Activity Monitor"),
+            stats.vpn.map(pill),
+            stats.wifi.map(pill),
         ]
         .compactMap(\.self)
+        .filter { !hiddenByDefault.contains($0.id) }
     }
 
     private static func pill(for battery: SystemStats.Battery) -> StatusBar.Pill {
@@ -79,6 +87,31 @@ enum StatusPills {
             id: "battery", name: battery.isCharging ? "Battery, charging" : "Battery",
             symbol: battery.isCharging ? charging : batteries[level],
             value: battery.level.formatted(percent), action: "Battery Settings")
+    }
+
+    private static func pill(for headphones: SystemStats.Headphones) -> StatusBar.Pill {
+        .init(
+            id: "airpods", name: headphones.name, symbol: "headphones",
+            value: headphones.level.formatted(percent), action: "Open Bluetooth Settings")
+    }
+
+    private static func pill(for vpn: SystemStats.VPN) -> StatusBar.Pill {
+        let connected = vpn == .connected
+        return .init(
+            id: "vpn", name: "VPN", symbol: connected ? "checkmark.shield" : "shield.slash",
+            value: connected ? "On" : "Off", action: "Open VPN Settings")
+    }
+
+    private static func pill(for wifi: SystemStats.WiFi) -> StatusBar.Pill {
+        let value =
+            switch wifi {
+            case .off: "Off"
+            case .disconnected: "Not connected"
+            case .connected(let network): network ?? "Connected"
+            }
+        return .init(
+            id: "wifi", name: "Wi-Fi", symbol: wifi == .off ? "wifi.slash" : "wifi",
+            value: value, action: "Wi-Fi Settings")
     }
 
     private static func pill(forDownload bytesPerSecond: Double?) -> StatusBar.Pill {
