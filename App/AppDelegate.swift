@@ -133,7 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     ) -> (run: [CommandAction], edit: [ItemEditor.Edit]) {
         if launcherView.scoped { return (history.actions(for: item.id), []) }
         let run = LauncherResult.actions(
-            for: item.id, query: launcherView.field.stringValue, in: sources)
+            for: item.id, query: launcherView.field.stringValue, in: sources,
+            pastingInto: pasteTarget)
         let editable = LauncherResult.result(for: item.id, in: sources) != nil
         return (run, editable ? editor.edits(for: item.id) : [])
     }
