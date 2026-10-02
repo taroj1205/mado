@@ -7,6 +7,8 @@ final class WidgetTile: NSView {
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
     private static let detailSize: CGFloat = 11.5
+    private static let iconSize: CGFloat = 13
+    private static let iconGap: CGFloat = 4
     private static let noteSize: CGFloat = 12
     private static let titleSize: CGFloat = 11
     private static let titleKern: CGFloat = 0.4
@@ -34,6 +36,7 @@ final class WidgetTile: NSView {
     let detail = NSTextField(labelWithString: "")
     let reason = NSTextField(labelWithString: "")
     let allow = AllowCapsule()
+    let icon = NSImageView()
     let meters = NSStackView()
     private let box = NSBox()
     private let lines = NSStackView()
@@ -58,6 +61,10 @@ final class WidgetTile: NSView {
         box.autoresizingMask = [.width, .height]
         addSubview(box)
         arrangeLines()
+        icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
+        icon.contentTintColor = .secondaryLabelColor
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(icon)
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
@@ -66,6 +73,10 @@ final class WidgetTile: NSView {
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
             meters.centerYAnchor.constraint(equalTo: centerYAnchor),
+            value.trailingAnchor.constraint(
+                lessThanOrEqualTo: icon.leadingAnchor, constant: -Self.iconGap),
+            icon.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            icon.centerYAnchor.constraint(equalTo: value.centerYAnchor),
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
@@ -125,8 +136,10 @@ final class WidgetTile: NSView {
     func show(_ widget: WidgetGrid.Widget) {
         var visible: [NSView] = []
         var readings: [WidgetGrid.Meter] = []
+        var symbol: String?
         switch widget.content {
-        case let .value(text, note):
+        case let .value(text, note, name):
+            symbol = name
             value.attributedStringValue = NSAttributedString(
                 string: text,
                 attributes: [
@@ -159,6 +172,9 @@ final class WidgetTile: NSView {
         }
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
+        }
+        icon.image = symbol.flatMap { name in
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)
         }
         showMeters(readings)
         setAccessibilityLabel(widget.spoken)

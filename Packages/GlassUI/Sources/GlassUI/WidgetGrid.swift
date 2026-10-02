@@ -24,9 +24,13 @@ public final class WidgetGrid: NSView {
             self.isWide = isWide
         }
 
-        public init(id: String, value: String, detail: String, action: String, spoken: String) {
+        public init(
+            id: String, value: String, detail: String, action: String, spoken: String,
+            symbol: String? = nil
+        ) {
             self.init(
-                id: id, content: .value(value, detail: detail), action: action, spoken: spoken)
+                id: id, content: .value(value, detail: detail, symbol: symbol), action: action,
+                spoken: spoken)
         }
 
         public init(id: String, meters: [Meter], action: String, spoken: String) {
@@ -35,7 +39,7 @@ public final class WidgetGrid: NSView {
     }
 
     public enum Content: Sendable, Equatable {
-        case value(String, detail: String)
+        case value(String, detail: String, symbol: String? = nil)
         case meters([Meter])
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)

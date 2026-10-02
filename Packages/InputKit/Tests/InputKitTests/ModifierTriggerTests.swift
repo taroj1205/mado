@@ -102,6 +102,20 @@ import Testing
         #expect(recorder.events == [.pressed, .released])
     }
 
+    @Test func addingOptionHandsTheMoveGestureToResize() {
+        let move = Recorder([.function, .control])
+        let resize = Recorder([.function, .control, .option])
+        for flags: CGEventFlags in [
+            .maskSecondaryFn, [.maskSecondaryFn, .maskControl],
+            [.maskSecondaryFn, .maskControl, .maskAlternate], [],
+        ] {
+            _ = move.send(.flagsChanged, flags)
+            _ = resize.send(.flagsChanged, flags)
+        }
+        #expect(move.events == [.pressed, .released])
+        #expect(resize.events == [.pressed, .released])
+    }
+
     @Test func keysThatCarryTheFnFlagWithoutFnDoNotOpen() {
         let recorder = Recorder(.function)
         for key in [kVK_LeftArrow, kVK_F5, kVK_Home] {

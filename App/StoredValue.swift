@@ -51,3 +51,16 @@ extension Quicklinks: StoredValue {
 extension RadialSettings: StoredValue {
     static let key = "radial"
 }
+
+extension GestureSettings: StoredValue {
+    static let key = "gestures"
+}
+
+extension GestureSettings.Target {
+    var title: String {
+        switch self {
+        case .activeWindow: "Active Window"
+        case .underMouse: "Window Under Mouse"
+        }
+    }
+}

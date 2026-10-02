@@ -22,6 +22,8 @@ public final class HalfSnap {
         let frame: CGRect
     }
 
+    public static let shared = HalfSnap()
+
     private var refusals: [Refusal]
 
     public init() {

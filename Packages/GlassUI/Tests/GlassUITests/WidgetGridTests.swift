@@ -174,6 +174,24 @@ import Testing
         #expect(!view.results.hidesSelection)
     }
 
+    @Test func theSelectionFollowsItsWidgetWhenATileComesOrGoes() {
+        let battery = WidgetGrid.Widget(
+            id: "battery", value: "80%", detail: "Charging", action: "Battery Settings",
+            spoken: "Battery: 80%, charging")
+        view.pressWidget(1)
+        view.widgets = [widgets[0], battery, widgets[1]]
+        #expect(view.selectedWidget == 2)
+        #expect(view.widgetGrid.tiles.map(\.selected) == [false, false, true])
+        #expect(view.actionLabel.stringValue == "Open Weather")
+        view.widgets = [widgets[0], widgets[1]]
+        #expect(view.selectedWidget == 1)
+        #expect(view.widgetGrid.tiles.map(\.selected) == [false, true])
+        view.pressWidget(0)
+        view.widgets = [battery, widgets[1]]
+        #expect(view.selectedWidget == nil)
+        #expect(!view.results.hidesSelection)
+    }
+
     @Test func aMeterWidgetDrawsOneBarPerMeterAndUpdatesInPlace() throws {
         let system = WidgetGrid.Widget(
             id: "system",

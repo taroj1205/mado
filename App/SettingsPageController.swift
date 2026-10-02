@@ -10,8 +10,7 @@ final class SettingsPageController: NSViewController {
     private static let headerInset: CGFloat = 4
     private static let captionSize: CGFloat = 11
     private static let rowHeight: CGFloat = 40
-    private static let iconRowHeight: CGFloat = 44
-    private static let iconSize: CGFloat = 26
+    private static let iconMargin: CGFloat = 18
     private static let iconGap: CGFloat = 10
     private static let footerSize: CGFloat = 12
     private static let rowPadding: CGFloat = 12
@@ -138,7 +137,7 @@ final class SettingsPageController: NSViewController {
             parts.append(header(title, note: section.note))
         }
         if !section.rows.isEmpty {
-            parts.append(box(section.rows))
+            parts.append(Self.columns(section.columnRows.map(box)))
         }
         if let content = section.content {
             parts.append(content)
@@ -243,13 +242,10 @@ final class SettingsPageController: NSViewController {
         view.edgeInsets = NSEdgeInsets(
             top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
         if let icon = row.icon {
-            let image = NSImageView(image: icon)
-            image.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-            image.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-            view.insertArrangedSubview(image, at: 0)
-            view.setCustomSpacing(Self.iconGap, after: image)
+            view.insertArrangedSubview(icon, at: 0)
+            view.setCustomSpacing(Self.iconGap, after: icon)
         }
-        let height = row.icon == nil ? Self.rowHeight : Self.iconRowHeight
+        let height = max(Self.rowHeight, (row.icon?.fittingSize.height ?? 0) + Self.iconMargin)
         view.heightAnchor.constraint(equalToConstant: height).isActive = true
         return view
     }
