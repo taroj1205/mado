@@ -9,7 +9,7 @@ final class StatusPill: NSView {
     private static let fontSize: CGFloat = 13
     private static let selectedAlpha = (dark: 0.17, light: 0.90)
     private static let selectedEdgeAlpha = (dark: 0.30, light: 0.14)
-    private static let selectedFill = NSColor(name: nil) { appearance in
+    static let selectedFill = NSColor(name: nil) { appearance in
         .white.withAlphaComponent(
             isDark(appearance) ? selectedAlpha.dark : selectedAlpha.light)
     }

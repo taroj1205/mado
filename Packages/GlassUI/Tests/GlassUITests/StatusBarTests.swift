@@ -157,7 +157,7 @@ import Testing
         #expect(view.actionLabel.stringValue == "Open Activity Monitor")
     }
 
-    @Test func theEdgesFadeOnlyWhereMorePillsAreHidden() {
+    @Test func theEdgesFadeOnlyWhereMorePillsAreHidden() throws {
         view.layoutSubtreeIfNeeded()
         #expect(fades == [false, false])
         view.pills = many()
@@ -166,6 +166,9 @@ import Testing
         view.pressPill(9)
         #expect(fades == [true, true])
         view.pressPill(11)
+        #expect(fades == [true, true])
+        let stack = try #require(view.statusBar.documentView)
+        stack.scrollToVisible(NSRect(x: stack.bounds.maxX - 1, y: 0, width: 1, height: 1))
         #expect(fades == [true, false])
     }
 

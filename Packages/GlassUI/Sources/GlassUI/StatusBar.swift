@@ -8,14 +8,19 @@ public final class StatusBar: NSScrollView {
         public let value: String
         public let unit: String
         public let action: String
+        public let shownByDefault: Bool
+
+        var reading: String {
+            unit.isEmpty ? value : "\(value) \(unit)"
+        }
 
         var spoken: String {
-            unit.isEmpty ? "\(name): \(value)" : "\(name): \(value) \(unit)"
+            "\(name): \(reading)"
         }
 
         public init(
             id: String, name: String, symbol: String, value: String, action: String,
-            unit: String = ""
+            unit: String = "", shownByDefault: Bool = true
         ) {
             self.id = id
             self.name = name
@@ -23,6 +28,7 @@ public final class StatusBar: NSScrollView {
             self.value = value
             self.unit = unit
             self.action = action
+            self.shownByDefault = shownByDefault
         }
     }
 
@@ -43,11 +49,13 @@ public final class StatusBar: NSScrollView {
             for (index, pill) in pills.enumerated() {
                 stack.addArrangedSubview(makeView(for: pill, at: index))
             }
+            stack.addArrangedSubview(customise)
         }
     }
 
     var onPress: ((Int) -> Void)?
     let edges = CAGradientLayer()
+    let customise = CustomiseButton()
     private let stack = NSStackView()
     private var followsSelection = false
 
@@ -60,6 +68,7 @@ public final class StatusBar: NSScrollView {
         stack.spacing = Self.gap
         stack.edgeInsets = NSEdgeInsets(top: 0, left: Self.edge, bottom: 0, right: Self.edge)
         stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(customise)
         documentView = stack
         drawsBackground = false
         hasHorizontalScroller = false
