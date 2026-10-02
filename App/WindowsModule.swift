@@ -43,7 +43,8 @@ struct WindowsModule: Module {
     private func startRadialMenu(trigger: Shortcut.Modifiers, context: ModuleContext) {
         let radialMenu = RadialMenu(
             logger: context.logger, panel: radialRing, preview: radialPreview,
-            settings: radialSettings)
+            settings: radialSettings
+        ) { layoutSettings().gap }
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {

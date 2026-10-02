@@ -12,14 +12,14 @@ final class RadialMenu {
         let blockers: [HalfSnap.Blocker]
     }
 
-    @AccessibilityActor private static let halves = HalfSnap()
-
     private let logger: Logger
     private let panel: OverlayPanel
     private let ring = RadialRing()
     private let preview: SnapPreview
     private let loadSettings: @MainActor () -> RadialSettings
+    private let loadGap: @MainActor () -> CGFloat
     private var settings = RadialSettings()
+    private var gap: CGFloat = 0
     private var resolver: RadialResolver?
     private var focus: Focus?
     private var lookup: Task<Void, Never>?
@@ -29,12 +29,14 @@ final class RadialMenu {
 
     init(
         logger: Logger, panel: OverlayPanel, preview: SnapPreview,
-        settings: @escaping @MainActor () -> RadialSettings
+        settings: @escaping @MainActor () -> RadialSettings,
+        gap: @escaping @MainActor () -> CGFloat
     ) {
         self.logger = logger
         self.panel = panel
         self.preview = preview
         loadSettings = settings
+        loadGap = gap
         panel.contentView = ring
     }
 
@@ -42,24 +44,17 @@ final class RadialMenu {
     private static func focused() -> (frame: CGRect, blockers: [HalfSnap.Blocker])? {
         guard let window = try? FocusedWindow.frontmost(), let frame = try? window.quartzFrame()
         else { return nil }
-        return (frame, halves.blockers(besides: window))
+        return (frame, HalfSnap.shared.blockers(besides: window))
     }
 
     @AccessibilityActor
     private static func place(
-        _ action: RadialSettings.Action, across screens: [ScreenGeometry.Screen]
-    ) throws(FocusedWindow.Failure) {
-        let window = try FocusedWindow.frontmost()
+        _ action: RadialSettings.Action, gap: CGFloat, across screens: [ScreenGeometry.Screen]
+    ) async throws(FocusedWindow.Failure) {
         if action == .fullScreen {
-            try window.enterFullScreen()
-            return
-        }
-        let current = try window.quartzFrame()
-        guard let target = action.quartzFrame(forQuartz: current, across: screens) else { return }
-        if let side = action.half {
-            _ = try halves.place(window, on: side, at: target, gap: 0)
-        } else {
-            _ = try WindowMover.shared.move(window, to: target)
+            try FocusedWindow.frontmost().enterFullScreen()
+        } else if let layout = action.layout {
+            try await WindowPlacement.layout(layout).apply(gap: gap, across: screens)
         }
     }
 
@@ -69,6 +64,7 @@ final class RadialMenu {
             guard !(NSApp.keyWindow?.firstResponder is TriggerButton) else { return }
             resolver = nil
             settings = loadSettings()
+            gap = loadGap()
             pointer.start()
             if pointer.isTracking {
                 logger.debug("Pointer tracking started")
@@ -112,9 +108,9 @@ final class RadialMenu {
             ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame)
         }
         logger.debug("Radial action: \(action.rawValue, privacy: .public)")
-        Task { [logger] in
+        Task { [logger, gap] in
             do throws(FocusedWindow.Failure) {
-                try await Self.place(action, across: screens)
+                try await Self.place(action, gap: gap, across: screens)
             } catch {
                 logger.error(
                     "Radial action failed: \(String(describing: error), privacy: .public)")
@@ -176,9 +172,9 @@ final class RadialMenu {
     private func showPreview() {
         guard let focus, let zone = resolver?.zone else { return }
         let action = settings.action(in: zone)
-        var frame = action.previewFrame(of: focus.window, on: focus.screen, gap: 0)
+        var frame = action.previewFrame(of: focus.window, on: focus.screen, gap: gap)
         if let half = frame, let side = action.half {
-            frame = HalfSnap.target(half, on: side, beside: focus.blockers, gap: 0)
+            frame = HalfSnap.target(half, on: side, beside: focus.blockers, gap: gap)
         }
         preview.show(frame)
     }

@@ -9,8 +9,6 @@ public enum WindowPlacement: Hashable, Sendable {
         .leftHalf: .left, .rightHalf: .right,
     ]
 
-    @AccessibilityActor private static let halves = HalfSnap()
-
     nonisolated static func quartzFrame(
         for action: LayoutEngine.Action, of window: CGRect, across screens: [ScreenGeometry.Screen],
         gap: CGFloat
@@ -41,7 +39,7 @@ public enum WindowPlacement: Hashable, Sendable {
             guard let target = Self.quartzFrame(for: action, of: current, across: screens, gap: gap)
             else { return }
             if let side = Self.sides[action] {
-                _ = try Self.halves.place(window, on: side, at: target, gap: gap)
+                _ = try HalfSnap.shared.place(window, on: side, at: target, gap: gap)
             } else {
                 _ = try mover.move(window, to: target)
             }

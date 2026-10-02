@@ -123,35 +123,12 @@ import Testing
         #expect(preview(.centreThird) == layout(.centreThird))
     }
 
-    @Test func releasePlacesTheWindowOnTheScreenItIsOnWithoutAGap() {
-        let primary = ScreenGeometry.Screen(
-            frame: CGRect(x: 0, y: 0, width: 1_440, height: 900),
-            visibleFrame: CGRect(x: 0, y: 66, width: 1_440, height: 810))
-        let secondary = ScreenGeometry.Screen(
-            frame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_080),
-            visibleFrame: CGRect(x: 1_440, y: -180, width: 1_920, height: 1_050))
-        let screens = [primary, secondary]
-        let window = CGRect(x: 1_600, y: 300, width: 800, height: 600)
-        func quartz(_ appKit: CGRect) -> CGRect {
-            ScreenGeometry.quartzRect(fromAppKit: appKit, primary: primary.frame)
-        }
-        func target(_ action: RadialSettings.Action) -> CGRect? {
-            action.quartzFrame(forQuartz: window, across: screens)
-        }
-
-        #expect(
-            target(.rightCycle)
-                == quartz(
-                    LayoutEngine.frame(
-                        for: .rightHalf, in: secondary.visibleFrame, gap: 0,
-                        windowSize: window.size)))
-        #expect(target(.fullScreen) == quartz(secondary.frame))
-        #expect(target(.nothing) == nil)
-        #expect(
-            RadialSettings.Action.maximize.quartzFrame(
-                forQuartz: CGRect(x: -5_000, y: 0, width: 100, height: 100), across: screens)
-                == nil)
-        #expect(RadialSettings.Action.maximize.quartzFrame(forQuartz: window, across: []) == nil)
+    @Test func releasePlacesTheLayoutBehindEachActionAndNothingElse() {
+        #expect(RadialSettings.Action.rightCycle.layout == .rightHalf)
+        #expect(RadialSettings.Action.topLeftQuarter.layout == .topLeftQuarter)
+        #expect(RadialSettings.Action.centre.layout == .centre)
+        #expect(RadialSettings.Action.fullScreen.layout == nil)
+        #expect(RadialSettings.Action.nothing.layout == nil)
     }
 
     @Test func onlyLeftAndRightHalvesFillBesideAWindowThatRefusedItsHalf() {

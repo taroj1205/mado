@@ -29,6 +29,17 @@ import Testing
     }
 
     @Test func leavesAWindowOffEveryScreenAlone() {
+        let window = CGRect(x: 100, y: 100, width: 800, height: 600)
+
         #expect(frame(.maximize, of: CGRect(x: -5_000, y: 0, width: 800, height: 600)) == nil)
+        #expect(WindowPlacement.quartzFrame(for: .maximize, of: window, across: [], gap: 0) == nil)
+    }
+
+    @Test func keepsTheGapAroundTheTarget() {
+        let window = CGRect(x: 100, y: 100, width: 800, height: 600)
+
+        #expect(
+            WindowPlacement.quartzFrame(for: .maximize, of: window, across: Self.screens, gap: 8)
+                == CGRect(x: 8, y: 33, width: 1_424, height: 859))
     }
 }
