@@ -64,4 +64,82 @@ import Testing
     func invalidConversionsHaveNoAnswer(query: String) {
         #expect(Calculator.answer(for: query) == nil)
     }
+
+    @Test(arguments: [
+        (
+            "5 ft + 5 cm",
+            Calculator.Answer(
+                kind: "Units", expression: "5 ft + 5 cm",
+                expressionDetail: "Feet and centimetres", result: "5.164 ft",
+                resultDetail: "Feet")
+        ),
+        (
+            "5 ft 2 in to cm",
+            Calculator.Answer(
+                kind: "Units", expression: "5 ft 2 in", expressionDetail: "Feet and inches",
+                result: "157.48 cm", resultDetail: "Centimetres")
+        ),
+        (
+            "3 × 250 g",
+            Calculator.Answer(
+                kind: "Units", expression: "3 × 250 g", expressionDetail: "Grams",
+                result: "750 g", resultDetail: "Grams")
+        ),
+        (
+            "1 mi - 300 m in km",
+            Calculator.Answer(
+                kind: "Units", expression: "1 mi - 300 m", expressionDetail: "Miles and metres",
+                result: "1.3093 km", resultDetail: "Kilometres")
+        ),
+        (
+            "1 gb + 512 mib",
+            Calculator.Answer(
+                kind: "Data size", expression: "1 gb + 512 mib",
+                expressionDetail: "Gigabytes and mebibytes", result: "1.5369 gb",
+                resultDetail: "Gigabytes")
+        ),
+    ])
+    func theUnitMathsExamplesFillTheAnswerCard(query: String, answer: Calculator.Answer) {
+        #expect(Calculator.answer(for: query) == answer)
+    }
+
+    @Test(arguments: [
+        ("10 ft - 2 ft 6 in", "7.5 ft"),
+        ("250 g * 3", "750 g"),
+        ("1 kg / 4 in g", "250 g"),
+        ("2 × 3 ft × 2", "12 ft"),
+        ("1 ft + 2 × 3 in", "1.5 ft"),
+        ("5ft2in in cm", "157.48 cm"),
+        ("1 cup + 2 tbsp in ml", "266.1618 ml"),
+        ("2 fl oz + 1 cup in fl oz", "10 fl oz"),
+        ("60 km/h + 10 mph", "76.0934 km/h"),
+        ("1 ft - 12 in", "0 ft"),
+        ("1 ft + 1 in + 1 cm", "1.1161 ft"),
+        ("5 feet + 2 inches", "5.1667 feet"),
+        ("1,000 g + 1 kg", "2,000 g"),
+        ("what is 5 ft + 5 cm", "5.164 ft"),
+    ])
+    func unitMathsEvaluates(query: String, result: String) {
+        #expect(Calculator.answer(for: query)?.result == result)
+    }
+
+    @Test func unitNamesAreListedOnceInTheOrderTyped() {
+        #expect(
+            Calculator.answer(for: "1 ft + 1 in + 1 cm + 2 feet")?.expressionDetail
+                == "Feet, inches and centimetres")
+        #expect(
+            Calculator.answer(for: "1 cup + 1 gal")?.expressionDetail
+                == "Cups (US) and gallons (US)")
+    }
+
+    @Test(arguments: [
+        "5 ft + 2 kg", "5 ft + 5 cm in kg", "30 c + 5 c", "30 c + 5 c to f", "2 ft × 3 ft",
+        "10 ft ÷ 2 ft", "6 ÷ 2 ft", "5 ft + 3", "3 + 5 ft", "5 ft", "5 ft 2", "5 2 ft",
+        "5 ft +", "+ 5 ft", "5 ft + + 2 ft", "5 ft + 2 parsecs", "5 ft + 2 ft in parsecs",
+        "5 ft ÷ 0", "1.2.3 ft + 1 ft", "-5 ft + 2 ft", "5 ft + (2 ft)",
+        "1" + String(repeating: "0", count: 400) + " tb - 1 tb",
+    ])
+    func unsupportedUnitMathsHasNoAnswer(query: String) {
+        #expect(Calculator.answer(for: query) == nil)
+    }
 }
