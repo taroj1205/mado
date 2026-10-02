@@ -21,13 +21,14 @@ import Testing
         panel.makeFirstResponder(view.field)
     }
 
-    @Test func commandKOpensTheSelectedRowsActionsAsAChildWindowAboveTheCapsule() throws {
+    @Test func commandKOpensTheSelectedRowsActionsAsGlassAboveTheCapsule() throws {
         defer { view.closeActions() }
         press(kVK_DownArrow, "\u{F701}", in: panel)
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
         #expect(view.choosingAction)
-        #expect(menu.panel.parent === panel)
+        let host = unsafe menu.glass.superview
+        #expect(host === view)
         #expect(menu.header.stringValue == "Notes")
         #expect(
             menu.rows.map(\.label.stringValue) == [
@@ -35,18 +36,13 @@ import Testing
             ])
         #expect(menu.rows.map { $0.keycaps.map(\.name.stringValue) } == [["↵"], ["⌘", "↵"], []])
         #expect(menu.rows.map(\.isSelected) == [true, false, false])
-        menu.panel.layoutIfNeeded()
+        view.layoutSubtreeIfNeeded()
         #expect(!menu.rows.flatMap(\.keycaps).map(\.hasAmbiguousLayout).contains(true))
         #expect(menu.rows.flatMap(\.keycaps).allSatisfy { $0.frame.width < 30 })
-        #expect(menu.panel.firstResponder === menu.field.currentEditor())
-        #expect(!menu.panel.canBecomeKey)
-        #expect(menu.panel.hasShadow)
-        #expect(panel.firstResponder === panel)
-        let capsule = panel.convertToScreen(
-            view.actionCapsule.convert(view.actionCapsule.bounds, to: nil))
-        #expect(menu.panel.frame.maxX == capsule.maxX)
-        #expect(menu.panel.frame.minY == capsule.maxY + 10)
-        #expect(menu.panel.frame.width == 316)
+        #expect(panel.firstResponder === menu.field.currentEditor())
+        #expect(menu.glass.frame.maxX == view.actionCapsule.frame.maxX)
+        #expect(menu.glass.frame.minY == view.actionCapsule.frame.maxY + 10)
+        #expect(menu.glass.frame.width == 316)
         #expect(view.actionsToggle.fillColor == ResultRowView.fill)
     }
 
@@ -55,10 +51,12 @@ import Testing
         view.onRun = { runs.append("\($0.id) \($1)") }
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
-        let height = menu.panel.frame.height
+        view.layoutSubtreeIfNeeded()
+        let height = menu.glass.frame.height
         type("path", in: menu)
+        view.layoutSubtreeIfNeeded()
         #expect(menu.rows.map(\.label.stringValue) == ["Copy Path"])
-        #expect(menu.panel.frame.height < height)
+        #expect(menu.glass.frame.height < height)
         type("", in: menu)
         press(kVK_DownArrow, "\u{F701}", in: panel)
         press(kVK_DownArrow, "\u{F701}", in: panel)
@@ -98,7 +96,7 @@ import Testing
         let menu = try #require(view.actionPanel)
         press(kVK_Escape, "\u{1B}", in: panel)
         #expect(!view.choosingAction)
-        #expect(menu.panel.parent == nil)
+        #expect(!menu.isVisible)
         let editor = try #require(view.field.currentEditor())
         #expect(panel.firstResponder === editor)
         #expect(editor.selectedRange == NSRange(location: 4, length: 0))
@@ -109,8 +107,18 @@ import Testing
         #expect(cancels == 0)
     }
 
-    @Test func clickingTheLauncherClosesThePanel() throws {
+    @Test func clickingThePanelKeepsItOpenAndClickingTheLauncherClosesIt() throws {
         press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        view.layoutSubtreeIfNeeded()
+        let inside = menu.glass.convert(menu.glass.bounds, to: nil)
+        let press = try #require(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown, location: CGPoint(x: inside.midX, y: inside.midY),
+                modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil,
+                eventNumber: 0, clickCount: 1, pressure: 1))
+        #expect(!view.handle(press))
+        #expect(view.choosingAction)
         let click = try #require(
             NSEvent.mouseEvent(
                 with: .leftMouseDown, location: CGPoint(x: 380, y: 200), modifierFlags: [],

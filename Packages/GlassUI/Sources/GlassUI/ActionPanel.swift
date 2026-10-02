@@ -15,9 +15,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let fieldSide: CGFloat = 16
     private static let fieldFontSize: CGFloat = 13
 
-    let panel = GlassPanel(
-        kind: .hud, contentRect: NSRect(x: 0, y: 0, width: width, height: fieldHeight),
-        shape: .rounded(radius))
+    let glass = GlassView(shape: .rounded(radius))
     let header = NSTextField(labelWithString: "")
     let field = NSTextField()
     private let list = NSStackView()
@@ -27,9 +25,9 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private var shown: [Int] = []
     private var selected = 0
     private var titles: [String] = []
-    private var corner = NSPoint.zero
+    private var height: NSLayoutConstraint?
 
-    var isVisible: Bool { panel.isVisible }
+    var isVisible: Bool { unsafe glass.superview != nil }
 
     override init() {
         super.init()
@@ -46,27 +44,37 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         list.spacing = Self.rowGap
         list.setAccessibilityElement(true)
         list.setAccessibilityRole(.menu)
-        panel.ignoresMouseEvents = false
+        glass.translatesAutoresizingMaskIntoConstraints = false
         layout()
     }
 
-    func show(_ titles: [String], for title: String, at corner: NSPoint, over parent: NSWindow) {
+    func show(_ titles: [String], for title: String, above anchor: NSView, gap: CGFloat) {
+        guard let host = unsafe anchor.superview else { return }
         self.titles = titles
-        self.corner = corner
         header.stringValue = title
         list.setAccessibilityLabel("Actions for \(title)")
         field.stringValue = ""
+        host.addSubview(glass)
+        let fit = glass.heightAnchor.constraint(equalToConstant: Self.fieldHeight)
+        NSLayoutConstraint.activate([
+            glass.widthAnchor.constraint(equalToConstant: Self.width),
+            glass.trailingAnchor.constraint(equalTo: anchor.trailingAnchor),
+            glass.bottomAnchor.constraint(equalTo: anchor.topAnchor, constant: -gap),
+            fit,
+        ])
+        height = fit
         filter()
-        parent.addChildWindow(panel, ordered: .above)
-        panel.orderFront(nil)
-        panel.makeFirstResponder(field)
+        unsafe host.window?.makeFirstResponder(field)
     }
 
     func close() {
-        guard let parent = panel.parent else { return }
-        parent.removeChildWindow(panel)
-        panel.orderOut(nil)
+        guard isVisible else { return }
+        glass.removeFromSuperview()
         onClose?()
+    }
+
+    func contains(_ point: NSPoint) -> Bool {
+        isVisible && glass.convert(glass.bounds, to: nil).contains(point)
     }
 
     func controlTextDidChange(_: Notification) {
@@ -84,17 +92,14 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         return true
     }
 
-    func handle(_ event: NSEvent) -> Bool {
-        guard event.type == .keyDown else { return false }
-        guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command else {
-            panel.firstResponder?.keyDown(with: event)
-            return true
-        }
-        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() != true else { return true }
+    func performShortcut(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection(LauncherView.modifierKeys) == .command,
+            (field.currentEditor() as? NSTextView)?.hasMarkedText() != true
+        else { return false }
         switch event.charactersIgnoringModifiers {
         case "k": close()
         case let key where LauncherView.returnKeys.contains(key) && titles.count > 1: onRun?(1)
-        default: break
+        default: return false
         }
         return true
     }
@@ -137,11 +142,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     private func resize() {
-        let height = panel.glass.contentView?.fittingSize.height ?? Self.fieldHeight
-        panel.setFrame(
-            NSRect(x: corner.x - Self.width, y: corner.y, width: Self.width, height: height),
-            display: true)
-        panel.invalidateShadow()
+        height?.constant = glass.contentView?.fittingSize.height ?? Self.fieldHeight
     }
 
     private func layout() {
@@ -176,6 +177,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             field.trailingAnchor.constraint(
                 equalTo: content.trailingAnchor, constant: -Self.fieldSide),
         ])
-        panel.glass.contentView = content
+        glass.contentView = content
     }
 }

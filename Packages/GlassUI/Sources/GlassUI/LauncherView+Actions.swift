@@ -2,9 +2,8 @@ import AppKit
 
 extension LauncherView {
     func showActions() {
-        guard let item = results.selectedItem, let window = unsafe window else { return }
+        guard let item = results.selectedItem else { return }
         closePreview()
-        let capsule = window.convertToScreen(actionCapsule.convert(actionCapsule.bounds, to: nil))
         let menu = actionPanel ?? ActionPanel()
         menu.onRun = { [weak self] index in
             self?.closeActions()
@@ -14,9 +13,8 @@ extension LauncherView {
         actionPanel = menu
         actionsToggle.fillColor = ResultRowView.fill
         menu.show(
-            actionTitles?(item) ?? [], for: item.title,
-            at: NSPoint(x: capsule.maxX, y: capsule.maxY + Self.capsuleInset), over: window)
-        window.makeFirstResponder(nil)
+            actionTitles?(item) ?? [], for: item.title, above: actionCapsule,
+            gap: Self.capsuleInset)
     }
 
     func closeActions() {

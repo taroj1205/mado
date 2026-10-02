@@ -110,7 +110,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         if choosingAction, let actionPanel {
-            return actionPanel.handle(event)
+            return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
@@ -125,9 +125,6 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
 
     public func handle(_ event: NSEvent) -> Bool {
         switch event.type {
-        case .keyDown where choosingAction:
-            return actionPanel?.handle(event) ?? false
-
         case .keyDown:
             return previewKey(event)
 
@@ -137,7 +134,9 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             return false
 
         case .leftMouseDown:
-            closeActions()
+            if actionPanel?.contains(event.locationInWindow) != true {
+                closeActions()
+            }
             return false
 
         default:
