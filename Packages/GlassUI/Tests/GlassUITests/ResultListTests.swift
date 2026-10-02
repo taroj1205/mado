@@ -198,7 +198,7 @@ import Testing
             titles.append(list.selectedItem?.title)
         }
         for move in [list.selectPrevious, list.selectPrevious, list.selectPrevious] {
-            move()
+            _ = move()
             titles.append(list.selectedItem?.title)
         }
         #expect(titles == ["B", "C", "C", "B", "A", "A"])

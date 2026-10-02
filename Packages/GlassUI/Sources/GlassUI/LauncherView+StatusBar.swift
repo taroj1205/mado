@@ -11,12 +11,14 @@ extension LauncherView {
     }
 
     var showsStatusBar: Bool {
-        !scoped && !pills.isEmpty
-            && field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        onEmptyRootQuery && !pills.isEmpty
     }
 
     func selectPill(_ index: Int?) {
         guard index != selectedPill else { return }
+        if index != nil {
+            selectWidget(nil)
+        }
         selectedPill = index
         statusBar.highlight(index)
         results.hidesSelection = index != nil
