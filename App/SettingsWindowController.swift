@@ -165,7 +165,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     override func showWindow(_ sender: Any?) {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSRunningApplication.current.activate(
+            from: NSWorkspace.shared.frontmostApplication ?? .current, options: [])
         super.showWindow(sender)
     }
 

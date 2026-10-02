@@ -9,7 +9,10 @@ final class RadialMenu {
     private struct Focus {
         let window: CGRect
         let screen: ScreenGeometry.Screen
+        let blockers: [HalfSnap.Blocker]
     }
+
+    @AccessibilityActor private static let halves = HalfSnap()
 
     private let logger: Logger
     private let panel: OverlayPanel
@@ -36,8 +39,28 @@ final class RadialMenu {
     }
 
     @AccessibilityActor
-    private static func focusedFrame() -> CGRect? {
-        try? FocusedWindow.frontmost().quartzFrame()
+    private static func focused() -> (frame: CGRect, blockers: [HalfSnap.Blocker])? {
+        guard let window = try? FocusedWindow.frontmost(), let frame = try? window.quartzFrame()
+        else { return nil }
+        return (frame, halves.blockers(besides: window))
+    }
+
+    @AccessibilityActor
+    private static func place(
+        _ action: RadialSettings.Action, across screens: [ScreenGeometry.Screen]
+    ) throws(FocusedWindow.Failure) {
+        let window = try FocusedWindow.frontmost()
+        if action == .fullScreen {
+            try window.enterFullScreen()
+            return
+        }
+        let current = try window.quartzFrame()
+        guard let target = action.quartzFrame(forQuartz: current, across: screens) else { return }
+        if let side = action.half {
+            _ = try halves.place(window, on: side, at: target, gap: 0)
+        } else {
+            _ = try WindowMover.shared.move(window, to: target)
+        }
     }
 
     func handle(_ event: ModifierTrigger.Event) {
@@ -51,14 +74,17 @@ final class RadialMenu {
                 logger.debug("Pointer tracking started")
                 if settings.showsPreview {
                     lookup = Task { [weak self] in
-                        let frame = await Self.focusedFrame()
-                        guard !Task.isCancelled, let frame else { return }
-                        self?.begin(quartzFrame: frame)
+                        let found = await Self.focused()
+                        guard !Task.isCancelled, let found else { return }
+                        self?.begin(quartzFrame: found.frame, blockers: found.blockers)
                     }
                 }
             }
 
-        case .released, .cancelled:
+        case .released:
+            release()
+
+        case .cancelled:
             stop()
 
         case .clicked:
@@ -77,7 +103,26 @@ final class RadialMenu {
         ring.disappear { [panel] in panel.orderOut(nil) }
     }
 
-    private func begin(quartzFrame: CGRect) {
+    private func release() {
+        guard pointer.isTracking else { return }
+        let action = resolver.map { settings.action(in: $0.zone) } ?? .nothing
+        stop()
+        guard action != .nothing else { return }
+        let screens = NSScreen.screens.map { screen in
+            ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame)
+        }
+        logger.debug("Radial action: \(action.rawValue, privacy: .public)")
+        Task { [logger] in
+            do throws(FocusedWindow.Failure) {
+                try await Self.place(action, across: screens)
+            } catch {
+                logger.error(
+                    "Radial action failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    private func begin(quartzFrame: CGRect, blockers: [HalfSnap.Blocker]) {
         let screens = NSScreen.screens
         guard let primary = screens.first?.frame,
             let index = ScreenGeometry.screenIndex(
@@ -87,7 +132,12 @@ final class RadialMenu {
         let screen = screens[index]
         focus = Focus(
             window: window,
-            screen: ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame))
+            screen: ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame),
+            blockers: blockers.map { blocker in
+                HalfSnap.Blocker(
+                    side: blocker.side,
+                    frame: ScreenGeometry.appKitRect(fromQuartz: blocker.frame, primary: primary))
+            })
         preview.begin(from: window, on: screen)
         if panel.isVisible {
             panel.orderFrontRegardless()
@@ -125,8 +175,12 @@ final class RadialMenu {
 
     private func showPreview() {
         guard let focus, let zone = resolver?.zone else { return }
-        preview.show(
-            settings.action(in: zone).previewFrame(of: focus.window, on: focus.screen, gap: 0))
+        let action = settings.action(in: zone)
+        var frame = action.previewFrame(of: focus.window, on: focus.screen, gap: 0)
+        if let half = frame, let side = action.half {
+            frame = HalfSnap.target(half, on: side, beside: focus.blockers, gap: 0)
+        }
+        preview.show(frame)
     }
 }
 
