@@ -3,8 +3,8 @@ import AppKit
 @MainActor
 final class ActionPanel: NSObject, NSTextFieldDelegate {
     private static let width: CGFloat = 316
-    private static let radius: CGFloat = 18
-    private static let inset: CGFloat = 6
+    static let radius: CGFloat = 18
+    static let inset: CGFloat = 6
     private static let rowGap: CGFloat = 1
     private static let headerTop: CGFloat = 6
     private static let headerSide: CGFloat = 10
