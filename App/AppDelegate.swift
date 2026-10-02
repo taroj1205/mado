@@ -10,7 +10,7 @@ import WindowKit
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
-    private static let launcherRadius: CGFloat = 28
+    private static let launcherRadius: CGFloat = 20
 
     private let logger = Log.logger("App")
     private let signposter: OSSignposter

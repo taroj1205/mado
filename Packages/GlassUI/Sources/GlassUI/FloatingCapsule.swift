@@ -3,6 +3,7 @@ import AppKit
 @MainActor
 enum FloatingCapsule {
     static let height: CGFloat = 40
+    private static let radius: CGFloat = 14
     private static let fontSize: CGFloat = 13
     private static let keycapRadius: CGFloat = 5
     private static let keycapAlpha = (dark: 0.10, light: 0.07)
@@ -14,13 +15,12 @@ enum FloatingCapsule {
     }
 
     static func make(_ stack: NSStackView, leading: CGFloat, trailing: CGFloat) -> GlassView {
-        let glass = GlassView(shape: .capsule)
+        let glass = GlassView(shape: .rounded(radius))
         glass.sheen.isHidden = true
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
         stack.setHuggingPriority(.defaultHigh, for: .horizontal)
         glass.contentView = stack
-        let border = GlassBorder(
-            radius: GlassView.Shape.capsule.radius(in: NSSize(width: height, height: height)))
+        let border = GlassBorder(radius: radius)
         border.frame = glass.container.bounds
         border.autoresizingMask = [.width, .height]
         glass.container.addSubview(border)

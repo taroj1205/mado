@@ -3,7 +3,7 @@ import AppKit
 final class ResultCell: NSTableCellView {
     static let id = NSUserInterfaceItemIdentifier("result")
     static let tileSize: CGFloat = 26
-    private static let tileRadius: CGFloat = 7
+    private static let tileRadius: CGFloat = 8
     private static let tileBorder: CGFloat = 0.5
     private static let tileBorderAlpha: CGFloat = 0.18
     private static let symbolSize: CGFloat = 12
