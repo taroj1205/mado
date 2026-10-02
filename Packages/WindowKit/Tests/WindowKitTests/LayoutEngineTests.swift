@@ -99,4 +99,16 @@ import Testing
             Self.frame(.almostMaximize, gap: 100, window: Self.window)
                 == CGRect(x: 100, y: 166, width: 1_240, height: 610))
     }
+
+    @Test func placesWithoutAGapThatLeavesNoRoomForTheSmallestTile() throws {
+        let topHalf = try #require(Self.expected[.topHalf]).gapless
+        let leftThird = try #require(Self.expected[.leftThird]).gapless
+        for unfit: CGFloat in [-8, 270, 360] {
+            #expect(Self.frame(.topHalf, gap: unfit, window: Self.window) == topHalf)
+            #expect(Self.frame(.leftThird, gap: unfit, window: Self.window) == leftThird)
+        }
+        #expect(
+            Self.frame(.topHalf, gap: 269, window: Self.window)
+                == CGRect(x: 269, y: 605.5, width: 902, height: 1.5))
+    }
 }

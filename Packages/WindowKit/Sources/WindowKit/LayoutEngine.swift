@@ -32,8 +32,12 @@ public enum LayoutEngine {
     ]
 
     public static func frame(
-        for action: Action, in visibleFrame: CGRect, gap: CGFloat, windowSize: CGSize
+        for action: Action, in visibleFrame: CGRect, gap requested: CGFloat, windowSize: CGSize
     ) -> CGRect {
+        let largestGap = min(
+            visibleFrame.width * thirdColumns / (columns + thirdColumns),
+            visibleFrame.height / (rows + 1))
+        let gap = requested >= 0 && requested < largestGap ? requested : 0
         if let cell = cells[action] {
             let inset = gap * half
             let area = visibleFrame.insetBy(dx: inset, dy: inset)
