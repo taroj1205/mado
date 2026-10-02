@@ -9,10 +9,10 @@ struct WindowsModule: Module {
 
     let descriptor: ModuleDescriptor
     let radialRing = OverlayPanel()
-    let radialPreview = OverlayPanel()
+    let radialPreview = SnapPreview()
 
     func start(context: ModuleContext) {
-        let radialMenu = RadialMenu(logger: context.logger)
+        let radialMenu = RadialMenu(logger: context.logger, preview: radialPreview)
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {
