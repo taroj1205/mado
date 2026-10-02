@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import SearchKit
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private final class Sidebar: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
@@ -111,14 +112,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let tabs: NSTabViewController
 
-    init(modules: ModuleManager?, hotKeys: LauncherHotKeys) {
+    init(modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed) {
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {
             pages.addTabViewItem(
                 NSTabViewItem(
                     viewController: SettingsPageController(
-                        page: page, modules: modules, hotKeys: hotKeys))
+                        page: page, modules: modules, hotKeys: hotKeys, rates: rates))
             )
         }
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))

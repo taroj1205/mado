@@ -146,21 +146,31 @@ public enum Calculator {
 
     public static func answer(
         for query: String, now: Date = .now, local: TimeZone = .current,
-        rates: ExchangeRates? = nil
+        rates: ExchangeRates? = nil, settings: AnswerSettings = AnswerSettings(),
+        region: Locale = .current
     ) -> Answer? {
         let text = query.lowercased()
             .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
             .replacing(/^what is\s/, with: "")
-        if let conversion = Conversion.answer(for: text) { return conversion }
-        if let time = TimeZones.answer(for: text, now: now, local: local) { return time }
-        if let math = TimeMath.answer(for: text, now: now, local: local) { return math }
-        if let units = Conversion.maths(for: text) { return units }
-        let home = Locale.current.currency?.identifier
-        if let money = Currency.answer(for: text, rates: rates, zone: local, home: home) {
-            return money
+        let home = settings.currency(in: region)
+        let answers: [(AnswerSettings.Kind, () -> Answer?)] = [
+            (.units, { Conversion.answer(for: text) }),
+            (.timeZones, { TimeZones.answer(for: text, now: now, local: local) }),
+            (.dates, { TimeMath.answer(for: text, now: now, local: local) }),
+            (.units, { Conversion.maths(for: text) }),
+            (.units, { Conversion.answer(for: text, preferring: settings, in: region) }),
+            (.currency, { Currency.answer(for: text, rates: rates, zone: local, home: home) }),
+            (.calculator, { arithmetic(text) }),
+        ]
+        for (kind, answer) in answers where settings.shows(kind) {
+            if let found = answer() { return found }
         }
+        return nil
+    }
+
+    private static func arithmetic(_ text: String) -> Answer? {
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }

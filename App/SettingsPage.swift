@@ -1,10 +1,13 @@
 import AppCore
 import AppKit
+import SearchKit
 
 @MainActor
 struct SettingsPage {
+    typealias Sections = (ModuleManager?, LauncherHotKeys, ExchangeRateFeed) -> [SettingsSection]
+
     static let all: [Self] = [
-        Self("General", "gearshape") { modules, hotKeys in
+        Self("General", "gearshape") { modules, hotKeys, _ in
             [
                 SettingsSection(
                     "Launcher",
@@ -24,7 +27,7 @@ struct SettingsPage {
                     ]),
             ]
         },
-        Self("Search", "magnifyingglass"),
+        Self("Search", "magnifyingglass") { modules, _, rates in answers(modules, rates) },
         Self("Widgets", "square.grid.2x2", module: module("widgets", "Widgets", enabled: true)),
         Self(
             "Clipboard", "clipboard",
@@ -38,7 +41,7 @@ struct SettingsPage {
         Self("Extensions", "storefront"),
         Self("Shortcuts", "command"),
         Self("Permissions", "lock.shield"),
-        Self("Advanced", "gearshape.2") { _, _ in developer },
+        Self("Advanced", "gearshape.2") { _, _, _ in developer },
         Self("About", "person.crop.circle"),
     ]
 
@@ -63,13 +66,11 @@ struct SettingsPage {
     let title: String
     let symbol: String
     let module: ModuleDescriptor?
-    let sections: (ModuleManager?, LauncherHotKeys) -> [SettingsSection]
+    let sections: Sections
 
     private init(
         _ title: String, _ symbol: String, module: ModuleDescriptor? = nil,
-        sections: @escaping (ModuleManager?, LauncherHotKeys) -> [SettingsSection] = { _, _ in
-            []
-        }
+        sections: @escaping Sections = { _, _, _ in [] }
     ) {
         self.title = title
         self.symbol = symbol

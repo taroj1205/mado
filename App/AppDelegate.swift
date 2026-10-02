@@ -16,15 +16,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
     private var statusItem: NSStatusItem?
-    private var modules: ModuleManager?
+    private(set) var modules: ModuleManager?
     private(set) var settings: SettingsWindowController?
     private var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private let launcherView = LauncherView()
     private var search: SearchRunner<[ResultList.Section]>?
-    private let apps = AppIndex()
-    private let files = FileIndex()
-    private let rates = ExchangeRateFeed()
+    let apps = AppIndex()
+    let files = FileIndex()
+    let rates = ExchangeRateFeed()
     private var usage = Usage()
     private var history = CalculatorHistory()
     private lazy var registry = LauncherHotKeys.makeRegistry()
@@ -34,10 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
         guard let self else { return nil }
         return LauncherResult.result(for: id, in: sources)?.name
-    }
-    private var sources: LauncherResult.Sources {
-        LauncherResult.Sources(
-            apps: apps, files: files, commands: modules?.commands.all ?? [], rates: rates.rates)
     }
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -61,10 +57,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         searchAgain()
         apps.onChange = { [weak self] in self?.searchAgain() }
         files.onChange = { [weak self] in self?.searchAgain() }
-        rates.onChange = { [weak self] in self?.searchAgain() }
+        rates.onChange = { [weak self] in self?.ratesChanged() }
         apps.start()
         files.start()
-        rates.start()
+        rates.start(every: AnswerSettings.load(from: modules).refresh.seconds)
         hotKeys.onChange = { [weak self] in self?.settings?.refresh() }
         hotKeys.start()
         editor.onHotKey = { [weak self] in self?.runHotKey(of: $0) }
@@ -206,7 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         usage.save(to: modules)
     }
 
-    private func searchAgain() {
+    func searchAgain() {
         search?.run(launcherView.field.stringValue)
     }
 
@@ -269,7 +265,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc
     private func showSettings() {
-        let controller = settings ?? SettingsWindowController(modules: modules, hotKeys: hotKeys)
+        let controller =
+            settings ?? SettingsWindowController(modules: modules, hotKeys: hotKeys, rates: rates)
         settings = controller
         controller.showWindow(nil)
     }

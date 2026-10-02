@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import SearchKit
 
 final class SettingsPageController: NSViewController {
     private static let titleHeight: CGFloat = 52
@@ -7,6 +8,7 @@ final class SettingsPageController: NSViewController {
     private static let titleSize: CGFloat = 15
     private static let headerSize: CGFloat = 12
     private static let headerInset: CGFloat = 4
+    private static let captionSize: CGFloat = 11
     private static let rowHeight: CGFloat = 40
     private static let rowPadding: CGFloat = 12
     private static let cornerRadius: CGFloat = 10
@@ -19,13 +21,19 @@ final class SettingsPageController: NSViewController {
     private let page: SettingsPage
     private let modules: ModuleManager?
     private let hotKeys: LauncherHotKeys
+    private let rates: ExchangeRateFeed
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
+    private var details: [(label: NSTextField, text: () -> String)] = []
 
-    init(page: SettingsPage, modules: ModuleManager?, hotKeys: LauncherHotKeys) {
+    init(
+        page: SettingsPage, modules: ModuleManager?, hotKeys: LauncherHotKeys,
+        rates: ExchangeRateFeed
+    ) {
         self.page = page
         self.modules = modules
         self.hotKeys = hotKeys
+        self.rates = rates
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -35,7 +43,7 @@ final class SettingsPageController: NSViewController {
     }
 
     override func loadView() {
-        var sections = page.sections(modules, hotKeys)
+        var sections = page.sections(modules, hotKeys, rates)
         if let module = page.module {
             sections.insert(moduleSection(module), at: 0)
         }
@@ -80,6 +88,9 @@ final class SettingsPageController: NSViewController {
         for popUp in popUps {
             popUp.refresh()
         }
+        for detail in details {
+            detail.label.stringValue = detail.text()
+        }
     }
 
     private func moduleSection(_ module: ModuleDescriptor) -> SettingsSection {
@@ -119,24 +130,57 @@ final class SettingsPageController: NSViewController {
         ])
         guard let title = section.title else { return box }
 
-        let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: Self.headerSize, weight: .semibold)
-        label.textColor = .secondaryLabelColor
-        let header = NSStackView(views: [label])
-        header.edgeInsets = NSEdgeInsets(top: 0, left: Self.headerInset, bottom: 0, right: 0)
+        let header = header(title, note: section.note)
         let group = NSStackView(views: [header, box])
         group.orientation = .vertical
         group.alignment = .leading
         group.spacing = Self.headerSpacing
         box.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
+        header.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
         return group
+    }
+
+    private func header(_ title: String, note: String?) -> NSView {
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: Self.headerSize, weight: .semibold)
+        label.textColor = .secondaryLabelColor
+        let header = NSStackView(views: [label])
+        header.edgeInsets = NSEdgeInsets(
+            top: 0, left: Self.headerInset, bottom: 0, right: Self.headerInset)
+        if let note {
+            let noteLabel = NSTextField(labelWithString: note)
+            noteLabel.font = .systemFont(ofSize: Self.headerSize)
+            noteLabel.textColor = .secondaryLabelColor
+            header.addArrangedSubview(NSView())
+            header.addArrangedSubview(noteLabel)
+        }
+        return header
     }
 
     private func rowView(_ row: SettingsSection.Row) -> NSView {
         row.control.setAccessibilityLabel(row.label)
         let label = NSTextField(labelWithString: row.label)
-        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let view = NSStackView(views: [label, row.control])
+        var title: NSView = label
+        if let detail = row.detail {
+            let detailLabel = NSTextField(labelWithString: detail())
+            detailLabel.font = .systemFont(ofSize: Self.captionSize)
+            detailLabel.textColor = .secondaryLabelColor
+            details.append((detailLabel, detail))
+            let lines = NSStackView(views: [label, detailLabel])
+            lines.orientation = .vertical
+            lines.alignment = .leading
+            lines.spacing = 0
+            title = lines
+        }
+        title.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let view = NSStackView(views: [title])
+        if let example = row.example {
+            let exampleLabel = NSTextField(labelWithString: example)
+            exampleLabel.font = .monospacedSystemFont(ofSize: Self.captionSize, weight: .regular)
+            exampleLabel.textColor = .secondaryLabelColor
+            view.addArrangedSubview(exampleLabel)
+        }
+        view.addArrangedSubview(row.control)
         view.distribution = .fill
         view.edgeInsets = NSEdgeInsets(
             top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
