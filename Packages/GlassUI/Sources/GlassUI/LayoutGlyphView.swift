@@ -23,6 +23,10 @@ public final class LayoutGlyphView: NSView {
         self.area = area
         super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: Self.height))
         setAccessibilityElement(false)
+        for orientation in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
+            setContentHuggingPriority(.required, for: orientation)
+            setContentCompressionResistancePriority(.required, for: orientation)
+        }
     }
 
     @available(*, unavailable)

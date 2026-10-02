@@ -54,7 +54,8 @@ final class RadialMenu {
         if action == .fullScreen {
             try FocusedWindow.frontmost().enterFullScreen()
         } else if let layout = action.layout {
-            try await WindowPlacement.layout(layout).apply(gap: gap, across: screens)
+            try await WindowPlacement.layout(layout).apply(
+                gap: gap, cyclesSizes: false, across: screens)
         }
     }
 

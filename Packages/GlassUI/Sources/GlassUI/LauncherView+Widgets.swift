@@ -1,4 +1,4 @@
-import AppKit
+public import AppKit
 
 extension LauncherView {
     public var widgets: [WidgetGrid.Widget] {
@@ -10,6 +10,8 @@ extension LauncherView {
         get { widgetGrid.tileLayout }
         set { changeWidgets { widgetGrid.tileLayout = newValue } }
     }
+
+    public var widgetOverhang: CGFloat { widgetGrid.overhang }
 
     var showsWidgets: Bool {
         onEmptyRootQuery && !widgetGrid.shown.isEmpty
