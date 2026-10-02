@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let manager = try ModuleManager(store: .standard())
             try SystemCommands.all.forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
-                try manager.register(PlaceholderModule(descriptor: descriptor))
+                try manager.register(descriptor.makeModule())
             }
             try manager.startEnabledModules()
             return manager
