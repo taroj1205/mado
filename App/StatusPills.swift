@@ -34,7 +34,6 @@ enum StatusPills {
         "vpn": .vpn,
         "wifi": .wifi,
     ]
-    private static let hiddenByDefault: Set = ["wifi"]
 
     static func action(for pill: StatusBar.Pill) -> CommandAction {
         if let pane = panes[pill.id] { return pane.open }
@@ -78,7 +77,6 @@ enum StatusPills {
             stats.wifi.map(pill),
         ]
         .compactMap(\.self)
-        .filter { !hiddenByDefault.contains($0.id) }
     }
 
     static func symbol(for battery: SystemStats.Battery) -> String {
@@ -115,7 +113,7 @@ enum StatusPills {
             }
         return .init(
             id: "wifi", name: "Wi-Fi", symbol: wifi == .off ? "wifi.slash" : "wifi",
-            value: value, action: "Wi-Fi Settings")
+            value: value, action: "Wi-Fi Settings", shownByDefault: false)
     }
 
     private static func pill(forDownload bytesPerSecond: Double?) -> StatusBar.Pill {

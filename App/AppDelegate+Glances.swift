@@ -26,6 +26,8 @@ extension AppDelegate {
     }
 
     func connectGlances() {
+        launcherView.statusLayout = .load(from: modules)
+        launcherView.onStatusLayout = { [weak self] layout in layout.save(to: self?.modules) }
         launcherView.onPill = { [weak self] pill in
             self?.runGlance(StatusPills.action(for: pill), for: pill.id)
         }
