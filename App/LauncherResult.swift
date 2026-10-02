@@ -50,14 +50,29 @@ enum LauncherResult {
             ResultList.Section(
                 title: "Files", items: found.prefix(fileLimit).map { item(for: $0, at: now) }),
         ]
-        guard let answer = Calculator.answer(for: trimmed) else {
+        let answer =
+            Calculator.answer(for: trimmed).map { answer in
+                ResultList.Section(title: answer.kind, items: [item(for: answer)])
+            } ?? DictionaryAnswer.section(for: trimmed)
+        guard let answer else {
             if typed, ranked.isEmpty, found.isEmpty {
                 return [Fallback.section(for: trimmed, matched: false)]
             }
             return results
         }
-        return [ResultList.Section(title: answer.kind, items: [item(for: answer)])] + results
-            + [Fallback.section(for: trimmed, matched: true)]
+        return [answer] + results + [Fallback.section(for: trimmed, matched: true)]
+    }
+
+    static func context(for sections: [ResultList.Section]) -> String? {
+        if sections.contains(where: { $0.notice != nil }) { return "No results" }
+        return sections.first { section in
+            section.card != nil || section.items.contains { $0.answer != nil }
+        }?.title
+    }
+
+    static func isRanked(_ item: ResultList.Item) -> Bool {
+        item.answer == nil && !DictionaryAnswer.ids.contains(item.id)
+            && !Fallback.all.contains { $0.item.id == item.id }
     }
 
     static func actions(
@@ -79,6 +94,9 @@ enum LauncherResult {
                     NSPasteboard.general.setString(answer.result, forType: .string)
                 }
             ]
+        }
+        if DictionaryAnswer.ids.contains(id) {
+            return DictionaryAnswer.actions(for: id, query: query)
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) { return [pane.open] }
         if let fallback = Fallback.all.first(where: { $0.item.id == id }) {

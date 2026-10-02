@@ -99,6 +99,7 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
+        results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
         field.setAccessibilitySharedFocusElements([results.table])
         showAction(of: nil)
     }
@@ -163,6 +164,13 @@ public final class LauncherView: NSView, NSTextFieldDelegate {
             return false
         }
         return true
+    }
+
+    private func replaceQuery(with query: String) {
+        field.stringValue = query
+        field.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
+        endBrowsing()
+        onQuery?(query)
     }
 
     private func selectionChanged(to item: ResultList.Item?) {
