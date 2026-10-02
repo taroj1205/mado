@@ -124,14 +124,16 @@ import Testing
         #expect(view.statusBar.isHidden)
     }
 
-    @Test func clickingAPillSelectsItAndClickingAgainLetsGo() throws {
+    @Test func clickingAPillSelectsAndRunsIt() throws {
+        var ran: [String] = []
+        view.onPill = { ran.append($0.id) }
         let pill = try #require(view.statusBar.views.last)
         #expect(pill.accessibilityPerformPress())
         #expect(view.selectedPill == 1)
         #expect(pill.icon.contentTintColor == .controlAccentColor)
         #expect(pill.accessibilityPerformPress())
-        #expect(view.selectedPill == nil)
-        #expect(pill.icon.contentTintColor == .secondaryLabelColor)
+        #expect(view.selectedPill == 1)
+        #expect(ran == [pills[1].id, pills[1].id])
         #expect(view.contextPill.accessibilityPerformPress() == false)
     }
 
