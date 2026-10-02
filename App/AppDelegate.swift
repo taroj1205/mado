@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let apps = AppIndex()
     let files = FileIndex()
     let rates = ExchangeRateFeed()
-    let statusPills = StatusPills()
+    let systemFeed = SystemFeed()
     let widgets = Widgets()
     private var usage = Usage()
     private var history = CalculatorHistory()
