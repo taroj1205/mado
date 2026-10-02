@@ -151,7 +151,8 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         separator.boxType = .separator
         let fieldArea = NSLayoutGuide()
         content.addLayoutGuide(fieldArea)
-        for view in [header, list, separator, field] {
+        let border = GlassBorder(radius: Self.radius)
+        for view in [header, list, separator, field, border] {
             view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(view)
         }
@@ -176,6 +177,10 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
                 equalTo: content.leadingAnchor, constant: Self.fieldSide),
             field.trailingAnchor.constraint(
                 equalTo: content.trailingAnchor, constant: -Self.fieldSide),
+            border.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            border.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            border.topAnchor.constraint(equalTo: content.topAnchor),
+            border.bottomAnchor.constraint(equalTo: content.bottomAnchor),
         ])
         glass.contentView = content
     }

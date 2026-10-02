@@ -43,6 +43,10 @@ import Testing
         #expect(menu.glass.frame.maxX == view.actionCapsule.frame.maxX)
         #expect(menu.glass.frame.minY == view.actionCapsule.frame.maxY + 10)
         #expect(menu.glass.frame.width == 316)
+        let border = try #require(menu.glass.contentView?.subviews.last as? GlassBorder)
+        #expect(border.frame == menu.glass.bounds)
+        #expect(border.rim.frame == border.bounds.insetBy(dx: 0.5, dy: 0.5))
+        #expect(border.hitTest(NSPoint(x: border.bounds.midX, y: border.bounds.midY)) == nil)
         #expect(view.actionsToggle.fillColor == ResultRowView.fill)
     }
 
