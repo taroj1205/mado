@@ -2,7 +2,7 @@ import AppKit
 
 final class ActionRow: NSBox {
     private static let height: CGFloat = 32
-    private static let radius: CGFloat = 7
+    private static let radius = ActionPanel.radius - ActionPanel.inset
     private static let leading: CGFloat = 10
     private static let trailing: CGFloat = 6
     private static let keyGap: CGFloat = 3
@@ -10,6 +10,8 @@ final class ActionRow: NSBox {
     private static let keySize: CGFloat = 20
     private static let fontSize: CGFloat = 13
     private static let selectedKeyAlpha = 0.22
+    private static let highlightWidth: CGFloat = 0.5
+    private static let highlightAlpha = 0.45
 
     let label: NSTextField
     let keycaps: [Keycap]
@@ -55,6 +57,13 @@ final class ActionRow: NSBox {
         nil
     }
 
+    static func note(_ text: String) -> ActionRow {
+        let row = ActionRow(title: text, keys: [])
+        row.label.textColor = .secondaryLabelColor
+        row.setAccessibilityRole(.staticText)
+        return row
+    }
+
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
         true
     }
@@ -64,8 +73,22 @@ final class ActionRow: NSBox {
     }
 
     override func accessibilityPerformPress() -> Bool {
-        onPress?()
+        guard let onPress else { return false }
+        onPress()
         return true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard isSelected else { return }
+        let rounded = { NSBezierPath(roundedRect: $0, xRadius: Self.radius, yRadius: Self.radius) }
+        let drop = isFlipped ? Self.highlightWidth : -Self.highlightWidth
+        let edge = rounded(bounds)
+        edge.append(rounded(bounds.offsetBy(dx: 0, dy: drop)))
+        edge.windingRule = .evenOdd
+        rounded(bounds).addClip()
+        NSColor.white.withAlphaComponent(Self.highlightAlpha).setFill()
+        edge.fill()
     }
 
     private func restyle() {

@@ -31,9 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
-    private lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
-        guard let self else { return nil }
-        return LauncherResult.result(for: id, in: sources)?.name
+    lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
+        (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
     }
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -84,7 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let openHistory = CalculatorHistory.command { [weak self] in
                 self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
             }
-            try (SystemCommands.all + [openHistory]).forEach(manager.commands.register)
+            let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
+            try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(descriptor.makeModule())
             }
@@ -118,8 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { return [] }
                 if launcherView.scoped { return history.sections(for: query) }
                 return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(
-                        for: query, in: sources, usage: usage, items: editor.settings)
+                    LauncherResult.sections(for: query, in: sources, usage: usage)
                 }
             },
             deliver: { [launcherView] sections in
@@ -134,33 +133,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func menu(
         for item: ResultList.Item
-    ) -> (run: [CommandAction], edit: [ItemSheet.Field]) {
+    ) -> (run: [CommandAction], edit: [ItemEditor.Edit]) {
         if launcherView.scoped { return (history.actions(for: item.id), []) }
         let run = LauncherResult.actions(
             for: item.id, query: launcherView.field.stringValue, in: sources)
         let editable = LauncherResult.result(for: item.id, in: sources) != nil
-        return (run, editable ? [.favourite, .hotkey, .aliases] : [])
+        return (run, editable ? editor.edits(for: item.id) : [])
     }
 
     private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
         let (actions, edits) = menu(for: item)
         let keys = [LauncherView.Action.primaryKeys, LauncherView.Action.secondaryKeys]
-        let favourite = editor.settings[item.id].favourite
         return actions.enumerated().map { index, action in
             LauncherView.Action(action.title, keys: keys.indices.contains(index) ? keys[index] : [])
-        } + edits.map { LauncherView.Action($0.title(favourite: favourite)) }
+        } + edits.map { editor.action(for: $0, on: item.id) }
     }
 
     private func run(_ item: ResultList.Item, action index: Int) {
         let (actions, edits) = menu(for: item)
         if actions.indices.contains(index) {
-            if !CalculatorHistory.opens(item.id) { hideLauncher() }
+            if !CalculatorHistory.opens(item.id), item.id != Quicklink.createID { hideLauncher() }
             history.remember(item, in: modules)
             perform(actions[index], for: item.id, recordingUse: !edits.isEmpty)
         } else if edits.indices.contains(index - actions.count), let launcher {
             let ranking = usage.summary(of: item.id, at: .now)
-            editor.open(edits[index - actions.count], for: item, ranking: ranking, in: launcher)
+            editor.perform(edits[index - actions.count], for: item, ranking: ranking, in: launcher)
         }
+    }
+
+    private func createQuicklink() {
+        if launcher?.isVisible != true { showLauncher() }
+        if let launcher { editor.openQuicklink(Quicklink(name: "", link: ""), in: launcher) }
     }
 
     private func runHotKey(of id: String) {

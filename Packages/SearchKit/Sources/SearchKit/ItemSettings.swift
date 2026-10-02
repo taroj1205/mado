@@ -26,7 +26,7 @@ public struct ItemSettings: Codable, Equatable, Sendable {
         aliases = [:]
     }
 
-    private static func fold(_ text: String) -> String {
+    static func fold(_ text: String) -> String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(options: [.caseInsensitive, .widthInsensitive], locale: nil)
     }

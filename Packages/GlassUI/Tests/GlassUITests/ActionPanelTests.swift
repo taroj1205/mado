@@ -87,6 +87,25 @@ import Testing
         #expect(view.actionsToggle.fillColor == .clear)
     }
 
+    @Test func aFilterWithNoMatchesSaysSoAndReturnDoesNothing() throws {
+        defer { view.closeActions() }
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        press(kVK_ANSI_K, "k", in: panel, [.command])
+        let menu = try #require(view.actionPanel)
+        #expect(!menu.empty.isDescendant(of: menu.glass))
+        type("zzz", in: menu)
+        #expect(menu.rows.isEmpty)
+        #expect(menu.empty.isDescendant(of: menu.glass))
+        #expect(menu.empty.label.stringValue == "No matching actions")
+        press(kVK_Return, "\r", in: panel)
+        #expect(runs.isEmpty)
+        #expect(view.choosingAction)
+        type("", in: menu)
+        #expect(!menu.empty.isDescendant(of: menu.glass))
+        #expect(menu.rows.count == 3)
+    }
+
     @Test func commandReturnInThePanelRunsTheSecondaryAction() throws {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }
