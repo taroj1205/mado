@@ -7,6 +7,10 @@ enum HotKeyLabel {
         (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
     ]
 
+    private static let modifierNames: [(Shortcut.Modifiers, String)] = [
+        (.control, "Control"), (.option, "Option"), (.shift, "Shift"), (.command, "Command"),
+    ]
+
     private static let specialKeys: [Int: String] = [
         kVK_Space: "Space", kVK_Return: "↩", kVK_ANSI_KeypadEnter: "⌤", kVK_Tab: "⇥",
         kVK_Delete: "⌫", kVK_ForwardDelete: "⌦", kVK_Escape: "⎋", kVK_Help: "Help",
@@ -17,6 +21,14 @@ enum HotKeyLabel {
         kVK_F6: "F6", kVK_F7: "F7", kVK_F8: "F8", kVK_F9: "F9", kVK_F10: "F10",
         kVK_F11: "F11", kVK_F12: "F12", kVK_F13: "F13", kVK_F14: "F14", kVK_F15: "F15",
         kVK_F16: "F16", kVK_F17: "F17", kVK_F18: "F18", kVK_F19: "F19", kVK_F20: "F20",
+    ]
+
+    private static let spokenKeys: [Int: String] = [
+        kVK_Return: "Return", kVK_ANSI_KeypadEnter: "Enter", kVK_Tab: "Tab",
+        kVK_Delete: "Delete", kVK_ForwardDelete: "Forward Delete", kVK_Escape: "Escape",
+        kVK_LeftArrow: "Left Arrow", kVK_RightArrow: "Right Arrow", kVK_DownArrow: "Down Arrow",
+        kVK_UpArrow: "Up Arrow", kVK_Home: "Home", kVK_End: "End", kVK_PageUp: "Page Up",
+        kVK_PageDown: "Page Down",
     ]
 
     static func keycaps(_ hotKey: HotKey) -> [String] {
@@ -34,6 +46,12 @@ enum HotKeyLabel {
             let symbol = symbols.filter { $0.0 == modifier(of: key) }.map(\.1).joined()
             return ["\(side) \(symbol)"]
         }
+    }
+
+    static func spoken(_ shortcut: Shortcut) -> String {
+        let names = modifierNames.filter { shortcut.modifiers.contains($0.0) }.map(\.1)
+        let key = spokenKeys[Int(shortcut.keyCode)] ?? keyName(shortcut.keyCode)
+        return (names + [key]).joined(separator: " ")
     }
 
     static func modifier(of key: HotKey.ModifierKey) -> Shortcut.Modifiers {

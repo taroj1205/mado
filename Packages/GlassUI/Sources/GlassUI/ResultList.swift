@@ -1,3 +1,4 @@
+public import AppCore
 public import AppKit
 
 public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewDelegate {
@@ -13,6 +14,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let answer: Answer?
         public let tint: NSColor?
         public let shortcut: [String]
+        public var hotkey: Shortcut?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,

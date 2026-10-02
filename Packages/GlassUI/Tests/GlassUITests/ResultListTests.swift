@@ -1,4 +1,6 @@
+import AppCore
 import AppKit
+import Carbon.HIToolbox
 import Testing
 
 @testable import GlassUI
@@ -143,6 +145,29 @@ import Testing
         #expect(cell.accessibilityChildren()?.isEmpty == true)
 
         cell.show(item("Notes"))
+        #expect(cell.accessibilityLabel() == "Notes, Command")
+    }
+
+    @Test func aHotkeyReplacesTheKindWithKeycapsAndIsSpokenInstead() {
+        let cell = ResultCell()
+        var row = ResultList.Item(
+            id: "left-half", title: "Left Half", subtitle: "Window Management", kind: "Command",
+            symbol: "rectangle.lefthalf.filled", action: "Run Command")
+        row.hotkey = Shortcut(keyCode: UInt32(kVK_LeftArrow), modifiers: [.option, .control])
+        cell.show(row)
+        #expect(cell.kind.isHidden)
+        #expect(!cell.hotkey.isHidden)
+        #expect(
+            cell.hotkey.views(in: .leading).compactMap { ($0 as? Keycap)?.name.stringValue }
+                == ["⌃", "⌥", "←"])
+        #expect(
+            cell.accessibilityLabel()
+                == "Left Half, hotkey Control Option Left Arrow, Window Management")
+
+        cell.show(item("Notes"))
+        #expect(!cell.kind.isHidden)
+        #expect(cell.hotkey.isHidden)
+        #expect(cell.hotkey.views(in: .leading).isEmpty)
         #expect(cell.accessibilityLabel() == "Notes, Command")
     }
 
