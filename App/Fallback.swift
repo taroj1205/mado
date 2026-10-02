@@ -41,12 +41,14 @@ struct Fallback {
         self.search = search
     }
 
-    static func section(for query: String) -> ResultList.Section {
+    static func section(for query: String, matched: Bool) -> ResultList.Section {
         ResultList.Section(
             title: "Use “\(query)” with…", items: all.map(\.item),
-            notice: ResultList.Notice(
-                title: "No matches for “\(query)”",
-                detail: "Try one of these instead, or check the spelling."))
+            notice: matched
+                ? nil
+                : ResultList.Notice(
+                    title: "No matches for “\(query)”",
+                    detail: "Try one of these instead, or check the spelling."))
     }
 
     func action(for query: String) -> CommandAction {
