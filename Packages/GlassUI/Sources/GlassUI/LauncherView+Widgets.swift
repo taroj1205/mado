@@ -34,6 +34,7 @@ extension LauncherView {
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
+        widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
     }
 
     func leavePillsAndWidgets() {
@@ -53,6 +54,31 @@ extension LauncherView {
             closePreview()
         }
         showAction(of: results.selectedItem)
+    }
+
+    func skipTrack(_ index: Int, _ skip: WidgetGrid.Skip) {
+        selectWidget(index)
+        onSkip?(skip)
+    }
+
+    func handleModifiedKey(_ event: NSEvent) -> Bool {
+        guard !event.modifierFlags.isDisjoint(with: Self.modifierKeys) else { return false }
+        let command = event.modifierFlags.intersection(Self.modifierKeys) == .command
+        if command, let widget = selectedWidget, widgetGrid.shown[widget].track != nil {
+            switch event.specialKey {
+            case .leftArrow:
+                skipTrack(widget, .previous)
+                return true
+
+            case .rightArrow:
+                skipTrack(widget, .next)
+                return true
+
+            default: break
+            }
+        }
+        leavePillsAndWidgets()
+        return false
     }
 
     func pressWidget(_ index: Int) {
