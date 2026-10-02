@@ -47,7 +47,6 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         list.setAccessibilityElement(true)
         list.setAccessibilityRole(.menu)
         panel.ignoresMouseEvents = false
-        panel.hasShadow = false
         layout()
     }
 
@@ -142,6 +141,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         panel.setFrame(
             NSRect(x: corner.x - Self.width, y: corner.y, width: Self.width, height: height),
             display: true)
+        panel.invalidateShadow()
     }
 
     private func layout() {

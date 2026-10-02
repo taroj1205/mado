@@ -40,7 +40,7 @@ import Testing
         #expect(menu.rows.flatMap(\.keycaps).allSatisfy { $0.frame.width < 30 })
         #expect(menu.panel.firstResponder === menu.field.currentEditor())
         #expect(!menu.panel.canBecomeKey)
-        #expect(!menu.panel.hasShadow)
+        #expect(menu.panel.hasShadow)
         #expect(panel.firstResponder === panel)
         let capsule = panel.convertToScreen(
             view.actionCapsule.convert(view.actionCapsule.bounds, to: nil))
