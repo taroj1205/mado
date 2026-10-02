@@ -93,6 +93,33 @@ import Testing
         #expect(recorder.events == [.pressed, .released])
     }
 
+    @Test func fnAloneOpensAndFnWithControlDoesNot() {
+        let recorder = Recorder(.function)
+        #expect(!recorder.send(.flagsChanged, .maskSecondaryFn))
+        #expect(!recorder.send(.flagsChanged, [.maskSecondaryFn, .maskControl]))
+        #expect(!recorder.send(.flagsChanged, [.maskSecondaryFn, .maskControl, .maskAlternate]))
+        #expect(!recorder.send(.flagsChanged, []))
+        #expect(recorder.events == [.pressed, .released])
+    }
+
+    @Test func keysThatCarryTheFnFlagWithoutFnDoNotOpen() {
+        let recorder = Recorder(.function)
+        for key in [kVK_LeftArrow, kVK_F5, kVK_Home] {
+            #expect(!recorder.send(.keyDown, .maskSecondaryFn, keyCode: key))
+            #expect(!recorder.send(.keyUp, .maskSecondaryFn, keyCode: key))
+        }
+        #expect(recorder.events.isEmpty)
+    }
+
+    @Test func escapeStillCancelsAnFnTrigger() {
+        let recorder = Recorder(.function)
+        _ = recorder.send(.flagsChanged, .maskSecondaryFn)
+        #expect(recorder.send(.keyDown, .maskSecondaryFn, keyCode: kVK_Escape))
+        #expect(recorder.send(.keyUp, .maskSecondaryFn, keyCode: kVK_Escape))
+        _ = recorder.send(.flagsChanged, [])
+        #expect(recorder.events == [.pressed, .cancelled])
+    }
+
     @Test func noModifiersNeverOpens() {
         let recorder = Recorder([])
         #expect(!recorder.send(.flagsChanged, []))

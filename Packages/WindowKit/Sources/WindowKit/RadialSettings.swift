@@ -1,3 +1,5 @@
+public import CoreGraphics
+
 public struct RadialSettings: Codable, Equatable, Sendable {
     public enum Action: String, Codable, CaseIterable, Sendable {
         case maximize = "maximize"
@@ -20,7 +22,31 @@ public struct RadialSettings: Codable, Equatable, Sendable {
         case centreThird = "centre_third"
         case rightThird = "right_third"
         case nothing = "nothing"
+
+        private static let layouts: [Self: LayoutEngine.Action] = [
+            .maximize: .maximize, .almostMaximize: .almostMaximize, .centre: .centre,
+            .topCycle: .topHalf, .rightCycle: .rightHalf, .bottomCycle: .bottomHalf,
+            .leftCycle: .leftHalf, .topHalf: .topHalf, .rightHalf: .rightHalf,
+            .bottomHalf: .bottomHalf, .leftHalf: .leftHalf, .topLeftQuarter: .topLeftQuarter,
+            .topRightQuarter: .topRightQuarter, .bottomLeftQuarter: .bottomLeftQuarter,
+            .bottomRightQuarter: .bottomRightQuarter, .leftThird: .leftThird,
+            .centreThird: .centreThird, .rightThird: .rightThird,
+        ]
+
+        public func previewFrame(
+            of window: CGRect, on screen: ScreenGeometry.Screen, gap: CGFloat
+        ) -> CGRect? {
+            if self == .fullScreen { return screen.frame }
+            guard let layout = Self.layouts[self] else { return nil }
+            return LayoutEngine.frame(
+                for: layout, in: screen.visibleFrame, gap: gap, windowSize: window.size)
+        }
     }
+
+    private static let slots: [RadialResolver.Direction: any KeyPath<Self, Action> & Sendable] = [
+        .top: \.top, .topRight: \.topRight, .right: \.right, .bottomRight: \.bottomRight,
+        .bottom: \.bottom, .bottomLeft: \.bottomLeft, .left: \.left, .topLeft: \.topLeft,
+    ]
 
     public var ring: Action
     public var top: Action
@@ -44,5 +70,13 @@ public struct RadialSettings: Codable, Equatable, Sendable {
         left = .leftCycle
         topLeft = .topLeftQuarter
         haptics = true
+    }
+
+    public func action(in zone: RadialResolver.Zone) -> Action {
+        switch zone {
+        case .cancel: .nothing
+        case .ring: ring
+        case .direction(let direction): Self.slots[direction].map { self[keyPath: $0] } ?? .nothing
+        }
     }
 }
