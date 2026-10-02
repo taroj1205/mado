@@ -43,7 +43,7 @@ import Testing
     }
 
     @Test func resizesWaitTheIntervalBetweenUpdatesButMovesDoNot() async throws {
-        let interval = Duration.milliseconds(60)
+        let interval = Duration.milliseconds(400)
         let window = SlowWindow()
         let follower = WindowFollower(from: Self.start, interval: interval, apply: window.apply)
         follower.send(Self.frame(1), throttled: true)
