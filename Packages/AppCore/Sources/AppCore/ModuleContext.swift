@@ -10,6 +10,8 @@ public final class ModuleContext {
         let task: Task<Void, Never>?
     }
 
+    private static let timerTolerance = 0.1
+
     public let logger: Logger
     public let signposter: OSSignposter
 
@@ -49,6 +51,7 @@ public final class ModuleContext {
         let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: repeats) { _ in
             MainActor.assumeIsolated { handler() }
         }
+        timer.tolerance = interval * Self.timerTolerance
         own(.timer, name) { timer.invalidate() }
     }
 
