@@ -34,9 +34,10 @@ import Testing
         #expect(radial.bottomLeft == .bottomLeftQuarter)
         #expect(radial.left == .leftCycle)
         #expect(radial.topLeft == .topLeftQuarter)
+        #expect(radial.haptics)
     }
 
-    @Test func theRingAndEightDirectionsAreTheOnlyStoredSlots() throws {
+    @Test func theRingEightDirectionsAndHapticsAreTheOnlyStoredKeys() throws {
         var settings = Settings()
 
         try settings.setValue(RadialSettings(), for: "radial")
@@ -48,7 +49,7 @@ import Testing
         #expect(
             Set(stored.keys) == [
                 "ring", "top", "topRight", "right", "bottomRight", "bottom", "bottomLeft",
-                "left", "topLeft",
+                "left", "topLeft", "haptics",
             ])
     }
 
@@ -72,5 +73,12 @@ import Testing
         }
 
         #expect(try roundTrip(radial) == radial)
+    }
+
+    @Test func turningHapticsOffSurvivesSavingAndLoading() throws {
+        var radial = RadialSettings()
+        radial.haptics = false
+
+        #expect(try roundTrip(radial)?.haptics == false)
     }
 }
