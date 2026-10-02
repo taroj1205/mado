@@ -93,12 +93,39 @@ import Testing
         #expect(gallery.grid.arrangedSubviews.count == 1)
         pick(2)
         #expect(gallery.shown.map(\.card.id) == ["system", "battery", "keep_awake"])
+        #expect(gallery.empty.isHidden)
         pick(3)
         #expect(gallery.shown.isEmpty)
         #expect(gallery.grid.arrangedSubviews.isEmpty)
+        #expect(!gallery.empty.isHidden)
+        let emptyText = gallery.empty.arrangedSubviews.flatMap(Self.texts)
+        #expect(emptyText == ["No widgets from extensions yet"])
         pick(0)
+        #expect(gallery.empty.isHidden)
         #expect(gallery.shown.map(\.card.id).last == "music")
         #expect(gallery.grid.arrangedSubviews.count == 2)
+    }
+
+    @Test func sizesShowTheirFootprintInCells() {
+        #expect(WidgetGallery.Size.small.footprint.size == NSSize(width: 5, height: 5))
+        #expect(WidgetGallery.Size.wide.footprint.size == NSSize(width: 11.5, height: 5))
+        #expect(WidgetGallery.Size.large.footprint.size == NSSize(width: 11.5, height: 11.5))
+        #expect(WidgetGallery.Size.wide.footprint.isTemplate)
+    }
+
+    @Test func theFooterKeepsItsHeightWhateverTheGridShows() {
+        let done = gallery.done
+        let height = { done.convert(done.bounds, to: nil).minY }
+        let resting = height()
+        gallery.added = ["clock", "system", "battery", "keep_awake"]
+        gallery.layoutSubtreeIfNeeded()
+        #expect(height() == resting)
+        pick(3)
+        #expect(height() == resting)
+        #expect(abs(resting - 14) <= 1)
+        let count = gallery.count.convert(gallery.count.bounds, to: nil)
+        #expect(count.height < done.bounds.height)
+        #expect(abs(count.midY - done.convert(done.bounds, to: nil).midY) <= 1)
     }
 
     @Test func doneFinishesAndIsTheDefaultButton() {

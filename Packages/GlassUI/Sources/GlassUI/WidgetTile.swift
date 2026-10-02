@@ -17,8 +17,8 @@ final class WidgetTile: NSView {
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
     static let fill = tone(.white, .white, fillAlpha)
     static let edge = tone(.white, .black, edgeAlpha)
-    private static let selectedFill = tone(.white, .black, selectedFillAlpha)
-    private static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    static let selectedFill = tone(.white, .black, selectedFillAlpha)
+    static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
 
     let value = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")

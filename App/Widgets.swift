@@ -41,16 +41,16 @@ final class Widgets {
     static let gallery: [WidgetGallery.Card] = [
         .init(
             id: clockWidget, name: "Clock", summary: "Time and date", size: .small,
-            group: .time, symbol: "clock", colour: icon),
+            group: .time, symbol: "clock.fill", colour: icon),
         .init(
             id: music, name: "Now Playing", summary: "Music controls", size: .wide, group: nil,
-            symbol: "heart", colour: musicIcon),
+            symbol: "heart.fill", colour: musicIcon),
         .init(
             id: battery, name: "Battery", summary: "Mac and devices", size: .small,
             group: .system, symbol: "battery.100percent", colour: batteryIcon),
         .init(
             id: system, name: "System", summary: "CPU and memory", size: .small,
-            group: .system, symbol: "bolt", colour: icon),
+            group: .system, symbol: "bolt.fill", colour: icon),
     ]
 
     static var ids: [String] {
