@@ -144,15 +144,17 @@ public enum Calculator {
         "/": "divided by", "÷": "divided by",
     ]
 
-    public static func answer(for query: String, now: Date = .now) -> Answer? {
+    public static func answer(
+        for query: String, now: Date = .now, local: TimeZone = .current
+    ) -> Answer? {
         let text = query.lowercased()
             .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
             .replacing(/^what is\s/, with: "")
-        if let answer = Conversion.answer(for: text) ?? TimeMath.answer(for: text, now: now) {
-            return answer
-        }
+        if let conversion = Conversion.answer(for: text) { return conversion }
+        if let time = TimeZones.answer(for: text, now: now, local: local) { return time }
+        if let math = TimeMath.answer(for: text, now: now) { return math }
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }

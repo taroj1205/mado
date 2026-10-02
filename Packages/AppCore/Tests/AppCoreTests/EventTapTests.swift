@@ -63,4 +63,18 @@ struct EventTapTests {
         #expect(context.active.isEmpty)
         #expect(tap.port == nil)
     }
+
+    @Test func anObserverIsOwnedLikeAnyOtherRoute() throws {
+        let tap = EventTap()
+        let context = ModuleContext(moduleID: "keys", commands: CommandRegistry(), eventTap: tap)
+        var observed = 0
+        try context.observeEvents("taps", matching: [.flagsChanged]) { _, _ in observed += 1 }
+        #expect(context.active == [ActiveResource(module: "keys", kind: .eventTap, name: "taps")])
+        let event = try #require(CGEvent(source: nil))
+        #expect(tap.handle(.flagsChanged, event))
+        #expect(observed == 1)
+
+        context.releaseAll()
+        #expect(tap.port == nil)
+    }
 }
