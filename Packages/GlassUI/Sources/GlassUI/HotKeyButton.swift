@@ -1,8 +1,8 @@
-import AppCore
-import AppKit
+public import AppCore
+public import AppKit
 import Carbon.HIToolbox
 
-final class HotKeyButton: NSView {
+public final class HotKeyButton: NSView {
     private static let height: CGFloat = 26
     private static let inset: CGFloat = 7
     private static let radius: CGFloat = 8
@@ -11,8 +11,13 @@ final class HotKeyButton: NSView {
     private static let keyGap: CGFloat = 3
     private static let fontSize: CGFloat = 12.5
     private static let lineWidth: CGFloat = 1
+    private static let recordingLineWidth: CGFloat = 1.5
+    private static let recordingInset: CGFloat = 10
+    private static let recordingFill: CGFloat = 0.14
+    private static let dotSize: CGFloat = 7
+    private static let recordingGap: CGFloat = 6
     private static let half: CGFloat = 0.5
-    private static let chordModifiers: Shortcut.Modifiers = [.command, .control, .option]
+    static let chordModifiers: Shortcut.Modifiers = [.command, .control, .option]
     private static let fillAlpha = (dark: 0.06, light: 0.04)
     private static let borderAlpha = (dark: 0.10, light: 0.12)
     private static let keycapAlpha = (dark: 0.12, light: 0.08)
@@ -20,7 +25,11 @@ final class HotKeyButton: NSView {
     private static let border = adaptive(borderAlpha)
     private static let keycapFill = adaptive(keycapAlpha)
 
-    var shortcut: Shortcut? {
+    public var shortcut: Shortcut? {
+        didSet { render() }
+    }
+    public var onPress: (() -> Void)?
+    public var showsRecording = false {
         didSet { render() }
     }
     var conflict = false {
@@ -32,26 +41,31 @@ final class HotKeyButton: NSView {
 
     private let content = NSStackView()
     private let prompt = NSTextField(labelWithString: "")
+    private let dot = NSBox()
     private var systemHotKeys = SystemHotKeyPause()
 
     var isRecording: Bool { systemHotKeys.isActive }
 
-    override var acceptsFirstResponder: Bool { true }
-    override var canBecomeKeyView: Bool { true }
+    override public var acceptsFirstResponder: Bool { onPress == nil }
+    override public var canBecomeKeyView: Bool { onPress == nil }
 
-    init() {
+    public init() {
         super.init(frame: .zero)
-        content.spacing = Self.keyGap
         content.setHuggingPriority(.defaultHigh, for: .horizontal)
         content.translatesAutoresizingMaskIntoConstraints = false
         prompt.font = .systemFont(ofSize: Self.fontSize)
-        prompt.textColor = .secondaryLabelColor
+        dot.boxType = .custom
+        dot.borderWidth = 0
+        dot.cornerRadius = Self.dotSize * Self.half
+        dot.fillColor = .systemRed
         addSubview(content)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: Self.height),
-            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
-            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.inset),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor),
             content.centerYAnchor.constraint(equalTo: centerYAnchor),
+            dot.widthAnchor.constraint(equalToConstant: Self.dotSize),
+            dot.heightAnchor.constraint(equalToConstant: Self.dotSize),
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
@@ -71,39 +85,39 @@ final class HotKeyButton: NSView {
         }
     }
 
-    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+    override public func acceptsFirstMouse(for _: NSEvent?) -> Bool {
         true
     }
 
-    override func mouseDown(with _: NSEvent) {
-        focus()
+    override public func mouseDown(with _: NSEvent) {
+        press()
     }
 
-    override func accessibilityPerformPress() -> Bool {
-        focus()
+    override public func accessibilityPerformPress() -> Bool {
+        press()
         return true
     }
 
-    override func becomeFirstResponder() -> Bool {
+    override public func becomeFirstResponder() -> Bool {
         systemHotKeys.begin()
         onRecording?(true)
         render()
         return super.becomeFirstResponder()
     }
 
-    override func resignFirstResponder() -> Bool {
+    override public func resignFirstResponder() -> Bool {
         stopRecording()
         return super.resignFirstResponder()
     }
 
-    override func viewWillMove(toWindow newWindow: NSWindow?) {
+    override public func viewWillMove(toWindow newWindow: NSWindow?) {
         super.viewWillMove(toWindow: newWindow)
         if newWindow == nil {
             stopRecording()
         }
     }
 
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard unsafe window?.firstResponder === self else {
             return super.performKeyEquivalent(with: event)
         }
@@ -111,7 +125,7 @@ final class HotKeyButton: NSView {
         return true
     }
 
-    override func keyDown(with event: NSEvent) {
+    override public func keyDown(with event: NSEvent) {
         let modifiers = HotKeyRecorder.modifiers(event.modifierFlags)
         if !modifiers.isDisjoint(with: Self.chordModifiers) {
             onCapture?(Shortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers))
@@ -122,28 +136,36 @@ final class HotKeyButton: NSView {
         }
     }
 
-    override func draw(_: NSRect) {
-        let edge = Self.lineWidth * Self.half
+    override public func draw(_: NSRect) {
+        let width = showsRecording ? Self.recordingLineWidth : Self.lineWidth
+        let edge = width * Self.half
         let path = NSBezierPath(
             roundedRect: bounds.insetBy(dx: edge, dy: edge), xRadius: Self.radius,
             yRadius: Self.radius)
-        Self.fill.setFill()
+        let background =
+            showsRecording
+            ? NSColor.controlAccentColor.withAlphaComponent(Self.recordingFill) : Self.fill
+        background.setFill()
         path.fill()
         let stroke: NSColor =
             if conflict {
                 .systemOrange
-            } else if isRecording {
+            } else if isRecording || showsRecording {
                 .controlAccentColor
             } else {
                 Self.border
             }
         stroke.setStroke()
-        path.lineWidth = Self.lineWidth
+        path.lineWidth = width
         path.stroke()
     }
 
-    private func focus() {
-        unsafe window?.makeFirstResponder(self)
+    private func press() {
+        if let onPress {
+            onPress()
+        } else {
+            unsafe window?.makeFirstResponder(self)
+        }
     }
 
     private func stopRecording() {
@@ -155,6 +177,16 @@ final class HotKeyButton: NSView {
 
     private func render() {
         needsDisplay = true
+        let padding = showsRecording ? Self.recordingInset : Self.inset
+        content.edgeInsets = NSEdgeInsets(top: 0, left: padding, bottom: 0, right: padding)
+        content.spacing = showsRecording ? Self.recordingGap : Self.keyGap
+        prompt.textColor = showsRecording ? .labelColor : .secondaryLabelColor
+        if showsRecording {
+            prompt.stringValue = "Recording…"
+            content.setViews([dot, prompt], in: .leading)
+            setAccessibilityValue(prompt.stringValue)
+            return
+        }
         guard let shortcut else {
             prompt.stringValue = isRecording ? "Press keys…" : "Record Hotkey"
             content.setViews([prompt], in: .leading)

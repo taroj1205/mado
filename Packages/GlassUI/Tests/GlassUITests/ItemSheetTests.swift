@@ -153,6 +153,21 @@ import Testing
         #expect(!sheet.hotkey.conflict)
     }
 
+    @Test func anItemsOwnHotkeyHintComesBackAfterAConflict() {
+        let toggle = "Toggle: launch if closed → bring to front → hide if already in front."
+        sheet.conflict = { [controlOptionT] in $0 == controlOptionT ? "Safari" : nil }
+        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey, hotkeyHint: toggle)
+        #expect(sheet.hotkeyHintLabel.stringValue == toggle)
+
+        press(kVK_ANSI_T, "t", [.control, .option])
+        #expect(sheet.hotkeyHintLabel.stringValue == "Safari already uses ⌃⌥T.")
+        press(kVK_Delete, "\u{7F}")
+        #expect(sheet.hotkeyHintLabel.stringValue == toggle)
+
+        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey)
+        #expect(sheet.hotkeyHintLabel.stringValue == ItemSheet.hotkeyHint)
+    }
+
     @Test func aProblemFromSavingStaysOnScreen() {
         let problem = "macOS wouldn’t register this hotkey. Try another."
         sheet.onSave = { _ in problem }

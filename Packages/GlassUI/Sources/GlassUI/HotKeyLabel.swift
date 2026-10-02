@@ -22,8 +22,7 @@ enum HotKeyLabel {
     static func keycaps(_ hotKey: HotKey) -> [String] {
         switch hotKey {
         case .shortcut(let shortcut):
-            return symbols.filter { shortcut.modifiers.contains($0.0) }.map(\.1)
-                + [keyName(shortcut.keyCode)]
+            return symbols(shortcut.modifiers) + [keyName(shortcut.keyCode)]
 
         case .modifierTap(let key):
             let side =
@@ -31,9 +30,12 @@ enum HotKeyLabel {
                 case .leftCommand, .leftControl, .leftOption, .leftShift: "Left"
                 case .rightCommand, .rightControl, .rightOption, .rightShift: "Right"
                 }
-            let symbol = symbols.filter { $0.0 == modifier(of: key) }.map(\.1).joined()
-            return ["\(side) \(symbol)"]
+            return ["\(side) \(symbols(modifier(of: key)).joined())"]
         }
+    }
+
+    static func symbols(_ modifiers: Shortcut.Modifiers) -> [String] {
+        symbols.filter { modifiers.contains($0.0) }.map(\.1)
     }
 
     static func modifier(of key: HotKey.ModifierKey) -> Shortcut.Modifiers {

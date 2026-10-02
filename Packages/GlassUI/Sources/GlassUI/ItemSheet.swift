@@ -79,6 +79,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     }
     private var itemTitle = ""
     private var savedHotkey: Shortcut?
+    private var hotkeyHintText = ItemSheet.hotkeyHint
     private var resetsRanking = false
 
     override public var acceptsFirstResponder: Bool { true }
@@ -110,9 +111,11 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     }
 
     public func show(
-        _ item: ResultList.Item, values: Values, ranking summary: String?, opening field: Field
+        _ item: ResultList.Item, values: Values, ranking summary: String?, opening field: Field,
+        hotkeyHint: String? = nil
     ) {
         itemTitle = item.title
+        hotkeyHintText = hotkeyHint ?? Self.hotkeyHint
         showHeader(item)
         aliasField.stringValue = ""
         aliases = values.aliases
@@ -240,7 +243,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
 
     private func showProblem() {
         hotkey.conflict = problem != nil
-        hotkeyHintLabel.stringValue = problem ?? Self.hotkeyHint
+        hotkeyHintLabel.stringValue = problem ?? hotkeyHintText
         hotkeyHintLabel.textColor = problem == nil ? .secondaryLabelColor : .systemOrange
         clear.isHidden = hotkey.shortcut == nil
     }

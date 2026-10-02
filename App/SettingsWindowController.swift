@@ -111,15 +111,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let tabs: NSTabViewController
 
-    init(modules: ModuleManager?, hotKeys: LauncherHotKeys) {
+    init(modules: ModuleManager?, hotKeys: LauncherHotKeys, items: ItemEditor) {
+        let context = SettingsPage.Context(
+            modules: modules, hotKeys: hotKeys, apps: AppHotKeys(items: items))
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified
         for page in SettingsPage.all {
             pages.addTabViewItem(
                 NSTabViewItem(
-                    viewController: SettingsPageController(
-                        page: page, modules: modules, hotKeys: hotKeys))
-            )
+                    viewController: SettingsPageController(page: page, context: context)))
         }
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
@@ -165,6 +165,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     func refresh() {
         (tabs.tabViewItems[tabs.selectedTabViewItemIndex].viewController
             as? SettingsPageController)?.refresh()
+    }
+
+    func reload() {
+        for item in tabs.tabViewItems {
+            if let page = item.viewController as? SettingsPageController, page.isViewLoaded {
+                page.reload()
+            }
+        }
     }
 
     func windowDidBecomeKey(_: Notification) {
