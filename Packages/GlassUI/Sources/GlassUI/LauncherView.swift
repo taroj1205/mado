@@ -22,6 +22,7 @@ public final class LauncherView: NSView {
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
     public var onPill: ((StatusBar.Pill) -> Void)?
+    public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var context: String? {
         didSet { showContext() }
     }
@@ -35,6 +36,8 @@ public final class LauncherView: NSView {
     let contextPill = StatusPill()
     let statusBar = StatusBar()
     var selectedPill: Int?
+    let widgetGrid = WidgetGrid()
+    var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
     private var browsing = false
@@ -63,7 +66,7 @@ public final class LauncherView: NSView {
         separator.boxType = .separator
         let bar = NSLayoutGuide()
         addLayoutGuide(bar)
-        for view in [icon, back, field, separator, results] {
+        for view in [icon, back, field, separator, widgetGrid, results] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -83,9 +86,10 @@ public final class LauncherView: NSView {
             results.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.resultsInset),
             results.trailingAnchor.constraint(
                 equalTo: trailingAnchor, constant: -Self.resultsInset),
-            results.topAnchor.constraint(equalTo: separator.bottomAnchor),
+            results.topAnchor.constraint(equalTo: widgetGrid.bottomAnchor),
             results.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+        placeWidgets(below: separator)
         placeCapsules()
     }
 
@@ -127,7 +131,7 @@ public final class LauncherView: NSView {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
         if !event.modifierFlags.isDisjoint(with: Self.modifierKeys) {
-            selectPill(nil)
+            leavePillsAndWidgets()
         }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
@@ -181,7 +185,9 @@ public final class LauncherView: NSView {
     }
 
     func showAction(of item: ResultList.Item?) {
-        let action = selectedPill.map { pills[$0].action } ?? item?.action
+        let action =
+            selectedPill.map { pills[$0].action } ?? selectedWidget.map { widgets[$0].action }
+            ?? item?.action
         actionLabel.stringValue = action ?? ""
         actionCapsule.isHidden = action == nil
         showContext()
@@ -189,6 +195,7 @@ public final class LauncherView: NSView {
 
     func showContext() {
         statusBar.isHidden = !showsStatusBar
+        widgetGrid.isHidden = !showsWidgets
         let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
         let text = hintsPreview ? Self.previewHint : context
         contextPill.show(
@@ -198,7 +205,7 @@ public final class LauncherView: NSView {
 
     public func show(_ sections: [ResultList.Section]) {
         let previewed = results.selectedItem?.file
-        let keep = browsing || choosingAction || selectedPill != nil
+        let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
         results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
         if results.selectedItem?.file != previewed {
             closePreview()
@@ -207,7 +214,7 @@ public final class LauncherView: NSView {
 
     public func endBrowsing() {
         browsing = false
-        selectPill(nil)
+        leavePillsAndWidgets()
         closePreview()
         closeActions()
         showContext()
@@ -248,7 +255,7 @@ public final class LauncherView: NSView {
     }
 
     func selectionMoved() {
-        selectPill(nil)
+        leavePillsAndWidgets()
         browsing = true
         showContext()
     }

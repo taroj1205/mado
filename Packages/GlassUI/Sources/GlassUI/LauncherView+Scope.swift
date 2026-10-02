@@ -3,6 +3,10 @@ import AppKit
 extension LauncherView {
     public var scoped: Bool { rootQuery != nil }
 
+    var onEmptyRootQuery: Bool {
+        !scoped && field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     public func enter(placeholder: String) {
         rootQuery = rootQuery ?? field.stringValue
         showScope(placeholder: placeholder)
