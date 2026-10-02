@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import os
 
 @MainActor
 final class Widgets {
@@ -12,6 +13,10 @@ final class Widgets {
     private static let day = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
     private static let spokenDay = Date.FormatStyle().weekday(.wide).day().month(.wide)
     private static let system = "system"
+    static let music = "music"
+    private static let listenSeconds = 2.0
+    private static let player = MusicPlayer()
+    private static let logger = Log.logger("Widgets")
     private static let battery = "battery"
     private static let batteryAction = "Battery Settings"
     private static let macName = "Mac"
@@ -23,7 +28,9 @@ final class Widgets {
     }
 
     private var stats: SystemStats?
+    private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
+    private var listening: Task<Void, Never>?
 
     static func action(for widget: WidgetGrid.Widget) -> CommandAction {
         switch widget.id {
@@ -38,7 +45,9 @@ final class Widgets {
         }
     }
 
-    private static func current(at date: Date, stats: SystemStats?) -> [WidgetGrid.Widget] {
+    private static func current(
+        at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?
+    ) -> [WidgetGrid.Widget] {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
@@ -46,6 +55,7 @@ final class Widgets {
                 id: "clock", value: date.formatted(time), detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
+            playing.map(widget(for:)),
             stats == nil
                 ? .init(
                     id: battery, content: .loading(title: "Battery"), action: batteryAction,
@@ -61,6 +71,17 @@ final class Widgets {
                     spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
         ]
         .compactMap(\.self)
+    }
+
+    private static func widget(for playing: MusicPlayer.Track) -> WidgetGrid.Widget {
+        let song = playing.artist.isEmpty ? playing.title : "\(playing.title) by \(playing.artist)"
+        return .init(
+            id: music,
+            track: .init(
+                title: playing.title, artist: playing.artist, artwork: playing.artwork,
+                isPlaying: playing.isPlaying),
+            action: "Play / Pause",
+            spoken: "\(playing.isPlaying ? "Now playing" : "Paused"): \(song)")
     }
 
     private static func batteries(in stats: SystemStats) -> WidgetGrid.Widget? {
@@ -121,6 +142,15 @@ final class Widgets {
                 refresh(view)
             }
         }
+        listening = Task { [weak self, weak view] in
+            while !Task.isCancelled {
+                let found = await Self.player.track()
+                guard !Task.isCancelled, let self, let view else { return }
+                playing = found
+                refresh(view)
+                try? await Task.sleep(for: .seconds(Self.listenSeconds))
+            }
+        }
     }
 
     func show(_ stats: SystemStats, in view: LauncherView) {
@@ -128,12 +158,27 @@ final class Widgets {
         refresh(view)
     }
 
+    func control(_ control: MusicPlayer.Control, in view: LauncherView) {
+        Task { [weak self, weak view] in
+            do {
+                let found = try await Self.player.perform(control)
+                guard let self, let view else { return }
+                playing = found
+                refresh(view)
+            } catch {
+                Self.logger.error("Music control failed: \(error, privacy: .private)")
+            }
+        }
+    }
+
     func stop() {
         ticking?.cancel()
         ticking = nil
+        listening?.cancel()
+        listening = nil
     }
 
     private func refresh(_ view: LauncherView) {
-        view.widgets = Self.current(at: .now, stats: stats)
+        view.widgets = Self.current(at: .now, stats: stats, playing: playing)
     }
 }

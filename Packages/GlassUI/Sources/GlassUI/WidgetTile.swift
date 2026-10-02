@@ -3,6 +3,7 @@ import AppKit
 final class WidgetTile: NSView {
     private static let radius: CGFloat = 16
     private static let horizontal: CGFloat = 12
+    private static let trackLeading: CGFloat = 10
     private static let vertical: CGFloat = 10
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
@@ -38,10 +39,17 @@ final class WidgetTile: NSView {
     let allow = AllowCapsule()
     let icon = NSImageView()
     let meters = NSStackView()
+    let track = WidgetTrack()
+    private lazy var trackPlacement = [
+        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
+        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+        track.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ]
     private let box = NSBox()
     private let lines = NSStackView()
     private let request = NSStackView()
     var onPress: (() -> Void)?
+    var onSkip: ((WidgetGrid.Skip) -> Void)?
 
     var selected = false {
         didSet {
@@ -68,7 +76,7 @@ final class WidgetTile: NSView {
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(meters)
+        [meters, track].forEach(addSubview)
         NSLayoutConstraint.activate([
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -140,19 +148,15 @@ final class WidgetTile: NSView {
         switch widget.content {
         case let .value(text, note, name):
             symbol = name
-            value.attributedStringValue = NSAttributedString(
-                string: text,
-                attributes: [
-                    .font: NSFont.monospacedDigitSystemFont(
-                        ofSize: Self.valueSize, weight: .semibold),
-                    .foregroundColor: NSColor.labelColor,
-                    .kern: Self.valueKern,
-                ])
+            showValue(text)
             showDetail(note, size: Self.detailSize)
             visible = [value, detail]
 
         case let .meters(list):
             readings = list
+
+        case let .track(playing):
+            track.show(playing)
 
         case let .loading(name):
             showTitle(name)
@@ -177,7 +181,38 @@ final class WidgetTile: NSView {
             NSImage(systemSymbolName: name, accessibilityDescription: nil)
         }
         showMeters(readings)
+        showTrack(widget.track != nil)
         setAccessibilityLabel(widget.spoken)
+        setAccessibilityCustomActions(
+            widget.track == nil
+                ? []
+                : [skip("Previous Track", .previous), skip("Next Track", .next)])
+    }
+
+    private func showTrack(_ shows: Bool) {
+        track.isHidden = !shows
+        if shows {
+            NSLayoutConstraint.activate(trackPlacement)
+        } else {
+            NSLayoutConstraint.deactivate(trackPlacement)
+        }
+    }
+
+    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
+        NSAccessibilityCustomAction(name: name) { [weak self] in
+            self?.onSkip?(skip)
+            return true
+        }
+    }
+
+    private func showValue(_ text: String) {
+        value.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: Self.valueSize, weight: .semibold),
+                .foregroundColor: NSColor.labelColor,
+                .kern: Self.valueKern,
+            ])
     }
 
     private func showTitle(_ name: String) {
@@ -222,8 +257,13 @@ final class WidgetTile: NSView {
         true
     }
 
-    override func mouseDown(with _: NSEvent) {
-        onPress?()
+    override func mouseDown(with event: NSEvent) {
+        let point = track.convert(event.locationInWindow, from: nil)
+        if !track.isHidden, let skip = track.skip(at: point) {
+            onSkip?(skip)
+        } else {
+            onPress?()
+        }
     }
 
     override func accessibilityPerformPress() -> Bool {
