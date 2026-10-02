@@ -1,3 +1,4 @@
+import AppCore
 import AppKit
 import Carbon.HIToolbox
 import InputKit
@@ -11,6 +12,17 @@ import Testing
     @Test func neverTargetsMadoItselfOrNoApp() {
         #expect(PasteTarget(app: .current) == nil)
         #expect(PasteTarget(app: nil) == nil)
+    }
+
+    @Test func namesTheAppItPastesInto() throws {
+        let app = try #require(
+            NSWorkspace.shared.runningApplications.first { app in
+                app != .current && app.localizedName != nil
+            })
+        let action = try #require(PasteTarget(app: app)).action(pasting: "42")
+
+        #expect(action.id == "paste")
+        #expect(action.title == "Paste to \(app.localizedName ?? "")")
     }
 
     @Test func replacesWhatThePasteboardHeld() throws {

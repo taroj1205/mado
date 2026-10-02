@@ -132,7 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.scoped
             ? LauncherMenu(actions: history.actions(for: item.id))
             : LauncherMenu(
-                for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor)
+                for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor,
+                pastingInto: pasteTarget)
     }
 
     private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {

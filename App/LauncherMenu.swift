@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import ClipboardKit
 import GlassUI
 import SearchKit
 
@@ -18,8 +19,12 @@ struct LauncherMenu {
         self.init(groups: [Self.entries(for: actions)], recordsUse: false)
     }
 
-    init(for id: String, query: String, in sources: LauncherResult.Sources, editor: ItemEditor) {
-        let actions = LauncherResult.actions(for: id, query: query, in: sources)
+    init(
+        for id: String, query: String, in sources: LauncherResult.Sources, editor: ItemEditor,
+        pastingInto target: PasteTarget?
+    ) {
+        let actions = LauncherResult.actions(
+            for: id, query: query, in: sources, pastingInto: target)
         guard let result = LauncherResult.result(for: id, in: sources) else {
             self.init(actions: actions)
             return
