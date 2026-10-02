@@ -10,6 +10,7 @@ public struct FocusedWindow {
     }
 
     static let messagingTimeout: Float = 0.25
+    private static let fullScreenAttribute = "AXFullScreen"
 
     let application: AXUIElement
     let element: AXUIElement
@@ -129,7 +130,11 @@ public struct FocusedWindow {
         }
     }
 
-    private func set(_ name: String, _ value: AXValue) throws(Failure) {
+    public func enterFullScreen() throws(Failure) {
+        try set(Self.fullScreenAttribute, kCFBooleanTrue)
+    }
+
+    private func set(_ name: String, _ value: CFTypeRef) throws(Failure) {
         let error = AXUIElementSetAttributeValue(element, name as CFString, value)
         guard error == .success || Self.refusal(error) else { throw Self.failure(error) }
     }
