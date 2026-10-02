@@ -9,16 +9,20 @@ struct WindowsModule: Module {
     static let id = "windows"
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
+    let layoutSettings: @MainActor () -> LayoutSettings
     let radialSettings: @MainActor () -> RadialSettings
+    let gestureSettings: @MainActor () -> GestureSettings
     let switcherSettings: @MainActor () -> SwitcherSettings
     let radialRing = OverlayPanel()
     let radialPreview = SnapPreview()
 
     func start(context: ModuleContext) {
+        registerLayouts(context: context)
         let radial = radialSettings()
         if radial.isEnabled {
             startRadialMenu(trigger: radial.trigger, context: context)
         }
+        startGestures(gestureSettings(), context: context)
         startSwitcher(context: context)
         context.logger.debug("Started")
     }
@@ -27,10 +31,22 @@ struct WindowsModule: Module {
         Log.logger(descriptor.id).debug("Stopped")
     }
 
+    private func registerLayouts(context: ModuleContext) {
+        do {
+            for command in WindowLayouts.commands(gap: { layoutSettings().gap }) {
+                try context.register(command)
+            }
+        } catch {
+            context.logger.error(
+                "Layout commands failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     private func startRadialMenu(trigger: Shortcut.Modifiers, context: ModuleContext) {
         let radialMenu = RadialMenu(
             logger: context.logger, panel: radialRing, preview: radialPreview,
-            settings: radialSettings)
+            settings: radialSettings
+        ) { layoutSettings().gap }
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
             do {
@@ -40,6 +56,27 @@ struct WindowsModule: Module {
                 return true
             } catch {
                 return false
+            }
+        }
+    }
+
+    private func startGestures(_ settings: GestureSettings, context: ModuleContext) {
+        let gesture = WindowGesture(logger: context.logger, settings: gestureSettings)
+        context.own(.other, "window gesture") { gesture.stop() }
+        let triggers: [(WindowDrag.Mode, Shortcut.Modifiers)] = [
+            (.move, settings.move), (.resize, settings.resize),
+        ]
+        for (mode, held) in triggers {
+            let name = "\(mode) gesture trigger"
+            context.installWhenTrusted(name) {
+                do {
+                    try ModifierTrigger.install(held, name: name, context: context) { event in
+                        gesture.handle(event, mode: mode, held: held)
+                    }
+                    return true
+                } catch {
+                    return false
+                }
             }
         }
     }

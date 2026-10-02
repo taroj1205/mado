@@ -116,9 +116,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
         items: ItemEditor
     ) {
+        let recorder = HotKeyPopover(items: items)
         let ignoredApps = IgnoredAppsSettings(modules: modules)
         let context = SettingsPage.Context(
-            modules: modules, hotKeys: hotKeys, rates: rates, apps: AppHotKeys(items: items),
+            modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
+            apps: AppHotKeys(items: items, recorder: recorder),
             radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps)
         let pages = NSTabViewController()
         pages.tabStyle = .unspecified

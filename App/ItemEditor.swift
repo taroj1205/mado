@@ -53,6 +53,7 @@ final class ItemEditor {
     }
 
     func start() {
+        WindowLayouts.assignDefaultHotKeys(in: self, modules: modules)
         for (id, hotkey) in settings.hotkeys {
             register(hotkey, for: id)
         }
@@ -142,6 +143,14 @@ final class ItemEditor {
         settings.save(to: modules)
         onSave?(id, false)
         return nil
+    }
+
+    func assignDefaults(_ defaults: [(id: String, hotkey: Shortcut)]) {
+        for (id, hotkey) in defaults
+        where settings[id].hotkey == nil && conflict(for: hotkey, besides: id) == nil {
+            settings[id].hotkey = hotkey
+        }
+        settings.save(to: modules)
     }
 
     func suspendHotKeys(_ suspended: Bool) {

@@ -66,6 +66,28 @@ import Testing
         #expect(unknown.isEmpty)
     }
 
+    @Test(arguments: PasteboardWatch.privateTypes)
+    func flagsACopyMarkedPrivateOnAnyItem(_ marker: NSPasteboard.PasteboardType) {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let watch = PasteboardWatch(pasteboard: pasteboard)
+
+        pasteboard.clearContents()
+        pasteboard.setString("username", forType: .string)
+        let plainIsPrivate = watch.holdsPrivateData
+
+        let plain = NSPasteboardItem()
+        plain.setString("username", forType: .string)
+        let secret = NSPasteboardItem()
+        secret.setString("hunter2", forType: .string)
+        secret.setData(Data(), forType: marker)
+        pasteboard.clearContents()
+        pasteboard.writeObjects([plain, secret])
+
+        #expect(!plainIsPrivate)
+        #expect(watch.holdsPrivateData)
+    }
+
     @Test func watchesOnlyWhileTheModuleIsOn() throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -83,6 +105,12 @@ import Testing
             manager.activeResources == [
                 ActiveResource(module: "clipboard", kind: .timer, name: "pasteboard watch")
             ])
+
+        pasteboard.clearContents()
+        pasteboard.setString("hunter2", forType: .string)
+        pasteboard.setData(Data(), forType: .init("org.nspasteboard.ConcealedType"))
+        RunLoop.main.run(until: .now.addingTimeInterval(PasteboardWatch.interval * 3))
+        #expect(module.changes == 0)
 
         pasteboard.clearContents()
         pasteboard.setString("copied", forType: .string)

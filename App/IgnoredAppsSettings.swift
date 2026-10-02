@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class IgnoredAppsSettings: NSObject {
+    private static let iconSize: CGFloat = 24
     private static let removeSize: CGFloat = 20
 
     private let modules: ModuleManager?
@@ -45,10 +46,11 @@ final class IgnoredAppsSettings: NSObject {
         remove.isEnabled = modules != nil
         let control = NSStackView(views: [remove])
         control.setHuggingPriority(.defaultHigh, for: .horizontal)
+        let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: app.path))
+        icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
         let kind = ClipboardSettings.defaultIgnoredApps.first { $0.key == id }?.value
-        return SettingsSection.Row(
-            name, control, icon: NSWorkspace.shared.icon(forFile: app.path),
-            detail: kind.map { kind in { kind } })
+        return SettingsSection.Row(name, control, icon: icon, detail: kind.map { kind in { kind } })
     }
 
     @objc
