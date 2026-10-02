@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             deliver: { [launcherView] sections in
                 launcherView.show(sections)
                 (launcherView.context, launcherView.contextSymbol) = LauncherResult.context(
-                    for: sections)
+                    for: sections, query: launcherView.field.stringValue)
             })
     }
 
