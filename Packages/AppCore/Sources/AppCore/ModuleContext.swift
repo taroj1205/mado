@@ -56,10 +56,14 @@ public final class ModuleContext {
         _ name: String, matching types: [CGEventType],
         swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
     ) throws(ModuleError) {
-        guard let id = eventTap.add(types: types, swallow: swallow) else {
-            throw .eventTapRefused(name)
-        }
-        own(.eventTap, name) { [eventTap] in eventTap.remove(id) }
+        try ownRoute(name, eventTap.add(types: types, swallow: swallow))
+    }
+
+    public func observeEvents(
+        _ name: String, matching types: [CGEventType],
+        observe: @escaping @MainActor (CGEventType, CGEvent) -> Void
+    ) throws(ModuleError) {
+        try ownRoute(name, eventTap.observe(types: types, observe: observe))
     }
 
     public func run(_ name: String, operation: @escaping @MainActor @Sendable () async -> Void) {
@@ -86,6 +90,13 @@ public final class ModuleContext {
             await task.value
             entries = entries.filter { $0.value.task != task }
         }
+    }
+
+    private func ownRoute(_ name: String, _ id: UInt?) throws(ModuleError) {
+        guard let id else {
+            throw .eventTapRefused(name)
+        }
+        own(.eventTap, name) { [eventTap] in eventTap.remove(id) }
     }
 
     private func resource(_ kind: ResourceKind, _ name: String) -> ActiveResource {
