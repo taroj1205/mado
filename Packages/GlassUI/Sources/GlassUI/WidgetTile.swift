@@ -16,7 +16,6 @@ final class WidgetTile: NSView {
     private static let headlineSize: CGFloat = 14
     private static let requestSize: CGFloat = 13
     private static let meterGap: CGFloat = 8
-    private static let insets = horizontal + horizontal
     private static let headlineBar = (fraction: 0.4, height: 18.0)
     private static let detailBar = (fraction: 0.7, height: 10.0)
     private static let fillAlpha = (dark: 0.055, light: 0.55)
@@ -121,24 +120,20 @@ final class WidgetTile: NSView {
         lines.alignment = .leading
         lines.distribution = .equalSpacing
         lines.spacing = 0
-        lines.edgeInsets = NSEdgeInsets(
-            top: Self.vertical, left: Self.horizontal, bottom: Self.vertical,
-            right: Self.horizontal)
         lines.translatesAutoresizingMaskIntoConstraints = false
         addSubview(lines)
         let width = lines.widthAnchor
         NSLayoutConstraint.activate(
             [
-                lines.leadingAnchor.constraint(equalTo: leadingAnchor),
-                lines.trailingAnchor.constraint(equalTo: trailingAnchor),
-                lines.topAnchor.constraint(equalTo: topAnchor),
-                lines.bottomAnchor.constraint(equalTo: bottomAnchor),
-                request.widthAnchor.constraint(equalTo: width, constant: -Self.insets),
+                lines.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
+                lines.trailingAnchor.constraint(
+                    equalTo: trailingAnchor, constant: -Self.horizontal),
+                lines.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
+                lines.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
+                request.widthAnchor.constraint(equalTo: width),
             ]
                 + skeleton.map { bar in
-                    bar.widthAnchor.constraint(
-                        equalTo: width, multiplier: bar.fraction,
-                        constant: -bar.fraction * Self.insets)
+                    bar.widthAnchor.constraint(equalTo: width, multiplier: bar.fraction)
                 })
     }
 
