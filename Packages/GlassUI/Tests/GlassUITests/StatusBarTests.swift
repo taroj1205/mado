@@ -130,6 +130,62 @@ import Testing
         #expect(view.contextPill.accessibilityPerformPress() == false)
     }
 
+    @Test func newValuesUpdateThePillsInPlaceAndKeepTheSelection() {
+        let views = view.statusBar.views
+        view.pressPill(1)
+        view.pills = [
+            .init(
+                id: "disk", name: "Disk free", symbol: "internaldrive", value: "209",
+                action: "Open Storage Settings", unit: "GB"),
+            .init(
+                id: "thermal", name: "Thermal state", symbol: "thermometer.high", value: "Serious",
+                action: "Open Activity Monitor"),
+        ]
+        #expect(zip(view.statusBar.views, views).allSatisfy { $0 === $1 })
+        #expect(views.map(\.text) == ["209 GB", "Serious"])
+        #expect(views.map(\.symbol) == ["internaldrive", "thermometer.high"])
+        #expect(views.first?.accessibilityLabel() == "Disk free: 209 GB")
+        #expect(view.selectedPill == 1)
+        #expect(views.map(\.selected) == [false, true])
+        #expect(view.actionLabel.stringValue == "Open Activity Monitor")
+    }
+
+    @Test func newValuesLeaveTheBarWhereItWasScrolled() {
+        let many = (0..<12).map { index in
+            StatusBar.Pill(
+                id: "pill\(index)", name: "Pill", symbol: "cpu", value: "\(index)",
+                action: "Open Activity Monitor")
+        }
+        view.pills = many
+        view.layoutSubtreeIfNeeded()
+        view.pressPill(11)
+        let clip = view.statusBar.contentView
+        #expect(clip.bounds.minX > 0)
+        clip.scroll(to: .zero)
+        view.pills = many.map { pill in
+            StatusBar.Pill(
+                id: pill.id, name: pill.name, symbol: pill.symbol, value: "9\(pill.value)",
+                action: pill.action)
+        }
+        #expect(clip.bounds.minX == 0)
+        #expect(view.selectedPill == 11)
+    }
+
+    @Test func theSelectionFollowsItsPillWhenThePillsChange() {
+        let cpu = StatusBar.Pill(
+            id: "cpu", name: "CPU", symbol: "cpu", value: "23%", action: "Open Activity Monitor")
+        view.pressPill(0)
+        view.pills = [cpu] + pills
+        #expect(view.selectedPill == 1)
+        #expect(view.statusBar.views.map(\.selected) == [false, true, false])
+        #expect(view.actionLabel.stringValue == "Open Storage Settings")
+        view.pills = [cpu]
+        #expect(view.selectedPill == nil)
+        #expect(view.statusBar.views.map(\.selected) == [false])
+        #expect(!view.results.hidesSelection)
+        #expect(view.actionLabel.stringValue == "Run Command")
+    }
+
     @Test func withoutPillsDownStopsAtTheLastRow() {
         view.pills = []
         for _ in 0..<5 {

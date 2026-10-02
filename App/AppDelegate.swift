@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let apps = AppIndex()
     let files = FileIndex()
     let rates = ExchangeRateFeed()
+    let statusPills = StatusPills()
     let widgets = Widgets()
     private var usage = Usage()
     private var history = CalculatorHistory()
@@ -233,7 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.leave()
         launcherView.endBrowsing()
         launcher?.orderOut(nil)
-        widgets.stop()
+        hideGlances()
         launcherClosed = .now
     }
 

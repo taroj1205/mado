@@ -12,8 +12,13 @@ extension AppDelegate {
     }
 
     func showGlances() {
-        launcherView.pills = StatusPills.current()
+        statusPills.show(in: launcherView)
         widgets.show(in: launcherView)
+    }
+
+    func hideGlances() {
+        statusPills.stop()
+        widgets.stop()
     }
 
     private func runGlance(_ action: CommandAction, for id: String) {

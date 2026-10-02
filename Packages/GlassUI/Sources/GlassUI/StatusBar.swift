@@ -33,6 +33,10 @@ public final class StatusBar: NSScrollView {
     var pills: [Pill] = [] {
         didSet {
             guard pills != oldValue else { return }
+            if pills.map(\.id) == oldValue.map(\.id) {
+                zip(pills, views).forEach(show)
+                return
+            }
             stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
             for (index, pill) in pills.enumerated() {
                 stack.addArrangedSubview(makeView(for: pill, at: index))
@@ -77,21 +81,25 @@ public final class StatusBar: NSScrollView {
 
     func highlight(_ index: Int?) {
         for (position, view) in views.enumerated() {
-            view.selected = position == index
-            if position == index {
+            if position == index, !view.selected {
                 view.scrollToVisible(view.bounds)
             }
+            view.selected = position == index
         }
     }
 
     private func makeView(for pill: Pill, at index: Int) -> StatusPill {
         let view = StatusPill()
-        let unit = pill.unit.isEmpty ? "" : " \(pill.unit)"
-        view.show(StatusPill.styled(bold: pill.value, rest: unit), symbol: pill.symbol)
         view.onPress = { [weak self] in self?.onPress?(index) }
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
-        view.setAccessibilityLabel(pill.spoken)
+        show(pill, in: view)
         return view
+    }
+
+    private func show(_ pill: Pill, in view: StatusPill) {
+        let unit = pill.unit.isEmpty ? "" : " \(pill.unit)"
+        view.show(StatusPill.styled(bold: pill.value, rest: unit), symbol: pill.symbol)
+        view.setAccessibilityLabel(pill.spoken)
     }
 }
