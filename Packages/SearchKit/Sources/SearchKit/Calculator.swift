@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 public enum Calculator {
     public struct Answer: Sendable, Equatable {
@@ -144,13 +144,15 @@ public enum Calculator {
         "/": "divided by", "÷": "divided by",
     ]
 
-    public static func answer(for query: String) -> Answer? {
+    public static func answer(for query: String, now: Date = .now) -> Answer? {
         let text = query.lowercased()
             .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
             .replacing(/^what is\s/, with: "")
-        if let conversion = Conversion.answer(for: text) { return conversion }
+        if let answer = Conversion.answer(for: text) ?? TimeMath.answer(for: text, now: now) {
+            return answer
+        }
         guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
             return nil
         }
