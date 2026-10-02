@@ -160,6 +160,25 @@ import Testing
         #expect(manager.isEnabled("launcher"))
     }
 
+    @Test func restartingStopsAndStartsOnlyARunningModule() throws {
+        let manager = try ModuleManager(store: makeStore())
+        let running = FakeModule(id: "windows", enabledByDefault: true)
+        let stopped = FakeModule(id: "clipboard", enabledByDefault: false)
+        try manager.register(running)
+        try manager.register(stopped)
+        try manager.startEnabledModules()
+
+        try manager.restart("windows")
+        try manager.restart("clipboard")
+
+        #expect(running.stops == 1)
+        #expect(running.starts == 2)
+        #expect(running.released == ["frontmost"])
+        #expect(stopped.starts == 0)
+        #expect(stopped.stops == 0)
+        #expect(throws: ModuleError.unknownModule("nope")) { try manager.restart("nope") }
+    }
+
     @Test func duplicateAndUnknownIdsAreRejected() throws {
         let manager = try ModuleManager(store: makeStore())
         try manager.register(FakeModule(id: "launcher", enabledByDefault: false))

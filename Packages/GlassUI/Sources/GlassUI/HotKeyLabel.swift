@@ -4,11 +4,12 @@ import Carbon.HIToolbox
 
 enum HotKeyLabel {
     private static let symbols: [(Shortcut.Modifiers, String)] = [
-        (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
+        (.function, "fn"), (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
     ]
 
     private static let modifierNames: [(Shortcut.Modifiers, String)] = [
-        (.control, "Control"), (.option, "Option"), (.shift, "Shift"), (.command, "Command"),
+        (.function, "fn"), (.control, "Control"), (.option, "Option"), (.shift, "Shift"),
+        (.command, "Command"),
     ]
 
     private static let specialKeys: [Int: String] = [
@@ -51,9 +52,12 @@ enum HotKeyLabel {
     }
 
     static func spoken(_ shortcut: Shortcut) -> String {
-        let names = modifierNames.filter { shortcut.modifiers.contains($0.0) }.map(\.1)
         let key = spokenKeys[Int(shortcut.keyCode)] ?? keyName(shortcut.keyCode)
-        return (names + [key]).joined(separator: " ")
+        return (names(shortcut.modifiers) + [key]).joined(separator: " ")
+    }
+
+    static func spoken(_ modifiers: Shortcut.Modifiers) -> String {
+        names(modifiers).joined(separator: " ")
     }
 
     static func modifier(of key: HotKey.ModifierKey) -> Shortcut.Modifiers {
@@ -63,6 +67,10 @@ enum HotKeyLabel {
         case .leftOption, .rightOption: .option
         case .leftShift, .rightShift: .shift
         }
+    }
+
+    private static func names(_ modifiers: Shortcut.Modifiers) -> [String] {
+        modifierNames.filter { modifiers.contains($0.0) }.map(\.1)
     }
 
     static func keyName(_ keyCode: UInt32) -> String {
