@@ -15,7 +15,8 @@ final class RadialMenu {
     private let panel: OverlayPanel
     private let ring = RadialRing()
     private let preview: SnapPreview
-    private let settings = RadialSettings()
+    private let loadSettings: @MainActor () -> RadialSettings
+    private var settings = RadialSettings()
     private var resolver: RadialResolver?
     private var focus: Focus?
     private var lookup: Task<Void, Never>?
@@ -23,10 +24,14 @@ final class RadialMenu {
         self?.move(to: location)
     }
 
-    init(logger: Logger, panel: OverlayPanel, preview: SnapPreview) {
+    init(
+        logger: Logger, panel: OverlayPanel, preview: SnapPreview,
+        settings: @escaping @MainActor () -> RadialSettings
+    ) {
         self.logger = logger
         self.panel = panel
         self.preview = preview
+        loadSettings = settings
         panel.contentView = ring
     }
 
@@ -39,6 +44,7 @@ final class RadialMenu {
         switch event {
         case .pressed:
             resolver = nil
+            settings = loadSettings()
             pointer.start()
             if pointer.isTracking {
                 logger.debug("Pointer tracking started")
@@ -99,6 +105,10 @@ final class RadialMenu {
         if next.zone != zone {
             logger.debug("Radial zone: \(String(describing: next.zone), privacy: .public)")
             ring.select(RadialRing.Highlight(next.zone))
+            if settings.haptics {
+                NSHapticFeedbackManager.defaultPerformer.perform(
+                    .alignment, performanceTime: .default)
+            }
             showPreview()
         }
     }

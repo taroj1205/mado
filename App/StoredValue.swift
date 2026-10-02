@@ -1,6 +1,7 @@
 import AppCore
 import os
 import SearchKit
+import WindowKit
 
 protocol StoredValue: Codable {
     static var key: String { get }
@@ -45,4 +46,8 @@ extension AnswerSettings: StoredValue {
 
 extension Quicklinks: StoredValue {
     static let key = "quicklinks"
+}
+
+extension RadialSettings: StoredValue {
+    static let key = "radial"
 }

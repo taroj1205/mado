@@ -57,6 +57,7 @@ public struct RadialSettings: Codable, Equatable, Sendable {
     public var bottomLeft: Action
     public var left: Action
     public var topLeft: Action
+    public var haptics: Bool
 
     public init() {
         ring = .maximize
@@ -68,6 +69,7 @@ public struct RadialSettings: Codable, Equatable, Sendable {
         bottomLeft = .bottomLeftQuarter
         left = .leftCycle
         topLeft = .topLeftQuarter
+        haptics = true
     }
 
     public func action(in zone: RadialResolver.Zone) -> Action {
