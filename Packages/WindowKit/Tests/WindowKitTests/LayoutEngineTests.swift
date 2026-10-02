@@ -61,6 +61,22 @@ import Testing
             CGRect(x: 480, y: 66, width: 960, height: 810),
             CGRect(x: 488, y: 78, width: 940, height: 786)
         ),
+        .topThird: (
+            CGRect(x: 0, y: 606, width: 1_440, height: 270),
+            CGRect(x: 12, y: 610, width: 1_416, height: 254)
+        ),
+        .bottomThird: (
+            CGRect(x: 0, y: 66, width: 1_440, height: 270),
+            CGRect(x: 12, y: 78, width: 1_416, height: 254)
+        ),
+        .topTwoThirds: (
+            CGRect(x: 0, y: 336, width: 1_440, height: 540),
+            CGRect(x: 12, y: 344, width: 1_416, height: 520)
+        ),
+        .bottomTwoThirds: (
+            CGRect(x: 0, y: 66, width: 1_440, height: 540),
+            CGRect(x: 12, y: 78, width: 1_416, height: 520)
+        ),
         .centre: (
             CGRect(x: 320, y: 171, width: 800, height: 600),
             CGRect(x: 320, y: 171, width: 800, height: 600)
@@ -101,14 +117,14 @@ import Testing
     }
 
     @Test func placesWithoutAGapThatLeavesNoRoomForTheSmallestTile() throws {
-        let topHalf = try #require(Self.expected[.topHalf]).gapless
+        let topThird = try #require(Self.expected[.topThird]).gapless
         let leftThird = try #require(Self.expected[.leftThird]).gapless
-        for unfit: CGFloat in [-8, 270, 360] {
-            #expect(Self.frame(.topHalf, gap: unfit, window: Self.window) == topHalf)
+        for unfit: CGFloat in [-8, 202.5, 360] {
+            #expect(Self.frame(.topThird, gap: unfit, window: Self.window) == topThird)
             #expect(Self.frame(.leftThird, gap: unfit, window: Self.window) == leftThird)
         }
         #expect(
-            Self.frame(.topHalf, gap: 269, window: Self.window)
-                == CGRect(x: 269, y: 605.5, width: 902, height: 1.5))
+            Self.frame(.topThird, gap: 201, window: Self.window)
+                == CGRect(x: 201, y: 673, width: 1_038, height: 2))
     }
 }
