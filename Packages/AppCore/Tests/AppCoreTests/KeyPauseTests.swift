@@ -102,9 +102,9 @@ import Testing
     @Test func pausingRestartsOnlyModulesWithKeyFeaturesWithoutThem() throws {
         let manager = try Self.makeManager()
         let keyboard = KeyModule(id: "keyboard", hasKeys: true, enabledByDefault: true)
-        let clipboard = KeyModule(id: "clipboard", hasKeys: false, enabledByDefault: true)
+        let calculator = KeyModule(id: "calculator", hasKeys: false, enabledByDefault: true)
         try manager.register(keyboard)
-        try manager.register(clipboard)
+        try manager.register(calculator)
         try manager.startEnabledModules()
         var changes = 0
         manager.onKeysPausedChange = { changes += 1 }
@@ -117,16 +117,18 @@ import Testing
         #expect(keyboard.starts == 2)
         #expect(keyboard.keyStarts == 1)
         #expect(keyboard.released.sorted() == ["command", "remap"])
-        #expect(clipboard.stops == 0)
-        #expect(clipboard.starts == 1)
+        #expect(calculator.stops == 0)
+        #expect(calculator.starts == 1)
         #expect(!manager.activeResources.contains { $0.name == "remap" })
+        #expect(
+            manager.activeResources.contains { $0.module == "keyboard" && $0.name == "command" })
 
         manager.setKeysPaused(false)
         #expect(!manager.keysPaused)
         #expect(changes == 2)
         #expect(keyboard.keyStarts == 2)
         #expect(manager.activeResources.contains { $0.name == "remap" })
-        #expect(clipboard.starts == 1)
+        #expect(calculator.starts == 1)
     }
 
     @Test func aModuleTurnedOnOrAddedWhilePausedWaitsForTheResume() throws {
