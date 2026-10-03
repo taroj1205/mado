@@ -94,6 +94,31 @@ import Testing
         #expect(pasteboard.string(forType: .string) == "old")
     }
 
+    @Test func leavesTheCaretAtTheEndPastTheKeyLimitAndOffersNoUndo() throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        var posted: [CGEvent] = []
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { posted = $0 }
+        let tail = String(repeating: "x", count: TextInsertion.keyLimit + 1)
+        let long = SnippetTemplate("{cursor}" + tail).expand(
+            .init(fields: [:], date: "", time: "", clipboard: ""))
+        let short = SnippetTemplate("{cursor}" + tail.dropFirst()).expand(
+            .init(fields: [:], date: "", time: "", clipboard: ""))
+
+        let longInserted = try insertion.replace(";fu", with: long)
+        let longArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
+        let shortInserted = try insertion.replace(";fu", with: short)
+        let shortArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
+
+        #expect(longArrows == 0)
+        #expect(longInserted.caretBack == 0)
+        #expect(!longInserted.canUndo)
+        #expect(shortArrows == TextInsertion.keyLimit)
+        #expect(shortInserted.canUndo)
+    }
+
     @Test func clearsAPasteboardThatWasEmpty() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }

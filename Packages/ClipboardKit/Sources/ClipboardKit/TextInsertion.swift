@@ -11,6 +11,8 @@ public struct TextInsertion {
         let saved: [NSPasteboardItem]
         let changeCount: Int
         let text: LazyText
+
+        var canUndo: Bool { length <= TextInsertion.keyLimit }
     }
 
     final class LazyText: NSObject, NSPasteboardItemDataProvider, Sendable {
@@ -32,6 +34,7 @@ public struct TextInsertion {
         }
     }
 
+    nonisolated static let keyLimit = 1_000
     private static let restoreMilliseconds = 500
     private static let pasteSeconds = 5
     private static let pollMilliseconds = 50
@@ -64,8 +67,9 @@ public struct TextInsertion {
     ) throws -> Inserted {
         let saved = pasteboard.pasteboardItems?.map(Self.copy) ?? []
         let delete = try Keystrokes.press(CGKeyCode(kVK_Delete), flags: [], times: typed.count)
+        let caretBack = expansion.caretBack <= Self.keyLimit ? expansion.caretBack : 0
         let back = try Keystrokes.press(
-            CGKeyCode(kVK_LeftArrow), flags: Keystrokes.arrowFlags, times: expansion.caretBack)
+            CGKeyCode(kVK_LeftArrow), flags: Keystrokes.arrowFlags, times: caretBack)
         let paste = try PasteTarget.commandV()
         let text = LazyText(expansion.text)
         let item = NSPasteboardItem()
@@ -76,7 +80,7 @@ public struct TextInsertion {
         let written = pasteboard.changeCount
         post(delete + paste + back)
         return Inserted(
-            length: expansion.text.count, caretBack: expansion.caretBack, replaced: typed,
+            length: expansion.text.count, caretBack: caretBack, replaced: typed,
             saved: saved, changeCount: written, text: text)
     }
 
