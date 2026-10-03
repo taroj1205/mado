@@ -2,7 +2,6 @@ import AppCore
 import AppKit
 import ClipboardKit
 import SearchKit
-import UniformTypeIdentifiers
 
 @MainActor
 final class IgnoredAppsSettings: NSObject {
@@ -55,19 +54,7 @@ final class IgnoredAppsSettings: NSObject {
 
     @objc
     private func addApp(_ sender: NSButton) {
-        guard let window = unsafe sender.window else { return }
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.application]
-        panel.directoryURL = URL(filePath: "/Applications")
-        panel.prompt = "Add"
-        panel.beginSheetModal(for: window) { [weak self] response in
-            guard response == .OK, let app = panel.url else { return }
-            guard let id = Bundle(url: app)?.bundleIdentifier else {
-                NSApp.presentError(CocoaError(.fileReadCorruptFile, userInfo: [NSURLErrorKey: app]))
-                return
-            }
-            self?.update { $0.ignore(id) }
-        }
+        AppPicker.pickBundleID(from: sender) { [weak self] id in self?.update { $0.ignore(id) } }
     }
 
     @objc

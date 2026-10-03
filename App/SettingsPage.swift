@@ -14,6 +14,7 @@ struct SettingsPage {
         let radial: RadialMenuSettings
         let clipboardHistory: ClipboardHistorySettings
         let ignoredApps: IgnoredAppsSettings
+        let inputDefaults: AppInputDefaults
         let gallery: WidgetGalleryWindow
     }
 
@@ -90,7 +91,15 @@ struct SettingsPage {
                     ]
                 },
             ]),
-        Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
+        Self(
+            "Keyboard", "keyboard",
+            module: module("keyboard", "Keyboard", enabled: true),
+            tabs: [
+                Tab(title: "Modifier Keys", sections: nil),
+                Tab(title: "Input Sources") { [$0.inputDefaults.section] },
+                Tab(title: "Enter Guard", sections: nil),
+                Tab(title: "Remaps", sections: nil),
+            ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),

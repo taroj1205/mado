@@ -55,6 +55,18 @@ public final class ModuleContext {
         own(.timer, name) { timer.invalidate() }
     }
 
+    public func observe<Value: Sendable>(
+        _ name: Notification.Name, on center: NotificationCenter,
+        reading read: @escaping @Sendable (Notification) -> Value,
+        handler: @escaping @MainActor (Value) -> Void
+    ) {
+        let token = center.addObserver(forName: name, object: nil, queue: .main) { notification in
+            let value = read(notification)
+            MainActor.assumeIsolated { handler(value) }
+        }
+        own(.observer, name.rawValue) { center.removeObserver(token) }
+    }
+
     public func tapEvents(
         _ name: String, matching types: [CGEventType],
         swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
