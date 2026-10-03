@@ -80,6 +80,7 @@ import Testing
     }
 
     @Test func tilesTiltBothWaysUnlessReduceMotionIsOn() {
+        view.widgetGrid.reducesMotion = { false }
         edit()
         view.layoutSubtreeIfNeeded()
         #expect(view.widgetGrid.tiles.map(\.frameCenterRotation) == [-0.6, 0.6, -0.6])
