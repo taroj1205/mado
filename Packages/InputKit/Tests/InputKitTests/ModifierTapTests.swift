@@ -60,8 +60,8 @@ import Testing
         }
 
         mutating func expire() {
-            guard let releasedAt = detector.waitingSince else { return }
-            if let fired = detector.expire(releasedAt: releasedAt) {
+            guard let deadline = detector.deadline else { return }
+            if let fired = detector.expire(at: deadline) {
                 taps.append(fired)
             }
         }

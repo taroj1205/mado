@@ -80,6 +80,7 @@ public struct ModifierTap {
         }
 
         func handle(_ type: CGEventType, _ event: CGEvent) {
+            let before = state.deadline
             let fired = state.handle(
                 type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
@@ -87,12 +88,10 @@ public struct ModifierTap {
             if let fired, let action = actions[fired] {
                 DispatchQueue.main.async { action() }
             }
-            guard let releasedAt = state.waitingSince, releasedAt == event.timestamp else {
-                return
-            }
+            guard let due = state.deadline, due != before else { return }
             Task { [weak self, window] in
                 try? await Task.sleep(for: window)
-                guard let self, let expired = state.expire(releasedAt: releasedAt) else { return }
+                guard let self, let expired = state.expire(at: due) else { return }
                 actions[expired]?()
             }
         }
@@ -112,9 +111,9 @@ public struct ModifierTap {
     private var chord: (keys: Set<Key>, since: CGEventTimestamp)?
     private var run: Run?
 
-    var waitingSince: CGEventTimestamp? {
+    var deadline: CGEventTimestamp? {
         guard let run, run.waits else { return nil }
-        return run.releasedAt
+        return (press?.since ?? run.releasedAt) + CGEventTimestamp(window / .nanoseconds(1))
     }
 
     init(window: Duration, bindings: Set<Tap>) {
@@ -177,8 +176,8 @@ public struct ModifierTap {
         return release(key, at: timestamp)
     }
 
-    mutating func expire(releasedAt: CGEventTimestamp) -> Tap? {
-        guard press == nil, run?.releasedAt == releasedAt else { return nil }
+    mutating func expire(at now: CGEventTimestamp) -> Tap? {
+        guard let deadline, now >= deadline else { return nil }
         return flush()
     }
 
