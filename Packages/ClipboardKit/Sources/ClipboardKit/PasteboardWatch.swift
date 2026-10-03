@@ -45,6 +45,7 @@ public struct PasteboardWatch {
             }
         }
         context.scheduleTimer(name, interval: interval, handler: check)
+        context.own(.other, "\(name) last check") { MainActor.assumeIsolated(check) }
         return check
     }
 

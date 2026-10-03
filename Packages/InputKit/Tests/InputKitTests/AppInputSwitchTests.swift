@@ -19,14 +19,16 @@ import Testing
         "com.apple.MobileSMS": .lastUsed,
     ]
 
-    private static func makeSwitch(front: String?, _ sources: Sources) -> AppInputSwitch {
+    private static func makeSwitch(
+        front: String?, _ sources: Sources, memory: AppInputSwitch.Memory = .init()
+    ) -> AppInputSwitch {
         AppInputSwitch(
             front: front, current: { sources.current },
             select: { id in
                 sources.selected.append(id)
                 sources.current = id
             },
-            settle: .zero)
+            settle: .zero, memory: memory)
     }
 
     private static func activate(_ app: String?, on switcher: AppInputSwitch) async {
@@ -91,6 +93,54 @@ import Testing
         #expect(
             sources.selected == [
                 "com.apple.keylayout.ABC", "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
+            ])
+    }
+
+    @Test func lastUsedOutlivesASwitchStoppedInTheApp() async {
+        let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
+        let memory = AppInputSwitch.Memory()
+        let before = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        await Self.activate(nil, on: before)
+
+        let after = Self.makeSwitch(front: "com.apple.Safari", sources, memory: memory)
+        sources.current = "com.apple.keylayout.ABC"
+        await Self.activate("com.apple.MobileSMS", on: after)
+
+        #expect(sources.selected == ["com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"])
+    }
+
+    @Test func aSwitchStoppedBeforeItsSelectionLandsKeepsTheRememberedSource() async {
+        let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        let sources = Sources(current: japanese)
+        let memory = AppInputSwitch.Memory()
+        let learned = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        await Self.activate("com.apple.Safari", on: learned)
+        sources.current = "com.apple.keylayout.ABC"
+
+        let stopped = Self.makeSwitch(front: "com.apple.Safari", sources, memory: memory)
+        stopped.activated("com.apple.MobileSMS", apps: Self.apps)
+        stopped.activated(nil, apps: Self.apps)
+        let resumed = Self.makeSwitch(front: "com.apple.Safari", sources, memory: memory)
+        await Self.activate("com.apple.MobileSMS", on: resumed)
+
+        #expect(sources.selected == [japanese])
+    }
+
+    @Test func startingInAnAppSetsItsFixedOrRememberedSource() async {
+        let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        let sources = Sources(current: japanese)
+        let memory = AppInputSwitch.Memory()
+        let learned = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        await Self.activate("com.apple.Terminal", on: learned)
+
+        let resumed = Self.makeSwitch(front: nil, sources, memory: memory)
+        await Self.activate("com.apple.MobileSMS", on: resumed)
+        let started = Self.makeSwitch(front: nil, sources, memory: memory)
+        await Self.activate("com.apple.Terminal", on: started)
+
+        #expect(
+            sources.selected == [
+                "com.apple.keylayout.ABC", japanese, "com.apple.keylayout.ABC",
             ])
     }
 

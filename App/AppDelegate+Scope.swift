@@ -75,8 +75,14 @@ extension AppDelegate {
             if ClipboardHistory.assignDefaultHotKey(in: editor, modules: modules) {
                 settings?.reload()
             }
+            if scope == .clipboard {
+                searchAgain()
+            }
         } else if scope == .clipboard {
-            launcherView.leave()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !clipboardHistory.isRunning, scope == .clipboard else { return }
+                launcherView.leave()
+            }
         }
         editor.refreshHotKey(for: ClipboardHistory.commandID)
     }

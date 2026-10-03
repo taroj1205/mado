@@ -9,11 +9,15 @@ struct KeyboardModule: Module {
     let descriptor: ModuleDescriptor
     let inputSourceSettings: @MainActor () -> InputSourceSettings
     let remapSettings: @MainActor () -> RemapSettings
+    let inputMemory = AppInputSwitch.Memory()
 
     func start(context: ModuleContext) {
-        context.installWhenTrusted("input mode taps") { installTap(context) }
-        AppInputSwitch.install(context: context, settings: inputSourceSettings)
-        startRemaps(remapSettings(), context: context)
+        context.startKeyFeatures {
+            context.installWhenTrusted("input mode taps") { installTap(context) }
+            AppInputSwitch.install(
+                context: context, settings: inputSourceSettings, memory: inputMemory)
+            startRemaps(remapSettings(), context: context)
+        }
     }
 
     func stop() {
