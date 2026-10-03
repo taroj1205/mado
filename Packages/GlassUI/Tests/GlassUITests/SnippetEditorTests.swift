@@ -76,6 +76,22 @@ import Testing
         #expect(editor.nameField.stringValue == "Email sign-off")
     }
 
+    @Test func searchingKeepsANewDraftUntilAnotherSnippetIsChosen() {
+        editor.show([Self.signOff, Self.address], selecting: "sig")
+        editor.newSnippet.performClick(nil)
+        type("Zoom link", in: editor.nameField)
+
+        type("queen", in: editor.search)
+        let kept = (editor.nameField.stringValue, editor.editing, editor.list.selectedID)
+        press(kVK_DownArrow, "\u{F701}")
+
+        #expect(editor.list.entries == [Self.address])
+        #expect(kept.0 == "Zoom link")
+        #expect(kept.1 == nil && kept.2 == nil)
+        #expect(editor.editing == "addr")
+        #expect(editor.nameField.stringValue == "Home address")
+    }
+
     @Test func returnSavesTheTrimmedFormAndShowsAProblem() {
         editor.show([Self.signOff], selecting: "sig")
         editor.nameField.stringValue = "  Sign-off "

@@ -71,6 +71,18 @@ extension SnippetEditor {
         return FloatingCapsule.make(stack, leading: buttonsInset, trailing: buttonsInset)
     }
 
+    func insert(_ token: String) {
+        unsafe window?.makeFirstResponder(textView)
+        let inserted = token == Self.fillIn ? fillInToken : token
+        let start = textView.selectedRange().location
+        textView.insertText(inserted, replacementRange: textView.selectedRange())
+        guard token == Self.fillIn, let quoted = inserted.firstMatch(of: /"(?<name>[^"]*)"/)
+        else { return }
+        let name = quoted.output.name
+        let range = NSRange(name.startIndex..<name.endIndex, in: inserted)
+        textView.setSelectedRange(NSRange(location: start + range.location, length: range.length))
+    }
+
     func highlightTokens() {
         guard !textView.hasMarkedText(), let storage = unsafe textView.textStorage else { return }
         storage.beginEditing()
