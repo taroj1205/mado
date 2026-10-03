@@ -17,13 +17,14 @@ struct PlaceholderModule: Module {
 extension ModuleDescriptor {
     @MainActor
     func makeModule(
-        in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory
+        in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory,
+        snippets: Snippets
     ) -> any Module {
         switch id {
         case ClipboardModule.id:
             ClipboardModule(
                 descriptor: self, settings: { [weak modules] in .load(from: modules) },
-                history: clipboardHistory)
+                history: clipboardHistory, snippets: snippets)
 
         case DictationModule.id: DictationModule(descriptor: self)
 

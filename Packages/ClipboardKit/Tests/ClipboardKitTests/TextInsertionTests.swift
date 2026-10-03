@@ -1,0 +1,108 @@
+import AppKit
+import Carbon.HIToolbox
+import Testing
+
+@testable import ClipboardKit
+
+@MainActor
+@Suite struct TextInsertionTests {
+    private static let expansion = SnippetTemplate("Thanks!{cursor} Bye").expand(
+        .init(fields: [:], date: "", time: "", clipboard: ""))
+
+    private static func keys(_ events: [CGEvent]) -> [Int64] {
+        events.filter { $0.type == .keyDown }.map { $0.getIntegerValueField(.keyboardEventKeycode) }
+    }
+
+    private static func text(of event: CGEvent) -> String {
+        var length = 0
+        var units = [UniChar](repeating: 0, count: 20)
+        unsafe event.keyboardGetUnicodeString(
+            maxStringLength: units.count, actualStringLength: &length, unicodeString: &units)
+        return String(decoding: units.prefix(length), as: UTF16.self)
+    }
+
+    @Test func deletesTheKeywordPastesAndPutsTheCaretBack() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        var posted: [CGEvent] = []
+        var pastedText: String?
+        var pastedTransient = false
+        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { events in
+            posted = events
+            pastedText = pasteboard.string(forType: .string)
+            pastedTransient = pasteboard.types?.contains(PasteboardWatch.transientType) == true
+        }
+
+        let inserted = try insertion.replace(";fu", with: Self.expansion)
+        let pastedFirst = pasteboard.string(forType: .string)
+        await insertion.restore(inserted)
+
+        let paste = Int64(try PasteTarget.commandV()[0].getIntegerValueField(.keyboardEventKeycode))
+        let delete = Int64(kVK_Delete)
+        let left = Int64(kVK_LeftArrow)
+        #expect(Self.keys(posted) == [delete, delete, delete, paste, left, left, left, left])
+        #expect(posted.allSatisfy(Keystrokes.isPosted))
+        #expect(pastedText == "Thanks! Bye")
+        #expect(pastedTransient)
+        #expect(pastedFirst == "Thanks! Bye")
+        #expect(pasteboard.string(forType: .string) == "old")
+        #expect(pasteboard.types?.contains(PasteboardWatch.transientType) == true)
+        #expect(inserted.length == 11)
+        #expect(inserted.caretBack == 4)
+        #expect(inserted.replaced == ";fu")
+    }
+
+    @Test func clearsAPasteboardThatWasEmpty() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        var posted: [CGEvent] = []
+        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { posted = $0 }
+
+        await insertion.restore(try insertion.replace("", with: Self.expansion))
+
+        #expect(pasteboard.pasteboardItems?.isEmpty == true)
+        #expect(!posted.isEmpty)
+    }
+
+    @Test func leavesANewerCopyAlone() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { _ in
+            pasteboard.clearContents()
+            pasteboard.setString("copied meanwhile", forType: .string)
+        }
+
+        await insertion.restore(try insertion.replace("", with: Self.expansion))
+
+        #expect(pasteboard.string(forType: .string) == "copied meanwhile")
+    }
+
+    @Test func undoRemovesTheTextAndTypesTheKeywordAgain() throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        var posted: [CGEvent] = []
+        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { posted = $0 }
+        let short = SnippetTemplate("a{cursor}bc").expand(
+            .init(fields: [:], date: "", time: "", clipboard: ""))
+
+        try insertion.undo(try insertion.replace(";fu", with: short))
+
+        let right = Int64(kVK_RightArrow)
+        let delete = Int64(kVK_Delete)
+        #expect(Self.keys(posted) == [right, right, delete, delete, delete, 0])
+        #expect(posted.last.map(Self.text) == ";fu")
+        #expect(posted.allSatisfy(Keystrokes.isPosted))
+    }
+
+    @Test func typesLongTextInChunksWithoutSplittingCharacters() throws {
+        let text = String(repeating: "あ", count: 19) + "👋🏽"
+
+        let events = try Keystrokes.typing(text)
+
+        let downs = events.filter { $0.type == .keyDown }.map(Self.text)
+        #expect(downs == [String(repeating: "あ", count: 19), "👋🏽"])
+    }
+}

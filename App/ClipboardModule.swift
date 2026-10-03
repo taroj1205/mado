@@ -10,6 +10,7 @@ struct ClipboardModule: Module {
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
     let history: ClipboardHistory
+    let snippets: Snippets
 
     private static func recognizeImages(
         in store: ClipboardStore, for history: ClipboardHistory, logger: Logger
@@ -23,6 +24,7 @@ struct ClipboardModule: Module {
 
     func start(context: ModuleContext) {
         let logger = context.logger
+        snippets.start(with: context)
         let store: ClipboardStore
         do {
             store = try .standard()
