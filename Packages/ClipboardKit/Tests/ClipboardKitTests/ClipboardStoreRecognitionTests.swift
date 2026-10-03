@@ -64,7 +64,7 @@ import Testing
         let reads = Reads()
 
         let store = try ClipboardStore(directory: directory)
-        try await store.recognizeImages { file in
+        try await store.recognizeImages(onEach: nil) { file in
             await reads.start(file)
             await reads.finish()
             return "text in \(file.lastPathComponent)"
@@ -76,6 +76,29 @@ import Testing
                 "text in pinned.png", "copied text", "text in old.png",
             ])
         #expect(try await store.search("pinned", limit: 10).map(\.pinned) == [true])
+    }
+
+    @Test func reportsEachImageAsSoonAsItsTextIsSaved() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        for index in 0..<2 {
+            try await store.add(Self.image(at: Double(index)), keeping: Self.roomy)
+        }
+        let reads = Reads()
+
+        try await store.recognizeImages {
+            let found = try? await store.search("QX7K2M", limit: 10).count
+            await reads.start(URL(filePath: "saved \(found ?? -1)"))
+            await reads.finish()
+        } using: { file in
+            await reads.start(file)
+            await reads.finish()
+            return "QX7K2M"
+        }
+
+        let files = await reads.files
+        #expect(files.map { $0.hasPrefix("saved") } == [false, true, false, true])
+        #expect(files.filter { $0.hasPrefix("saved") } == ["saved 1", "saved 2"])
     }
 
     @Test func readsOneImageAtATimeAndEachOnce() async throws {
@@ -92,8 +115,8 @@ import Testing
             return "found"
         }
 
-        async let first: Void = store.recognizeImages(using: read)
-        async let second: Void = store.recognizeImages(using: read)
+        async let first: Void = store.recognizeImages(onEach: nil, using: read)
+        async let second: Void = store.recognizeImages(onEach: nil, using: read)
         _ = try await (first, second)
 
         #expect(await reads.mostAtOnce == 1)
@@ -117,8 +140,8 @@ import Testing
             return "readable"
         }
 
-        try await store.recognizeImages(using: read)
-        try await store.recognizeImages(using: read)
+        try await store.recognizeImages(onEach: nil, using: read)
+        try await store.recognizeImages(onEach: nil, using: read)
 
         #expect(await reads.files.count == 2)
         #expect(try await store.search("", limit: 10).map(\.text) == ["", "readable"])
@@ -130,7 +153,7 @@ import Testing
         try await store.add(Self.image(at: 0), keeping: Self.roomy)
         let image = try #require(try await store.search("", limit: 1).first)
 
-        try await store.recognizeImages { _ in
+        try await store.recognizeImages(onEach: nil) { _ in
             try await store.clear()
             try await store.add(Self.text("copied later", at: 1), keeping: Self.roomy)
             return "cleared image text"
@@ -149,7 +172,7 @@ import Testing
         try await store.add(Self.image(at: 1), keeping: Self.roomy)
         let (started, starting) = AsyncStream.makeStream(of: Void.self)
         let run = Task {
-            try await store.recognizeImages { _ in
+            try await store.recognizeImages(onEach: nil) { _ in
                 starting.yield()
                 try? await Task.sleep(for: .seconds(60))
                 return "before quitting"
@@ -162,7 +185,7 @@ import Testing
         run.cancel()
         try await run.value
         let reads = Reads()
-        try await ClipboardStore(directory: directory).recognizeImages { file in
+        try await ClipboardStore(directory: directory).recognizeImages(onEach: nil) { file in
             await reads.start(file)
             await reads.finish()
             return "after relaunch"
@@ -182,7 +205,7 @@ import Testing
         try await store.add(Self.image(at: 1), keeping: Self.roomy)
         let (started, starting) = AsyncStream.makeStream(of: Void.self)
         let stopped = Task {
-            try await store.recognizeImages { _ in
+            try await store.recognizeImages(onEach: nil) { _ in
                 starting.yield()
                 try? await Task.sleep(for: .seconds(60))
                 return "stopped"
@@ -192,7 +215,7 @@ import Testing
             break
         }
 
-        let restarted = Task { try await store.recognizeImages { _ in "restarted" } }
+        let restarted = Task { try await store.recognizeImages(onEach: nil) { _ in "restarted" } }
         stopped.cancel()
         try await stopped.value
         try await restarted.value

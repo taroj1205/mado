@@ -5,17 +5,18 @@ import os
 extension ClipboardStore {
     private static let logger = Log.logger("ClipboardStore")
 
-    public func recognizeImages() async throws {
-        try await recognizeImages(using: ImageText.recognize)
+    public func recognizeImages(onEach saved: (@Sendable () async -> Void)? = nil) async throws {
+        try await recognizeImages(onEach: saved, using: ImageText.recognize)
     }
 
     func recognizeImages(
+        onEach saved: (@Sendable () async -> Void)?,
         using recognize: @escaping @Sendable (URL) async throws -> String
     ) async throws {
         let previous = recognition
         let task = Task {
             _ = await previous?.result
-            try await recognizePending(using: recognize)
+            try await recognizePending(onEach: saved, using: recognize)
         }
         recognition = task
         try await withTaskCancellationHandler {
@@ -26,6 +27,7 @@ extension ClipboardStore {
     }
 
     private func recognizePending(
+        onEach saved: (@Sendable () async -> Void)?,
         using recognize: @Sendable (URL) async throws -> String
     ) async throws {
         while !Task.isCancelled, let image = try unrecognizedImage() {
@@ -40,6 +42,7 @@ extension ClipboardStore {
             try database.run(
                 "UPDATE clips SET text = ?, recognized = 1 WHERE id = ? AND image = ?",
                 [.text(text), .integer(Int(image.id)), .text(image.file)])
+            await saved?()
         }
     }
 
