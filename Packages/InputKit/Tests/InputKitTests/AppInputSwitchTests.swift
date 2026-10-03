@@ -109,6 +109,33 @@ import Testing
         #expect(sources.selected == ["com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"])
     }
 
+    @Test func aSwitchStoppedBeforeItsSelectionLandsKeepsTheRememberedSource() async {
+        let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        let sources = Sources(current: japanese)
+        let memory = AppInputSwitch.Memory()
+        let learned = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        await Self.activate("com.apple.Safari", on: learned)
+        sources.current = "com.apple.keylayout.ABC"
+
+        let stopped = Self.makeSwitch(front: "com.apple.Safari", sources, memory: memory)
+        stopped.activated("com.apple.MobileSMS", apps: Self.apps)
+        stopped.activated(nil, apps: Self.apps)
+        let resumed = Self.makeSwitch(front: "com.apple.Safari", sources, memory: memory)
+        await Self.activate("com.apple.MobileSMS", on: resumed)
+
+        #expect(sources.selected == [japanese])
+    }
+
+    @Test func startingInAnAppSetsItsSourceAndKeepsALastUsedOne() async {
+        let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
+        let terminal = Self.makeSwitch(front: "com.apple.Terminal", sources)
+        await Self.activate("com.apple.Terminal", on: terminal)
+        let messages = Self.makeSwitch(front: "com.apple.MobileSMS", sources)
+        await Self.activate("com.apple.MobileSMS", on: messages)
+
+        #expect(sources.selected == ["com.apple.keylayout.ABC", "com.apple.keylayout.ABC"])
+    }
+
     @Test func lastUsedChangesNothingUntilTheAppHasBeenLeft() async {
         let sources = Sources(current: "com.apple.keylayout.ABC")
         let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
