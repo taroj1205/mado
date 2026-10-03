@@ -56,6 +56,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     let actionsToggle = LauncherView.makeActionsToggle()
     private(set) lazy var buttons = SnippetEditor.capsule([paste, save, actionsToggle])
     private(set) var editing: String?
+    private var drafting = false
     private var entries: [Entry] = []
     private(set) var actionPanel: ActionPanel?
 
@@ -184,7 +185,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         list.entries = shown
         empty.stringValue = entries.isEmpty ? "No snippets yet" : "No matching snippets"
         empty.isHidden = !shown.isEmpty
-        let kept = shown.contains { $0.id == id } ? id : shown.first?.id
+        let kept = drafting && !reloading || shown.contains { $0.id == id } ? id : shown.first?.id
         list.select(kept)
         guard reloading || kept != editing else { return }
         load(kept)
@@ -193,6 +194,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     private func load(_ id: String?) {
         let entry = entries.first { $0.id == id }
         editing = entry?.id
+        drafting = false
         nameField.stringValue = entry?.values.name ?? ""
         keywordField.stringValue = entry?.values.keyword ?? ""
         textView.string = entry?.values.text ?? ""
@@ -205,19 +207,8 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         closeActions()
         list.select(nil)
         load(nil)
+        drafting = true
         unsafe window?.makeFirstResponder(nameField)
-    }
-
-    private func insert(_ token: String) {
-        unsafe window?.makeFirstResponder(textView)
-        let inserted = token == Self.fillIn ? fillInToken : token
-        let start = textView.selectedRange().location
-        textView.insertText(inserted, replacementRange: textView.selectedRange())
-        guard token == Self.fillIn, let quoted = inserted.firstMatch(of: /"(?<name>[^"]*)"/)
-        else { return }
-        let name = quoted.output.name
-        let range = NSRange(name.startIndex..<name.endIndex, in: inserted)
-        textView.setSelectedRange(NSRange(location: start + range.location, length: range.length))
     }
 
     private func saveValues() {
