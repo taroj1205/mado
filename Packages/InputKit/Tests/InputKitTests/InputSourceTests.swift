@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import Testing
 
 @testable import InputKit
@@ -19,5 +20,15 @@ import Testing
 
         #expect(InputSource.currentID == current)
         #expect(InputSource.named("com.example.not-a-source") == nil)
+    }
+
+    @Test func typesASCIIExactlyWhenTheCurrentSourceIsTheASCIIOne() throws {
+        let ascii = try #require(
+            unsafe TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue())
+
+        let isCurrent =
+            InputSource.string(ascii, kTISPropertyInputSourceID) == InputSource.currentID
+
+        #expect(InputSource.currentTypesASCII == isCurrent)
     }
 }

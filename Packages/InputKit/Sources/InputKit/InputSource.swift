@@ -13,6 +13,16 @@ public struct InputSource: Sendable {
         return string(source, kTISPropertyInputSourceID)
     }
 
+    @MainActor
+    public static var currentTypesASCII: Bool {
+        guard let source = unsafe TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+            let value = unsafe TISGetInputSourceProperty(
+                source, kTISPropertyInputSourceIsASCIICapable)
+        else { return false }
+        return CFBooleanGetValue(
+            unsafe Unmanaged<CFBoolean>.fromOpaque(value).takeUnretainedValue())
+    }
+
     public let id: String
     public let name: String
 

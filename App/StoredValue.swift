@@ -63,6 +63,10 @@ extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
 }
 
+extension SnippetSettings: StoredValue {
+    static let key = "snippets"
+}
+
 extension InputSourceSettings: StoredValue {
     static let key = "input_sources"
 }

@@ -34,21 +34,10 @@ public struct PasteTarget {
     }
 
     static func commandV() throws -> [CGEvent] {
-        let source = CGEventSource(stateID: .hidSystemState)
-        source?.setLocalEventsFilterDuringSuppressionState(
-            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
-            state: .eventSuppressionStateSuppressionInterval)
         let key = KeyboardLayout.commandKeyCode(typing: "v") ?? CGKeyCode(kVK_ANSI_V)
         let flags = CGEventFlags(
             rawValue: CGEventFlags.maskCommand.rawValue | UInt64(NX_DEVICELCMDKEYMASK))
-        let keyDowns = [true, false]
-        let events = keyDowns.compactMap { down in
-            let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
-            event?.flags = flags
-            return event
-        }
-        guard events.count == keyDowns.count else { throw Failure.noKeyEvents }
-        return events
+        return try Keystrokes.press(key, flags: flags, times: 1)
     }
 
     public func action(pasting text: String) -> CommandAction {
@@ -61,16 +50,18 @@ public struct PasteTarget {
 
     public func paste(_ items: [any NSPasteboardWriting]) async throws {
         try Self.write(items, to: .general)
+        try await activate()
+        guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
+        Keystrokes.post(try Self.commandV())
+    }
+
+    public func activate() async throws {
         guard !app.isTerminated else { throw Failure.appQuit }
         app.activate(from: .current, options: [])
         let deadline = ContinuousClock.now + Self.activationTimeout
         while !app.isActive {
             guard ContinuousClock.now < deadline else { throw Failure.notActivated }
             try await Task.sleep(for: .milliseconds(Self.activationPollMilliseconds))
-        }
-        guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
-        for event in try Self.commandV() {
-            event.post(tap: .cghidEventTap)
         }
     }
 }

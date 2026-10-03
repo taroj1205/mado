@@ -18,13 +18,13 @@ extension ModuleDescriptor {
     @MainActor
     func makeModule(
         in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory,
-        openLauncher: @escaping @MainActor () -> Void
+        snippets: Snippets, openLauncher: @escaping @MainActor () -> Void
     ) -> any Module {
         switch id {
         case ClipboardModule.id:
             ClipboardModule(
                 descriptor: self, settings: { [weak modules] in .load(from: modules) },
-                history: clipboardHistory)
+                history: clipboardHistory, snippets: snippets)
 
         case DictationModule.id: DictationModule(descriptor: self)
 
