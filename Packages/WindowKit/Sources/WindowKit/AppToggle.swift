@@ -2,11 +2,11 @@ public import AppKit
 
 @MainActor
 public enum AppToggle {
-    nonisolated private static let leaves: Set<Notification.Name> = [
+    private static let leaves = [
         NSWorkspace.didDeactivateApplicationNotification,
         NSWorkspace.didTerminateApplicationNotification,
     ]
-    private static var peeks: [pid_t: any NSObjectProtocol] = [:]
+    private static var peeks: [pid_t: [any NSObjectProtocol]] = [:]
 
     public static func app(for id: String) -> URL? {
         guard id.hasPrefix("/") else { return nil }
@@ -28,27 +28,30 @@ public enum AppToggle {
     static func hideWhenDeactivated(
         _ pid: pid_t, in center: NotificationCenter, hide: @escaping @MainActor () -> Void
     ) {
-        if let previous = peeks.removeValue(forKey: pid) {
-            center.removeObserver(previous)
-        }
+        stopWatching(pid, in: center)
         let watch: @Sendable (Notification) -> Void = { [weak center] notification in
-            guard leaves.contains(notification.name),
-                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
-                    as? NSRunningApplication,
-                app.processIdentifier == pid
-            else { return }
+            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+            guard (app as? NSRunningApplication)?.processIdentifier == pid else { return }
             MainActor.assumeIsolated {
-                if let observer = peeks.removeValue(forKey: pid) {
-                    center?.removeObserver(observer)
+                if let center {
+                    stopWatching(pid, in: center)
                 }
                 hide()
             }
         }
-        peeks[pid] = center.addObserver(forName: nil, object: nil, queue: .main, using: watch)
+        peeks[pid] = leaves.map { name in
+            center.addObserver(forName: name, object: nil, queue: .main, using: watch)
+        }
     }
 
     static func isSame(_ lhs: URL, _ rhs: URL) -> Bool {
         lhs.resolvingSymlinksInPath().path == rhs.resolvingSymlinksInPath().path
+    }
+
+    private static func stopWatching(_ pid: pid_t, in center: NotificationCenter) {
+        for observer in peeks.removeValue(forKey: pid) ?? [] {
+            center.removeObserver(observer)
+        }
     }
 
     private static func bringForward(_ app: URL) async throws -> NSRunningApplication? {
