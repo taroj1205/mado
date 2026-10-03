@@ -73,4 +73,20 @@ import Testing
         #expect((json?["removedApps"] as? [String])?.isEmpty == true)
         #expect((json?["snippets"] as? [[String: String]])?.first?["keyword"] == #"\sig"#)
     }
+
+    @Test func findsKeywordsThatWouldHideEachOther() {
+        var settings = SnippetSettings()
+        settings.save(Self.signOff)
+        let id = Self.signOff.id
+
+        let shorter = settings.snippet(overlapping: #"\s"#, besides: nil)
+        let inside = settings.snippet(overlapping: "i", besides: nil)
+        let longer = settings.snippet(overlapping: #"\sign"#, besides: nil)
+        let same = settings.snippet(overlapping: #"\sig"#, besides: nil)
+
+        #expect([shorter, inside, longer, same].map { $0?.id } == [id, id, id, id])
+        #expect(settings.snippet(overlapping: #"\sig"#, besides: id) == nil)
+        #expect(settings.snippet(overlapping: "ig", besides: nil) == nil)
+        #expect(settings.snippet(overlapping: ";fu", besides: nil) == nil)
+    }
 }
