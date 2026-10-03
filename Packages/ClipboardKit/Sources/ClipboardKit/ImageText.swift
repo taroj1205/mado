@@ -32,9 +32,20 @@ enum ImageText {
 
     private static func text(in file: URL) throws -> String {
         guard let image = image(at: file) else { throw Unreadable() }
+        do {
+            return try text(in: image, level: .accurate)
+        } catch {
+            return try text(in: image, level: .fast)
+        }
+    }
+
+    private static func text(
+        in image: CGImage, level: VNRequestTextRecognitionLevel
+    ) throws -> String {
         let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = languages
+        request.recognitionLevel = level
+        let supported = try request.supportedRecognitionLanguages()
+        request.recognitionLanguages = languages.filter(supported.contains)
         request.preferBackgroundProcessing = true
         try VNImageRequestHandler(cgImage: image).perform([request])
         return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
