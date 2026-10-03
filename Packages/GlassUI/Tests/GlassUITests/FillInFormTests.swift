@@ -95,7 +95,7 @@ import Testing
     @Test func thePanelGrowsWithThePreviewAndKeepsItsTop() throws {
         form.show(name: "Meeting follow-up", keyword: ";fu", fields: Self.fields)
         panel.setFrame(
-            NSRect(origin: NSPoint(x: 100, y: 100), size: form.fittingSize), display: false)
+            NSRect(origin: NSPoint(x: 100, y: 500), size: form.fittingSize), display: false)
         let before = panel.frame
         let name = try #require(form.controls[0].control as? NSTextField)
 
@@ -105,6 +105,40 @@ import Testing
         #expect(panel.frame.height > before.height)
         #expect(panel.frame.maxY == before.maxY)
         #expect(panel.frame.width == 420)
+    }
+
+    @Test(.enabled(if: !NSScreen.screens.isEmpty, "Keeping the panel on screen needs a screen"))
+    func thePanelGrowingAtTheBottomOfTheScreenStaysOnIt() throws {
+        let visible = try #require(NSScreen.screens.first).visibleFrame
+        form.show(name: "Meeting follow-up", keyword: ";fu", fields: Self.fields)
+        panel.setFrame(
+            NSRect(origin: NSPoint(x: visible.minX + 40, y: visible.minY), size: form.fittingSize),
+            display: false)
+        let before = panel.frame
+        let name = try #require(form.controls[0].control as? NSTextField)
+
+        name.stringValue = String(repeating: "Hana ", count: 40)
+        NotificationCenter.default.post(name: NSControl.textDidChangeNotification, object: name)
+
+        #expect(panel.frame.height > before.height)
+        #expect(panel.frame.minY == visible.minY)
+    }
+
+    @Test func thePreviewShowsOnlyTheStartOfAHugeExpansion() {
+        let huge = String(repeating: "x", count: 1_000_000)
+        form.preview = { _ in
+            FillInForm.Preview(
+                text: "Hi " + huge,
+                values: [NSRange(location: 0, length: 2), NSRange(location: 500_000, length: 3)])
+        }
+
+        form.show(name: "Clipboard", keyword: ";cb", fields: Self.fields)
+
+        let shown = form.previewText.attributedStringValue
+        let bold = unsafe shown.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        #expect(shown.length == 2_000)
+        #expect(bold?.fontDescriptor.symbolicTraits.contains(.bold) == true)
+        #expect(form.previewText.accessibilityLabel()?.count == "Preview: ".count + 2_000)
     }
 
     @Test func layoutFollowsTheCanvas() {
