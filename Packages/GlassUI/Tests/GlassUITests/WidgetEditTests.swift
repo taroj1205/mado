@@ -67,6 +67,7 @@ import Testing
         #expect(view.actionLabel.stringValue == "Done")
         #expect(view.actionsToggle.isHidden && view.actionsDivider.isHidden)
         #expect(panel.firstResponder === view.editBar)
+        #expect(view.widgetsBottom == 393)
         let iconWidth = view.icon.frame.width
         #expect(iconWidth < 30)
         #expect(abs(view.editBar.title.convert(.zero, to: view).x - view.field.frame.minX) < 3)
