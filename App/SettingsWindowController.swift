@@ -121,7 +121,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
-            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps,
+            radial: RadialMenuSettings(modules: modules),
+            clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             gallery: WidgetGalleryWindow(modules: modules))
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
