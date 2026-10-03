@@ -25,6 +25,8 @@ extension ModuleDescriptor {
                 descriptor: self, settings: { [weak modules] in .load(from: modules) },
                 history: clipboardHistory)
 
+        case DictationModule.id: DictationModule(descriptor: self)
+
         case KeyboardModule.id:
             KeyboardModule(
                 descriptor: self,

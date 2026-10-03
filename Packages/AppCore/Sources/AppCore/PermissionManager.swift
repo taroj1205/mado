@@ -56,6 +56,13 @@ public final class PermissionManager {
         }
     }
 
+    @discardableResult
+    public func request(_ permission: Permission) async -> PermissionStatus {
+        await probe.request(permission)
+        refresh()
+        return status(for: permission)
+    }
+
     public func openSettings(for permission: Permission) {
         open(Self.settingsURL(for: permission))
     }
