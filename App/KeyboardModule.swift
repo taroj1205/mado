@@ -1,4 +1,5 @@
 import AppCore
+import AppKit
 import InputKit
 import os
 
@@ -7,10 +8,12 @@ struct KeyboardModule: Module {
 
     let descriptor: ModuleDescriptor
     let inputSourceSettings: @MainActor () -> InputSourceSettings
+    let remapSettings: @MainActor () -> RemapSettings
 
     func start(context: ModuleContext) {
         context.installWhenTrusted("input mode taps") { installTap(context) }
         AppInputSwitch.install(context: context, settings: inputSourceSettings)
+        startRemaps(remapSettings(), context: context)
     }
 
     func stop() {
@@ -28,6 +31,28 @@ struct KeyboardModule: Module {
             return true
         } catch {
             return false
+        }
+    }
+
+    private func startRemaps(_ settings: RemapSettings, context: ModuleContext) {
+        guard let remapper = KeyboardRemapper(settings: settings) else { return }
+        context.own(.other, "caps lock remap") { remapper.stop() }
+        context.observe(
+            NSApplication.willTerminateNotification, on: .default, reading: \.name
+        ) { _ in remapper.stop() }
+        guard settings.capsLock == .hyper else {
+            remapper.start()
+            return
+        }
+        context.installWhenTrusted("hyper key") {
+            do {
+                try HyperKey.install(
+                    name: "hyper key", context: context, tapSendsEscape: settings.tapSendsEscape)
+                remapper.start()
+                return true
+            } catch {
+                return false
+            }
         }
     }
 }
