@@ -1,13 +1,24 @@
 public import AppKit
 
 public struct Clip: Equatable, Sendable {
-    public enum Kind: String, Sendable {
+    public enum Kind: String, CaseIterable, Sendable {
         case text = "text"
         case richText = "rich_text"
         case image = "image"
         case file = "file"
         case url = "url"
         case color = "color"
+
+        public var title: String {
+            switch self {
+            case .text: "Text"
+            case .richText: "Rich Text"
+            case .image: "Image"
+            case .file: "File"
+            case .url: "Link"
+            case .color: "Color"
+            }
+        }
     }
 
     private struct Content {

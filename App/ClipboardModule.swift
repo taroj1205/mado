@@ -9,6 +9,7 @@ struct ClipboardModule: Module {
 
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
+    let history: ClipboardHistory
 
     func start(context: ModuleContext) {
         let logger = context.logger
@@ -19,6 +20,7 @@ struct ClipboardModule: Module {
             logger.error("Clipboard history failed to open: \(error, privacy: .public)")
             return
         }
+        history.start(with: store, context: context)
         keepPruned(store, in: context)
         PasteboardWatch.install(name: "pasteboard watch", context: context) { [settings] sources in
             let apps = sources.isEmpty ? "an unknown app" : sources.joined(separator: " or ")

@@ -197,17 +197,37 @@ public actor ClipboardStore {
             [.integer(pinned ? 1 : 0), .integer(Int(id))])
     }
 
-    public func search(_ query: String, limit: Int) throws -> [Entry] {
+    public func search(
+        _ query: String, limit: Int, kind: Clip.Kind? = nil, source: String? = nil
+    ) throws -> [Entry] {
         let escaped =
             query
             .replacing("\\", with: "\\\\")
             .replacing("%", with: "\\%")
             .replacing("_", with: "\\_")
+        var conditions = ["text LIKE ? ESCAPE '\\'"]
+        var values: [Database.Value] = [.text("%\(escaped)%")]
+        if let kind {
+            conditions.append("kind = ?")
+            values.append(.text(kind.rawValue))
+        }
+        if let source {
+            conditions.append("source = ?")
+            values.append(.text(source))
+        }
         return try database.rows(
-            "SELECT \(Self.columns) FROM clips WHERE text LIKE ? ESCAPE '\\'"
+            "SELECT \(Self.columns) FROM clips WHERE \(conditions.joined(separator: " AND "))"
                 + " ORDER BY date DESC, id DESC LIMIT ?",
-            [.text("%\(escaped)%"), .integer(limit)],
+            values + [.integer(limit)],
             entry)
+    }
+
+    public func sources() throws -> [String] {
+        try database.rows(
+            "SELECT source FROM clips WHERE source IS NOT NULL"
+                + " GROUP BY source ORDER BY MAX(date) DESC",
+            []
+        ) { $0.string(0) }
     }
 
     private func entry(_ row: Database.Row) -> Entry? {

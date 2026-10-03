@@ -238,6 +238,37 @@ import Testing
         #expect(try await store.search("nul", limit: 10).map(\.text) == ["nul\0inside"])
     }
 
+    @Test func filtersByKindAndSourceApp() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let clips = [
+            Clip(.text, text: "notes", type: nil, data: nil, source: "com.apple.Notes", date: .now),
+            Clip(
+                .url, text: "https://apple.com", type: nil, data: nil, source: "com.apple.Safari",
+                date: .now + 1),
+            Clip(
+                .text, text: "safari", type: nil, data: nil, source: "com.apple.Safari",
+                date: .now + 2),
+            Clip(.text, text: "unknown", type: nil, data: nil, source: nil, date: .now + 3),
+        ]
+        for clip in clips {
+            try await store.add(clip, keeping: Self.roomy)
+        }
+
+        #expect(
+            try await store.search("", limit: 10, kind: .text).map(\.text) == [
+                "unknown", "safari", "notes",
+            ])
+        #expect(
+            try await store.search("", limit: 10, source: "com.apple.Safari").map(\.text)
+                == ["safari", "https://apple.com"])
+        #expect(
+            try await store.search("a", limit: 10, kind: .text, source: "com.apple.Safari")
+                .map(\.text) == ["safari"])
+        #expect(try await store.search("", limit: 10, kind: .image).isEmpty)
+        #expect(try await store.sources() == ["com.apple.Safari", "com.apple.Notes"])
+    }
+
     @Test func searchesTenThousandItemsWithinOneFrame() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
