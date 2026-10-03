@@ -157,11 +157,22 @@ import Testing
         sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey, isApp: true)
         #expect(!sheet.modeRow.isHidden)
         #expect(sheet.mode.titleOfSelectedItem == "Toggle")
-        #expect(sheet.mode.itemArray.map(\.isEnabled) == [true, false])
+        #expect(sheet.mode.accessibilityLabel() == "Terminal mode")
         #expect(
             sheet.modeHint.stringValue
                 == "Toggle: launch if closed → bring to front → hide if already in front.")
         #expect(sheet.hotkeyHintLabel.stringValue == ItemSheet.hotkeyHint)
+
+        sheet.mode.selectItem(withTitle: "Quick Peek")
+        sheet.mode.sendAction(sheet.mode.action, to: sheet.mode.target)
+        #expect(
+            sheet.modeHint.stringValue
+                == "Quick Peek: the app hides itself again when you switch away.")
+        #expect(sheet.values.quickPeek)
+
+        sheet.show(
+            terminal, values: .init(quickPeek: true), ranking: nil, opening: .hotkey, isApp: true)
+        #expect(sheet.mode.titleOfSelectedItem == "Quick Peek")
 
         sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey)
         #expect(sheet.modeRow.isHidden)
