@@ -42,6 +42,10 @@ public final class KeyboardRemapper {
             process.terminate()
             try? input.fileHandleForWriting.close()
         }
+
+        func restoreNow() {
+            try? input.fileHandleForWriting.close()
+        }
     }
 
     private static let matchingKeys = [
@@ -151,11 +155,15 @@ public final class KeyboardRemapper {
         waiting = nil
         guard watcher != nil else { return }
         watcher = nil
-        watchdog?.cancel()
-        watchdog = nil
         let services = Self.services(client)
-        write(mappings.restore(from: Self.currentMappings(of: services)), to: services)
-        lock.release()
+        let failed = write(mappings.restore(from: Self.currentMappings(of: services)), to: services)
+        if failed.isEmpty {
+            watchdog?.cancel()
+            lock.release()
+        } else {
+            watchdog?.restoreNow()
+        }
+        watchdog = nil
     }
 
     private func begin() {
@@ -167,12 +175,24 @@ public final class KeyboardRemapper {
         let services = Self.services(client)
         let current = Self.currentMappings(of: services)
         let remapping = Set(services.filter { settings.applies(to: $0.keyboard) }.map(\.id))
+        let earlier = mappings
         let writes = mappings.sync(current, remapping: remapping, to: usage)
+        guard armOrRestore(current, services) else { return }
+        let failed = write(writes, to: services)
+        guard !failed.isEmpty else { return }
+        mappings.keepOriginals(of: failed, from: earlier)
+        armOrRestore(current, services)
+    }
+
+    @discardableResult
+    private func armOrRestore(
+        _ current: [UInt64: KeyMappings.Mapping], _ services: [Service]
+    ) -> Bool {
         guard arm(mappings.restores(from: current), services) else {
             write(mappings.restore(from: current), to: services)
-            return
+            return false
         }
-        write(writes, to: services)
+        return true
     }
 
     private func arm(_ restores: [UInt64: KeyMappings.Mapping], _ services: [Service]) -> Bool {
@@ -205,14 +225,20 @@ public final class KeyboardRemapper {
         }
     }
 
-    private func write(_ writes: [UInt64: KeyMappings.Mapping], to services: [Service]) {
+    @discardableResult
+    private func write(
+        _ writes: [UInt64: KeyMappings.Mapping], to services: [Service]
+    ) -> Set<UInt64> {
+        var failed: Set<UInt64> = []
         for service in services {
             guard let mapping = writes[service.id] else { continue }
             let saved = IOHIDServiceClientSetProperty(
                 service.client, KeyMappings.key as CFString, mapping as CFArray)
             if !saved {
                 logger.error("Caps Lock remap failed on \(service.keyboard.name, privacy: .public)")
+                failed.insert(service.id)
             }
         }
+        return failed
     }
 }
