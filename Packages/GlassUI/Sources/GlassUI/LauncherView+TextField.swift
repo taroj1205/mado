@@ -9,6 +9,10 @@ extension LauncherView: NSTextFieldDelegate {
     public func control(
         _: NSControl, textView: NSTextView, doCommandBy selector: Selector
     ) -> Bool {
+        if customising, selector == #selector(NSResponder.cancelOperation) {
+            closeCustomiser()
+            return true
+        }
         if let pill = selectedPill { return pillCommand(selector, from: pill, in: textView) }
         if let widget = selectedWidget {
             return widgetCommand(selector, from: widget, in: textView)

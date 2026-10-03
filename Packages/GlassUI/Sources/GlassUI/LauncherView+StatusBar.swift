@@ -1,23 +1,21 @@
 import AppKit
 
 extension LauncherView {
-    public var pills: [StatusBar.Pill] {
-        get { statusBar.pills }
-        set {
-            let selected = selectedPill.map { statusBar.pills[$0].id }
-            statusBar.pills = newValue
-            if let index = newValue.firstIndex(where: { $0.id == selected }) {
-                selectedPill = index
-            } else {
-                selectPill(nil)
-            }
-            statusBar.highlight(selectedPill)
-            showAction(of: results.selectedItem)
-        }
-    }
-
     var showsStatusBar: Bool {
         onEmptyRootQuery && !pills.isEmpty
+    }
+
+    func arrangePills() {
+        let selected = selectedPill.map { statusBar.pills[$0].id }
+        statusBar.pills = statusLayout.arrange(pills)
+        if let index = statusBar.pills.firstIndex(where: { $0.id == selected }) {
+            selectedPill = index
+        } else {
+            selectPill(nil)
+        }
+        statusBar.highlight(selectedPill)
+        showAction(of: results.selectedItem)
+        refreshCustomiser()
     }
 
     func selectPill(_ index: Int?) {
@@ -36,11 +34,11 @@ extension LauncherView {
 
     func pressPill(_ index: Int) {
         selectPill(index)
-        onPill?(pills[index])
+        onPill?(statusBar.pills[index])
     }
 
     func moveDown() {
-        if !results.selectNext(), showsStatusBar {
+        if !results.selectNext(), showsStatusBar, !statusBar.pills.isEmpty, !isKeyRepeat() {
             selectPill(0)
         } else {
             selectionMoved()
@@ -51,14 +49,15 @@ extension LauncherView {
         switch selector {
         case #selector(NSResponder.moveLeft): selectPill(max(pill - 1, 0))
 
-        case #selector(NSResponder.moveRight): selectPill(min(pill + 1, pills.count - 1))
+        case #selector(NSResponder.moveRight): selectPill(min(pill + 1, statusBar.pills.count - 1))
+        case #selector(NSResponder.moveDown) where isKeyRepeat(): break
 
         case #selector(NSResponder.moveUp), #selector(NSResponder.moveDown),
             #selector(NSResponder.cancelOperation):
             selectPill(nil)
 
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText():
-            onPill?(pills[pill])
+            onPill?(statusBar.pills[pill])
 
         default:
             selectPill(nil)

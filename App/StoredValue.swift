@@ -1,5 +1,6 @@
 import AppCore
 import ClipboardKit
+import GlassUI
 import os
 import SearchKit
 import WindowKit
@@ -53,6 +54,10 @@ extension RadialSettings: StoredValue {
     static let key = "radial"
 }
 
+extension StatusBarLayout: StoredValue {
+    static let key = "status_bar"
+}
+
 extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
 }
@@ -68,4 +73,8 @@ extension GestureSettings.Target {
         case .underMouse: "Window Under Mouse"
         }
     }
+}
+
+extension WidgetSettings: StoredValue {
+    static let key = "widgets"
 }
