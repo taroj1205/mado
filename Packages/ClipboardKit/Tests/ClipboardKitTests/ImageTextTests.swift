@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import CoreML
 import CoreText
 import Foundation
 import ImageIO
@@ -10,6 +11,9 @@ import UniformTypeIdentifiers
 
 @Suite struct ImageTextTests {
     private static let fontSize: CGFloat = 28
+    private static let hasNeuralEngine = MLComputeDevice.allComputeDevices.contains { device in
+        if case .neuralEngine = device { true } else { false }
+    }
 
     private let directory = FileManager.default.temporaryDirectory
         .appending(path: UUID().uuidString)
@@ -44,7 +48,12 @@ import UniformTypeIdentifiers
         return data as Data
     }
 
-    @Test func findsAScreenshotByTheTextInIt() async throws {
+    @Test(
+        .enabled(
+            if: hasNeuralEngine,
+            "Vision's accurate text recognition throws on the CI runner, which has no Neural Engine"
+        ))
+    func findsAScreenshotByTheTextInIt() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
         let lines = [
