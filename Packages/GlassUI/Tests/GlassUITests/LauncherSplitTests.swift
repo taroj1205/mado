@@ -87,13 +87,17 @@ import Testing
         #expect(!view.detail.isHidden)
     }
 
-    @Test func showsAnImageInPlaceOfText() {
+    @Test func showsAnImageInPlaceOfTextAndLetsGoOfItOnLeaving() {
         let image = NSImage(size: NSSize(width: 4, height: 4))
         view.enter(placeholder: "Filter") { _ in .init(text: "", image: image, details: []) }
         view.results.sections = [.init(title: "Today", items: [Self.item("image")])]
         #expect(view.detail.image.image === image)
         #expect(!view.detail.image.isHidden)
         #expect(view.detail.text.isHidden)
+
+        view.leave()
+
+        #expect(view.detail.image.image == nil)
     }
 
     @Test func theFilterSitsAtTheEndOfTheBarAndCommandPOpensIt() {
