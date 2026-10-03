@@ -1,4 +1,5 @@
 import AppCore
+import AppKit
 import InputKit
 import os
 
@@ -36,6 +37,9 @@ struct KeyboardModule: Module {
     private func startRemaps(_ settings: RemapSettings, context: ModuleContext) {
         guard let remapper = KeyboardRemapper(settings: settings) else { return }
         context.own(.other, "caps lock remap") { remapper.stop() }
+        context.observe(
+            NSApplication.willTerminateNotification, on: .default, reading: \.name
+        ) { _ in remapper.stop() }
         guard settings.capsLock == .hyper else {
             remapper.start()
             return
