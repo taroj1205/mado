@@ -1,6 +1,7 @@
 import AppCore
 import ClipboardKit
 import GlassUI
+import InputKit
 import os
 import SearchKit
 import WindowKit
@@ -77,4 +78,8 @@ extension GestureSettings.Target {
 
 extension WidgetSettings: StoredValue {
     static let key = "widgets"
+}
+
+extension AppInputSources: StoredValue {
+    static let key = "input_sources"
 }

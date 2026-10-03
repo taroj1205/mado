@@ -13,6 +13,7 @@ struct SettingsPage {
         let apps: AppHotKeys
         let radial: RadialMenuSettings
         let ignoredApps: IgnoredAppsSettings
+        let inputSources: AppInputSourcesSettings
         let gallery: WidgetGalleryWindow
     }
 
@@ -83,7 +84,15 @@ struct SettingsPage {
                     ]
                 },
             ]),
-        Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
+        Self(
+            "Keyboard", "keyboard",
+            module: module("keyboard", "Keyboard", enabled: true),
+            tabs: [
+                Tab(title: "Modifier Keys", sections: nil),
+                Tab(title: "Input Sources") { [$0.inputSources.section] },
+                Tab(title: "Enter Guard", sections: nil),
+                Tab(title: "Remaps", sections: nil),
+            ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),
