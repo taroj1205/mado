@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -39,9 +40,63 @@ import Testing
 
     struct StartFailure: Error {}
 
+    private static let holdSeconds = 0.3
+    private static let slowMark: Int64 = 0x4D61646F
+
     private static func makeManager() throws -> ModuleManager {
         let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         return try ModuleManager(store: SettingsStore(url: dir.appending(path: "settings.json")))
+    }
+
+    private static func mainQueue() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+    }
+
+    @Test func aTapMacOSFoundUnresponsivePausesEveryKeyFeature() async throws {
+        let manager = try Self.makeManager()
+        let keyboard = KeyModule(id: "keyboard", hasKeys: true, enabledByDefault: true)
+        try manager.register(keyboard)
+        try manager.startEnabledModules()
+        var changes = 0
+        manager.onKeysPausedChange = { changes += 1 }
+        let event = try #require(CGEvent(source: nil))
+
+        #expect(manager.eventTap.handle(.tapDisabledByTimeout, event))
+        #expect(!manager.keysPaused)
+        await Self.mainQueue()
+        #expect(manager.keysPaused)
+        #expect(manager.eventTap.isPaused)
+        #expect(changes == 1)
+        #expect(keyboard.released.contains("remap"))
+        #expect(!manager.activeResources.contains { $0.name == "remap" })
+    }
+
+    @Test func onlyADispatchPastTheHangLimitAsksForTheTapToBeReleased() async throws {
+        let tap = EventTap()
+        var released = 0
+        tap.onUnresponsive = { released += 1 }
+        tap.isPaused = true
+        let id = try #require(
+            tap.add(types: [.keyDown]) { _, event in
+                if event.getIntegerValueField(.eventSourceUserData) == Self.slowMark {
+                    Thread.sleep(forTimeInterval: Self.holdSeconds)
+                }
+                return true
+            })
+        defer { tap.remove(id) }
+        let quick = try #require(CGEvent(source: nil))
+        let slow = try #require(CGEvent(source: nil))
+        slow.setIntegerValueField(.eventSourceUserData, value: Self.slowMark)
+
+        #expect(!tap.handle(.keyDown, quick))
+        await Self.mainQueue()
+        #expect(released == 0)
+
+        #expect(!tap.handle(.keyDown, slow))
+        await Self.mainQueue()
+        #expect(released == 1)
     }
 
     @Test func pausingRestartsOnlyModulesWithKeyFeaturesWithoutThem() throws {
