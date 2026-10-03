@@ -69,6 +69,12 @@ struct KeyMappings {
         return writes
     }
 
+    mutating func keepOriginals(of ids: Set<UInt64>, from earlier: Self) {
+        for id in ids {
+            originals[id] = originals[id] ?? earlier.originals[id]
+        }
+    }
+
     func restores(from current: [UInt64: Mapping]) -> [UInt64: Mapping] {
         originals.reduce(into: [:]) { restores, original in
             guard let mapping = current[original.key] else { return }

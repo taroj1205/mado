@@ -105,6 +105,22 @@ import Testing
         #expect(mappings.originals.isEmpty)
     }
 
+    @Test func aKeyboardThatFailedToGoBackIsTriedAgain() throws {
+        var mappings = KeyMappings()
+        let first = mappings.sync(
+            [Self.external: [Self.swap]], remapping: [Self.external], to: Self.control)
+        let applied = try #require(first[Self.external])
+        let earlier = mappings
+        let writes = mappings.sync([Self.external: applied], remapping: [], to: Self.control)
+
+        mappings.keepOriginals(of: Set(writes.keys), from: earlier)
+
+        #expect(mappings.restores(from: [Self.external: applied]) == [Self.external: [Self.swap]])
+        #expect(
+            mappings.sync([Self.external: applied], remapping: [], to: Self.control)
+                == [Self.external: [Self.swap]])
+    }
+
     @Test func aDisconnectedKeyboardIsForgotten() {
         var mappings = KeyMappings()
         _ = mappings.sync(
