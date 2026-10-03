@@ -22,7 +22,7 @@ struct KeywordBuffer: Sendable {
             return .other
         }
         if event.getIntegerValueField(.keyboardEventKeycode) == kVK_Delete {
-            return .deleteBackward
+            return event.flags.contains(.maskAlternate) ? .other : .deleteBackward
         }
         var length = 0
         var characters = [UniChar](repeating: 0, count: maxCharacters)

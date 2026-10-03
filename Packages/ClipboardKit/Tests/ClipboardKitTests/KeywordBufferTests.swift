@@ -61,6 +61,12 @@ import Testing
                 == .text("é"))
         #expect(
             KeywordBuffer.key(for: try TestKeys.event(kVK_Delete, "\u{7F}", [])) == .deleteBackward)
+        #expect(
+            KeywordBuffer.key(for: try TestKeys.event(kVK_Delete, "\u{7F}", .maskShift))
+                == .deleteBackward)
+        #expect(
+            KeywordBuffer.key(for: try TestKeys.event(kVK_Delete, "\u{7F}", .maskAlternate))
+                == .other)
         #expect(KeywordBuffer.key(for: try TestKeys.event(kVK_Return, "\r", [])) == .other)
         #expect(KeywordBuffer.key(for: try TestKeys.event(kVK_LeftArrow, "\u{F702}", [])) == .other)
         #expect(
