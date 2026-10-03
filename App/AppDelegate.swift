@@ -11,12 +11,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherRadius: CGFloat = 20
 
     private let logger = Log.logger("App")
-    private let signposter: OSSignposter
+    let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
     private(set) var settings: SettingsWindowController?
-    private var launcher: GlassPanel?
+    private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private(set) var pasteTarget: PasteTarget?
     let launcherView = LauncherView()
@@ -26,8 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let widgets = Widgets()
-    private var usage = Usage()
-    private var history = CalculatorHistory()
+    private(set) var usage = Usage()
+    private(set) var history = CalculatorHistory()
+    let clipboardHistory = ClipboardHistory()
+    var clipboardScoped = false
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
@@ -45,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_: Notification) {
+        connectClipboardHistory()
         modules = makeModules()
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
@@ -77,12 +80,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             let manager = try ModuleManager(store: .standard())
             let openHistory = CalculatorHistory.command { [weak self] in
+                self?.clipboardScoped = false
                 self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
             try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
-                try manager.register(descriptor.makeModule(in: manager, hotKeys: registry))
+                try manager.register(
+                    descriptor.makeModule(
+                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory))
             }
             try manager.startEnabledModules()
             return manager
@@ -111,29 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func makeSearch() -> SearchRunner<[ResultList.Section]> {
         SearchRunner(
-            search: { [weak self] query in
-                guard let self else { return [] }
-                if launcherView.scoped { return history.sections(for: query) }
-                return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(for: query, in: sources, usage: usage)
-                }
-            },
-            deliver: { [launcherView] sections in
-                launcherView.show(sections)
-                (launcherView.context, launcherView.contextSymbol) =
-                    launcherView.scoped
-                    ? (CalculatorHistory.title, CalculatorHistory.symbol)
-                    : LauncherResult.context(
-                        for: sections, query: launcherView.field.stringValue)
-            })
-    }
-
-    private func menu(for item: ResultList.Item) -> LauncherMenu {
-        launcherView.scoped
-            ? LauncherMenu(actions: history.actions(for: item.id))
-            : LauncherMenu(
-                for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor,
-                pastingInto: pasteTarget)
+            search: { [weak self] query in await self?.results(for: query) ?? [] },
+            deliver: { [weak self] sections in self?.show(sections) })
     }
 
     private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
@@ -156,7 +141,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
-        if !CalculatorHistory.opens(item.id), item.id != Quicklink.createID { hideLauncher() }
+        let opensView =
+            CalculatorHistory.opens(item.id)
+            || [Quicklink.createID, ClipboardHistory.commandID].contains(item.id)
+        if !opensView { hideLauncher() }
         history.remember(item, in: modules)
         perform(action, for: item.id, recordingUse: recordingUse)
     }
@@ -171,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
-        if launcher?.isVisible == true {
+        if launcher?.isVisible == true, id != ClipboardHistory.commandID {
             hideLauncher()
         }
         perform(action, for: id, recordingUse: true)
@@ -244,7 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc
-    private func showLauncher() {
+    func showLauncher() {
         guard let panel = launcher else { return }
         pasteTarget = .frontmost()
         let opening = signposter.beginInterval("open launcher")
