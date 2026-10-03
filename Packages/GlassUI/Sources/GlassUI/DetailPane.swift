@@ -136,7 +136,10 @@ final class DetailPane: NSView {
     func show(_ preview: LauncherView.Preview?) {
         box.isHidden = preview == nil
         info.isHidden = preview == nil
-        guard let preview else { return }
+        guard let preview else {
+            image.image = nil
+            return
+        }
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = Self.textSize * Self.lineHeight
         style.maximumLineHeight = style.minimumLineHeight
