@@ -18,19 +18,21 @@ public final class KeyboardRemapper {
         private static let script = """
             read -r unused
             while [ "$#" -gt 1 ]; do
-                /usr/bin/hidutil property --matching "$1" --set "$2"
+                /usr/bin/hidutil property --matching "$1" --set "$2" >/dev/null
                 shift 2
             done
             """
 
+        let arguments: [String]
         private let process = Process()
         private let input = Pipe()
 
-        init(restoring arguments: [String]) throws {
+        init(restoring arguments: [String], holding lock: FileHandle) throws {
+            self.arguments = arguments
             process.executableURL = URL(filePath: "/bin/sh")
             process.arguments = ["-c", Self.script, "sh"] + arguments
             process.standardInput = input
-            process.standardOutput = FileHandle.nullDevice
+            process.standardOutput = lock
             process.standardError = FileHandle.nullDevice
             try process.run()
             try? input.fileHandleForReading.close()
@@ -47,18 +49,28 @@ public final class KeyboardRemapper {
         kIOHIDProductKey, kIOHIDPrimaryUsagePageKey, kIOHIDPrimaryUsageKey,
     ]
 
+    private static let lockURL = URL.temporaryDirectory.appending(path: "Mado-caps-lock.lock")
+    private static let lockRetryMilliseconds = 100
+
     private let logger = Log.logger("keyboard")
     private let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
     private let settings: RemapSettings
     private let usage: UInt64
+    private let lock: RemapLock
     private var mappings = KeyMappings()
+    private var waiting: Task<Void, Never>?
     private var watcher: KeyboardWatcher?
     private var watchdog: Watchdog?
 
     public init?(settings: RemapSettings) {
         guard let destination = settings.capsLock.usage else { return nil }
+        guard let opened = RemapLock(url: Self.lockURL) else {
+            logger.error("Caps Lock remap lock can't be opened")
+            return nil
+        }
         self.settings = settings
         usage = destination
+        lock = opened
     }
 
     public static func connectedKeyboards() -> [(
@@ -114,55 +126,78 @@ public final class KeyboardRemapper {
         return unsafe value?.takeRetainedValue() as? Int
     }
 
+    private static func currentMappings(of services: [Service]) -> [UInt64: KeyMappings.Mapping] {
+        services.reduce(into: [:]) { mappings, service in
+            let mapping = IOHIDServiceClientCopyProperty(
+                service.client, KeyMappings.key as CFString)
+            mappings[service.id] = mapping as? KeyMappings.Mapping ?? []
+        }
+    }
+
     public func start() {
+        waiting = Task { [weak self, lock] in
+            while !Task.isCancelled {
+                if lock.acquire() {
+                    self?.begin()
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(Self.lockRetryMilliseconds))
+            }
+        }
+    }
+
+    public func stop() {
+        waiting?.cancel()
+        waiting = nil
+        guard watcher != nil else { return }
+        watcher = nil
+        watchdog?.cancel()
+        watchdog = nil
+        let services = Self.services(client)
+        write(mappings.restore(from: Self.currentMappings(of: services)), to: services)
+        lock.release()
+    }
+
+    private func begin() {
         watcher = KeyboardWatcher { [weak self] in self?.sync() }
         sync()
     }
 
-    public func stop() {
-        watcher = nil
-        watchdog?.cancel()
-        watchdog = nil
-        write(mappings.restore(), to: Self.services(client))
-    }
-
     private func sync() {
         let services = Self.services(client)
-        var current: [UInt64: KeyMappings.Mapping] = [:]
-        for service in services {
-            let mapping = IOHIDServiceClientCopyProperty(
-                service.client, KeyMappings.key as CFString)
-            current[service.id] = mapping as? KeyMappings.Mapping ?? []
-        }
+        let current = Self.currentMappings(of: services)
         let remapping = Set(services.filter { settings.applies(to: $0.keyboard) }.map(\.id))
-        let remapped = Set(mappings.originals.keys)
         let writes = mappings.sync(current, remapping: remapping, to: usage)
-        guard Set(mappings.originals.keys) == remapped || arm(services) else {
-            write(mappings.restore(), to: services)
+        guard arm(mappings.restores(from: current), services) else {
+            write(mappings.restore(from: current), to: services)
             return
         }
         write(writes, to: services)
     }
 
-    private func arm(_ services: [Service]) -> Bool {
-        let previous = watchdog
-        watchdog = nil
-        defer { previous?.cancel() }
+    private func arm(_ restores: [UInt64: KeyMappings.Mapping], _ services: [Service]) -> Bool {
         var arguments: [String] = []
         for service in services {
-            guard let original = mappings.originals[service.id] else { continue }
+            guard let mapping = restores[service.id] else { continue }
             guard
                 let restore = KeyMappings.restoreArguments(
-                    matching: service.matching, original: original)
+                    matching: service.matching, mapping: mapping)
             else {
                 logger.error(
                     "Caps Lock remap can't be undone on \(service.keyboard.name, privacy: .public)")
+                watchdog?.cancel()
+                watchdog = nil
                 return false
             }
             arguments += [restore.matching, restore.mapping]
         }
+        guard arguments != watchdog?.arguments ?? [] else { return true }
+        let previous = watchdog
+        watchdog = nil
+        defer { previous?.cancel() }
         do {
-            watchdog = try arguments.isEmpty ? nil : Watchdog(restoring: arguments)
+            watchdog =
+                try arguments.isEmpty ? nil : Watchdog(restoring: arguments, holding: lock.handle)
             return true
         } catch {
             logger.error("Caps Lock remap watchdog failed: \(error, privacy: .public)")

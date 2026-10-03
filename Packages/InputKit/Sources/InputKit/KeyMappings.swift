@@ -15,8 +15,8 @@ struct KeyMappings {
         UInt64(kHIDPage_KeyboardOrKeypad) << pageShift | UInt64(usage)
     }
 
-    static func merged(_ mapping: Mapping, capsLockTo usage: UInt64) -> Mapping {
-        mapping.filter { $0[kIOHIDKeyboardModifierMappingSrcKey] as? UInt64 != capsLock } + [
+    static func capsLockEntry(to usage: UInt64) -> Mapping {
+        [
             [
                 kIOHIDKeyboardModifierMappingSrcKey: capsLock,
                 kIOHIDKeyboardModifierMappingDstKey: usage,
@@ -24,18 +24,29 @@ struct KeyMappings {
         ]
     }
 
+    static func replacingCapsLock(in mapping: Mapping, with entries: Mapping) -> Mapping {
+        let index = mapping.firstIndex(where: isCapsLock) ?? mapping.endIndex
+        return mapping[..<index] + entries + mapping[index...].filter { !isCapsLock($0) }
+    }
+
     static func restoreArguments(
-        matching: [String: Any], original: Mapping
+        matching: [String: Any], mapping: Mapping
     ) -> (matching: String, mapping: String)? {
         guard
-            let matchingJSON = try? JSONSerialization.data(withJSONObject: matching),
-            let mappingJSON = try? JSONSerialization.data(withJSONObject: [key: original]),
+            let matchingJSON = try? JSONSerialization.data(
+                withJSONObject: matching, options: .sortedKeys),
+            let mappingJSON = try? JSONSerialization.data(
+                withJSONObject: [key: mapping], options: .sortedKeys),
             let matchingText = String(bytes: matchingJSON, encoding: .utf8),
             let mappingText = String(bytes: mappingJSON, encoding: .utf8)
         else {
             return nil
         }
         return (matchingText, mappingText)
+    }
+
+    private static func isCapsLock(_ entry: [String: AnyHashable]) -> Bool {
+        entry[kIOHIDKeyboardModifierMappingSrcKey] as? UInt64 == capsLock
     }
 
     mutating func sync(
@@ -45,21 +56,28 @@ struct KeyMappings {
         var writes: [UInt64: Mapping] = [:]
         for (id, mapping) in current {
             if remapping.contains(id) {
-                let original = originals[id] ?? mapping
-                originals[id] = original
-                let target = Self.merged(original, capsLockTo: usage)
+                originals[id] = originals[id] ?? mapping.filter(Self.isCapsLock)
+                let target = Self.replacingCapsLock(
+                    in: mapping, with: Self.capsLockEntry(to: usage))
                 if target != mapping {
                     writes[id] = target
                 }
             } else if let original = originals.removeValue(forKey: id) {
-                writes[id] = original
+                writes[id] = Self.replacingCapsLock(in: mapping, with: original)
             }
         }
         return writes
     }
 
-    mutating func restore() -> [UInt64: Mapping] {
+    func restores(from current: [UInt64: Mapping]) -> [UInt64: Mapping] {
+        originals.reduce(into: [:]) { restores, original in
+            guard let mapping = current[original.key] else { return }
+            restores[original.key] = Self.replacingCapsLock(in: mapping, with: original.value)
+        }
+    }
+
+    mutating func restore(from current: [UInt64: Mapping]) -> [UInt64: Mapping] {
         defer { originals = [:] }
-        return originals
+        return restores(from: current)
     }
 }
