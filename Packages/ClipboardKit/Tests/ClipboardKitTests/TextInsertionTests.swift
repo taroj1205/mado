@@ -28,7 +28,9 @@ import Testing
         var posted: [CGEvent] = []
         var pastedText: String?
         var pastedTransient = false
-        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { events in
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { events in
             posted = events
             pastedText = pasteboard.string(forType: .string)
             pastedTransient = pasteboard.types?.contains(PasteboardWatch.transientType) == true
@@ -53,12 +55,53 @@ import Testing
         #expect(inserted.replaced == ";fu")
     }
 
+    @Test func waitsForThePasteToReadTheSnippetBeforePuttingTheOldCopyBack() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        var posted: [CGEvent] = []
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .seconds(60)
+        ) { posted = $0 }
+
+        let inserted = try insertion.replace(";fu", with: Self.expansion)
+        let restoring = Task { await insertion.restore(inserted) }
+        try await Task.sleep(for: .milliseconds(300))
+        let changesBeforePaste = pasteboard.changeCount
+        let pasted = pasteboard.string(forType: .string)
+        await restoring.value
+
+        #expect(!posted.isEmpty)
+        #expect(changesBeforePaste == inserted.changeCount)
+        #expect(pasted == "Thanks! Bye")
+        #expect(pasteboard.string(forType: .string) == "old")
+    }
+
+    @Test func putsTheOldCopyBackWhenNothingPastes() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        var posted: [CGEvent] = []
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .milliseconds(100)
+        ) { posted = $0 }
+        let start = ContinuousClock.now
+
+        await insertion.restore(try insertion.replace(";fu", with: Self.expansion))
+
+        #expect(!posted.isEmpty)
+        #expect(ContinuousClock.now - start >= .milliseconds(100))
+        #expect(pasteboard.string(forType: .string) == "old")
+    }
+
     @Test func clearsAPasteboardThatWasEmpty() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         pasteboard.clearContents()
         var posted: [CGEvent] = []
-        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { posted = $0 }
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { posted = $0 }
 
         await insertion.restore(try insertion.replace("", with: Self.expansion))
 
@@ -70,7 +113,9 @@ import Testing
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         pasteboard.setString("old", forType: .string)
-        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { _ in
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { _ in
             pasteboard.clearContents()
             pasteboard.setString("copied meanwhile", forType: .string)
         }
@@ -84,7 +129,9 @@ import Testing
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         var posted: [CGEvent] = []
-        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { posted = $0 }
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { posted = $0 }
         let short = SnippetTemplate("a{cursor}bc").expand(
             .init(fields: [:], date: "", time: "", clipboard: ""))
 
