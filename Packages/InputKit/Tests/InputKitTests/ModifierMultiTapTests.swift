@@ -39,7 +39,7 @@ import Testing
         recorder.down(.leftShift)
         recorder.up(.leftShift)
         #expect(recorder.taps == [.single(.leftShift)])
-        #expect(recorder.detector.waitingSince == nil)
+        #expect(recorder.detector.deadline == nil)
     }
 
     @Test func aSingleTapWaitsOutTheWindowWhenADoubleIsBound() {
@@ -67,14 +67,25 @@ import Testing
         #expect(recorder.taps == [.double(.rightShift)])
     }
 
-    @Test func theWindowDoesNotEndWhileTheNextTapIsHeld() {
+    @Test func theWindowStartsAgainWhenTheNextTapBegins() throws {
+        var recorder = Recorder(bindings: [.single(.leftShift), .double(.leftShift)])
+        recorder.tap(.leftShift)
+        let first = try #require(recorder.detector.deadline)
+        recorder.down(.leftShift)
+        #expect(recorder.detector.expire(at: first) == nil)
+        recorder.up(.leftShift)
+        #expect(recorder.taps == [.double(.leftShift)])
+    }
+
+    @Test func aSecondPressHeldPastTheWindowFiresTheFirstTapWhileStillHeld() {
         var recorder = Recorder(bindings: [.single(.leftShift), .double(.leftShift)])
         recorder.tap(.leftShift)
         recorder.down(.leftShift)
+        recorder.wait(ModifierTap.defaultWindow)
         recorder.expire()
-        #expect(recorder.taps.isEmpty)
+        #expect(recorder.taps == [.single(.leftShift)])
         recorder.up(.leftShift)
-        #expect(recorder.taps == [.double(.leftShift)])
+        #expect(recorder.taps == [.single(.leftShift)])
     }
 
     @Test func aGapLongerThanTheWindowStartsANewCount() {
@@ -94,7 +105,7 @@ import Testing
         recorder.tap(.leftShift)
         recorder.send(.keyDown)
         #expect(recorder.taps == [.single(.leftShift)])
-        #expect(recorder.detector.waitingSince == nil)
+        #expect(recorder.detector.deadline == nil)
     }
 
     @Test func aShortcutOnTheSecondPressFiresTheFirstTap() {
@@ -124,14 +135,13 @@ import Testing
         #expect(recorder.taps == [.single(.leftShift), .single(.leftShift)])
     }
 
-    @Test func anExpiryForAnEarlierTapIsIgnored() {
+    @Test func anExpiryForAnEarlierTapIsIgnored() throws {
         var recorder = Recorder(bindings: [.double(.leftShift), .triple(.leftShift)])
         recorder.tap(.leftShift)
-        let first = recorder.now
         recorder.tap(.leftShift)
-        #expect(recorder.detector.expire(releasedAt: first) == nil)
-        recorder.expire()
-        #expect(recorder.taps == [.double(.leftShift)])
+        let deadline = try #require(recorder.detector.deadline)
+        #expect(recorder.detector.expire(at: deadline - 1) == nil)
+        #expect(recorder.detector.expire(at: deadline) == .double(.leftShift))
     }
 
     @MainActor
