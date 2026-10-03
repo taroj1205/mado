@@ -12,19 +12,22 @@ final class AppHotKeys: NSObject {
     private static let iconSize: CGFloat = 26
 
     private static var footer: NSAttributedString {
-        let text = NSMutableAttributedString(
-            string: AppHotKeyMode.toggle,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: footerSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
-            ])
-        text.append(
-            NSAttributedString(
-                string: AppHotKeyMode.summary,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: footerSize),
-                    .foregroundColor: NSColor.secondaryLabelColor,
-                ]))
+        let title: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: footerSize, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+        ]
+        let summary: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: footerSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        let text = NSMutableAttributedString()
+        for mode in AppHotKeyMode.allCases {
+            if text.length > 0 {
+                text.append(NSAttributedString(string: " ", attributes: summary))
+            }
+            text.append(NSAttributedString(string: mode.title, attributes: title))
+            text.append(NSAttributedString(string: mode.summary, attributes: summary))
+        }
         return text
     }
 
@@ -55,7 +58,9 @@ final class AppHotKeys: NSObject {
 
     private func row(for app: URL) -> SettingsSection.Row {
         let name = Self.name(of: app)
-        let modes = AppHotKeyMode.menu()
+        let modes = AppHotKeyMode.Menu()
+        modes.selected = AppHotKeyMode(quickPeek: items.settings[app.path].quickPeek)
+        modes.onChange = { [weak items] in items?.setQuickPeek($0 == .quickPeek, for: app.path) }
         modes.setAccessibilityLabel("\(name) mode")
         modes.widthAnchor.constraint(equalToConstant: Self.modeWidth).isActive = true
         let controls = NSStackView(views: [modes, recorder.button(for: app.path, named: name)])

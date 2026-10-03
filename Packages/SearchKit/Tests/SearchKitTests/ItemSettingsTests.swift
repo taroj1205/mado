@@ -66,9 +66,33 @@ import Testing
         #expect(settings.ids(withAlias: "PS") == ["Adobe Photoshop"])
     }
 
+    @Test func quickPeekIsKeptOnlyWhileTheItemHasAHotkey() {
+        var settings = ItemSettings()
+        settings["dictionary"] = .init(hotkey: controlOptionT, quickPeek: true)
+        settings["calculator"] = .init(quickPeek: true)
+
+        #expect(settings["dictionary"].quickPeek)
+        #expect(!settings["calculator"].quickPeek)
+
+        settings["dictionary"].hotkey = nil
+        #expect(!settings["dictionary"].quickPeek)
+        settings["dictionary"].hotkey = controlOptionT
+        #expect(!settings["dictionary"].quickPeek)
+    }
+
+    @Test func settingsSavedBeforeQuickPeekStillLoad() throws {
+        let saved = Data(
+            #"{"aliases":{"terminal":["t"]},"favourites":["terminal"],"hotkeys":{}}"#.utf8)
+
+        let decoded = try JSONDecoder().decode(ItemSettings.self, from: saved)
+
+        #expect(decoded["terminal"] == .init(aliases: ["t"], favourite: true))
+    }
+
     @Test func survivesAJSONRoundTrip() throws {
         var settings = ItemSettings()
-        settings["terminal"] = .init(aliases: ["t"], hotkey: controlOptionT, favourite: true)
+        settings["terminal"] = .init(
+            aliases: ["t"], hotkey: controlOptionT, favourite: true, quickPeek: true)
 
         let decoded = try JSONDecoder().decode(
             ItemSettings.self, from: JSONEncoder().encode(settings))

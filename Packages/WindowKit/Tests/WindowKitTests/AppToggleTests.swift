@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Testing
 
 @testable import WindowKit
@@ -25,5 +25,66 @@ import Testing
         #expect(AppToggle.isSame(URL(filePath: app.path + "/"), URL(filePath: app.path)))
         #expect(AppToggle.isSame(link, app))
         #expect(!AppToggle.isSame(root.appending(path: "Other.app"), app))
+    }
+
+    @Test func aPeekedAppHidesOnceWhenItIsSwitchedAway() {
+        let center = NotificationCenter()
+        let app = NSRunningApplication.current
+        var hides = 0
+        AppToggle.hideWhenDeactivated(app.processIdentifier, in: center) { hides += 1 }
+
+        deactivate(app, in: center)
+        deactivate(app, in: center)
+
+        #expect(hides == 1)
+    }
+
+    @Test func aPeekedAppThatQuitsStopsBeingWatched() {
+        let center = NotificationCenter()
+        let app = NSRunningApplication.current
+        var hides = 0
+        AppToggle.hideWhenDeactivated(app.processIdentifier, in: center) { hides += 1 }
+
+        center.post(
+            name: NSWorkspace.didTerminateApplicationNotification, object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: app])
+        deactivate(app, in: center)
+
+        #expect(hides == 1)
+    }
+
+    @Test func otherAppsSwitchingAwayLeaveThePeekOpen() {
+        let center = NotificationCenter()
+        let app = NSRunningApplication.current
+        var hides = 0
+        AppToggle.hideWhenDeactivated(app.processIdentifier + 1, in: center) { hides += 1 }
+
+        deactivate(app, in: center)
+        center.post(name: NSWorkspace.didDeactivateApplicationNotification, object: nil)
+        center.post(
+            name: NSWorkspace.didActivateApplicationNotification, object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: app])
+
+        #expect(hides == 0)
+    }
+
+    @Test func peekingAgainReplacesTheEarlierWatch() {
+        let center = NotificationCenter()
+        let app = NSRunningApplication.current
+        var first = 0
+        var second = 0
+        AppToggle.hideWhenDeactivated(app.processIdentifier, in: center) { first += 1 }
+        AppToggle.hideWhenDeactivated(app.processIdentifier, in: center) { second += 1 }
+
+        deactivate(app, in: center)
+
+        #expect(first == 0)
+        #expect(second == 1)
+    }
+
+    private func deactivate(_ app: NSRunningApplication, in center: NotificationCenter) {
+        center.post(
+            name: NSWorkspace.didDeactivateApplicationNotification, object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: app])
     }
 }

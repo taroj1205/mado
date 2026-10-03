@@ -147,9 +147,15 @@ enum LauncherResult {
         return sources.commands.first { $0.id == id }.map(Self.command)
     }
 
-    static func hotKeyAction(for id: String, in sources: Sources) -> CommandAction? {
+    static func hotKeyAction(
+        for id: String, quickPeek: Bool, in sources: Sources
+    ) -> CommandAction? {
         if let app = AppToggle.app(for: id) {
-            return CommandAction(id: "toggle", title: "Toggle") { try await AppToggle.toggle(app) }
+            return quickPeek
+                ? CommandAction(id: "quick_peek", title: "Quick Peek") {
+                    try await AppToggle.peek(app)
+                }
+                : CommandAction(id: "toggle", title: "Toggle") { try await AppToggle.toggle(app) }
         }
         return result(for: id, in: sources)?.actions.first
     }

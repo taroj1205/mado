@@ -167,7 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func runHotKey(of id: String) {
-        guard let action = LauncherResult.hotKeyAction(for: id, in: sources) else {
+        let quickPeek = editor.settings[id].quickPeek
+        guard let action = LauncherResult.hotKeyAction(for: id, quickPeek: quickPeek, in: sources)
+        else {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }

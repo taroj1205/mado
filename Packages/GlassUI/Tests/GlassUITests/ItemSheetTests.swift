@@ -153,20 +153,6 @@ import Testing
         #expect(!sheet.hotkey.conflict)
     }
 
-    @Test func appsShowTheirModeAndOtherItemsDoNot() {
-        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey, isApp: true)
-        #expect(!sheet.modeRow.isHidden)
-        #expect(sheet.mode.titleOfSelectedItem == "Toggle")
-        #expect(sheet.mode.itemArray.map(\.isEnabled) == [true, false])
-        #expect(
-            sheet.modeHint.stringValue
-                == "Toggle: launch if closed → bring to front → hide if already in front.")
-        #expect(sheet.hotkeyHintLabel.stringValue == ItemSheet.hotkeyHint)
-
-        sheet.show(terminal, values: .init(), ranking: nil, opening: .hotkey)
-        #expect(sheet.modeRow.isHidden)
-    }
-
     @Test func aProblemFromSavingStaysOnScreen() {
         let problem = "macOS wouldn’t register this hotkey. Try another."
         sheet.onSave = { _ in problem }

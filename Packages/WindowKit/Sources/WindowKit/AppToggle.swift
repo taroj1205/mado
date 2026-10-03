@@ -2,6 +2,12 @@ public import AppKit
 
 @MainActor
 public enum AppToggle {
+    nonisolated private static let leaves: Set<Notification.Name> = [
+        NSWorkspace.didDeactivateApplicationNotification,
+        NSWorkspace.didTerminateApplicationNotification,
+    ]
+    private static var peeks: [pid_t: any NSObjectProtocol] = [:]
+
     public static func app(for id: String) -> URL? {
         guard id.hasPrefix("/") else { return nil }
         let url = URL(filePath: id)
@@ -9,17 +15,50 @@ public enum AppToggle {
     }
 
     public static func toggle(_ app: URL) async throws {
-        let workspace = NSWorkspace.shared
-        let front = workspace.frontmostApplication
-        if let front, let bundle = front.bundleURL, isSame(bundle, app) {
-            front.hide()
-        } else {
-            _ = try await workspace.openApplication(
-                at: app, configuration: NSWorkspace.OpenConfiguration())
+        _ = try await bringForward(app)
+    }
+
+    public static func peek(_ app: URL) async throws {
+        guard let opened = try await bringForward(app) else { return }
+        hideWhenDeactivated(opened.processIdentifier, in: NSWorkspace.shared.notificationCenter) {
+            opened.hide()
         }
+    }
+
+    static func hideWhenDeactivated(
+        _ pid: pid_t, in center: NotificationCenter, hide: @escaping @MainActor () -> Void
+    ) {
+        if let previous = peeks.removeValue(forKey: pid) {
+            center.removeObserver(previous)
+        }
+        let watch: @Sendable (Notification) -> Void = { [weak center] notification in
+            guard leaves.contains(notification.name),
+                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication,
+                app.processIdentifier == pid
+            else { return }
+            MainActor.assumeIsolated {
+                if let observer = peeks.removeValue(forKey: pid) {
+                    center?.removeObserver(observer)
+                }
+                hide()
+            }
+        }
+        peeks[pid] = center.addObserver(forName: nil, object: nil, queue: .main, using: watch)
     }
 
     static func isSame(_ lhs: URL, _ rhs: URL) -> Bool {
         lhs.resolvingSymlinksInPath().path == rhs.resolvingSymlinksInPath().path
+    }
+
+    private static func bringForward(_ app: URL) async throws -> NSRunningApplication? {
+        let workspace = NSWorkspace.shared
+        let front = workspace.frontmostApplication
+        if let front, let bundle = front.bundleURL, isSame(bundle, app) {
+            front.hide()
+            return nil
+        }
+        return try await workspace.openApplication(
+            at: app, configuration: NSWorkspace.OpenConfiguration())
     }
 }

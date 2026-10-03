@@ -28,15 +28,17 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         public var aliases: [String]
         public var hotkey: Shortcut?
         public var favourite: Bool
+        public var quickPeek: Bool
         public var resetsRanking: Bool
 
         public init(
             aliases: [String] = [], hotkey: Shortcut? = nil, favourite: Bool = false,
-            resetsRanking: Bool = false
+            quickPeek: Bool = false, resetsRanking: Bool = false
         ) {
             self.aliases = aliases
             self.hotkey = hotkey
             self.favourite = favourite
+            self.quickPeek = quickPeek
             self.resetsRanking = resetsRanking
         }
     }
@@ -64,7 +66,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     let hotkey = HotKeyButton()
     let clear = NSButton(title: "Clear", target: nil, action: nil)
     let hotkeyHintLabel = SheetForm.hint()
-    let mode = AppHotKeyMode.menu()
+    let mode = AppHotKeyMode.Menu()
     let modeHint = SheetForm.hint()
     private(set) lazy var modeRow = SheetForm.row("Mode", [mode, modeHint])
     let favourite = NSSwitch()
@@ -88,7 +90,8 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     var values: Values {
         Values(
             aliases: adding(aliasField.stringValue), hotkey: hotkey.shortcut,
-            favourite: favourite.state == .on, resetsRanking: resetsRanking)
+            favourite: favourite.state == .on, quickPeek: mode.selected == .quickPeek,
+            resetsRanking: resetsRanking)
     }
 
     override public init(frame: NSRect) {
@@ -103,7 +106,8 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         }
         clear.action = #selector(clearHotkey)
         resetRanking.action = #selector(resetUsage)
-        modeHint.stringValue = AppHotKeyMode.toggle + AppHotKeyMode.summary
+        mode.onChange = { [weak self] in self?.showMode($0) }
+        showMode(.toggle)
         layoutSheet()
     }
 
@@ -118,6 +122,8 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     ) {
         itemTitle = item.title
         modeRow.isHidden = !isApp
+        mode.setAccessibilityLabel("\(item.title) mode")
+        showMode(AppHotKeyMode(quickPeek: values.quickPeek))
         showHeader(item)
         aliasField.stringValue = ""
         aliases = values.aliases
@@ -232,6 +238,11 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         title.stringValue = item.title
         subtitle.stringValue = [item.kind, item.subtitle].filter { !$0.isEmpty }
             .joined(separator: " · ")
+    }
+
+    private func showMode(_ selected: AppHotKeyMode) {
+        mode.selected = selected
+        modeHint.stringValue = selected.title + selected.summary
     }
 
     private func showAliases() {
