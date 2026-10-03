@@ -12,6 +12,10 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     private lazy var panel = makePanel()
     private var finish: ((Result<[String: String], CancellationError>) -> Void)?
 
+    private static func previewed(_ text: String) -> String {
+        String(text.unicodeScalars.prefix(FillInForm.previewScalars))
+    }
+
     private static func appKitRect(_ quartz: CGRect) -> NSRect {
         let primary = NSScreen.screens.first?.frame ?? .zero
         return ScreenGeometry.appKitRect(fromQuartz: quartz, primary: primary)
@@ -36,11 +40,10 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     }
 
     private func show(_ snippet: Snippet, _ template: SnippetTemplate, under caret: CGRect?) {
-        let clipboard = String(
-            (NSPasteboard.general.string(forType: .string) ?? "").unicodeScalars
-                .prefix(FillInForm.previewScalars))
+        let clipboard = Self.previewed(NSPasteboard.general.string(forType: .string) ?? "")
         form.preview = { fields in
-            let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
+            let shown = fields.mapValues(Self.previewed)
+            let expansion = template.expand(.now(fields: shown, clipboard: clipboard))
             return FillInForm.Preview(text: expansion.text, values: expansion.fieldRanges)
         }
         form.onInsert = { [weak self] values in self?.done(.success(values)) }
