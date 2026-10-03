@@ -141,6 +141,18 @@ import Testing
         #expect(form.previewText.accessibilityLabel()?.count == "Preview: ".count + 2_000)
     }
 
+    @Test func thePreviewCapsOneCharacterThatHoldsAMillionMarks() {
+        let marks = "e" + String(repeating: "\u{301}", count: 1_000_000)
+        form.preview = { _ in
+            FillInForm.Preview(text: "Hi " + marks, values: [NSRange(location: 0, length: 2)])
+        }
+
+        form.show(name: "Clipboard", keyword: ";cb", fields: Self.fields)
+
+        #expect(form.previewText.attributedStringValue.length == 2_000)
+        #expect(form.previewText.accessibilityLabel()?.utf16.count == "Preview: ".count + 2_000)
+    }
+
     @Test func layoutFollowsTheCanvas() {
         form.show(name: "Meeting follow-up", keyword: ";fu", fields: Self.fields)
         let size = form.fittingSize
