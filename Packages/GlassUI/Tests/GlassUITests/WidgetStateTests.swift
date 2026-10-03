@@ -11,20 +11,20 @@ import Testing
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
     private let upNext = WidgetGrid.Widget(
-        id: "next",
+        id: "next", name: "Up Next",
         content: .notice(
             title: "Up Next", headline: "Nothing else today",
             detail: "Tomorrow 10:00 · Stand-up"),
         action: "Open Calendar", spoken: "Up next: nothing else today", isWide: true)
     private let calendar = WidgetGrid.Widget(
-        id: "calendar",
+        id: "calendar", name: "Calendar",
         content: .permission(
             title: "Calendar", request: "Allow calendar access",
             reason: "To show your next meeting"),
         action: "Allow Calendar Access", spoken: "Calendar: allow calendar access",
         isWide: true)
     private let weather = WidgetGrid.Widget(
-        id: "weather", content: .loading(title: "Weather"), action: "Open Weather",
+        id: "weather", name: "Weather", content: .loading(title: "Weather"), action: "Open Weather",
         spoken: "Weather: loading")
 
     init() {
@@ -78,7 +78,8 @@ import Testing
         for content in states {
             view.widgets = [
                 .init(
-                    id: "next", content: content, action: "Open Calendar", spoken: "Up next",
+                    id: "next", name: "Up Next", content: content, action: "Open Calendar",
+                    spoken: "Up next",
                     isWide: true),
                 calendar, weather, small("clock"), small("system"),
             ]
@@ -170,7 +171,7 @@ import Testing
     }
 
     private func small(_ id: String) -> WidgetGrid.Widget {
-        .init(id: id, value: id, detail: "", action: "Open \(id)", spoken: id)
+        .init(id: id, name: id, value: id, detail: "", action: "Open \(id)", spoken: id)
     }
 
     private func press(_ keyCode: Int, _ characters: String) {

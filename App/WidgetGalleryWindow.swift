@@ -3,15 +3,20 @@ import AppKit
 import GlassUI
 
 @MainActor
-final class WidgetGalleryWindow: NSObject, NSToolbarDelegate {
+final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
     private static let width: CGFloat = 920
     private static let height: CGFloat = 640
     private static let radius: CGFloat = 26
     private static let filter = NSToolbarItem.Identifier("filter")
+    private static let half: CGFloat = 0.5
 
     private let modules: ModuleManager?
     private let gallery = WidgetGallery(cards: Widgets.gallery)
     private lazy var window = makeWindow()
+    var onChange: (() -> Void)?
+    var onClose: (() -> Void)?
+
+    var isVisible: Bool { window.isVisible }
 
     init(modules: ModuleManager?) {
         self.modules = modules
@@ -21,12 +26,36 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate {
     }
 
     func show() {
-        gallery.added = Widgets.added(in: modules)
+        refresh()
         if !window.isVisible {
             window.center()
         }
-        window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(nil)
+        present()
+    }
+
+    func show(over launcher: NSWindow) {
+        refresh()
+        gallery.hintsDrag = true
+        window.level = NSWindow.Level(launcher.level.rawValue + 1)
+        if !window.isVisible, let visible = launcher.screen?.visibleFrame {
+            window.setFrameOrigin(
+                NSPoint(x: launcher.frame.midX - window.frame.width * Self.half, y: visible.minY))
+        }
+        NSRunningApplication.current.activate(
+            from: NSWorkspace.shared.frontmostApplication ?? .current, options: [])
+        present()
+    }
+
+    func refresh() {
+        gallery.added = Widgets.added(in: modules)
+    }
+
+    func close() {
+        window.close()
+    }
+
+    func windowWillClose(_: Notification) {
+        onClose?()
     }
 
     func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -49,10 +78,14 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate {
     }
 
     private func add(_ id: String) {
-        var settings = WidgetSettings.load(from: modules)
-        settings.add(id, from: Widgets.ids)
-        settings.save(to: modules)
-        gallery.added = Widgets.added(in: modules)
+        Widgets.edit(.add(id), in: modules)
+        refresh()
+        onChange?()
+    }
+
+    private func present() {
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(nil)
     }
 
     private func makeWindow() -> NSWindow {
@@ -68,6 +101,7 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate {
         made.toolbar = toolbar
         made.toolbarStyle = .unified
         made.isReleasedWhenClosed = false
+        made.delegate = self
         made.isOpaque = false
         made.backgroundColor = .clear
         let glass = GlassView(shape: .rounded(Self.radius), tint: SettingsWindowController.tint)

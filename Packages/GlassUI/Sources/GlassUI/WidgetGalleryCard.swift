@@ -1,7 +1,7 @@
 import AppKit
 import Symbols
 
-final class WidgetGalleryCard: NSView {
+final class WidgetGalleryCard: NSView, NSDraggingSource {
     private static let radius: CGFloat = 16
     private static let padding: CGFloat = 12
     private static let gap: CGFloat = 8
@@ -23,6 +23,7 @@ final class WidgetGalleryCard: NSView {
     private let check = NSImageView()
     private let lift = WidgetGalleryCard.box(
         fill: WidgetTile.selectedFill, edge: WidgetTile.selectedEdge)
+    private var dragStart: NSEvent?
     var onAdd: (() -> Void)?
 
     var isAdded = false {
@@ -133,6 +134,30 @@ final class WidgetGalleryCard: NSView {
             context.duration = Self.hover
             lift.animator().alphaValue = isOver ? 1 : 0
         }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        dragStart = isAdded ? nil : event
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard dragStart != nil else { return }
+        dragStart = nil
+        let item = NSPasteboardItem()
+        item.setString(card.id, forType: WidgetGrid.dragType)
+        let dragging = NSDraggingItem(pasteboardWriter: item)
+        dragging.setDraggingFrame(bounds, contents: snapshot())
+        beginDraggingSession(with: [dragging], event: event, source: self)
+    }
+
+    override func mouseUp(with _: NSEvent) {
+        dragStart = nil
+    }
+
+    func draggingSession(
+        _: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        context == .withinApplication ? .copy : []
     }
 
     private func top() -> NSView {
