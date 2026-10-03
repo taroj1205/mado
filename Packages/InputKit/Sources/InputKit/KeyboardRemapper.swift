@@ -18,7 +18,10 @@ public final class KeyboardRemapper {
         private static let script = """
             read -r unused
             while [ "$#" -gt 1 ]; do
-                /usr/bin/hidutil property --matching "$1" --set "$2" >/dev/null
+                for attempt in 1 2 3; do
+                    /usr/bin/hidutil property --matching "$1" --set "$2" >/dev/null && break
+                    sleep 1
+                done
                 shift 2
             done
             """
@@ -177,22 +180,23 @@ public final class KeyboardRemapper {
         let remapping = Set(services.filter { settings.applies(to: $0.keyboard) }.map(\.id))
         let earlier = mappings
         let writes = mappings.sync(current, remapping: remapping, to: usage)
-        guard armOrRestore(current, services) else { return }
+        guard arm(mappings.restores(from: current), services) else {
+            mappings = earlier
+            restoreAll(current, services)
+            return
+        }
         let failed = write(writes, to: services)
         guard !failed.isEmpty else { return }
         mappings.keepOriginals(of: failed, from: earlier)
-        armOrRestore(current, services)
+        if !arm(mappings.restores(from: current), services) {
+            restoreAll(current, services)
+        }
     }
 
-    @discardableResult
-    private func armOrRestore(
-        _ current: [UInt64: KeyMappings.Mapping], _ services: [Service]
-    ) -> Bool {
-        guard arm(mappings.restores(from: current), services) else {
-            write(mappings.restore(from: current), to: services)
-            return false
-        }
-        return true
+    private func restoreAll(_ current: [UInt64: KeyMappings.Mapping], _ services: [Service]) {
+        let earlier = mappings
+        let failed = write(mappings.restore(from: current), to: services)
+        mappings.keepOriginals(of: failed, from: earlier)
     }
 
     private func arm(_ restores: [UInt64: KeyMappings.Mapping], _ services: [Service]) -> Bool {
@@ -205,19 +209,16 @@ public final class KeyboardRemapper {
             else {
                 logger.error(
                     "Caps Lock remap can't be undone on \(service.keyboard.name, privacy: .public)")
-                watchdog?.cancel()
-                watchdog = nil
                 return false
             }
             arguments += [restore.matching, restore.mapping]
         }
         guard arguments != watchdog?.arguments ?? [] else { return true }
-        let previous = watchdog
-        watchdog = nil
-        defer { previous?.cancel() }
         do {
-            watchdog =
+            let next =
                 try arguments.isEmpty ? nil : Watchdog(restoring: arguments, holding: lock.handle)
+            watchdog?.cancel()
+            watchdog = next
             return true
         } catch {
             logger.error("Caps Lock remap watchdog failed: \(error, privacy: .public)")
