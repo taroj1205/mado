@@ -18,6 +18,7 @@ public struct SnippetTyping {
         didSet { keywords = settings.snippets.map(\.keyword) }
     }
 
+    public private(set) var inputAfterMatch = false
     private var keywords: [String]
     private var buffer = KeywordBuffer()
     private var undoable: TextInsertion.Inserted?
@@ -36,6 +37,7 @@ public struct SnippetTyping {
         _ type: CGEventType, _ event: CGEvent, canExpand: Bool
     ) -> Outcome {
         guard !Keystrokes.isPosted(event) else { return .pass }
+        inputAfterMatch = true
         guard type == .keyDown else {
             forget()
             return .pass
@@ -53,6 +55,7 @@ public struct SnippetTyping {
             let keyword = buffer.handle(key, keywords: keywords),
             let snippet = settings.snippet(withKeyword: keyword)
         else { return .pass }
+        inputAfterMatch = false
         return .expand(snippet)
     }
 
