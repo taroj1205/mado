@@ -22,12 +22,12 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     }
 
     func ask(
-        _ snippet: Snippet, _ template: SnippetTemplate, under caret: CGRect?
+        _ snippet: Snippet, _ template: SnippetTemplate, clipboard: String, under caret: CGRect?
     ) async throws(CancellationError) -> [String: String] {
         close()
         return try await withCheckedContinuation { continuation in
             finish = { continuation.resume(returning: $0) }
-            show(snippet, template, under: caret)
+            show(snippet, template, clipboard: Self.previewed(clipboard), under: caret)
         }.get()
     }
 
@@ -39,8 +39,9 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         close()
     }
 
-    private func show(_ snippet: Snippet, _ template: SnippetTemplate, under caret: CGRect?) {
-        let clipboard = Self.previewed(NSPasteboard.general.string(forType: .string) ?? "")
+    private func show(
+        _ snippet: Snippet, _ template: SnippetTemplate, clipboard: String, under caret: CGRect?
+    ) {
         form.preview = { fields in
             let shown = fields.mapValues(Self.previewed)
             let expansion = template.expand(.now(fields: shown, clipboard: clipboard))
