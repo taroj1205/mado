@@ -152,8 +152,12 @@ final class ClipboardHistory: NSObject {
     }
 
     func actions(for id: String) -> [CommandAction] {
-        guard let entry = entries[id] else { return [] }
-        return [CommandAction(id: "copy", title: "Copy to Clipboard") { try entry.copy() }]
+        guard let entry = entries[id], let store else { return [] }
+        let copy = CommandAction(id: "copy", title: "Copy to Clipboard") {
+            let data = try await store.data(for: entry.id)
+            try entry.copy(data: data)
+        }
+        return [copy]
     }
 
     private func reset() {
