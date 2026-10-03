@@ -20,6 +20,8 @@ public final class ModuleContext {
     private let eventTap: EventTap
     private var entries: [UInt: Entry] = [:]
     private var nextID: UInt = 0
+    var keysPaused = false
+    private(set) var hasKeyFeatures = false
 
     var active: [ActiveResource] {
         entries.keys.sorted().compactMap { entries[$0]?.resource }
@@ -31,6 +33,13 @@ public final class ModuleContext {
         self.eventTap = eventTap
         logger = Log.logger(moduleID)
         signposter = Log.signposter(moduleID)
+    }
+
+    public func startKeyFeatures(_ start: () -> Void) {
+        hasKeyFeatures = true
+        if !keysPaused {
+            start()
+        }
     }
 
     public func own(_ kind: ResourceKind, _ name: String, release: @escaping () -> Void) {

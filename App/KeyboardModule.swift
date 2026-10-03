@@ -12,9 +12,11 @@ struct KeyboardModule: Module {
     let openLauncher: @MainActor () -> Void
 
     func start(context: ModuleContext) {
-        context.installWhenTrusted("input mode taps") { installTap(context) }
-        AppInputSwitch.install(context: context, settings: inputSourceSettings)
-        startRemaps(remapSettings(), context: context)
+        context.startKeyFeatures {
+            context.installWhenTrusted("input mode taps") { installTap(context) }
+            AppInputSwitch.install(context: context, settings: inputSourceSettings)
+            startRemaps(remapSettings(), context: context)
+        }
     }
 
     func stop() {

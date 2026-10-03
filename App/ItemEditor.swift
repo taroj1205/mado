@@ -62,6 +62,12 @@ final class ItemEditor {
         }
     }
 
+    func refreshHotKeys() {
+        for id in settings.hotkeys.keys {
+            refreshHotKey(for: id)
+        }
+    }
+
     func refreshHotKey(for id: String) {
         if let registration = registrations.removeValue(forKey: id) {
             registry?.unregister(registration)

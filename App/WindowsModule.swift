@@ -18,12 +18,14 @@ struct WindowsModule: Module {
 
     func start(context: ModuleContext) {
         registerLayouts(context: context)
-        let radial = radialSettings()
-        if radial.isEnabled {
-            startRadialMenu(trigger: radial.trigger, context: context)
+        context.startKeyFeatures {
+            let radial = radialSettings()
+            if radial.isEnabled {
+                startRadialMenu(trigger: radial.trigger, context: context)
+            }
+            startGestures(gestureSettings(), context: context)
+            startSwitcher(context: context)
         }
-        startGestures(gestureSettings(), context: context)
-        startSwitcher(context: context)
         context.logger.debug("Started")
     }
 
