@@ -183,6 +183,27 @@ import Testing
         #expect(try images() == [try #require(kept[0].image).lastPathComponent])
     }
 
+    @Test func removesTheOtherImagesWhenOneCannotBeRemoved() async throws {
+        let folder = directory.appending(path: "Images")
+        let locked = folder.appending(path: "locked")
+        let files = FileManager.default
+        defer {
+            try? files.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+            try? files.removeItem(at: directory)
+        }
+        let store = try ClipboardStore(directory: directory)
+        try files.createDirectory(at: locked, withIntermediateDirectories: true)
+        try Data().write(to: locked.appending(path: "stuck.png"))
+        try files.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        for index in 0..<20 {
+            try Data().write(to: folder.appending(path: "orphan-\(index).png"))
+        }
+
+        await #expect(throws: (any Error).self) { try await store.clear() }
+
+        #expect(try images() == ["locked"])
+    }
+
     @Test func leavesNoClearedTextInTheHistoryFile() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
