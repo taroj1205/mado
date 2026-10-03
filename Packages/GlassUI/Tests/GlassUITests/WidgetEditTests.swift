@@ -148,6 +148,25 @@ import Testing
         #expect(view.handle(click))
     }
 
+    @Test func modifiedKeysLeaveTheDimmedResultsAlone() {
+        var runs: [Int] = []
+        view.actions = { _ in
+            [
+                .init("Run Command"),
+                .init("Show in Finder", keys: LauncherView.Action.secondaryKeys),
+                .init("Copy Name", keys: ["⌘", "C"]),
+            ]
+        }
+        view.onRun = { runs.append($1) }
+        edit()
+        press(kVK_Return, "\r", [.command])
+        press(kVK_ANSI_C, "c", [.command])
+        #expect(runs.isEmpty)
+        view.finishEditingWidgets()
+        press(kVK_ANSI_C, "c", [.command])
+        #expect(runs == [2])
+    }
+
     @Test func returnEscapeAndDoneLeaveEditModeAndTheLauncherClosingEndsItToo() {
         var ends = 0
         var adds = 0
