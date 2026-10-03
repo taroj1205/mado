@@ -25,39 +25,68 @@ import Testing
             select: { id in
                 sources.selected.append(id)
                 sources.current = id
-            })
+            },
+            settle: .zero)
     }
 
-    @Test func selectsTheSourceSetForTheAppThatBecomesActive() {
+    private static func activate(_ app: String?, on switcher: AppInputSwitch) async {
+        switcher.activated(app, apps: apps)
+        await switcher.pending?.value
+    }
+
+    @Test func selectsTheSourceSetForTheAppThatBecomesActive() async {
+        let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
+        let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
+
+        await Self.activate("com.apple.Terminal", on: switcher)
+        await Self.activate("jp.naver.line.mac", on: switcher)
+
+        #expect(
+            sources.selected == [
+                "com.apple.keylayout.ABC", "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
+            ])
+    }
+
+    @Test func selectsOnlyAfterTheActivationSettles() async {
         let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
         let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
 
         switcher.activated("com.apple.Terminal", apps: Self.apps)
-        switcher.activated("jp.naver.line.mac", apps: Self.apps)
+        #expect(sources.selected.isEmpty)
+        await switcher.pending?.value
 
-        #expect(
-            sources.selected == [
-                "com.apple.keylayout.ABC", "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
-            ])
+        #expect(sources.selected == ["com.apple.keylayout.ABC"])
     }
 
-    @Test func leavesTheSourceAloneForAppsWithoutADefault() {
-        let sources = Sources(current: "com.apple.keylayout.ABC")
-        let switcher = Self.makeSwitch(front: "com.apple.Terminal", sources)
+    @Test func leavingBeforeTheActivationSettlesCancelsTheSwitch() async {
+        let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
+        let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
 
-        switcher.activated("com.apple.Safari", apps: Self.apps)
-        switcher.activated(nil, apps: Self.apps)
+        switcher.activated("com.apple.Terminal", apps: Self.apps)
+        let cancelled = switcher.pending
+        await Self.activate("com.apple.Safari", on: switcher)
+        await cancelled?.value
 
         #expect(sources.selected.isEmpty)
     }
 
-    @Test func lastUsedRestoresTheSourceTheAppWasLeftWith() {
+    @Test func leavesTheSourceAloneForAppsWithoutADefault() async {
+        let sources = Sources(current: "com.apple.keylayout.ABC")
+        let switcher = Self.makeSwitch(front: "com.apple.Terminal", sources)
+
+        await Self.activate("com.apple.Safari", on: switcher)
+        await Self.activate(nil, on: switcher)
+
+        #expect(sources.selected.isEmpty)
+    }
+
+    @Test func lastUsedRestoresTheSourceTheAppWasLeftWith() async {
         let sources = Sources(current: "com.apple.keylayout.ABC")
         let switcher = Self.makeSwitch(front: "com.apple.MobileSMS", sources)
         sources.current = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
 
-        switcher.activated("com.apple.Terminal", apps: Self.apps)
-        switcher.activated("com.apple.MobileSMS", apps: Self.apps)
+        await Self.activate("com.apple.Terminal", on: switcher)
+        await Self.activate("com.apple.MobileSMS", on: switcher)
 
         #expect(
             sources.selected == [
@@ -65,11 +94,11 @@ import Testing
             ])
     }
 
-    @Test func lastUsedChangesNothingUntilTheAppHasBeenLeft() {
+    @Test func lastUsedChangesNothingUntilTheAppHasBeenLeft() async {
         let sources = Sources(current: "com.apple.keylayout.ABC")
         let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
 
-        switcher.activated("com.apple.MobileSMS", apps: Self.apps)
+        await Self.activate("com.apple.MobileSMS", on: switcher)
 
         #expect(sources.selected.isEmpty)
     }
