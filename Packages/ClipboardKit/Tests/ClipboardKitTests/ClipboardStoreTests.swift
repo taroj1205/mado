@@ -84,6 +84,79 @@ import Testing
         #expect(try await store.search("", limit: 10).map(\.text) == ["new", "recent"])
     }
 
+    @Test func keepsPinnedItemsPastTheKeepingPeriod() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let now = Date().timeIntervalSince1970
+        let png = Data([0x89, 0x50, 0x4E, 0x47])
+
+        try await store.add(
+            Clip(
+                .image, text: "", type: .png, data: png, source: nil,
+                date: Date(timeIntervalSince1970: now - 2)),
+            keeping: Self.roomy)
+        try await store.add(Self.text("pinned", at: now - 1), keeping: Self.roomy)
+        try await store.add(Self.text("unpinned", at: now), keeping: Self.roomy)
+        for entry in try await store.search("", limit: 10) where entry.text != "unpinned" {
+            try await store.setPinned(true, id: entry.id)
+        }
+        try await store.prune(
+            keeping: Self.roomy, now: Date(timeIntervalSince1970: now + 31 * Self.day))
+        let kept = try await store.search("", limit: 10)
+
+        #expect(kept.map(\.text) == ["pinned", ""])
+        #expect(kept.map(\.pinned) == [true, true])
+        #expect(try images().count == 1)
+
+        try await store.setPinned(false, id: kept[0].id)
+        try await store.prune(
+            keeping: Self.roomy, now: Date(timeIntervalSince1970: now + 31 * Self.day))
+
+        #expect(try await store.search("", limit: 10).map(\.text) == [""])
+    }
+
+    @Test func leavesPinnedItemsOutOfTheItemLimit() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let limit = ClipboardStore.Retention(items: 2)
+        let now = Date().timeIntervalSince1970
+
+        try await store.add(Self.text("pinned", at: now), keeping: limit)
+        let pinned = try #require(try await store.search("", limit: 1).first)
+        try await store.setPinned(true, id: pinned.id)
+        for index in 1...3 {
+            try await store.add(Self.text("item \(index)", at: now + Double(index)), keeping: limit)
+        }
+
+        #expect(
+            try await store.search("", limit: 10).map(\.text) == ["item 3", "item 2", "pinned"])
+    }
+
+    @Test func opensAHistorySavedBeforePinning() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Database(
+            path: directory.appending(path: ClipboardStore.fileName).path(percentEncoded: false)
+        ).execute(
+            """
+            CREATE TABLE clips (
+                id INTEGER PRIMARY KEY, kind TEXT NOT NULL, text TEXT NOT NULL, type TEXT,
+                data BLOB, image TEXT, source TEXT, date REAL NOT NULL
+            );
+            CREATE INDEX clips_by_date ON clips (date);
+            INSERT INTO clips (kind, text, date) VALUES ('text', 'saved earlier', 1);
+            """)
+
+        let store = try ClipboardStore(directory: directory)
+        let saved = try #require(try await store.search("", limit: 10).first)
+        try await store.setPinned(true, id: saved.id)
+        let reopened = try ClipboardStore(directory: directory)
+
+        #expect(saved.text == "saved earlier")
+        #expect(!saved.pinned)
+        #expect(try await reopened.search("", limit: 10).map(\.pinned) == [true])
+    }
+
     @Test func matchesWildcardCharactersLiterally() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
