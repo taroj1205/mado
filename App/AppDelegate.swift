@@ -34,9 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
-    lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
-        (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
-    }
+    lazy var editor = ItemEditor(
+        modules: modules, registry: registry,
+        name: { [weak self] id in
+            (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
+        },
+        isAvailable: { [weak self] id in
+            id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true
+        })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
     #endif
@@ -47,7 +52,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_: Notification) {
-        connectClipboardHistory()
         modules = makeModules()
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
@@ -69,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.onHotKey = { [weak self] in self?.runHotKey(of: $0) }
         editor.onSave = { [weak self] in self?.saved($0, resettingRanking: $1) }
         editor.start()
+        connectClipboardHistory()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
