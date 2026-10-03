@@ -41,11 +41,11 @@ import Testing
 
         #expect(entries.map(\.kind) == [.image, .richText])
         #expect(entries[1].text == "bold")
-        #expect(entries[1].data == rtf)
+        #expect(try await store.data(for: entries[1].id) == rtf)
         #expect(entries[1].type == NSPasteboard.PasteboardType.rtf.rawValue)
         #expect(entries[1].source == "com.apple.TextEdit")
         #expect(entries[1].date == date)
-        #expect(entries[0].data == nil)
+        #expect(try await store.data(for: entries[0].id) == nil)
         let image = try #require(entries[0].image)
         #expect(image.pathExtension == "png")
         #expect(try Data(contentsOf: image) == png)

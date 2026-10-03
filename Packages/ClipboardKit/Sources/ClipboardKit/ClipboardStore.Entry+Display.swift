@@ -28,7 +28,7 @@ extension ClipboardStore.Entry {
             return kind.title
 
         case .file:
-            return paths.map(\.lastPathComponent).joined(separator: ", ")
+            return files.map(\.lastPathComponent).joined(separator: ", ")
 
         case .text, .richText, .url, .color:
             var line = ""
@@ -58,10 +58,6 @@ extension ClipboardStore.Entry {
             blue: value & Self.byte)
     }
 
-    private var paths: [URL] {
-        text.split(separator: "\n").map { URL(filePath: String($0)) }
-    }
-
     private var words: Int {
         var count = 0
         text.enumerateSubstrings(
@@ -87,7 +83,7 @@ extension ClipboardStore.Entry {
             return imageDetails
 
         case .file:
-            return [("Files", paths.count.formatted())]
+            return [("Files", files.count.formatted())]
         }
     }
 
@@ -136,18 +132,18 @@ extension ClipboardStore.Entry {
     }
 
     @MainActor
-    public func copy(to pasteboard: NSPasteboard = .general) throws {
-        try PasteTarget.write(pasteboardItems(), to: pasteboard)
+    public func copy(data: Data?, to pasteboard: NSPasteboard = .general) throws {
+        try PasteTarget.write(pasteboardItems(data: data), to: pasteboard)
     }
 
     @MainActor
-    func pasteboardItems() throws -> [NSPasteboardItem] {
+    func pasteboardItems(data: Data?) throws -> [NSPasteboardItem] {
         let items: [NSPasteboardItem]
         switch kind {
         case .file:
-            items = paths.map { path in
+            items = files.map { file in
                 let item = NSPasteboardItem()
-                item.setString(path.absoluteString, forType: .fileURL)
+                item.setString(file.absoluteString, forType: .fileURL)
                 return item
             }
 
