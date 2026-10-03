@@ -14,6 +14,7 @@ final class SnippetExpander {
     ]
     private static let keywordChecks = 5
     private static let keywordCheckMilliseconds = 30
+    private static let waitMilliseconds = 50
 
     var beforeReplacing: (@MainActor () -> Void)?
 
@@ -60,7 +61,14 @@ final class SnippetExpander {
     }
 
     func insert(_ snippet: Snippet, into target: PasteTarget) async {
-        guard !busy else { return }
+        while busy {
+            do {
+                try await Task.sleep(for: .milliseconds(Self.waitMilliseconds))
+            } catch {
+                return
+            }
+        }
+        guard !stopped else { return }
         busy = true
         defer { busy = false }
         do {
