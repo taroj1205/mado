@@ -30,7 +30,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     private static let popUpWidth: CGFloat = 160
     private static let previewSize: CGFloat = 12.5
     private static let previewLine: CGFloat = 1.55
-    private static let previewScalars = 2_000
+    public static let previewScalars = 2_000
     private static let buttonSize: CGFloat = 13
     private static let buttonHeight: CGFloat = 26
 

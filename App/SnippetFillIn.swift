@@ -36,8 +36,10 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     }
 
     private func show(_ snippet: Snippet, _ template: SnippetTemplate, under caret: CGRect?) {
+        let clipboard = String(
+            (NSPasteboard.general.string(forType: .string) ?? "").unicodeScalars
+                .prefix(FillInForm.previewScalars))
         form.preview = { fields in
-            let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
             return FillInForm.Preview(text: expansion.text, values: expansion.fieldRanges)
         }
