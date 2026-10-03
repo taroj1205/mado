@@ -2,13 +2,24 @@ public import Foundation
 import UniformTypeIdentifiers
 
 public actor ClipboardStore {
-    public struct Retention: Equatable, Sendable {
-        public let days: Int
-        public let items: Int
+    public struct Retention: Codable, Equatable, Sendable {
+        public var days: Int
+        public var items: Int
 
         public init(days: Int = 30, items: Int = 1_000) {
             self.days = days
             self.items = items
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            let fallback = Self()
+            let savedDays = try values.decodeIfPresent(Int.self, forKey: .days) ?? fallback.days
+            let savedItems =
+                try values.decodeIfPresent(Int.self, forKey: .items) ?? fallback.items
+            self.init(
+                days: savedDays > 0 ? savedDays : fallback.days,
+                items: savedItems > 0 ? savedItems : fallback.items)
         }
     }
 
@@ -57,6 +68,8 @@ public actor ClipboardStore {
     private static let columns = Column.allCases.map { "\($0)" }.joined(separator: ", ")
     private static let secondsPerDay: TimeInterval = 86_400
 
+    @MainActor private static var shared: ClipboardStore?
+
     private let images: URL
     private let database: Database
 
@@ -65,10 +78,15 @@ public actor ClipboardStore {
         try FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
         database = try Database(
             path: directory.appending(path: Self.fileName).path(percentEncoded: false))
+        try database.execute("PRAGMA secure_delete = ON")
         try Self.migrate(database)
     }
 
+    @MainActor
     public static func standard() throws -> ClipboardStore {
+        if let shared {
+            return shared
+        }
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true)
@@ -77,7 +95,9 @@ public actor ClipboardStore {
         #else
             let name = "Clipboard"
         #endif
-        return try ClipboardStore(directory: base.appending(path: "Mado/\(name)"))
+        let store = try ClipboardStore(directory: base.appending(path: "Mado/\(name)"))
+        shared = store
+        return store
     }
 
     private static func migrate(_ database: Database) throws {
@@ -130,6 +150,25 @@ public actor ClipboardStore {
         ) { $0.string(0) }
         for image in removed {
             try? FileManager.default.removeItem(at: images.appending(path: image))
+        }
+    }
+
+    public func clear() throws {
+        try database.run("DELETE FROM clips WHERE pinned = 0", [])
+        let kept = try Set(
+            database.rows("SELECT image FROM clips WHERE image IS NOT NULL", []) { $0.string(0) })
+        let files = try FileManager.default.contentsOfDirectory(
+            atPath: images.path(percentEncoded: false))
+        var failure: (any Error)?
+        for file in files where !kept.contains(file) {
+            do {
+                try FileManager.default.removeItem(at: images.appending(path: file))
+            } catch {
+                failure = failure ?? error
+            }
+        }
+        if let failure {
+            throw failure
         }
     }
 
