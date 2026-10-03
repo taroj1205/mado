@@ -95,11 +95,19 @@ final class Widgets {
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
             playing.map(widget(for:)),
-            stats.flatMap(batteries),
-            .init(
-                id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
-                action: "Open Activity Monitor",
-                spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
+            stats == nil
+                ? .init(
+                    id: battery, content: .loading(title: "Battery"), action: batteryAction,
+                    spoken: "Battery: loading")
+                : stats.flatMap(batteries),
+            cpu == nil
+                ? .init(
+                    id: system, content: .loading(title: "System"),
+                    action: "Open Activity Monitor", spoken: "System: loading")
+                : .init(
+                    id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
+                    action: "Open Activity Monitor",
+                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
         ]
         .compactMap(\.self)
     }

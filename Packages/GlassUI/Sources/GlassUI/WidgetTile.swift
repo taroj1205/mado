@@ -4,25 +4,28 @@ final class WidgetTile: NSView {
     private typealias Look = (fill: NSColor, edge: NSColor)
 
     static let radius: CGFloat = 16
-    private static let horizontal: CGFloat = 12
+    static let horizontal: CGFloat = 12
     private static let trackLeading: CGFloat = 10
-    private static let vertical: CGFloat = 10
-    private static let valueSize: CGFloat = 22
-    private static let valueKern: CGFloat = -0.4
+    static let vertical: CGFloat = 10
+    static let noteSize: CGFloat = 12
     private static let detailSize: CGFloat = 11.5
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
+    private static let headlineSize: CGFloat = 14
+    private static let requestSize: CGFloat = 13
     private static let meterGap: CGFloat = 8
+    private static let headlineBar = (fraction: 0.4, height: 18.0)
+    private static let detailBar = (fraction: 0.7, height: 10.0)
     private static let fillAlpha = (dark: 0.055, light: 0.55)
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
     private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
-    private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
-    private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
     static let fill = tone(.white, .white, fillAlpha)
     static let edge = tone(.white, .black, edgeAlpha)
     static let selectedFill = tone(.white, .black, selectedFillAlpha)
     static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
+    private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
     private static let floatingSelectedFill = tone(
         NSColor(
             srgbRed: floatingSelectedTint.red, green: floatingSelectedTint.green,
@@ -35,8 +38,15 @@ final class WidgetTile: NSView {
         (.clear, .clear), (floatingSelectedFill, selectedEdge)
     )
 
+    let title = NSTextField(labelWithString: "")
     let value = NSTextField(labelWithString: "")
+    let headline = NSTextField(labelWithString: "")
+    let skeleton = [headlineBar, detailBar].map { bar in
+        WidgetSkeleton(fraction: bar.fraction, height: bar.height)
+    }
     let detail = NSTextField(labelWithString: "")
+    let reason = NSTextField(labelWithString: "")
+    let allow = AllowCapsule()
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
@@ -46,6 +56,8 @@ final class WidgetTile: NSView {
         track.centerYAnchor.constraint(equalTo: centerYAnchor),
     ]
     private let box = NSBox()
+    let lines = NSStackView()
+    let request = NSStackView()
     private let looks: (resting: Look, picked: Look)
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
@@ -63,13 +75,7 @@ final class WidgetTile: NSView {
         paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
-        detail.font = .systemFont(ofSize: Self.detailSize)
-        detail.textColor = .secondaryLabelColor
-        for label in [value, detail] {
-            label.lineBreakMode = .byTruncatingTail
-            label.translatesAutoresizingMaskIntoConstraints = false
-            addSubview(label)
-        }
+        arrangeLines()
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -82,16 +88,10 @@ final class WidgetTile: NSView {
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
             meters.centerYAnchor.constraint(equalTo: centerYAnchor),
-            value.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             value.trailingAnchor.constraint(
                 lessThanOrEqualTo: icon.leadingAnchor, constant: -Self.iconGap),
             icon.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
             icon.centerYAnchor.constraint(equalTo: value.centerYAnchor),
-            value.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
-            detail.leadingAnchor.constraint(equalTo: value.leadingAnchor),
-            detail.trailingAnchor.constraint(
-                lessThanOrEqualTo: trailingAnchor, constant: -Self.horizontal),
-            detail.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
@@ -119,37 +119,46 @@ final class WidgetTile: NSView {
     }
 
     func show(_ widget: WidgetGrid.Widget) {
-        value.attributedStringValue = NSAttributedString(
-            string: widget.value,
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: Self.valueSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
-                .kern: Self.valueKern,
-            ])
-        detail.stringValue = widget.detail
-        icon.image = widget.symbol.flatMap { name in
+        var visible: [NSView] = []
+        var readings: [WidgetGrid.Meter] = []
+        var symbol: String?
+        switch widget.content {
+        case let .value(text, note, name):
+            symbol = name
+            showValue(text)
+            showDetail(note, size: Self.detailSize)
+            visible = [value, detail]
+
+        case let .meters(list):
+            readings = list
+
+        case let .track(playing):
+            track.show(playing)
+
+        case let .loading(name):
+            showTitle(name)
+            visible = [title] + skeleton
+
+        case let .notice(name, line, note):
+            showTitle(name)
+            showHeadline(line, size: Self.headlineSize)
+            showDetail(note, size: Self.noteSize)
+            visible = [title, headline, detail]
+
+        case let .permission(name, line, why):
+            showTitle(name)
+            showHeadline(line, size: Self.requestSize)
+            reason.stringValue = why
+            visible = [title, headline, request]
+        }
+        for row in lines.arrangedSubviews {
+            row.isHidden = !visible.contains(row)
+        }
+        icon.image = symbol.flatMap { name in
             NSImage(systemSymbolName: name, accessibilityDescription: nil)
         }
-        value.isHidden = !widget.meters.isEmpty || widget.track != nil
-        detail.isHidden = value.isHidden
-        track.isHidden = widget.track == nil
-        if let playing = widget.track {
-            track.show(playing)
-            NSLayoutConstraint.activate(trackPlacement)
-        } else {
-            NSLayoutConstraint.deactivate(trackPlacement)
-        }
-        if meters.arrangedSubviews.count != widget.meters.count {
-            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for _ in widget.meters {
-                let meter = WidgetMeter()
-                meters.addArrangedSubview(meter)
-                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
-            }
-        }
-        for (view, meter) in zip(meters.arrangedSubviews, widget.meters) {
-            (view as? WidgetMeter)?.show(meter)
-        }
+        showMeters(readings)
+        showTrack(widget.track != nil)
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(
             widget.track == nil
@@ -157,10 +166,33 @@ final class WidgetTile: NSView {
                 : [skip("Previous Track", .previous), skip("Next Track", .next)])
     }
 
+    private func showTrack(_ shows: Bool) {
+        track.isHidden = !shows
+        if shows {
+            NSLayoutConstraint.activate(trackPlacement)
+        } else {
+            NSLayoutConstraint.deactivate(trackPlacement)
+        }
+    }
+
     private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
         NSAccessibilityCustomAction(name: name) { [weak self] in
             self?.onSkip?(skip)
             return true
+        }
+    }
+
+    private func showMeters(_ readings: [WidgetGrid.Meter]) {
+        if meters.arrangedSubviews.count != readings.count {
+            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            for _ in readings {
+                let meter = WidgetMeter()
+                meters.addArrangedSubview(meter)
+                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
+            }
+        }
+        for (view, meter) in zip(meters.arrangedSubviews, readings) {
+            (view as? WidgetMeter)?.show(meter)
         }
     }
 
