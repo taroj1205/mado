@@ -12,6 +12,7 @@ final class Widgets {
     private static let spokenTime = Date.FormatStyle().hour().minute()
     private static let day = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
     private static let spokenDay = Date.FormatStyle().weekday(.wide).day().month(.wide)
+    private static let clockWidget = "clock"
     private static let system = "system"
     static let music = "music"
     private static let listenSeconds = 2.0
@@ -22,15 +23,53 @@ final class Widgets {
     private static let macName = "Mac"
     private static let owner = #/^\S+['’]s /#
     private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
+    private static let iconGrey: CGFloat = 0.227
+    private static let iconBlue: CGFloat = 0.235
+    private static let icon = NSColor(srgbRed: iconGrey, green: iconGrey, blue: iconBlue, alpha: 1)
+
+    private static let musicRed: CGFloat = 0.851
+    private static let musicGreen: CGFloat = 0.188
+    private static let musicBlue: CGFloat = 0.290
+    private static let musicIcon = NSColor(
+        srgbRed: musicRed, green: musicGreen, blue: musicBlue, alpha: 1)
+    private static let batteryRed: CGFloat = 0.188
+    private static let batteryGreen: CGFloat = 0.694
+    private static let batteryBlue: CGFloat = 0.345
+    private static let batteryIcon = NSColor(
+        srgbRed: batteryRed, green: batteryGreen, blue: batteryBlue, alpha: 1)
+
+    static let gallery: [WidgetGallery.Card] = [
+        .init(
+            id: clockWidget, name: "Clock", summary: "Time and date", size: .small,
+            group: .time, symbol: "clock.fill", colour: icon),
+        .init(
+            id: music, name: "Now Playing", summary: "Music controls", size: .wide, group: nil,
+            symbol: "heart.fill", colour: musicIcon),
+        .init(
+            id: battery, name: "Battery", summary: "Mac and devices", size: .small,
+            group: .system, symbol: "battery.100percent", colour: batteryIcon),
+        .init(
+            id: system, name: "System", summary: "CPU and memory", size: .small,
+            group: .system, symbol: "bolt.fill", colour: icon),
+    ]
+
+    static var ids: [String] {
+        gallery.map(\.id)
+    }
 
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
     }
 
+    var shown: [String] = []
     private var stats: SystemStats?
     private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
     private var listening: Task<Void, Never>?
+
+    static func added(in modules: ModuleManager?) -> [String] {
+        WidgetSettings.load(from: modules).added(from: ids)
+    }
 
     static func action(for widget: WidgetGrid.Widget) -> CommandAction {
         switch widget.id {
@@ -52,7 +91,7 @@ final class Widgets {
         let memory = stats?.memory
         return [
             .init(
-                id: "clock", value: date.formatted(time), detail: date.formatted(day),
+                id: clockWidget, value: date.formatted(time), detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
             playing.map(widget(for:)),
@@ -171,6 +210,7 @@ final class Widgets {
     }
 
     private func refresh(_ view: LauncherView) {
-        view.widgets = Self.current(at: .now, stats: stats, playing: playing)
+        let all = Self.current(at: .now, stats: stats, playing: playing)
+        view.widgets = shown.compactMap { id in all.first { $0.id == id } }
     }
 }

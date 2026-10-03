@@ -19,10 +19,10 @@ final class WidgetTile: NSView {
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
     private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
     private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
-    private static let fill = tone(.white, .white, fillAlpha)
-    private static let edge = tone(.white, .black, edgeAlpha)
-    private static let selectedFill = tone(.white, .black, selectedFillAlpha)
-    private static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    static let fill = tone(.white, .white, fillAlpha)
+    static let edge = tone(.white, .black, edgeAlpha)
+    static let selectedFill = tone(.white, .black, selectedFillAlpha)
+    static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
     private static let floatingSelectedFill = tone(
         NSColor(
             srgbRed: floatingSelectedTint.red, green: floatingSelectedTint.green,

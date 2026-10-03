@@ -104,7 +104,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private static let tintGray: CGFloat = 0.094
     private static let tintBlue: CGFloat = 0.118
     private static let tintAlpha: CGFloat = 0.62
-    private static let tint = NSColor(name: nil) { appearance in
+    static let tint = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? NSColor(srgbRed: tintGray, green: tintGray, blue: tintBlue, alpha: tintAlpha)
             : .clear
@@ -121,14 +121,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
-            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps)
-        let pages = NSTabViewController()
-        pages.tabStyle = .unspecified
-        for page in SettingsPage.all {
-            pages.addTabViewItem(
-                NSTabViewItem(
-                    viewController: SettingsPageController(page: page, context: context)))
-        }
+            radial: RadialMenuSettings(modules: modules), ignoredApps: ignoredApps,
+            gallery: WidgetGalleryWindow(modules: modules))
+        let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
         sidebar.minimumThickness = Self.sidebarWidth
@@ -163,6 +158,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    private static func pages(_ context: SettingsPage.Context) -> NSTabViewController {
+        let pages = NSTabViewController()
+        pages.tabStyle = .unspecified
+        for page in SettingsPage.all {
+            pages.addTabViewItem(
+                NSTabViewItem(
+                    viewController: SettingsPageController(page: page, context: context)))
+        }
+        return pages
     }
 
     override func showWindow(_ sender: Any?) {

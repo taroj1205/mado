@@ -46,6 +46,7 @@ extension AppDelegate {
     }
 
     func showGlances() {
+        widgets.shown = Widgets.added(in: modules)
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

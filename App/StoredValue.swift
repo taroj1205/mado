@@ -74,3 +74,7 @@ extension GestureSettings.Target {
         }
     }
 }
+
+extension WidgetSettings: StoredValue {
+    static let key = "widgets"
+}
