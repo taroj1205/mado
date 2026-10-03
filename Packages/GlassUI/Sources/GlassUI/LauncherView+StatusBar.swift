@@ -38,7 +38,7 @@ extension LauncherView {
     }
 
     func moveDown() {
-        if !results.selectNext(), showsStatusBar, !statusBar.pills.isEmpty {
+        if !results.selectNext(), showsStatusBar, !statusBar.pills.isEmpty, !isKeyRepeat() {
             selectPill(0)
         } else {
             selectionMoved()
@@ -50,6 +50,7 @@ extension LauncherView {
         case #selector(NSResponder.moveLeft): selectPill(max(pill - 1, 0))
 
         case #selector(NSResponder.moveRight): selectPill(min(pill + 1, statusBar.pills.count - 1))
+        case #selector(NSResponder.moveDown) where isKeyRepeat(): break
 
         case #selector(NSResponder.moveUp), #selector(NSResponder.moveDown),
             #selector(NSResponder.cancelOperation):

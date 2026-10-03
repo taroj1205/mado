@@ -263,6 +263,7 @@ import Testing
 
     private func shown(_ sections: [ResultList.Section]) -> ResultList {
         let list = ResultList()
+        list.reducesMotion = { true }
         list.frame = NSRect(x: 0, y: 0, width: 744, height: 415)
         list.sections = sections
         list.layoutSubtreeIfNeeded()

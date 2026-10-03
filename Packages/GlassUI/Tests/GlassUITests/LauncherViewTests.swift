@@ -13,6 +13,7 @@ import Testing
 
     init() {
         panel.contentView = view
+        view.results.reducesMotion = { true }
         view.results.sections = [
             .init(
                 title: "Applications",

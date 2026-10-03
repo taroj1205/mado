@@ -41,7 +41,7 @@ public final class StatusBar: NSScrollView {
     private static let blend = "colors"
     private static let curveStart = (x: 0.2, y: 0.8)
     private static let curveEnd = (x: 0.2, y: 1.0)
-    private static let ease = CAMediaTimingFunction(
+    static let ease = CAMediaTimingFunction(
         controlPoints: Float(curveStart.x), Float(curveStart.y), Float(curveEnd.x),
         Float(curveEnd.y))
 
