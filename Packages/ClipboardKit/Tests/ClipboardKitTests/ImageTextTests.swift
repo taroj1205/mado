@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
     private let directory = FileManager.default.temporaryDirectory
         .appending(path: UUID().uuidString)
 
-    private static func png(width: Int, height: Int, lines: [String]) throws -> Data {
+    static func png(width: Int, height: Int, lines: [String]) throws -> Data {
         let drawing = unsafe CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
