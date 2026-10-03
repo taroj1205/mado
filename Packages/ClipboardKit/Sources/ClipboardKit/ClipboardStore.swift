@@ -64,6 +64,7 @@ public actor ClipboardStore {
         CREATE INDEX IF NOT EXISTS clips_by_date ON clips (date);
         """,
         "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE clips ADD COLUMN recognized INTEGER NOT NULL DEFAULT 0;",
     ]
     private static let columns = Column.allCases.map { column in
         column == .files ? "CASE kind WHEN '\(Clip.Kind.file.rawValue)' THEN data END" : "\(column)"
@@ -73,8 +74,9 @@ public actor ClipboardStore {
 
     @MainActor private static var shared: ClipboardStore?
 
-    private let images: URL
-    private let database: Database
+    let images: URL
+    let database: Database
+    var recognition: Task<Void, any Error>?
 
     public init(directory: URL) throws {
         images = directory.appending(path: "Images")
