@@ -17,13 +17,12 @@ struct KeyboardModule: Module {
 
     private func installTap(_ context: ModuleContext) -> Bool {
         do {
-            try ModifierTap.install(name: "input mode taps", context: context) { key in
-                switch key {
-                case .leftCommand: InputMode.english.select()
-                case .rightCommand: InputMode.japanese.select()
-                default: break
-                }
-            }
+            try ModifierTap.install(
+                name: "input mode taps", context: context,
+                bindings: [
+                    .single(.leftCommand): { InputMode.english.select() },
+                    .single(.rightCommand): { InputMode.japanese.select() },
+                ])
             return true
         } catch {
             return false

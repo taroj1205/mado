@@ -6,11 +6,34 @@ import Testing
 @testable import InputKit
 
 @Suite struct ModifierTapTests {
+    typealias Tap = ModifierTap.Tap
+
     struct Recorder {
-        var tap = ModifierTap(window: ModifierTap.defaultWindow)
+        static let singles = Set(ModifierTap.Key.allCases.map(Tap.single))
+
+        var detector: ModifierTap
         var held: CGEventFlags = []
         var now: CGEventTimestamp = 1_000_000_000
-        var taps: [ModifierTap.Key] = []
+        var taps: [Tap] = []
+
+        init() {
+            self.init(bindings: Self.singles, window: ModifierTap.defaultWindow)
+        }
+
+        init(bindings: Set<Tap>) {
+            self.init(bindings: bindings, window: ModifierTap.defaultWindow)
+        }
+
+        init(bindings: Set<Tap>, window: Duration) {
+            detector = ModifierTap(window: window, bindings: bindings)
+        }
+
+        mutating func tap(_ key: ModifierTap.Key) {
+            down(key)
+            wait(.milliseconds(50))
+            up(key)
+            wait(.milliseconds(80))
+        }
 
         mutating func down(_ key: ModifierTap.Key) {
             held.insert(CGEventFlags(rawValue: key.flag))
@@ -31,15 +54,36 @@ import Testing
         }
 
         mutating func send(_ type: CGEventType, keyCode: Int64) {
-            if let key = tap.handle(type, flags: held, keyCode: keyCode, timestamp: now) {
-                taps.append(key)
+            if let fired = detector.handle(type, flags: held, keyCode: keyCode, timestamp: now) {
+                taps.append(fired)
+            }
+        }
+
+        mutating func expire() {
+            guard let releasedAt = detector.waitingSince else { return }
+            if let fired = detector.expire(releasedAt: releasedAt) {
+                taps.append(fired)
             }
         }
     }
 
     @MainActor
     final class Inbox {
-        var taps: [ModifierTap.Key] = []
+        var taps: [Tap] = []
+    }
+
+    static func rightShift() throws -> (press: CGEvent, release: CGEvent) {
+        let press = try #require(
+            CGEvent(
+                keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightShift), keyDown: true))
+        press.flags = [
+            .maskShift, .maskNonCoalesced, CGEventFlags(rawValue: ModifierTap.Key.rightShift.flag),
+        ]
+        press.timestamp = 1_000_000_000
+        let release = try #require(press.copy())
+        release.flags = .maskNonCoalesced
+        release.timestamp = press.timestamp + 50_000_000
+        return (press, release)
     }
 
     @Test(arguments: ModifierTap.Key.allCases)
@@ -48,7 +92,7 @@ import Testing
         recorder.down(key)
         recorder.wait(.milliseconds(80))
         recorder.up(key)
-        #expect(recorder.taps == [key])
+        #expect(recorder.taps == [.single(key)])
     }
 
     @Test func aShortcutIsNotATap() {
@@ -98,15 +142,15 @@ import Testing
         recorder.down(.rightCommand)
         recorder.wait(ModifierTap.defaultWindow + .nanoseconds(1))
         recorder.up(.rightCommand)
-        #expect(recorder.taps == [.rightCommand])
+        #expect(recorder.taps == [.single(.rightCommand)])
     }
 
     @Test func theWindowIsAdjustable() {
-        var recorder = Recorder(tap: ModifierTap(window: .milliseconds(500)))
+        var recorder = Recorder(bindings: Recorder.singles, window: .milliseconds(500))
         recorder.down(.leftControl)
         recorder.wait(.milliseconds(450))
         recorder.up(.leftControl)
-        #expect(recorder.taps == [.leftControl])
+        #expect(recorder.taps == [.single(.leftControl)])
     }
 
     @Test func aTapAfterAShortcutStillCounts() {
@@ -116,31 +160,22 @@ import Testing
         recorder.up(.leftCommand)
         recorder.down(.leftCommand)
         recorder.up(.leftCommand)
-        #expect(recorder.taps == [.leftCommand])
+        #expect(recorder.taps == [.single(.leftCommand)])
     }
 
     @MainActor
     @Test func tapsArriveOnlyAfterTheCallbackReturns() async throws {
         let inbox = Inbox()
-        let observe = ModifierTap.observe(window: ModifierTap.defaultWindow) { key in
-            inbox.taps.append(key)
-        }
-        let event = try #require(
-            CGEvent(
-                keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightShift), keyDown: true))
-
-        event.flags = [
-            .maskShift, .maskNonCoalesced, CGEventFlags(rawValue: ModifierTap.Key.rightShift.flag),
-        ]
-        event.timestamp = 1_000_000_000
-        observe(.flagsChanged, event)
-        event.flags = .maskNonCoalesced
-        event.timestamp += 50_000_000
-        observe(.flagsChanged, event)
+        let observe = ModifierTap.observe(
+            window: ModifierTap.defaultWindow,
+            bindings: [.single(.rightShift): { inbox.taps.append(.single(.rightShift)) }])
+        let event = try Self.rightShift()
+        observe(.flagsChanged, event.press)
+        observe(.flagsChanged, event.release)
         #expect(inbox.taps.isEmpty)
         await withCheckedContinuation { continuation in
             DispatchQueue.main.async { continuation.resume() }
         }
-        #expect(inbox.taps == [.rightShift])
+        #expect(inbox.taps == [.single(.rightShift)])
     }
 }

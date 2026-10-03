@@ -45,6 +45,58 @@ public struct ModifierTap {
         }
     }
 
+    public enum Tap: Hashable, Sendable {
+        case single(Key)
+        case double(Key)
+        case triple(Key)
+
+        var next: Self? {
+            switch self {
+            case .single(let key): .double(key)
+            case .double(let key): .triple(key)
+            case .triple: nil
+            }
+        }
+    }
+
+    private struct Run {
+        let key: Key
+        let tap: Tap
+        let releasedAt: CGEventTimestamp
+        let waits: Bool
+    }
+
+    @MainActor
+    private final class Detector {
+        private var state: ModifierTap
+        private let window: Duration
+        private let actions: [Tap: @MainActor () -> Void]
+
+        init(window: Duration, actions: [Tap: @MainActor () -> Void]) {
+            state = ModifierTap(window: window, bindings: Set(actions.keys))
+            self.window = window
+            self.actions = actions
+        }
+
+        func handle(_ type: CGEventType, _ event: CGEvent) {
+            let fired = state.handle(
+                type, flags: event.flags,
+                keyCode: event.getIntegerValueField(.keyboardEventKeycode),
+                timestamp: event.timestamp)
+            if let fired, let action = actions[fired] {
+                DispatchQueue.main.async { action() }
+            }
+            guard let releasedAt = state.waitingSince, releasedAt == event.timestamp else {
+                return
+            }
+            Task { [weak self, window] in
+                try? await Task.sleep(for: window)
+                guard let self, let expired = state.expire(releasedAt: releasedAt) else { return }
+                actions[expired]?()
+            }
+        }
+    }
+
     private static let defaultWindowMilliseconds = 300
 
     public static let defaultWindow: Duration = .milliseconds(defaultWindowMilliseconds)
@@ -54,57 +106,85 @@ public struct ModifierTap {
     ]
 
     private let window: Duration
-    private var pending: (key: Key, since: CGEventTimestamp)?
+    private let bindings: Set<Tap>
+    private var press: (key: Key, since: CGEventTimestamp)?
+    private var run: Run?
 
-    init(window: Duration) {
+    var waitingSince: CGEventTimestamp? {
+        guard let run, run.waits else { return nil }
+        return run.releasedAt
+    }
+
+    init(window: Duration, bindings: Set<Tap>) {
         self.window = window
+        self.bindings = bindings
     }
 
     @MainActor
     public static func install(
-        name: String, context: ModuleContext, window: Duration = defaultWindow,
-        onTap: @escaping @MainActor (Key) -> Void
+        name: String, context: ModuleContext, bindings: [Tap: @MainActor () -> Void],
+        window: Duration = defaultWindow
     ) throws(ModuleError) {
         try context.observeEvents(
-            name, matching: types, observe: observe(window: window, onTap: onTap))
+            name, matching: types, observe: observe(window: window, bindings: bindings))
     }
 
     @MainActor
     static func observe(
-        window: Duration, onTap: @escaping @MainActor (Key) -> Void
+        window: Duration, bindings: [Tap: @MainActor () -> Void]
     ) -> @MainActor (CGEventType, CGEvent) -> Void {
-        var tap = Self(window: window)
-        return { type, event in
-            let key = tap.handle(
-                type, flags: event.flags,
-                keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-                timestamp: event.timestamp)
-            if let key {
-                DispatchQueue.main.async { onTap(key) }
-            }
-        }
+        let detector = Detector(window: window, actions: bindings)
+        return { type, event in detector.handle(type, event) }
     }
 
     mutating func handle(
         _ type: CGEventType, flags: CGEventFlags, keyCode: Int64, timestamp: CGEventTimestamp
-    ) -> Key? {
-        let previous = pending
-        pending = nil
+    ) -> Tap? {
+        let previous = press
+        press = nil
         guard type == .flagsChanged,
             let key = Key.allCases.first(where: { $0.keyCode == keyCode })
         else {
-            return nil
+            return flush()
         }
         let held = Key.allCases.filter { flags.rawValue & $0.flag != 0 }
         if held == [key] {
-            pending = (key, timestamp)
-            return nil
+            let continues = run.map { $0.key == key && within($0.releasedAt, timestamp) } ?? false
+            let flushed = continues ? nil : flush()
+            press = (key, timestamp)
+            return flushed
         }
-        guard held.isEmpty, let previous, previous.key == key, timestamp >= previous.since,
-            .nanoseconds(timestamp - previous.since) <= window
+        guard held.isEmpty, let previous, previous.key == key, within(previous.since, timestamp)
         else {
-            return nil
+            return flush()
         }
-        return key
+        return release(key, at: timestamp)
+    }
+
+    mutating func expire(releasedAt: CGEventTimestamp) -> Tap? {
+        guard press == nil, run?.releasedAt == releasedAt else { return nil }
+        return flush()
+    }
+
+    private mutating func release(_ key: Key, at timestamp: CGEventTimestamp) -> Tap? {
+        let tap = run?.tap.next ?? .single(key)
+        let waits = isBound(tap) && isBound(tap.next)
+        let canGoOn = isBound(tap.next) || isBound(tap.next?.next)
+        run = canGoOn ? Run(key: key, tap: tap, releasedAt: timestamp, waits: waits) : nil
+        return isBound(tap) && !waits ? tap : nil
+    }
+
+    private func isBound(_ tap: Tap?) -> Bool {
+        tap.map(bindings.contains) ?? false
+    }
+
+    private mutating func flush() -> Tap? {
+        defer { run = nil }
+        guard let run, run.waits else { return nil }
+        return run.tap
+    }
+
+    private func within(_ start: CGEventTimestamp, _ end: CGEventTimestamp) -> Bool {
+        end >= start && .nanoseconds(end - start) <= window
     }
 }
