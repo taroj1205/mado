@@ -47,6 +47,14 @@ public struct SnippetSettings: Codable, Equatable, Sendable {
         snippets.first { $0.keyword == keyword }
     }
 
+    public func snippet(overlapping keyword: String, besides id: String?) -> Snippet? {
+        snippets.first { other in
+            other.id != id && !other.keyword.isEmpty && !keyword.isEmpty
+                && (other.keyword == keyword || keyword.dropLast().contains(other.keyword)
+                    || other.keyword.dropLast().contains(keyword))
+        }
+    }
+
     public mutating func stopExpanding(in app: String) {
         withoutExpansion.add(app)
     }

@@ -114,8 +114,10 @@ final class Snippets: NSObject, NSWindowDelegate {
 
     private func save(_ values: SnippetEditor.Values, as id: String?) -> String? {
         let current = SnippetSettings.load(from: modules)
-        if let owner = current.snippet(withKeyword: values.keyword), owner.id != id {
-            return "“\(values.keyword)” already expands \(owner.name)."
+        if let owner = current.snippet(overlapping: values.keyword, besides: id) {
+            return owner.keyword == values.keyword
+                ? "“\(values.keyword)” already expands \(owner.name)."
+                : "“\(values.keyword)” overlaps “\(owner.keyword)”, which expands \(owner.name)."
         }
         let snippet = Snippet(
             name: values.name, keyword: values.keyword, text: values.text,
