@@ -2,54 +2,58 @@ public import AppKit
 
 public final class WidgetGrid: NSView {
     public struct Widget: Sendable, Equatable {
+        static let wideSpan = 2
+
         public let id: String
-        public let value: String
-        public let detail: String
-        public let symbol: String?
-        public let meters: [Meter]
-        public let track: Track?
+        public let content: Content
         public let action: String
         public let spoken: String
+        public let isWide: Bool
 
         var span: Int {
-            track == nil ? 1 : WidgetGrid.trackSpan
+            isWide ? Self.wideSpan : 1
+        }
+
+        var track: Track? {
+            if case .track(let playing) = content { playing } else { nil }
+        }
+
+        public init(
+            id: String, content: Content, action: String, spoken: String, isWide: Bool = false
+        ) {
+            self.id = id
+            self.content = content
+            self.action = action
+            self.spoken = spoken
+            self.isWide = isWide
         }
 
         public init(
             id: String, value: String, detail: String, action: String, spoken: String,
             symbol: String? = nil
         ) {
-            self.id = id
-            self.value = value
-            self.detail = detail
-            self.symbol = symbol
-            self.action = action
-            self.spoken = spoken
-            meters = []
-            track = nil
+            self.init(
+                id: id, content: .value(value, detail: detail, symbol: symbol), action: action,
+                spoken: spoken)
         }
 
         public init(id: String, meters: [Meter], action: String, spoken: String) {
-            self.id = id
-            self.meters = meters
-            self.action = action
-            self.spoken = spoken
-            value = ""
-            detail = ""
-            symbol = nil
-            track = nil
+            self.init(id: id, content: .meters(meters), action: action, spoken: spoken)
         }
 
         public init(id: String, track: Track, action: String, spoken: String) {
-            self.id = id
-            self.track = track
-            self.action = action
-            self.spoken = spoken
-            value = ""
-            detail = ""
-            symbol = nil
-            meters = []
+            self.init(
+                id: id, content: .track(track), action: action, spoken: spoken, isWide: true)
         }
+    }
+
+    public enum Content: Sendable, Equatable {
+        case value(String, detail: String, symbol: String? = nil)
+        case meters([Meter])
+        case track(Track)
+        case loading(title: String)
+        case notice(title: String, headline: String, detail: String)
+        case permission(title: String, request: String, reason: String)
     }
 
     public struct Meter: Sendable, Equatable {
@@ -93,7 +97,6 @@ public final class WidgetGrid: NSView {
     }
 
     static let columns = 6
-    static let trackSpan = 2
     static let rowHeight: CGFloat = 78
     static let stripHeight: CGFloat = 72
     static let gap: CGFloat = 8

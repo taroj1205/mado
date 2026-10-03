@@ -28,15 +28,17 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         public var aliases: [String]
         public var hotkey: Shortcut?
         public var favourite: Bool
+        public var quickPeek: Bool
         public var resetsRanking: Bool
 
         public init(
             aliases: [String] = [], hotkey: Shortcut? = nil, favourite: Bool = false,
-            resetsRanking: Bool = false
+            quickPeek: Bool = false, resetsRanking: Bool = false
         ) {
             self.aliases = aliases
             self.hotkey = hotkey
             self.favourite = favourite
+            self.quickPeek = quickPeek
             self.resetsRanking = resetsRanking
         }
     }
@@ -88,7 +90,8 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     var values: Values {
         Values(
             aliases: adding(aliasField.stringValue), hotkey: hotkey.shortcut,
-            favourite: favourite.state == .on, resetsRanking: resetsRanking)
+            favourite: favourite.state == .on,
+            quickPeek: AppHotKeyMode(selectedIn: mode) == .quickPeek, resetsRanking: resetsRanking)
     }
 
     override public init(frame: NSRect) {
@@ -103,7 +106,8 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
         }
         clear.action = #selector(clearHotkey)
         resetRanking.action = #selector(resetUsage)
-        modeHint.stringValue = AppHotKeyMode.toggle + AppHotKeyMode.summary
+        mode.target = self
+        mode.action = #selector(showMode)
         layoutSheet()
     }
 
@@ -118,6 +122,9 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     ) {
         itemTitle = item.title
         modeRow.isHidden = !isApp
+        mode.setAccessibilityLabel("\(item.title) mode")
+        AppHotKeyMode(quickPeek: values.quickPeek).select(in: mode)
+        showMode()
         showHeader(item)
         aliasField.stringValue = ""
         aliases = values.aliases
@@ -205,6 +212,12 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     private func clearHotkey() {
         hotkey.shortcut = nil
         problem = nil
+    }
+
+    @objc
+    private func showMode() {
+        let selected = AppHotKeyMode(selectedIn: mode)
+        modeHint.stringValue = selected.title + selected.summary
     }
 
     @objc

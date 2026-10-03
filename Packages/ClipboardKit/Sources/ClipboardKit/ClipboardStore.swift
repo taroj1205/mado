@@ -21,6 +21,7 @@ public actor ClipboardStore {
         public let image: URL?
         public let source: String?
         public let date: Date
+        public let pinned: Bool
     }
 
     private enum Column: Int32, CaseIterable {
@@ -32,11 +33,13 @@ public actor ClipboardStore {
         case image = 5
         case source = 6
         case date = 7
+        case pinned = 8
     }
 
     static let fileName = "history.sqlite"
 
-    private static let schema = """
+    private static let migrations = [
+        """
         CREATE TABLE IF NOT EXISTS clips (
             id INTEGER PRIMARY KEY,
             kind TEXT NOT NULL,
@@ -48,7 +51,9 @@ public actor ClipboardStore {
             date REAL NOT NULL
         );
         CREATE INDEX IF NOT EXISTS clips_by_date ON clips (date);
-        """
+        """,
+        "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;",
+    ]
     private static let columns = Column.allCases.map { "\($0)" }.joined(separator: ", ")
     private static let secondsPerDay: TimeInterval = 86_400
 
@@ -60,7 +65,7 @@ public actor ClipboardStore {
         try FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
         database = try Database(
             path: directory.appending(path: Self.fileName).path(percentEncoded: false))
-        try database.execute(Self.schema)
+        try Self.migrate(database)
     }
 
     public static func standard() throws -> ClipboardStore {
@@ -73,6 +78,19 @@ public actor ClipboardStore {
             let name = "Clipboard"
         #endif
         return try ClipboardStore(directory: base.appending(path: "Mado/\(name)"))
+    }
+
+    private static func migrate(_ database: Database) throws {
+        let version = try database.rows("PRAGMA user_version", []) { Int($0.integer(0)) }.first ?? 0
+        for (index, migration) in migrations.enumerated().dropFirst(version) {
+            do {
+                try database.execute(
+                    "BEGIN; \(migration) PRAGMA user_version = \(index + 1); COMMIT;")
+            } catch {
+                try? database.execute("ROLLBACK")
+                throw error
+            }
+        }
     }
 
     public func add(_ clip: Clip, keeping retention: Retention) throws {
@@ -105,13 +123,20 @@ public actor ClipboardStore {
     public func prune(keeping retention: Retention, now: Date) throws {
         let oldest = now.timeIntervalSince1970 - Double(retention.days) * Self.secondsPerDay
         let removed = try database.rows(
-            "DELETE FROM clips WHERE date < ? OR id NOT IN"
-                + " (SELECT id FROM clips ORDER BY date DESC, id DESC LIMIT ?) RETURNING image",
+            "DELETE FROM clips WHERE pinned = 0 AND (date < ? OR id NOT IN"
+                + " (SELECT id FROM clips WHERE pinned = 0 ORDER BY date DESC, id DESC LIMIT ?))"
+                + " RETURNING image",
             [.real(oldest), .integer(retention.items)]
         ) { $0.string(0) }
         for image in removed {
             try? FileManager.default.removeItem(at: images.appending(path: image))
         }
+    }
+
+    public func setPinned(_ pinned: Bool, id: Int64) throws {
+        try database.run(
+            "UPDATE clips SET pinned = ? WHERE id = ?",
+            [.integer(pinned ? 1 : 0), .integer(Int(id))])
     }
 
     public func search(_ query: String, limit: Int) throws -> [Entry] {
@@ -137,6 +162,7 @@ public actor ClipboardStore {
             data: row.data(Column.data.rawValue),
             image: row.string(Column.image.rawValue).map { images.appending(path: $0) },
             source: row.string(Column.source.rawValue),
-            date: Date(timeIntervalSince1970: row.real(Column.date.rawValue)))
+            date: Date(timeIntervalSince1970: row.real(Column.date.rawValue)),
+            pinned: row.integer(Column.pinned.rawValue) != 0)
     }
 }
