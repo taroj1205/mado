@@ -1,6 +1,10 @@
 public import AppKit
 
 public final class FillInForm: NSView, NSTextFieldDelegate {
+    final class Rows: NSStackView {
+        override var isFlipped: Bool { true }
+    }
+
     public struct Field: Equatable, Sendable {
         public let name: String
         public let options: [String]
@@ -32,16 +36,24 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     public var onInsert: (([String: String]) -> Void)?
     public var onCancel: (() -> Void)?
     public var preview: ([String: String]) -> Preview = { _ in Preview(text: "", values: []) }
+    public var maxHeight: CGFloat? {
+        didSet {
+            heightLimit.constant = maxHeight ?? 0
+            heightLimit.isActive = maxHeight != nil
+        }
+    }
 
     let title = NSTextField(labelWithString: "")
     let subtitle = NSTextField(labelWithString: "")
-    let rows = NSStackView()
+    let rows = Rows()
     let previewText = NSTextField(wrappingLabelWithString: "")
     let cancel = ChipButton(
         font: .systemFont(ofSize: FillInForm.buttonSize, weight: .medium),
         height: FillInForm.buttonHeight, symbol: nil)
     let insert = PillButton("Insert", height: FillInForm.buttonHeight)
     private(set) var controls: [(name: String, control: NSControl)] = []
+    private lazy var heightLimit = heightAnchor.constraint(lessThanOrEqualToConstant: 0)
+    private var focusWatch: NSKeyValueObservation?
 
     override public var acceptsFirstResponder: Bool { true }
 
@@ -83,6 +95,13 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
 
     public func focus() {
         unsafe window?.makeFirstResponder(controls.first?.control ?? self)
+    }
+
+    override public func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        focusWatch = unsafe window?.observe(\.firstResponder) { [weak self] window, _ in
+            MainActor.assumeIsolated { self?.reveal(window.firstResponder) }
+        }
     }
 
     override public func keyDown(with event: NSEvent) {
@@ -136,6 +155,13 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
         previewText.attributedStringValue = text
         previewText.setAccessibilityLabel("Preview: \(shown.text)")
         fitWindow()
+    }
+
+    private func reveal(_ responder: NSResponder?) {
+        guard let view = responder as? NSView,
+            let control = controls.first(where: { view.isDescendant(of: $0.control) })?.control
+        else { return }
+        control.scrollToVisible(control.bounds)
     }
 
     private func fitWindow() {

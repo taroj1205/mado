@@ -51,6 +51,7 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         let screen =
             NSScreen.screens.first { $0.frame.intersects(anchor.insetBy(dx: -1, dy: -1)) }
             ?? NSScreen.main
+        form.maxHeight = screen?.visibleFrame.height
         panel.setFrame(
             ScreenGeometry.frame(
                 of: form.fittingSize, below: anchor, gap: Self.gap,
