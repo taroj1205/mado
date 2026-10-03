@@ -175,4 +175,31 @@ import Testing
         #expect(module.stops == 1)
         #expect(module.events.isEmpty)
     }
+
+    @MainActor
+    @Test func multipleHandlersFireIndependently() throws {
+        var handlerACalled = false
+        var handlerBCalled = false
+        let handlers: [Shortcut.Modifiers: @MainActor () -> Void] = [
+            [.command]: { handlerACalled = true },
+            [.option]: { handlerBCalled = true },
+        ]
+        let swallow = ModifierTrigger.swallowMultiple(handlers: handlers)
+
+        let event = try #require(CGEvent(source: nil))
+        event.flags = .maskCommand
+        #expect(!swallow(.flagsChanged, event))
+        #expect(!handlerACalled)
+
+        event.flags = [.maskCommand, .maskAlternate]
+        #expect(!swallow(.flagsChanged, event))
+
+        event.flags = []
+        #expect(!swallow(.flagsChanged, event))
+        #expect(!handlerACalled)
+
+        event.flags = .maskAlternate
+        #expect(!swallow(.flagsChanged, event))
+        #expect(!handlerBCalled)
+    }
 }

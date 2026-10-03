@@ -38,6 +38,14 @@ public struct ModifierTrigger {
     }
 
     @MainActor
+    static func install(
+        handlers: [Shortcut.Modifiers: @MainActor () -> Void], name: String,
+        context: ModuleContext
+    ) throws(ModuleError) {
+        try context.tapEvents(name, matching: types, swallow: swallowMultiple(handlers: handlers))
+    }
+
+    @MainActor
     static func swallow(
         _ modifiers: Shortcut.Modifiers, onEvent: @escaping @MainActor (Event) -> Void
     ) -> @MainActor (CGEventType, CGEvent) -> Bool {
@@ -49,6 +57,32 @@ public struct ModifierTrigger {
             ) { change in
                 DispatchQueue.main.async { onEvent(change) }
             }
+        }
+    }
+
+    @MainActor
+    static func swallowMultiple(
+        handlers: [Shortcut.Modifiers: @MainActor () -> Void]
+    ) -> @MainActor (CGEventType, CGEvent) -> Bool {
+        var triggers: [Shortcut.Modifiers: (trigger: Self, handler: @MainActor () -> Void)] = [:]
+        for (mods, handlerBlock) in handlers {
+            triggers[mods] = (trigger: Self(modifiers: mods), handler: handlerBlock)
+        }
+        return { type, event in
+            var swallowed = false
+            for key in triggers.keys {
+                let triggered =
+                    triggers[key]?.trigger.handle(
+                        type, flags: event.flags,
+                        keyCode: event.getIntegerValueField(.keyboardEventKeycode)
+                    ) { triggerEvent in
+                        if triggerEvent == .pressed {
+                            DispatchQueue.main.async { triggers[key]?.handler() }
+                        }
+                    } ?? false
+                swallowed = swallowed || triggered
+            }
+            return swallowed
         }
     }
 
