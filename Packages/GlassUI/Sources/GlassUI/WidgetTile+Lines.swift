@@ -5,6 +5,9 @@ extension WidgetTile {
     private static let valueKern: CGFloat = -0.4
     private static let titleSize: CGFloat = 11
     private static let titleKern: CGFloat = 0.4
+    private static let detailSize: CGFloat = 11.5
+    private static let headlineSize: CGFloat = 14
+    private static let requestSize: CGFloat = 13
 
     func arrangeLines() {
         reason.font = .systemFont(ofSize: Self.noteSize)
@@ -38,6 +41,39 @@ extension WidgetTile {
                 + skeleton.map { bar in
                     bar.widthAnchor.constraint(equalTo: width, multiplier: bar.fraction)
                 })
+    }
+
+    func showLines(of content: WidgetGrid.Content) -> [NSView] {
+        switch content {
+        case let .value(text, note, _):
+            showValue(text)
+            showDetail(note, size: Self.detailSize)
+            return [value, detail]
+
+        case .meters, .track:
+            return []
+
+        case let .loading(name):
+            showTitle(name)
+            return [title] + skeleton
+
+        case let .notice(name, line, note):
+            showTitle(name)
+            showHeadline(line, size: Self.headlineSize)
+            showDetail(note, size: Self.noteSize)
+            return [title, headline, detail]
+
+        case let .permission(name, line, why):
+            showTitle(name)
+            showHeadline(line, size: Self.requestSize)
+            reason.stringValue = why
+            return [title, headline, request]
+
+        case let .unavailable(name, summary):
+            showTitle(name)
+            showHeadline(summary, size: Self.requestSize)
+            return [title, headline]
+        }
     }
 
     func showValue(_ text: String) {

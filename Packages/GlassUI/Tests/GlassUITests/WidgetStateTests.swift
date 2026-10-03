@@ -163,6 +163,36 @@ import Testing
         #expect(tile.value.stringValue == "value")
     }
 
+    @Test func aWidgetWithNothingToShowAppearsOnlyWhileEditingSoItCanBeRemoved() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        let music = WidgetGrid.Widget(
+            id: "music", name: "Now Playing",
+            content: .unavailable(title: "Now Playing", summary: "Music controls"), action: "",
+            spoken: "Now Playing: Music controls", isWide: true)
+        view.widgets = [small("clock"), music, small("system")]
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "system"])
+        view.selectWidget(1)
+        view.editWidgets()
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "music", "system"])
+        #expect(view.selectedWidget == 2)
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        #expect(visible(in: tile) == [tile.title, tile.headline])
+        #expect(tile.title.stringValue == "NOW PLAYING")
+        #expect(tile.headline.stringValue == "Music controls")
+        #expect(tile.accessibilityLabel() == "Now Playing: Music controls")
+        #expect(tile.frame.width > view.widgetGrid.tiles[0].frame.width * 2)
+        press(kVK_LeftArrow, "\u{F702}")
+        press(kVK_Delete, "\u{7F}")
+        #expect(edits == [.remove("music")])
+        view.finishEditingWidgets()
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "system"])
+        #expect(view.selectedWidget == nil)
+        view.widgets = [music]
+        #expect(view.widgetGrid.isHidden)
+    }
+
     private func visible(in tile: WidgetTile) -> [NSView] {
         let parts: [NSView] =
             [tile.title, tile.value, tile.headline] + tile.skeleton
