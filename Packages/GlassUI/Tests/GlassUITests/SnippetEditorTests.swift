@@ -63,6 +63,19 @@ import Testing
         #expect(editor.nameField.stringValue.isEmpty)
     }
 
+    @Test func searchingKeepsUnsavedEditsWhileTheSnippetStaysSelected() {
+        editor.show([Self.signOff, Self.address], selecting: "addr")
+        type("Home and away", in: editor.nameField)
+
+        type("queen", in: editor.search)
+        let kept = editor.nameField.stringValue
+        type("sign", in: editor.search)
+
+        #expect(kept == "Home and away")
+        #expect(editor.editing == "sig")
+        #expect(editor.nameField.stringValue == "Email sign-off")
+    }
+
     @Test func returnSavesTheTrimmedFormAndShowsAProblem() {
         editor.show([Self.signOff], selecting: "sig")
         editor.nameField.stringValue = "  Sign-off "
