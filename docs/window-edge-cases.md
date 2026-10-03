@@ -10,8 +10,8 @@ What every window action does when the window is in full screen, on another Spac
 | Restore | Nothing to restore after a refused layout | Back to the pre-snap frame | Not measured | Back to the pre-snap frame on the other display |
 | Next / previous display | Refused, window stays | Moves. A window sent to a display that is showing a full-screen app lands behind it, out of sight. | Not measured | Keeps its relative frame, both directions |
 | macOS full screen (radial) | Already full screen, no change | Enters full screen, and the display switches to the new Space | Not measured | Enters full screen on the 1x display |
-| Move gesture (fn⌃) | Window stays. The outline and HUD still follow the pointer. | Moves the hidden window | Not measured | Crosses the display edge and lands exactly |
-| Resize gesture (fn⌃⌥) | Window stays. The outline and HUD still follow the pointer. | Resizes the hidden window exactly | Not measured | Exact after crossing displays |
+| Move gesture (fn⌃) | Window stays. The outline and HUD still follow the pointer. | Can't pick the hidden window: the pointer finds the visible window in front. Called on the hidden window directly, the move lands. | Not measured | Crosses the display edge and lands exactly |
+| Resize gesture (fn⌃⌥) | Window stays. The outline and HUD still follow the pointer. | Can't pick the hidden window: the pointer finds the visible window in front. Called on the hidden window directly, the resize lands exactly. | Not measured | Exact after crossing displays |
 | Window under the pointer (gesture target) | Finds the full-screen window | Finds the visible full-screen window, not the hidden one behind it | Not measured | Finds the window on the 1x display |
 | Radial ring, snap preview, gesture HUD | Shown over the full-screen app. The preview still draws the layout that macOS will refuse. | Shown on the current Space | Not measured | Shown on the 1x display |
 | ⌥Tab: list | Listed | Not listed | Not measured | Listed |
