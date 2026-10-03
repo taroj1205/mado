@@ -49,12 +49,13 @@ public struct ModifierTap {
         case single(Key)
         case double(Key)
         case triple(Key)
+        case together(Set<Key>)
 
         var next: Self? {
             switch self {
             case .single(let key): .double(key)
             case .double(let key): .triple(key)
-            case .triple: nil
+            case .triple, .together: nil
             }
         }
     }
@@ -108,6 +109,7 @@ public struct ModifierTap {
     private let window: Duration
     private let bindings: Set<Tap>
     private var press: (key: Key, since: CGEventTimestamp)?
+    private var chord: (keys: Set<Key>, since: CGEventTimestamp)?
     private var run: Run?
 
     var waitingSince: CGEventTimestamp? {
@@ -141,7 +143,9 @@ public struct ModifierTap {
         _ type: CGEventType, flags: CGEventFlags, keyCode: Int64, timestamp: CGEventTimestamp
     ) -> Tap? {
         let previous = press
+        let previousChord = chord
         press = nil
+        chord = nil
         guard type == .flagsChanged,
             let key = Key.allCases.first(where: { $0.keyCode == keyCode })
         else {
@@ -153,6 +157,18 @@ public struct ModifierTap {
             let flushed = continues ? nil : flush()
             press = (key, timestamp)
             return flushed
+        }
+        if let previous, Set(held) == [previous.key, key] {
+            chord = (Set(held), previous.since)
+            return flush()
+        }
+        if let previousChord, previousChord.keys.contains(key), !held.contains(key) {
+            guard held.isEmpty else {
+                chord = previousChord
+                return nil
+            }
+            let tap = Tap.together(previousChord.keys)
+            return within(previousChord.since, timestamp) && isBound(tap) ? tap : nil
         }
         guard held.isEmpty, let previous, previous.key == key, within(previous.since, timestamp)
         else {
