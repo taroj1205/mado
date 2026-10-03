@@ -31,7 +31,7 @@ import Testing
         }
     }
 
-    private static func inserted() throws -> TextInsertion.Inserted {
+    private static func inserted(_ typed: String = ";fu") throws -> TextInsertion.Inserted {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         let insertion = TextInsertion(
@@ -41,7 +41,7 @@ import Testing
         }
         let expansion = SnippetTemplate("Hi").expand(
             .init(fields: [:], date: "", time: "", clipboard: ""))
-        return try insertion.replace(";fu", with: expansion)
+        return try insertion.replace(typed, with: expansion)
     }
 
     private static func commandZ() throws -> CGEvent {
@@ -118,7 +118,7 @@ import Testing
         #expect(typing.inputAfterMatch)
     }
 
-    @Test func undoesOnlyWithCommandZRightAfter() throws {
+    @Test func undoesOnlyATypedKeywordWithCommandZRightAfter() throws {
         var typing = Self.typing()
         typing.expanded(try Self.inserted())
 
@@ -127,15 +127,18 @@ import Testing
         typing.expanded(try Self.inserted())
         _ = try Self.type("x", into: &typing)
         let late = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
+        typing.expanded(try Self.inserted())
+        typing.expanded(try Self.inserted(""))
+        let pasted = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
 
         guard case .undo(let inserted) = undo else {
             Issue.record("⌘Z right after should undo")
             return
         }
         #expect(inserted.replaced == ";fu")
-        for outcome in [again, late] {
+        for outcome in [again, late, pasted] {
             guard case .pass = outcome else {
-                Issue.record("⌘Z undoes only once, right after")
+                Issue.record("⌘Z undoes only a typed keyword, once, right after")
                 return
             }
         }
