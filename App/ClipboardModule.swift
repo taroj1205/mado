@@ -11,12 +11,15 @@ struct ClipboardModule: Module {
     let settings: @MainActor () -> ClipboardSettings
     let history: ClipboardHistory
 
-    private static func recognizeImages(in store: ClipboardStore, logger: Logger) async {
+    private static func recognizeImages(
+        in store: ClipboardStore, for history: ClipboardHistory, logger: Logger
+    ) async {
         do {
             try await store.recognizeImages()
         } catch {
             logger.error("Recognising image text failed: \(error, privacy: .public)")
         }
+        history.entriesChanged()
     }
 
     func start(context: ModuleContext) {
@@ -31,7 +34,7 @@ struct ClipboardModule: Module {
         history.start(with: store, context: context)
         keepPruned(store, in: context)
         context.run("recognize image text") {
-            await Self.recognizeImages(in: store, logger: logger)
+            await Self.recognizeImages(in: store, for: history, logger: logger)
         }
         PasteboardWatch.install(name: "pasteboard watch", context: context) { [settings] sources in
             let apps = sources.isEmpty ? "an unknown app" : sources.joined(separator: " or ")
@@ -54,7 +57,7 @@ struct ClipboardModule: Module {
                     return
                 }
                 if clip.kind == .image {
-                    await Self.recognizeImages(in: store, logger: logger)
+                    await Self.recognizeImages(in: store, for: history, logger: logger)
                 }
             }
         }
