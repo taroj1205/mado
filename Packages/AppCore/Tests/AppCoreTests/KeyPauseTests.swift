@@ -99,6 +99,26 @@ import Testing
         #expect(released == 1)
     }
 
+    @Test func aRouteAddedBeforeTheReleaseLandsDoesNotInstallATap() async throws {
+        let tap = EventTap()
+        var released = 0
+        tap.onUnresponsive = { released += 1 }
+        let event = try #require(CGEvent(source: nil))
+
+        #expect(tap.handle(.tapDisabledByTimeout, event))
+        let id = tap.add(types: [.keyDown]) { _, _ in false }
+        let portBeforeTheRelease = tap.port
+        await Self.mainQueue()
+        if let id {
+            tap.remove(id)
+        }
+
+        #expect(id != nil)
+        #expect(portBeforeTheRelease == nil)
+        #expect(tap.isPaused)
+        #expect(released == 1)
+    }
+
     @Test func pausingRestartsOnlyModulesWithKeyFeaturesWithoutThem() throws {
         let manager = try Self.makeManager()
         let keyboard = KeyModule(id: "keyboard", hasKeys: true, enabledByDefault: true)

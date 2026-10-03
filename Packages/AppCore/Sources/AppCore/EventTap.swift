@@ -19,9 +19,10 @@ final class EventTap {
     private(set) var port: CFMachPort?
     private var source: CFRunLoopSource?
     private var installedMask: CGEventMask = 0
+    private var isReleasing = false
 
     private var mask: CGEventMask {
-        isPaused ? 0 : routes.mask
+        isPaused || isReleasing ? 0 : routes.mask
     }
 
     func add(
@@ -67,13 +68,16 @@ final class EventTap {
     }
 
     private func release(_ reason: String) {
+        isReleasing = true
         if let port {
             CGEvent.tapEnable(tap: port, enable: false)
         }
         logger.error("Released the event tap: \(reason, privacy: .public)")
         DispatchQueue.main.async { [weak self] in
-            self?.isPaused = true
-            self?.onUnresponsive?()
+            guard let self else { return }
+            isReleasing = false
+            isPaused = true
+            onUnresponsive?()
         }
     }
 
