@@ -7,10 +7,10 @@ import Testing
 
 @Suite struct ModifierTapTests {
     struct Recorder {
-        var tap = ModifierTap(window: ModifierTap.defaultWindow)
+        var tap = ModifierTap(window: ModifierTap.defaultWindow, bound: [])
         var held: CGEventFlags = []
         var now: CGEventTimestamp = 1_000_000_000
-        var taps: [ModifierTap.Key] = []
+        var taps: [ModifierTap.Tap] = []
 
         mutating func down(_ key: ModifierTap.Key) {
             held.insert(CGEventFlags(rawValue: key.flag))
@@ -22,6 +22,13 @@ import Testing
             send(.flagsChanged, keyCode: key.keyCode)
         }
 
+        mutating func tap(_ key: ModifierTap.Key) {
+            down(key)
+            wait(.milliseconds(50))
+            up(key)
+            wait(.milliseconds(100))
+        }
+
         mutating func wait(_ duration: Duration) {
             now += CGEventTimestamp(duration / .nanoseconds(1))
         }
@@ -31,15 +38,18 @@ import Testing
         }
 
         mutating func send(_ type: CGEventType, keyCode: Int64) {
-            if let key = tap.handle(type, flags: held, keyCode: keyCode, timestamp: now) {
-                taps.append(key)
+            if let fired = tap.handle(type, flags: held, keyCode: keyCode, timestamp: now) {
+                taps.append(fired)
             }
         }
     }
 
-    @MainActor
-    final class Inbox {
-        var taps: [ModifierTap.Key] = []
+    static let shiftTaps: Set<ModifierTap.Tap> = [
+        ModifierTap.Tap(.leftShift), ModifierTap.Tap(.leftShift, count: 2),
+    ]
+
+    static func recorder(_ bound: Set<ModifierTap.Tap>) -> Recorder {
+        Recorder(tap: ModifierTap(window: ModifierTap.defaultWindow, bound: bound))
     }
 
     @Test(arguments: ModifierTap.Key.allCases)
@@ -48,7 +58,7 @@ import Testing
         recorder.down(key)
         recorder.wait(.milliseconds(80))
         recorder.up(key)
-        #expect(recorder.taps == [key])
+        #expect(recorder.taps == [ModifierTap.Tap(key)])
     }
 
     @Test func aShortcutIsNotATap() {
@@ -98,15 +108,15 @@ import Testing
         recorder.down(.rightCommand)
         recorder.wait(ModifierTap.defaultWindow + .nanoseconds(1))
         recorder.up(.rightCommand)
-        #expect(recorder.taps == [.rightCommand])
+        #expect(recorder.taps == [ModifierTap.Tap(.rightCommand)])
     }
 
     @Test func theWindowIsAdjustable() {
-        var recorder = Recorder(tap: ModifierTap(window: .milliseconds(500)))
+        var recorder = Recorder(tap: ModifierTap(window: .milliseconds(500), bound: []))
         recorder.down(.leftControl)
         recorder.wait(.milliseconds(450))
         recorder.up(.leftControl)
-        #expect(recorder.taps == [.leftControl])
+        #expect(recorder.taps == [ModifierTap.Tap(.leftControl)])
     }
 
     @Test func aTapAfterAShortcutStillCounts() {
@@ -116,31 +126,100 @@ import Testing
         recorder.up(.leftCommand)
         recorder.down(.leftCommand)
         recorder.up(.leftCommand)
-        #expect(recorder.taps == [.leftCommand])
+        #expect(recorder.taps == [ModifierTap.Tap(.leftCommand)])
     }
 
-    @MainActor
-    @Test func tapsArriveOnlyAfterTheCallbackReturns() async throws {
-        let inbox = Inbox()
-        let observe = ModifierTap.observe(window: ModifierTap.defaultWindow) { key in
-            inbox.taps.append(key)
-        }
-        let event = try #require(
-            CGEvent(
-                keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightShift), keyDown: true))
+    @Test func withoutALongerBindingEveryTapIsASingle() {
+        var recorder = Self.recorder([ModifierTap.Tap(.leftCommand)])
+        recorder.tap(.leftCommand)
+        recorder.tap(.leftCommand)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftCommand), ModifierTap.Tap(.leftCommand)])
+    }
 
-        event.flags = [
-            .maskShift, .maskNonCoalesced, CGEventFlags(rawValue: ModifierTap.Key.rightShift.flag),
-        ]
-        event.timestamp = 1_000_000_000
-        observe(.flagsChanged, event)
-        event.flags = .maskNonCoalesced
-        event.timestamp += 50_000_000
-        observe(.flagsChanged, event)
-        #expect(inbox.taps.isEmpty)
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { continuation.resume() }
+    @Test func tapsInsideTheWindowCountUpToTheLongestBinding() {
+        var recorder = Self.recorder([ModifierTap.Tap(.rightCommand, count: 3)])
+        for _ in 1...4 {
+            recorder.tap(.rightCommand)
         }
-        #expect(inbox.taps == [.rightShift])
+        #expect(recorder.taps.map(\.count) == [1, 2, 3, 1])
+        #expect(recorder.taps.allSatisfy { $0.key == .rightCommand })
+    }
+
+    @Test func aSingleWaitsOnlyWhenItsDoubleIsAlsoBound() {
+        var recorder = Self.recorder(Self.shiftTaps.union([ModifierTap.Tap(.rightShift)]))
+        recorder.tap(.rightShift)
+        recorder.tap(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.rightShift)])
+        #expect(recorder.tap.held == ModifierTap.Tap(.leftShift))
+        #expect(recorder.tap.expire() == ModifierTap.Tap(.leftShift))
+        #expect(recorder.tap.held == nil)
+    }
+
+    @Test func aDoubleReplacesTheWaitingSingle() {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.tap(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift, count: 2)])
+        #expect(recorder.tap.held == nil)
+    }
+
+    @Test func aDoubleWaitsWhenItsTripleIsAlsoBound() {
+        let double = ModifierTap.Tap(.leftOption, count: 2)
+        let triple = ModifierTap.Tap(.leftOption, count: 3)
+        var recorder = Self.recorder([double, triple])
+        recorder.tap(.leftOption)
+        recorder.tap(.leftOption)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftOption)])
+        #expect(recorder.tap.held == double)
+        recorder.tap(.leftOption)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftOption), triple])
+    }
+
+    @Test func aGapLongerThanTheWindowStartsANewRun() {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.wait(ModifierTap.defaultWindow)
+        recorder.down(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
+        recorder.up(.leftShift)
+        #expect(recorder.tap.held == ModifierTap.Tap(.leftShift))
+    }
+
+    @Test(arguments: [CGEventType.keyDown, .leftMouseDown])
+    func anotherInputReleasesTheWaitingSingleAndEndsTheRun(_ type: CGEventType) {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.send(type)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
+        recorder.tap(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
+        #expect(recorder.tap.held == ModifierTap.Tap(.leftShift))
+    }
+
+    @Test func anotherModifierReleasesTheWaitingSingle() {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.down(.rightShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
+    }
+
+    @Test func theWaitingSingleStaysWhileTheNextPressIsDown() {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.down(.leftShift)
+        #expect(recorder.tap.expire() == nil)
+        recorder.wait(.milliseconds(50))
+        recorder.up(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift, count: 2)])
+    }
+
+    @Test func aLongSecondPressReleasesTheWaitingSingle() {
+        var recorder = Self.recorder(Self.shiftTaps)
+        recorder.tap(.leftShift)
+        recorder.down(.leftShift)
+        recorder.wait(ModifierTap.defaultWindow + .nanoseconds(1))
+        recorder.up(.leftShift)
+        #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
+        #expect(recorder.tap.held == nil)
     }
 }
