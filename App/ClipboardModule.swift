@@ -15,11 +15,10 @@ struct ClipboardModule: Module {
         in store: ClipboardStore, for history: ClipboardHistory, logger: Logger
     ) async {
         do {
-            try await store.recognizeImages()
+            try await store.recognizeImages { await history.entriesChanged() }
         } catch {
             logger.error("Recognising image text failed: \(error, privacy: .public)")
         }
-        history.entriesChanged()
     }
 
     func start(context: ModuleContext) {
