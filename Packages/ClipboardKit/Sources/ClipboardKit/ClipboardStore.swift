@@ -28,7 +28,7 @@ public actor ClipboardStore {
         public let kind: Clip.Kind
         public let text: String
         public let type: String?
-        public let data: Data?
+        public let files: [URL]
         public let image: URL?
         public let source: String?
         public let date: Date
@@ -40,7 +40,7 @@ public actor ClipboardStore {
         case kind = 1
         case text = 2
         case type = 3
-        case data = 4
+        case files = 4
         case image = 5
         case source = 6
         case date = 7
@@ -65,7 +65,10 @@ public actor ClipboardStore {
         """,
         "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;",
     ]
-    private static let columns = Column.allCases.map { "\($0)" }.joined(separator: ", ")
+    private static let columns = Column.allCases.map { column in
+        column == .files ? "CASE kind WHEN '\(Clip.Kind.file.rawValue)' THEN data END" : "\(column)"
+    }
+    .joined(separator: ", ")
     private static let secondsPerDay: TimeInterval = 86_400
 
     @MainActor private static var shared: ClipboardStore?
@@ -111,6 +114,13 @@ public actor ClipboardStore {
                 throw error
             }
         }
+    }
+
+    private static func files(_ kind: Clip.Kind, list: Data?, text: String) -> [URL] {
+        guard kind == .file else { return [] }
+        let saved = list.flatMap { String(bytes: $0, encoding: .utf8) }
+        let paths = saved?.split(separator: Clip.pathSeparator) ?? text.split(separator: "\n")
+        return paths.map { URL(filePath: String($0)) }
     }
 
     public func add(_ clip: Clip, keeping retention: Retention) throws {
@@ -178,27 +188,55 @@ public actor ClipboardStore {
             [.integer(pinned ? 1 : 0), .integer(Int(id))])
     }
 
-    public func search(_ query: String, limit: Int) throws -> [Entry] {
+    public func search(
+        _ query: String, limit: Int, kind: Clip.Kind? = nil, source: String? = nil
+    ) throws -> [Entry] {
         let escaped =
             query
             .replacing("\\", with: "\\\\")
             .replacing("%", with: "\\%")
             .replacing("_", with: "\\_")
+        var conditions = ["text LIKE ? ESCAPE '\\'"]
+        var values: [Database.Value] = [.text("%\(escaped)%")]
+        if let kind {
+            conditions.append("kind = ?")
+            values.append(.text(kind.rawValue))
+        }
+        if let source {
+            conditions.append("source = ?")
+            values.append(.text(source))
+        }
         return try database.rows(
-            "SELECT \(Self.columns) FROM clips WHERE text LIKE ? ESCAPE '\\'"
+            "SELECT \(Self.columns) FROM clips WHERE \(conditions.joined(separator: " AND "))"
                 + " ORDER BY date DESC, id DESC LIMIT ?",
-            [.text("%\(escaped)%"), .integer(limit)],
+            values + [.integer(limit)],
             entry)
+    }
+
+    public func data(for id: Int64) throws -> Data? {
+        try database.rows("SELECT data FROM clips WHERE id = ?", [.integer(Int(id))]) { row in
+            row.data(0)
+        }
+        .first
+    }
+
+    public func sources() throws -> [String] {
+        try database.rows(
+            "SELECT source FROM clips WHERE source IS NOT NULL"
+                + " GROUP BY source ORDER BY MAX(date) DESC",
+            []
+        ) { $0.string(0) }
     }
 
     private func entry(_ row: Database.Row) -> Entry? {
         guard let kind = row.string(Column.kind.rawValue).flatMap(Clip.Kind.init) else {
             return nil
         }
+        let text = row.string(Column.text.rawValue) ?? ""
         return Entry(
-            id: row.integer(Column.id.rawValue), kind: kind,
-            text: row.string(Column.text.rawValue) ?? "", type: row.string(Column.type.rawValue),
-            data: row.data(Column.data.rawValue),
+            id: row.integer(Column.id.rawValue), kind: kind, text: text,
+            type: row.string(Column.type.rawValue),
+            files: Self.files(kind, list: row.data(Column.files.rawValue), text: text),
             image: row.string(Column.image.rawValue).map { images.appending(path: $0) },
             source: row.string(Column.source.rawValue),
             date: Date(timeIntervalSince1970: row.real(Column.date.rawValue)),

@@ -68,6 +68,18 @@ extension LauncherView {
         }
     }
 
+    func run(_ action: Int) {
+        guard let item = results.selectedItem, action != 0 || !item.action.isEmpty else { return }
+        onRun?(item, action)
+    }
+
+    func runSecondary() {
+        guard let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
+        else { return }
+        onRun?(item, index)
+    }
+
     func runActionShortcut(_ event: NSEvent) -> Bool {
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
             let item = results.selectedItem,

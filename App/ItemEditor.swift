@@ -33,17 +33,20 @@ final class ItemEditor {
     private let modules: ModuleManager?
     private let registry: HotKeyRegistry?
     private let name: (String) -> String?
+    private let isAvailable: (String) -> Bool
     private var registrations: [String: HotKeyRegistration] = [:]
     private var host: Host?
 
     init(
-        modules: ModuleManager?, registry: HotKeyRegistry?, name: @escaping (String) -> String?
+        modules: ModuleManager?, registry: HotKeyRegistry?, name: @escaping (String) -> String?,
+        isAvailable: @escaping (String) -> Bool
     ) {
         settings = ItemSettings.load(from: modules)
         quicklinks = Quicklinks.load(from: modules)
         self.modules = modules
         self.registry = registry
         self.name = name
+        self.isAvailable = isAvailable
         sheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         sheet.onCancel = { [weak self] in self?.close() }
         quicklinkSheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
@@ -55,6 +58,15 @@ final class ItemEditor {
     func start() {
         WindowLayouts.assignDefaultHotKeys(in: self, modules: modules)
         for (id, hotkey) in settings.hotkeys {
+            register(hotkey, for: id)
+        }
+    }
+
+    func refreshHotKey(for id: String) {
+        if let registration = registrations.removeValue(forKey: id) {
+            registry?.unregister(registration)
+        }
+        if let hotkey = settings[id].hotkey {
             register(hotkey, for: id)
         }
     }
@@ -228,8 +240,13 @@ final class ItemEditor {
     private func register(_ hotkey: Shortcut, for id: String) -> Bool {
         guard let registry else { return true }
         do {
-            registrations[id] = try registry.register(hotkey) { [weak self] in
+            let registration = try registry.register(hotkey) { [weak self] in
                 self?.onHotKey?(id)
+            }
+            if isAvailable(id) {
+                registrations[id] = registration
+            } else {
+                registry.unregister(registration)
             }
             return true
         } catch {

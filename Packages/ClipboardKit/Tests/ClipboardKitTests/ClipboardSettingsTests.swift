@@ -70,4 +70,18 @@ import Testing
         #expect(invalid == ClipboardStore.Retention())
         #expect(some == ClipboardStore.Retention(days: 7, items: 1_000))
     }
+
+    @Test func remembersThatTheDefaultHotKeyWasAssigned() throws {
+        var settings = ClipboardSettings()
+        settings.assignedDefaultHotKey = true
+
+        let restored = try JSONDecoder().decode(
+            ClipboardSettings.self, from: JSONEncoder().encode(settings))
+        let earlier = try JSONDecoder().decode(
+            ClipboardSettings.self, from: Data(#"{"addedApps":["com.apple.Notes"]}"#.utf8))
+
+        #expect(restored.assignedDefaultHotKey)
+        #expect(!earlier.assignedDefaultHotKey)
+        #expect(earlier.ignores(any: [Self.notes]))
+    }
 }
