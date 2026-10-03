@@ -28,6 +28,8 @@ public struct Clip: Equatable, Sendable {
         let data: Data?
     }
 
+    static let pathSeparator: Character = "\0"
+
     private static let imageTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
     private static let richTextTypes: [NSPasteboard.PasteboardType] = [.rtf, .html]
     private static let hexRadix = 16
@@ -82,7 +84,9 @@ public struct Clip: Equatable, Sendable {
             item.string(forType: .fileURL).flatMap(URL.init(string:))?.path(percentEncoded: false)
         }
         guard !paths.isEmpty else { return nil }
-        return Content(kind: .file, text: paths.joined(separator: "\n"), type: nil, data: nil)
+        return Content(
+            kind: .file, text: paths.joined(separator: "\n"), type: nil,
+            data: Data(paths.joined(separator: String(pathSeparator)).utf8))
     }
 
     private static func colorContent(on pasteboard: NSPasteboard) -> Content? {

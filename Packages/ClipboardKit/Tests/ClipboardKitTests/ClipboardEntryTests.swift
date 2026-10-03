@@ -20,12 +20,14 @@ import Testing
     }
 
     private static func entry(
-        _ kind: Clip.Kind, _ text: String, type: String? = nil, data: Data? = nil,
-        image: URL? = nil, at date: Date = .now
+        _ kind: Clip.Kind, _ text: String, type: String? = nil, image: URL? = nil,
+        at date: Date = .now
     ) -> ClipboardStore.Entry {
         ClipboardStore.Entry(
-            id: 1, kind: kind, text: text, type: type, data: data, image: image, source: nil,
-            date: date, pinned: false)
+            id: 1, kind: kind, text: text, type: type,
+            files: kind == .file
+                ? text.split(separator: "\n").map { URL(filePath: String($0)) } : [],
+            image: image, source: nil, date: date, pinned: false)
     }
 
     @Test func titlesARowByItsFirstLineOrItsFileNames() {
@@ -109,20 +111,20 @@ import Testing
     }
 
     @Test func copiesTextLinksAndRichTextWithoutSavingThemAgain() throws {
-        try Self.entry(.url, "https://apple.com").copy(to: pasteboard)
+        try Self.entry(.url, "https://apple.com").copy(data: nil, to: pasteboard)
         #expect(pasteboard.string(forType: .URL) == "https://apple.com")
         #expect(pasteboard.string(forType: .string) == "https://apple.com")
         #expect(pasteboard.types?.contains(PasteboardWatch.transientType) == true)
 
         let rtf = Data(#"{\rtf1 bold}"#.utf8)
-        try Self.entry(.richText, "bold", type: NSPasteboard.PasteboardType.rtf.rawValue, data: rtf)
-            .copy(to: pasteboard)
+        try Self.entry(.richText, "bold", type: NSPasteboard.PasteboardType.rtf.rawValue)
+            .copy(data: rtf, to: pasteboard)
         #expect(pasteboard.data(forType: .rtf) == rtf)
         #expect(pasteboard.string(forType: .string) == "bold")
     }
 
     @Test func copiesFilesAndImages() throws {
-        try Self.entry(.file, "/tmp/a b.txt\n/tmp/c.txt").copy(to: pasteboard)
+        try Self.entry(.file, "/tmp/a b.txt\n/tmp/c.txt").copy(data: nil, to: pasteboard)
         let urls = pasteboard.pasteboardItems?.compactMap { $0.string(forType: .fileURL) }
         #expect(urls == ["file:///tmp/a%20b.txt", "file:///tmp/c.txt"])
 
@@ -131,11 +133,11 @@ import Testing
         let png = Data([0x89, 0x50, 0x4E, 0x47])
         try png.write(to: file)
         try Self.entry(.image, "", type: NSPasteboard.PasteboardType.png.rawValue, image: file)
-            .copy(to: pasteboard)
+            .copy(data: nil, to: pasteboard)
         #expect(pasteboard.data(forType: .png) == png)
         #expect(throws: (any Error).self) {
             try Self.entry(.image, "", type: "public.png", image: file.appending(path: "gone"))
-                .copy(to: pasteboard)
+                .copy(data: nil, to: pasteboard)
         }
     }
 }
