@@ -82,7 +82,7 @@ extension FillInForm {
         buttons.spacing = Self.buttonGap
         let footer = NSStackView()
         footer.setViews([buttons], in: .trailing)
-        let form = NSStackView(views: [layoutHeader(), rows, layoutPreview(), footer])
+        let form = NSStackView(views: [layoutHeader(), layoutRows(), layoutPreview(), footer])
         form.orientation = .vertical
         form.alignment = .leading
         form.spacing = Self.gap
@@ -102,6 +102,24 @@ extension FillInForm {
             form.bottomAnchor.constraint(equalTo: bottomAnchor),
             form.widthAnchor.constraint(equalToConstant: Self.width),
         ])
+    }
+
+    private func layoutRows() -> NSView {
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        rows.translatesAutoresizingMaskIntoConstraints = false
+        scroll.documentView = rows
+        let fits = scroll.heightAnchor.constraint(equalTo: rows.heightAnchor)
+        fits.priority = .dragThatCannotResizeWindow
+        NSLayoutConstraint.activate([
+            fits,
+            rows.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            rows.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            rows.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
+        ])
+        return scroll
     }
 
     private func layoutPreview() -> NSView {

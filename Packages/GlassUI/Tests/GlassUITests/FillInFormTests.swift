@@ -120,6 +120,36 @@ import Testing
         #expect(!ambiguous)
     }
 
+    @Test func manyFieldsScrollInsideTheScreenAndFollowTheFocus() throws {
+        let many = (1...40).map { FillInForm.Field(name: "Field \($0)", options: []) }
+        form.show(name: "Long form", keyword: ";long", fields: many)
+        form.maxHeight = 600
+        let size = form.fittingSize
+        panel.setContentSize(size)
+        panel.layoutIfNeeded()
+        let scroll = try #require(form.rows.enclosingScrollView)
+        let last = try #require(form.controls.last?.control)
+
+        let lastFrame = last.convert(last.bounds, to: form.rows)
+        let lastShownAtFirst = scroll.documentVisibleRect.contains(lastFrame)
+        panel.makeFirstResponder(last)
+        let lastShownWhenFocused = scroll.documentVisibleRect.contains(lastFrame)
+
+        #expect(size.height == 600)
+        #expect(form.bounds.contains(form.insert.convert(form.insert.bounds, to: form)))
+        #expect(!lastShownAtFirst)
+        #expect(lastShownWhenFocused)
+    }
+
+    @Test func aShortFormKeepsItsNaturalHeightUnderTheLimit() {
+        form.show(name: "Meeting follow-up", keyword: ";fu", fields: Self.fields)
+        let natural = form.fittingSize
+        form.maxHeight = 600
+
+        #expect(form.fittingSize == natural)
+        #expect(natural.height < 600)
+    }
+
     private func press(_ keyCode: Int, _ characters: String) {
         guard
             let event = NSEvent.keyEvent(
