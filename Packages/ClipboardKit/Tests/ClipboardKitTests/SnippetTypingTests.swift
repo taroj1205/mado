@@ -34,7 +34,9 @@ import Testing
     private static func inserted() throws -> TextInsertion.Inserted {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
-        let insertion = TextInsertion(pasteboard: pasteboard, restoreDelay: .zero) { events in
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { events in
             #expect(!events.isEmpty)
         }
         let expansion = SnippetTemplate("Hi").expand(
