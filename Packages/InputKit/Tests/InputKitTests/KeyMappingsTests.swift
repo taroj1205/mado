@@ -12,6 +12,9 @@ import Testing
     private static var swap: [String: AnyHashable] {
         pair(KeyMappings.usage(kHIDUsage_KeyboardA), KeyMappings.usage(kHIDUsage_KeyboardB))
     }
+    private static var fKeys: [String: AnyHashable] {
+        pair(KeyMappings.usage(kHIDUsage_KeyboardF20), KeyMappings.usage(kHIDUsage_KeyboardF19))
+    }
 
     private static func pair(_ source: UInt64, _ destination: UInt64) -> [String: AnyHashable] {
         [
@@ -28,10 +31,11 @@ import Testing
         #expect(RemapSettings.CapsLock.capsLock.usage == nil)
     }
 
-    @Test func mergingKeepsOtherKeysAndReplacesTheCapsLockEntry() {
+    @Test func replacingKeepsOtherKeysAndSwapsTheCapsLockEntry() {
         let user: KeyMappings.Mapping = [Self.swap, Self.pair(KeyMappings.capsLock, Self.escape)]
-        let merged = KeyMappings.merged(user, capsLockTo: Self.control)
-        #expect(merged == [Self.swap, Self.pair(KeyMappings.capsLock, Self.control)])
+        let replaced = KeyMappings.replacingCapsLock(
+            in: user, with: KeyMappings.capsLockEntry(to: Self.control))
+        #expect(replaced == [Self.swap, Self.pair(KeyMappings.capsLock, Self.control)])
     }
 
     @Test func syncRemapsOnlyTheChosenKeyboards() {
@@ -43,15 +47,42 @@ import Testing
         #expect(mappings.originals == [Self.builtIn: []])
     }
 
-    @Test func restoreGivesBackTheMappingFromBeforeMado() {
+    @Test func restoreGivesBackTheCapsLockEntryFromBeforeMado() throws {
         var mappings = KeyMappings()
         let user: KeyMappings.Mapping = [Self.swap, Self.pair(KeyMappings.capsLock, Self.escape)]
         let writes = mappings.sync(
             [Self.builtIn: user], remapping: [Self.builtIn], to: Self.control)
         #expect(
             writes == [Self.builtIn: [Self.swap, Self.pair(KeyMappings.capsLock, Self.control)]])
-        #expect(mappings.restore() == [Self.builtIn: user])
+        let applied = try #require(writes[Self.builtIn])
+        #expect(
+            mappings.restore(from: [Self.builtIn: applied])
+                == [Self.builtIn: [Self.swap, Self.pair(KeyMappings.capsLock, Self.escape)]])
         #expect(mappings.originals.isEmpty)
+    }
+
+    @Test func otherKeysChangedWhileRemappedAreKept() throws {
+        var mappings = KeyMappings()
+        let first = mappings.sync([Self.builtIn: []], remapping: [Self.builtIn], to: Self.control)
+        let changed = try #require(first[Self.builtIn]) + [Self.fKeys]
+
+        let second = mappings.sync(
+            [Self.builtIn: changed], remapping: [Self.builtIn], to: Self.control)
+
+        #expect(second.isEmpty)
+        #expect(mappings.restores(from: [Self.builtIn: changed]) == [Self.builtIn: [Self.fKeys]])
+        #expect(mappings.restore(from: [Self.builtIn: changed]) == [Self.builtIn: [Self.fKeys]])
+    }
+
+    @Test func aKeyboardTurnedOffKeepsKeysChangedWhileRemapped() throws {
+        var mappings = KeyMappings()
+        let first = mappings.sync(
+            [Self.external: [Self.swap]], remapping: [Self.external], to: Self.control)
+        let changed = try #require(first[Self.external]) + [Self.fKeys]
+
+        let writes = mappings.sync([Self.external: changed], remapping: [], to: Self.control)
+
+        #expect(writes == [Self.external: [Self.swap, Self.fKeys]])
     }
 
     @Test func aSecondSyncLeavesAnAppliedKeyboardAlone() {
@@ -97,13 +128,13 @@ import Testing
             remapping: [Self.builtIn, Self.external], to: Self.control)
         #expect(
             writes == [Self.external: [Self.swap, Self.pair(KeyMappings.capsLock, Self.control)]])
-        #expect(mappings.originals == [Self.builtIn: [], Self.external: [Self.swap]])
+        #expect(mappings.originals == [Self.builtIn: [], Self.external: []])
     }
 
     @Test func theWatchdogGetsJSONThatHidutilAccepts() throws {
         let matching: [String: Any] = ["Product": "Keychron K3", "VendorID": 0x05AC]
         let arguments = try #require(
-            KeyMappings.restoreArguments(matching: matching, original: [Self.swap]))
+            KeyMappings.restoreArguments(matching: matching, mapping: [Self.swap]))
         let decodedMatching = try JSONSerialization.jsonObject(with: Data(arguments.matching.utf8))
         #expect(
             decodedMatching as? [String: AnyHashable]
