@@ -238,10 +238,15 @@ final class ItemEditor {
 
     @discardableResult
     private func register(_ hotkey: Shortcut, for id: String) -> Bool {
-        guard let registry, isAvailable(id) else { return true }
+        guard let registry else { return true }
         do {
-            registrations[id] = try registry.register(hotkey) { [weak self] in
+            let registration = try registry.register(hotkey) { [weak self] in
                 self?.onHotKey?(id)
+            }
+            if isAvailable(id) {
+                registrations[id] = registration
+            } else {
+                registry.unregister(registration)
             }
             return true
         } catch {
