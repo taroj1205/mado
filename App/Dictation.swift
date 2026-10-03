@@ -34,7 +34,8 @@ final class Dictation {
     func handle(_ event: PushToTalk.Event) {
         switch event {
         case .started: start()
-        case .stopped, .cancelled: if isActive { stop() }
+        case .stopped: if isActive { stop() }
+        case .cancelled: stop()
         }
     }
 
