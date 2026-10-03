@@ -185,6 +185,10 @@ final class ItemEditor {
         if LauncherHotKeys.Key.allCases.contains(where: { $0.shortcut == hotkey }) {
             return "Mado"
         }
+        let switcherOn = modules?.isEnabled(WindowsModule.id) == true
+        if switcherOn, WindowsModule.switcherShortcuts.contains(hotkey) {
+            return "Window switcher"
+        }
         if let owner = settings.owner(of: hotkey), owner != id {
             return name(owner) ?? "Another item"
         }
