@@ -3,9 +3,10 @@ public import ApplicationServices
 public struct FocusedText: Sendable {
     public let isSecure: Bool
     public let caret: CGRect?
+    public let textBeforeCaret: String?
 
     @AccessibilityActor
-    public static func current() -> Self? {
+    public static func current(readingBack length: Int) -> Self? {
         let systemWide = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(systemWide, FocusedWindow.messagingTimeout)
         guard let value = try? FocusedWindow.copy(kAXFocusedUIElementAttribute, of: systemWide),
@@ -14,7 +15,19 @@ public struct FocusedText: Sendable {
         let element = unsafe unsafeDowncast(value, to: AXUIElement.self)
         AXUIElementSetMessagingTimeout(element, FocusedWindow.messagingTimeout)
         let subrole = (try? FocusedWindow.copy(kAXSubroleAttribute, of: element)) as? String
-        return Self(isSecure: subrole == kAXSecureTextFieldSubrole, caret: caret(in: element))
+        let selection = (try? FocusedWindow.copy(kAXSelectedTextRangeAttribute, of: element))
+            .flatMap(range)
+        return Self(
+            isSecure: subrole == kAXSecureTextFieldSubrole,
+            caret: selection.flatMap { caret(at: $0.location, in: element) },
+            textBeforeCaret: selection.flatMap { selection in
+                guard length > 0 else { return nil }
+                return text(in: readBack(length, from: selection.location), of: element)
+            })
+    }
+
+    static func readBack(_ length: Int, from location: Int) -> CFRange {
+        CFRange(location: max(location - length, 0), length: min(length, max(location, 0)))
     }
 
     static func range(_ value: CFTypeRef) -> CFRange? {
@@ -34,15 +47,23 @@ public struct FocusedText: Sendable {
     }
 
     @AccessibilityActor
-    private static func caret(in element: AXUIElement) -> CGRect? {
-        guard let selection = try? FocusedWindow.copy(kAXSelectedTextRangeAttribute, of: element),
-            let range = range(selection)
-        else { return nil }
-        let before = CFRange(location: max(range.location - 1, 0), length: 1)
-        return bounds(of: CFRange(location: range.location, length: 0), in: element)
+    private static func caret(at location: Int, in element: AXUIElement) -> CGRect? {
+        let before = CFRange(location: max(location - 1, 0), length: 1)
+        return bounds(of: CFRange(location: location, length: 0), in: element)
             ?? bounds(of: before, in: element).map { rect in
                 CGRect(x: rect.maxX, y: rect.minY, width: 0, height: rect.height)
             }
+    }
+
+    @AccessibilityActor
+    private static func text(in range: CFRange, of element: AXUIElement) -> String? {
+        var range = range
+        guard let parameter = unsafe AXValueCreate(.cfRange, &range) else { return nil }
+        var value: CFTypeRef?
+        let error = unsafe AXUIElementCopyParameterizedAttributeValue(
+            element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value)
+        guard error == .success else { return nil }
+        return value as? String
     }
 
     @AccessibilityActor
