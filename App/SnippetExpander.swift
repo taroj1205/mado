@@ -110,15 +110,16 @@ final class SnippetExpander {
         let focused = await FocusedText.current(readingBack: typed.utf16.count)
         guard await canReplace(typed, focused) else { return }
         let template = SnippetTemplate(snippet.text)
+        let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
         var fields: [String: String] = [:]
         do {
             if !template.fields.isEmpty {
-                fields = try await fillIn.ask(snippet, template, under: focused?.caret)
+                fields = try await fillIn.ask(
+                    snippet, template, clipboard: clipboard, under: focused?.caret)
                 try await target.activate()
                 let after = await FocusedText.current(readingBack: typed.utf16.count)
                 guard await canReplace(typed, after) else { return }
             }
-            let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
             guard !stopped else { return }
             guard target.app.isActive, typed.isEmpty || !typing.inputAfterMatch else {
