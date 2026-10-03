@@ -36,9 +36,9 @@ public final class AppInputSwitch {
         context: ModuleContext, settings: @escaping @MainActor () -> InputSourceSettings,
         memory: Memory
     ) {
+        let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let switcher = Self(
-            front: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-            current: { InputSource.currentID }, select: InputSource.select,
+            front: frontmost, current: { InputSource.currentID }, select: InputSource.select,
             settle: .milliseconds(settleMilliseconds), memory: memory)
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
@@ -51,19 +51,23 @@ public final class AppInputSwitch {
         context.own(.task, "input source switch") {
             switcher.activated(nil, apps: settings().apps)
         }
+        switcher.activated(frontmost, apps: settings().apps)
     }
 
     func activated(_ app: String?, apps: [String: AppInput]) {
+        let settled = pending == nil
         pending?.cancel()
-        if let front, apps[front] == .lastUsed, let source = current() {
+        pending = nil
+        if settled, let front, apps[front] == .lastUsed, let source = current() {
             memory.lastUsed[front] = source
         }
         front = app
         guard let source = app.flatMap({ source(for: $0, in: apps) }) else { return }
-        pending = Task { [settle, select] in
+        pending = Task { [weak self, settle, select] in
             try? await Task.sleep(for: settle)
             guard !Task.isCancelled else { return }
             select(source)
+            self?.pending = nil
         }
     }
 
