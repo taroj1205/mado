@@ -159,8 +159,16 @@ public actor ClipboardStore {
             database.rows("SELECT image FROM clips WHERE image IS NOT NULL", []) { $0.string(0) })
         let files = try FileManager.default.contentsOfDirectory(
             atPath: images.path(percentEncoded: false))
+        var failure: (any Error)?
         for file in files where !kept.contains(file) {
-            try FileManager.default.removeItem(at: images.appending(path: file))
+            do {
+                try FileManager.default.removeItem(at: images.appending(path: file))
+            } catch {
+                failure = failure ?? error
+            }
+        }
+        if let failure {
+            throw failure
         }
     }
 
