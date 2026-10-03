@@ -18,7 +18,9 @@ extension AppDelegate {
 
     func connectClipboardHistory() {
         clipboardHistory.onOpen = { [weak self] in self?.openClipboardHistory() }
-        clipboardHistory.onFilter = { [weak self] in self?.searchAgain() }
+        clipboardHistory.onChange = { [weak self] in
+            if self?.scope == .clipboard { self?.searchAgain() }
+        }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
         clipboardRunningChanged()
     }

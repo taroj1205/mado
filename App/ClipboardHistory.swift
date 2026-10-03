@@ -28,7 +28,7 @@ final class ClipboardHistory: NSObject {
     let filter = NSPopUpButton(frame: .zero, pullsDown: false)
     var onOpen: (() -> Void)?
     var onRunningChange: (() -> Void)?
-    var onFilter: (() -> Void)?
+    var onChange: (() -> Void)?
     private var store: ClipboardStore?
     private var filters: [Filter?] = []
     private var selected: Filter?
@@ -143,6 +143,10 @@ final class ClipboardHistory: NSObject {
         }
     }
 
+    func entriesChanged() {
+        onChange?()
+    }
+
     func preview(for item: ResultList.Item) -> LauncherView.Preview? {
         guard let entry = entries[item.id] else { return nil }
         let source = entry.source.map { Self.app($0).name } ?? "Unknown"
@@ -224,6 +228,6 @@ final class ClipboardHistory: NSObject {
         guard filters.indices.contains(tag) else { return }
         selected = filters[tag]
         fitFilter()
-        onFilter?()
+        onChange?()
     }
 }
