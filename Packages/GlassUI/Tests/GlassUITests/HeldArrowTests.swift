@@ -19,7 +19,8 @@ import Testing
         ]
         view.widgets = [
             .init(
-                id: "clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
+                id: "clock", name: "Clock", value: "9:41", detail: "Wed 30 Sep",
+                action: "Open Clock",
                 spoken: "Time: 9:41 AM, Wednesday 30 September")
         ]
         view.pills = [

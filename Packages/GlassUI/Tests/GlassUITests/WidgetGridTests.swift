@@ -12,10 +12,11 @@ import Testing
     private let view = LauncherView()
     private let widgets: [WidgetGrid.Widget] = [
         .init(
-            id: "clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
+            id: "clock", name: "Clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
             spoken: "Time: 9:41 AM, Wednesday 30 September"),
         .init(
-            id: "weather", value: "15°", detail: "Partly cloudy", action: "Open Weather",
+            id: "weather", name: "Weather", value: "15°", detail: "Partly cloudy",
+            action: "Open Weather",
             spoken: "Weather: 15 degrees, partly cloudy"),
     ]
 
@@ -125,10 +126,8 @@ import Testing
 
     @Test func commandKeysAndTypingLeaveTheWidgets() {
         press(kVK_UpArrow, "\u{F700}")
-        press(kVK_ANSI_K, "k", [.command])
+        press(kVK_ANSI_J, "j", [.command])
         #expect(view.selectedWidget == nil)
-        #expect(view.choosingAction)
-        view.closeActions()
         view.pressWidget(0)
         press(kVK_ANSI_A, "a")
         #expect(view.selectedWidget == nil)
@@ -161,7 +160,8 @@ import Testing
         let tile = try #require(view.widgetGrid.tiles.first)
         view.widgets = [
             .init(
-                id: "clock", value: "9:42", detail: "Wed 30 Sep", action: "Open Clock",
+                id: "clock", name: "Clock", value: "9:42", detail: "Wed 30 Sep",
+                action: "Open Clock",
                 spoken: "Time: 9:42 AM, Wednesday 30 September"),
             widgets[1],
         ]
@@ -176,7 +176,8 @@ import Testing
 
     @Test func theSelectionFollowsItsWidgetWhenATileComesOrGoes() {
         let battery = WidgetGrid.Widget(
-            id: "battery", value: "80%", detail: "Charging", action: "Battery Settings",
+            id: "battery", name: "Battery", value: "80%", detail: "Charging",
+            action: "Battery Settings",
             spoken: "Battery: 80%, charging")
         view.pressWidget(1)
         view.widgets = [widgets[0], battery, widgets[1]]
@@ -194,7 +195,7 @@ import Testing
 
     @Test func aMeterWidgetDrawsOneBarPerMeterAndUpdatesInPlace() throws {
         let system = WidgetGrid.Widget(
-            id: "system",
+            id: "system", name: "System",
             meters: [
                 .init(name: "CPU", value: "23%", level: 0.23),
                 .init(name: "RAM", value: "–", level: 0),
@@ -216,7 +217,7 @@ import Testing
         view.widgets = [
             widgets[0],
             .init(
-                id: "system",
+                id: "system", name: "System",
                 meters: [
                     .init(name: "CPU", value: "140%", level: 1.4),
                     .init(name: "RAM", value: "61%", level: 0.61),

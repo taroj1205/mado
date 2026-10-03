@@ -3,14 +3,15 @@ public import AppKit
 public final class LauncherView: NSView {
     private static let searchBarHeight: CGFloat = 60
     static let searchInset: CGFloat = 20
+    static let searchSymbol = "magnifyingglass"
     private static let searchFontSize: CGFloat = 20
     static let searchIconGap: CGFloat = 12
     static let searchPlaceholder = "Search apps and commands…"
     static let backInset: CGFloat = 14
     static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
-    private static let previewHint = "⌘Y to preview"
-    private static let previewSymbol = "eye"
+    static let previewHint = "⌘Y to preview"
+    static let previewSymbol = "eye"
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -31,6 +32,10 @@ public final class LauncherView: NSView {
     }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
+    public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
+    public var onAddWidgets: (() -> Void)?
+    public var onEndEditingWidgets: (() -> Void)?
+    public internal(set) var editingWidgets = false
     public var context: String? {
         didSet { showContext() }
     }
@@ -40,6 +45,7 @@ public final class LauncherView: NSView {
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let actionsToggle = LauncherView.makeActionsToggle()
+    let actionsDivider = FloatingCapsule.divider()
     let actionCapsule: GlassView
     let contextPill = StatusPill()
     let statusBar = StatusBar()
@@ -49,10 +55,11 @@ public final class LauncherView: NSView {
     let detail = DetailPane()
     var previewer: ((ResultList.Item) -> Preview?)?
     var filter: NSPopUpButton?
+    let editBar = WidgetEditBar()
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
-    private var browsing = false
+    private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
     var rootQuery: String?
     let icon = NSImageView()
@@ -68,9 +75,9 @@ public final class LauncherView: NSView {
     public var choosingAction: Bool { actionPanel?.isVisible == true }
 
     override public init(frame: NSRect) {
-        actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
+        actionCapsule = Self.makeActionCapsule(actionLabel, actionsDivider, actionsToggle)
         super.init(frame: frame)
-        icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+        icon.image = NSImage(systemSymbolName: Self.searchSymbol, accessibilityDescription: nil)
         icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         field.placeholderString = Self.searchPlaceholder
@@ -171,36 +178,34 @@ public final class LauncherView: NSView {
         return true
     }
 
+    override public func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        draggingUpdated(sender)
+    }
+
+    override public func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dragWidget(
+            sender.draggingPasteboard.string(forType: WidgetGrid.dragType),
+            at: sender.draggingLocation, from: sender.draggingSource)
+    }
+
+    override public func draggingExited(_: (any NSDraggingInfo)?) {
+        endWidgetDrag()
+    }
+
+    override public func draggingEnded(_: any NSDraggingInfo) {
+        endWidgetDrag()
+    }
+
+    override public func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        dropWidget(sender.draggingPasteboard.string(forType: WidgetGrid.dragType))
+    }
+
     private func selectionChanged(to item: ResultList.Item?) {
         showAction(of: item)
         showDetail(of: item)
         if previewing {
             showPreview()
         }
-    }
-
-    func showAction(of item: ResultList.Item?) {
-        let action =
-            selectedPill.map { statusBar.pills[$0].action }
-            ?? selectedWidget.map { widgetGrid.shown[$0].action }
-            ?? item?.action
-        actionLabel.stringValue = action ?? ""
-        showPrimary(action?.isEmpty == false)
-        actionCapsule.isHidden = action == nil
-        showContext()
-    }
-
-    func showContext() {
-        statusBar.isHidden = !showsStatusBar
-        if statusBar.isHidden {
-            closeCustomiser()
-        }
-        widgetGrid.isHidden = !showsWidgets
-        let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
-        let text = hintsPreview ? Self.previewHint : context
-        contextPill.show(
-            statusBar.isHidden ? text : nil,
-            symbol: hintsPreview ? Self.previewSymbol : contextSymbol)
     }
 
     public func show(_ sections: [ResultList.Section]) {
@@ -213,6 +218,7 @@ public final class LauncherView: NSView {
     }
 
     public func endBrowsing() {
+        finishEditingWidgets()
         browsing = false
         leavePillsAndWidgets()
         closePreview()

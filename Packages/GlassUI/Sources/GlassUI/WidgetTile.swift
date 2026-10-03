@@ -20,10 +20,15 @@ final class WidgetTile: NSView {
     private static let edgeAlpha = (dark: 0.07, light: 0.06)
     private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
+    private static let editFillAlpha = (dark: 0.07, light: 0.55)
+    private static let editEdgeAlpha = (dark: 0.28, light: 0.2)
+    private static let liftedAlpha: CGFloat = 0.35
     static let fill = tone(.white, .white, fillAlpha)
     static let edge = tone(.white, .black, edgeAlpha)
     static let selectedFill = tone(.white, .black, selectedFillAlpha)
     static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
+    private static let editFill = tone(.white, .white, editFillAlpha)
+    static let editEdge = tone(.white, .black, editEdgeAlpha)
     private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
     private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
     private static let floatingSelectedFill = tone(
@@ -58,12 +63,31 @@ final class WidgetTile: NSView {
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
+    let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
+    let remove = RemoveBadge()
+    let grip = Grip(colour: .tertiaryLabelColor)
     private let looks: (resting: Look, picked: Look)
+    private(set) var widgetID = ""
+    private var hasTrack = false
+    var dragStart: NSEvent?
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onRemove: (() -> Void)?
 
     var selected = false {
         didSet { paint() }
+    }
+
+    var editing = false {
+        didSet {
+            showEditing()
+            paint()
+            setAccessibilityCustomActions(customActions())
+        }
+    }
+
+    var lifted = false {
+        didSet { alphaValue = lifted ? Self.liftedAlpha : 1 }
     }
 
     init(floating: Bool) {
@@ -76,6 +100,7 @@ final class WidgetTile: NSView {
         box.autoresizingMask = [.width, .height]
         addSubview(box)
         arrangeLines()
+        arrangeEditing()
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -113,12 +138,19 @@ final class WidgetTile: NSView {
 
     private func paint() {
         let look = selected ? looks.picked : looks.resting
-        box.fillColor = look.fill
-        box.borderColor = look.edge
+        if editing {
+            box.fillColor = selected ? Self.selectedFill : Self.editFill
+            box.borderColor = .clear
+        } else {
+            box.fillColor = look.fill
+            box.borderColor = look.edge
+        }
         setAccessibilitySelected(selected)
     }
 
     func show(_ widget: WidgetGrid.Widget) {
+        widgetID = widget.id
+        hasTrack = widget.track != nil
         var visible: [NSView] = []
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
@@ -160,10 +192,19 @@ final class WidgetTile: NSView {
         showMeters(readings)
         showTrack(widget.track != nil)
         setAccessibilityLabel(widget.spoken)
-        setAccessibilityCustomActions(
-            widget.track == nil
-                ? []
-                : [skip("Previous Track", .previous), skip("Next Track", .next)])
+        setAccessibilityCustomActions(customActions())
+    }
+
+    private func customActions() -> [NSAccessibilityCustomAction] {
+        if editing {
+            return [
+                NSAccessibilityCustomAction(name: "Remove") { [weak self] in
+                    self?.onRemove?()
+                    return true
+                }
+            ]
+        }
+        return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
     }
 
     private func showTrack(_ shows: Bool) {
@@ -197,7 +238,8 @@ final class WidgetTile: NSView {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        frame.contains(point) ? self : nil
+        let local = convert(point, from: unsafe superview)
+        return bounds.contains(local) || (editing && remove.frame.contains(local)) ? self : nil
     }
 
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
@@ -205,12 +247,26 @@ final class WidgetTile: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        if editing {
+            pressWhileEditing(event)
+            return
+        }
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
         } else {
             onPress?()
         }
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard editing, dragStart != nil, unsafe window != nil else { return }
+        dragStart = nil
+        beginDrag(with: event)
+    }
+
+    override func mouseUp(with _: NSEvent) {
+        dragStart = nil
     }
 
     override func accessibilityPerformPress() -> Bool {

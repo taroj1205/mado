@@ -49,6 +49,10 @@ extension LauncherView {
         if event.type == .leftMouseDown {
             closeCustomiser(unlessAt: event.locationInWindow)
         }
+        if editingWidgets {
+            return event.type == .leftMouseDown
+                && results.convert(results.bounds, to: nil).contains(event.locationInWindow)
+        }
         switch event.type {
         case .leftMouseDown
         where field.convert(field.bounds, to: nil).contains(event.locationInWindow):
@@ -99,20 +103,36 @@ extension LauncherView {
     }
 
     func showActions() {
+        if let index = selectedWidget {
+            let widget = widgetGrid.shown[index]
+            let choices = [Action(widget.action, keys: Action.primaryKeys), Action(Self.editTitle)]
+            present(choices, for: widget.name) { [weak self] choice in
+                if choice == 0 {
+                    self?.onWidget?(widget)
+                } else {
+                    self?.editWidgets()
+                }
+            }
+            return
+        }
         guard let item = results.selectedItem else { return }
         selectPill(nil)
+        present(actions?(item) ?? [], for: item.title) { [weak self] index in
+            self?.onRun?(item, index)
+        }
+    }
+
+    private func present(_ choices: [Action], for title: String, run: @escaping (Int) -> Void) {
         closePreview()
         let menu = actionPanel ?? ActionPanel()
         menu.onRun = { [weak self] index in
             self?.closeActions()
-            self?.onRun?(item, index)
+            run(index)
         }
         menu.onClose = { [weak self] in self?.actionsClosed() }
         actionPanel = menu
         actionsToggle.fillColor = ResultRowView.fill
-        menu.show(
-            actions?(item) ?? [], for: item.title, above: actionCapsule,
-            gap: Self.capsuleInset)
+        menu.show(choices, for: title, above: actionCapsule, gap: Self.capsuleInset)
     }
 
     func toggleActions() {

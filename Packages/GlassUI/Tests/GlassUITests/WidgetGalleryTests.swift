@@ -85,6 +85,15 @@ import Testing
         #expect(gallery.count.stringValue == "1 widget on the empty query")
     }
 
+    @Test func theCountSaysCardsCanBeDraggedOnlyWhenTheLauncherIsWaitingForThem() {
+        gallery.hintsDrag = true
+        #expect(
+            gallery.count.stringValue
+                == "2 widgets on the empty query · drag a card onto the launcher to place it")
+        gallery.hintsDrag = false
+        #expect(gallery.count.stringValue == "2 widgets on the empty query")
+    }
+
     @Test func theFilterNarrowsTheCardsToOneGroup() {
         #expect(gallery.filter.segmentCount == 4)
         #expect(gallery.filter.label(forSegment: 3) == "From extensions")
