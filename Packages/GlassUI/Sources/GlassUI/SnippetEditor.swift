@@ -104,7 +104,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
 
     public func show(_ entries: [Entry], selecting id: String?) {
         self.entries = entries
-        filter(keeping: id)
+        filter(keeping: id, reloading: true)
     }
 
     public func showExpansion(_ isOn: Bool, offIn apps: [String]) {
@@ -116,7 +116,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     public func begin() {
         closeActions()
         search.stringValue = ""
-        filter(keeping: editing ?? entries.first?.id)
+        filter(keeping: editing ?? entries.first?.id, reloading: true)
         unsafe window?.makeFirstResponder(search)
     }
 
@@ -141,7 +141,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
 
     public func controlTextDidChange(_ notification: Notification) {
         if notification.object as? NSTextField === search {
-            filter(keeping: list.selectedID)
+            filter(keeping: list.selectedID, reloading: false)
         }
     }
 
@@ -173,7 +173,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         highlightTokens()
     }
 
-    private func filter(keeping id: String?) {
+    private func filter(keeping id: String?, reloading: Bool) {
         let query = search.stringValue.trimmingCharacters(in: .whitespaces)
         let shown = entries.filter { entry in
             query.isEmpty
@@ -186,6 +186,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         empty.isHidden = !shown.isEmpty
         let kept = shown.contains { $0.id == id } ? id : shown.first?.id
         list.select(kept)
+        guard reloading || kept != editing else { return }
         load(kept)
     }
 
