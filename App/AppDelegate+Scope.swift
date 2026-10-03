@@ -19,10 +19,12 @@ extension AppDelegate {
     func connectClipboardHistory() {
         clipboardHistory.onOpen = { [weak self] in self?.openClipboardHistory() }
         clipboardHistory.onFilter = { [weak self] in self?.searchAgain() }
-        clipboardHistory.onClose = { [weak self] in
-            if self?.scope == .clipboard {
-                self?.launcherView.leave()
+        clipboardHistory.onRunningChange = { [weak self] in
+            guard let self else { return }
+            if !clipboardHistory.isRunning, scope == .clipboard {
+                launcherView.leave()
             }
+            editor.refreshHotKey(for: ClipboardHistory.commandID)
         }
     }
 

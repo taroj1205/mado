@@ -27,13 +27,17 @@ final class ClipboardHistory: NSObject {
 
     let filter = NSPopUpButton(frame: .zero, pullsDown: false)
     var onOpen: (() -> Void)?
-    var onClose: (() -> Void)?
+    var onRunningChange: (() -> Void)?
     var onFilter: (() -> Void)?
     private var store: ClipboardStore?
     private var filters: [Filter?] = []
     private var selected: Filter?
     private var entries: [String: ClipboardStore.Entry] = [:]
     private lazy var filterWidth = filter.widthAnchor.constraint(equalToConstant: 0)
+
+    var isRunning: Bool {
+        store != nil
+    }
 
     override init() {
         super.init()
@@ -103,6 +107,7 @@ final class ClipboardHistory: NSObject {
             context.logger.error(
                 "Clipboard history command failed: \(String(describing: error), privacy: .public)")
         }
+        onRunningChange?()
     }
 
     func sections(for query: String) async -> [ResultList.Section] {
@@ -160,7 +165,7 @@ final class ClipboardHistory: NSObject {
     private func stop() {
         store = nil
         entries = [:]
-        onClose?()
+        onRunningChange?()
     }
 
     private func loadSources() async {
