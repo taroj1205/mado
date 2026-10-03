@@ -76,7 +76,12 @@ public struct TextInsertion {
         guard item.setDataProvider(text, forTypes: [.string]) else {
             throw PasteTarget.Failure.notWritten
         }
-        try PasteTarget.write([Self.transient(item)], to: pasteboard)
+        do {
+            try PasteTarget.write([Self.transient(item)], to: pasteboard)
+        } catch {
+            put(back: saved)
+            throw error
+        }
         let written = pasteboard.changeCount
         post(delete + paste + back)
         return Inserted(
@@ -95,9 +100,13 @@ public struct TextInsertion {
         }
         try? await Task.sleep(for: restoreDelay)
         guard pasteboard.changeCount == inserted.changeCount else { return }
+        put(back: inserted.saved)
+    }
+
+    private func put(back saved: [NSPasteboardItem]) {
         pasteboard.clearContents()
-        guard let first = inserted.saved.first else { return }
-        pasteboard.writeObjects([Self.transient(first)] + inserted.saved.dropFirst())
+        guard let first = saved.first else { return }
+        pasteboard.writeObjects([Self.transient(first)] + saved.dropFirst())
     }
 
     public func undo(_ inserted: Inserted) throws {
