@@ -8,11 +8,8 @@ final class WidgetTile: NSView {
     private static let trackLeading: CGFloat = 10
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
-    private static let detailSize: CGFloat = 11.5
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
-    private static let headlineSize: CGFloat = 14
-    private static let requestSize: CGFloat = 13
     private static let meterGap: CGFloat = 8
     private static let headlineBar = (fraction: 0.4, height: 18.0)
     private static let detailBar = (fraction: 0.7, height: 10.0)
@@ -151,38 +148,15 @@ final class WidgetTile: NSView {
     func show(_ widget: WidgetGrid.Widget) {
         widgetID = widget.id
         hasTrack = widget.track != nil
-        var visible: [NSView] = []
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
-        case let .value(text, note, name):
-            symbol = name
-            showValue(text)
-            showDetail(note, size: Self.detailSize)
-            visible = [value, detail]
-
-        case let .meters(list):
-            readings = list
-
-        case let .track(playing):
-            track.show(playing)
-
-        case let .loading(name):
-            showTitle(name)
-            visible = [title] + skeleton
-
-        case let .notice(name, line, note):
-            showTitle(name)
-            showHeadline(line, size: Self.headlineSize)
-            showDetail(note, size: Self.noteSize)
-            visible = [title, headline, detail]
-
-        case let .permission(name, line, why):
-            showTitle(name)
-            showHeadline(line, size: Self.requestSize)
-            reason.stringValue = why
-            visible = [title, headline, request]
+        case let .value(_, _, name): symbol = name
+        case let .meters(list): readings = list
+        case let .track(playing): track.show(playing)
+        case .loading, .notice, .permission, .unavailable: break
         }
+        let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
         }

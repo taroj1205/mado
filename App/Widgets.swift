@@ -182,6 +182,15 @@ final class Widgets {
         level?.formatted(StatusPills.percent) ?? StatusPills.unknown
     }
 
+    private static func unavailable(_ id: String) -> WidgetGrid.Widget? {
+        gallery.first { $0.id == id }.map { card in
+            .init(
+                id: id, name: card.name,
+                content: .unavailable(title: card.name, summary: card.summary), action: "",
+                spoken: "\(card.name): \(card.summary)", isWide: card.size != .small)
+        }
+    }
+
     func show(in view: LauncherView) {
         stop()
         refresh(view)
@@ -237,6 +246,6 @@ final class Widgets {
 
     private func refresh(_ view: LauncherView) {
         let all = Self.current(at: .now, stats: stats, playing: playing)
-        view.widgets = shown.compactMap { id in all.first { $0.id == id } }
+        view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
     }
 }

@@ -19,6 +19,10 @@ public final class WidgetGrid: NSView {
             if case .track(let playing) = content { playing } else { nil }
         }
 
+        var isUnavailable: Bool {
+            if case .unavailable = content { true } else { false }
+        }
+
         public init(
             id: String, name: String, content: Content, action: String, spoken: String,
             isWide: Bool = false
@@ -59,6 +63,7 @@ public final class WidgetGrid: NSView {
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)
         case permission(title: String, request: String, reason: String)
+        case unavailable(title: String, summary: String)
     }
 
     public struct Meter: Sendable, Equatable {
@@ -159,8 +164,9 @@ public final class WidgetGrid: NSView {
     let dropFrame = WidgetDropFrame()
 
     var shown: [Widget] {
+        let listed = editing ? widgets : widgets.filter { !$0.isUnavailable }
         let arranged =
-            order.isEmpty ? widgets : order.compactMap { id in widgets.first { $0.id == id } }
+            order.isEmpty ? listed : order.compactMap { id in listed.first { $0.id == id } }
         switch layoutInUse {
         case .grid, .above, .around: return arranged
         case .strip: return Array(arranged.prefix(Self.cells(of: arranged).count { $0.row == 0 }))
