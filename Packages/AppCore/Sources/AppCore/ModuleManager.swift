@@ -60,27 +60,28 @@ public final class ModuleManager {
         guard let index = registered.firstIndex(where: { $0.module.descriptor.id == id }) else {
             throw ModuleError.unknownModule(id)
         }
-        var nextStates = states
-        nextStates.enabled[id] = enabled
-        var nextSettings = settings
-        try nextSettings.setValue(nextStates, for: Self.settingsKey)
-        if enabled {
-            let wasRunning = registered[index].isRunning
-            try start(at: index)
-            do {
-                try store.save(nextSettings)
-            } catch {
-                if !wasRunning {
-                    stop(at: index)
+        let previous = states
+        states.enabled[id] = enabled
+        do {
+            if enabled {
+                let wasRunning = registered[index].isRunning
+                try start(at: index)
+                do {
+                    try saveStates()
+                } catch {
+                    if !wasRunning {
+                        stop(at: index)
+                    }
+                    throw error
                 }
-                throw error
+            } else {
+                try saveStates()
+                stop(at: index)
             }
-        } else {
-            try store.save(nextSettings)
-            stop(at: index)
+        } catch {
+            states = previous
+            throw error
         }
-        states = nextStates
-        settings = nextSettings
     }
 
     public func restart(_ id: String) throws {
@@ -108,6 +109,13 @@ public final class ModuleManager {
         for item in registered {
             await item.context.drain()
         }
+    }
+
+    private func saveStates() throws {
+        var nextSettings = settings
+        try nextSettings.setValue(states, for: Self.settingsKey)
+        try store.save(nextSettings)
+        settings = nextSettings
     }
 
     private func start(at index: Int) throws {
