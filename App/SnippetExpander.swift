@@ -121,8 +121,8 @@ final class SnippetExpander {
             let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
             guard !stopped else { return }
-            guard typed.isEmpty || (!typing.inputAfterMatch && target.app.isActive) else {
-                logger.notice("Input moved on after the keyword, so it wasn’t replaced")
+            guard target.app.isActive, typed.isEmpty || !typing.inputAfterMatch else {
+                logger.notice("Focus or input moved on, so the snippet wasn’t inserted")
                 return
             }
             beforeReplacing?()
