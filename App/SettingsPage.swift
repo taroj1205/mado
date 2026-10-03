@@ -12,6 +12,7 @@ struct SettingsPage {
         let recorder: HotKeyPopover
         let apps: AppHotKeys
         let radial: RadialMenuSettings
+        let clipboardHistory: ClipboardHistorySettings
         let ignoredApps: IgnoredAppsSettings
         let gallery: WidgetGalleryWindow
     }
@@ -59,7 +60,12 @@ struct SettingsPage {
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)
-        ) { [$0.ignoredApps.section] },
+        ) { context in
+            [
+                context.clipboardHistory.section, context.ignoredApps.section,
+                context.clipboardHistory.clearSection,
+            ]
+        },
         Self(
             "Windows", "rectangle.split.2x1",
             module: module("windows", "Windows", enabled: true),
