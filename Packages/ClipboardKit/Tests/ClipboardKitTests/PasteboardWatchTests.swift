@@ -111,6 +111,24 @@ import Testing
         try manager.setEnabled("clipboard", false)
     }
 
+    @Test func aCopyJustBeforeTheModuleStopsIsStillReported() throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let manager = try ModuleManager(
+            store: SettingsStore(url: dir.appending(path: "settings.json")))
+        let module = WatchingModule(pasteboard: pasteboard)
+        try manager.register(module)
+        try manager.setEnabled("clipboard", true)
+
+        pasteboard.clearContents()
+        pasteboard.setString("copied", forType: .string)
+        try manager.restart("clipboard")
+        try manager.setEnabled("clipboard", false)
+
+        #expect(module.changes == 1)
+    }
+
     @Test func watchesOnlyWhileTheModuleIsOn() throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -126,7 +144,9 @@ import Testing
         try manager.setEnabled("clipboard", true)
         #expect(
             manager.activeResources == [
-                ActiveResource(module: "clipboard", kind: .timer, name: "pasteboard watch")
+                ActiveResource(module: "clipboard", kind: .timer, name: "pasteboard watch"),
+                ActiveResource(
+                    module: "clipboard", kind: .other, name: "pasteboard watch last check"),
             ])
 
         pasteboard.clearContents()
