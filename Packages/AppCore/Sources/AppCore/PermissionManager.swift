@@ -56,6 +56,12 @@ public final class PermissionManager {
         }
     }
 
+    public func request(_ permission: Permission) async -> PermissionStatus {
+        let current = await probe.request(permission)
+        statuses[permission] = current
+        return current
+    }
+
     public func openSettings(for permission: Permission) {
         open(Self.settingsURL(for: permission))
     }

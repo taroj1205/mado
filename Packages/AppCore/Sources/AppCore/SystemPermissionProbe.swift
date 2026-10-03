@@ -36,4 +36,24 @@ struct SystemPermissionProbe: PermissionProbe {
             .unsupported
         }
     }
+
+    func request(_ permission: Permission) async -> PermissionStatus {
+        switch permission {
+        case .accessibility:
+            Self.flag(
+                AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary))
+
+        case .inputMonitoring:
+            Self.flag(CGRequestListenEventAccess())
+
+        case .screenRecording:
+            Self.flag(CGRequestScreenCaptureAccess())
+
+        case .microphone:
+            Self.flag(await AVCaptureDevice.requestAccess(for: .audio))
+
+        case .calendars:
+            .unsupported
+        }
+    }
 }

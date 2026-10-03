@@ -41,6 +41,25 @@ import Testing
         #expect(manager.status(for: .screenRecording) == .denied)
     }
 
+    @Test func requestAsksTheSystemAndKeepsTheAnswer() async {
+        let probe = FakeProbe()
+        probe.set(.microphone, .notDetermined)
+        probe.answer(.microphone, with: .granted)
+        let manager = makeManager(probe)
+        #expect(await manager.request(.microphone) == .granted)
+        #expect(manager.status(for: .microphone) == .granted)
+        #expect(probe.requested == [.microphone])
+    }
+
+    @Test func requestReportsARefusal() async {
+        let probe = FakeProbe()
+        probe.set(.microphone, .notDetermined)
+        probe.answer(.microphone, with: .denied)
+        let manager = makeManager(probe)
+        #expect(await manager.request(.microphone) == .denied)
+        #expect(manager.status(for: .microphone) == .denied)
+    }
+
     @Test func calendarsAreNotManaged() {
         let probe = FakeProbe()
         probe.set(.calendars, .granted)

@@ -21,6 +21,8 @@ extension ModuleDescriptor {
         case ClipboardModule.id:
             ClipboardModule(descriptor: self) { [weak modules] in .load(from: modules) }
 
+        case DictationModule.id: DictationModule(descriptor: self)
+
         case KeyboardModule.id: KeyboardModule(descriptor: self)
 
         case WindowsModule.id:

@@ -12,6 +12,7 @@ struct SettingsPane {
         "Battery", "com.apple.Battery-Settings.extension", aliases: "Energy Saver")
     static let storage = Self("Storage", "com.apple.settings.Storage")
     static let dateAndTime = Self("Date & Time", "com.apple.Date-Time-Settings.extension")
+    static let sound = Self("Sound", "com.apple.Sound-Settings.extension")
     static let all = [
         wifi,
         bluetooth,
@@ -43,7 +44,7 @@ struct SettingsPane {
         Self("Displays", "com.apple.Displays-Settings.extension"),
         Self("Wallpaper", "com.apple.Wallpaper-Settings.extension", aliases: "Screen Saver"),
         Self("Notifications", "com.apple.Notifications-Settings.extension"),
-        Self("Sound", "com.apple.Sound-Settings.extension"),
+        sound,
         Self("Focus", "com.apple.Focus-Settings.extension"),
         Self("Screen Time", "com.apple.Screen-Time-Settings.extension"),
         Self("Lock Screen", "com.apple.Lock-Screen-Settings.extension"),
