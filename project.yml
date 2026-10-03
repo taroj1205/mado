@@ -45,11 +45,13 @@ targets:
         LSUIElement: true
         LSMinimumSystemVersion: "14.0"
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true
+        NSMicrophoneUsageDescription: Mado listens only while you hold or toggle the dictation key, and the audio stays on this Mac.
         NSAppleEventsUsageDescription: Mado asks Finder to empty the Trash, System Events to lock the screen and switch dark mode, the login window to show the restart dialog, and Music or Spotify to show and play or pause the current song.
     entitlements:
       path: App/Mado.entitlements
       properties:
         com.apple.security.automation.apple-events: true
+        com.apple.security.device.audio-input: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.taroj1205.mado
