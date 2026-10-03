@@ -3,17 +3,23 @@ import AppKit
 
 @MainActor
 public final class AppInputSwitch {
+    private static let settleMilliseconds = 150
+
     private let current: () -> String?
     private let select: (String) -> Void
+    private let settle: Duration
     private var front: String?
     private var lastUsed: [String: String] = [:]
+    private(set) var pending: Task<Void, Never>?
 
     init(
-        front: String?, current: @escaping () -> String?, select: @escaping (String) -> Void
+        front: String?, current: @escaping () -> String?, select: @escaping (String) -> Void,
+        settle: Duration
     ) {
         self.front = front
         self.current = current
         self.select = select
+        self.settle = settle
     }
 
     public static func install(
@@ -21,7 +27,8 @@ public final class AppInputSwitch {
     ) {
         let switcher = Self(
             front: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-            current: { InputSource.currentID }, select: InputSource.select)
+            current: { InputSource.currentID }, select: InputSource.select,
+            settle: .milliseconds(settleMilliseconds))
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
             on: NSWorkspace.shared.notificationCenter,
@@ -30,18 +37,28 @@ public final class AppInputSwitch {
                 return (notification.userInfo?[key] as? NSRunningApplication)?.bundleIdentifier
             },
             handler: { app in switcher.activated(app, apps: settings().apps) })
+        context.own(.task, "input source switch") { switcher.pending?.cancel() }
     }
 
     func activated(_ app: String?, apps: [String: AppInput]) {
+        pending?.cancel()
         if let front, apps[front] == .lastUsed, let source = current() {
             lastUsed[front] = source
         }
         front = app
-        guard let app else { return }
+        guard let source = app.flatMap({ source(for: $0, in: apps) }) else { return }
+        pending = Task { [settle, select] in
+            try? await Task.sleep(for: settle)
+            guard !Task.isCancelled else { return }
+            select(source)
+        }
+    }
+
+    private func source(for app: String, in apps: [String: AppInput]) -> String? {
         switch apps[app] {
-        case .source(let id): select(id)
-        case .lastUsed: lastUsed[app].map(select)
-        case nil: break
+        case .source(let id): id
+        case .lastUsed: lastUsed[app]
+        case nil: nil
         }
     }
 }
