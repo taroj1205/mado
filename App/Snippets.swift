@@ -69,6 +69,10 @@ final class Snippets: NSObject, NSWindowDelegate {
         }
     }
 
+    func checkCopies(with check: @escaping @MainActor () -> Void) {
+        expander?.beforeReplacing = check
+    }
+
     func reload() {
         let settings = SnippetSettings.load(from: modules)
         expander?.settings = settings

@@ -26,14 +26,15 @@ public struct PasteboardWatch {
         changeCount = pasteboard.changeCount
     }
 
+    @discardableResult
     public static func install(
         name: String, context: ModuleContext, pasteboard: NSPasteboard = .general,
         onChange: @escaping @MainActor (_ sourceApps: [String]) -> Void
-    ) {
+    ) -> @MainActor () -> Void {
         let logger = context.logger
         var watch = Self(pasteboard: pasteboard)
         var previous = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        context.scheduleTimer(name, interval: interval) {
+        let check: @MainActor () -> Void = {
             let current = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
             defer { previous = current }
             guard watch.poll() else { return }
@@ -43,6 +44,8 @@ public struct PasteboardWatch {
                 onChange(sourceApps(of: pasteboard, frontmost: current, before: previous))
             }
         }
+        context.scheduleTimer(name, interval: interval, handler: check)
+        return check
     }
 
     static func sourceApps(

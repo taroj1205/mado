@@ -15,6 +15,8 @@ final class SnippetExpander {
     private static let keywordChecks = 5
     private static let keywordCheckMilliseconds = 30
 
+    var beforeReplacing: (@MainActor () -> Void)?
+
     var settings: SnippetSettings {
         get { typing.settings }
         set { typing.settings = newValue }
@@ -123,6 +125,7 @@ final class SnippetExpander {
                 logger.notice("Input moved on after the keyword, so it wasn’t replaced")
                 return
             }
+            beforeReplacing?()
             let insertion = TextInsertion.standard
             let inserted = try insertion.replace(typed, with: expansion)
             typing.expanded(inserted)
