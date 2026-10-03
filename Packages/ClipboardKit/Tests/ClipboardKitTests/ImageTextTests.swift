@@ -78,6 +78,18 @@ import UniformTypeIdentifiers
         #expect(try await store.search("", limit: 10).map(\.kind) == [.text, .image])
     }
 
+    @Test func readsTheEnglishLinesOnAnyMac() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appending(path: "screenshot.png")
+        let lines = [
+            "Boarding pass", "Flight NZ 99 Gate 16", "Booking ref QX7K2M", "東京駅で待ち合わせ",
+        ]
+        try Self.png(width: 1_440, height: 900, lines: lines).write(to: file)
+
+        #expect(try await ImageText.recognize(at: file).contains("QX7K2M"))
+    }
+
     @Test func scalesALargeImageDownBeforeReadingIt() throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
