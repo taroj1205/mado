@@ -200,4 +200,21 @@ import Testing
         let reopened = try ClipboardStore(directory: directory)
         #expect(try await reopened.search("", limit: 10).map(\.pinned) == [true])
     }
+
+    @Test func clearsEveryItemAndItsImage() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let png = Data([0x89, 0x50, 0x4E, 0x47])
+
+        try await store.add(
+            Clip(.image, text: "", type: .png, data: png, source: nil, date: .now),
+            keeping: Self.roomy)
+        try await store.add(Self.text("pinned", at: 1), keeping: Self.roomy)
+        let pinned = try #require(try await store.search("pinned", limit: 10).first)
+        try await store.setPinned(true, for: pinned.id)
+        try await store.clear()
+
+        #expect(try await store.search("", limit: 10).isEmpty)
+        #expect(try images().isEmpty)
+    }
 }

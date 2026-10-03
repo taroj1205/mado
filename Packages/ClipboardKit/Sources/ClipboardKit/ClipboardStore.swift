@@ -2,9 +2,9 @@ public import Foundation
 import UniformTypeIdentifiers
 
 public actor ClipboardStore {
-    public struct Retention: Equatable, Sendable {
-        public let days: Int
-        public let items: Int
+    public struct Retention: Codable, Equatable, Sendable {
+        public var days: Int
+        public var items: Int
 
         public init(days: Int = 30, items: Int = 1_000) {
             self.days = days
@@ -57,6 +57,8 @@ public actor ClipboardStore {
     private static let columns = Column.allCases.map { "\($0)" }.joined(separator: ", ")
     private static let secondsPerDay: TimeInterval = 86_400
 
+    @MainActor private static var shared: ClipboardStore?
+
     private let images: URL
     private let database: Database
 
@@ -71,7 +73,11 @@ public actor ClipboardStore {
         }
     }
 
+    @MainActor
     public static func standard() throws -> ClipboardStore {
+        if let shared {
+            return shared
+        }
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true)
@@ -80,7 +86,9 @@ public actor ClipboardStore {
         #else
             let name = "Clipboard"
         #endif
-        return try ClipboardStore(directory: base.appending(path: "Mado/\(name)"))
+        let store = try ClipboardStore(directory: base.appending(path: "Mado/\(name)"))
+        shared = store
+        return store
     }
 
     public func add(_ clip: Clip, keeping retention: Retention) throws {
@@ -118,6 +126,13 @@ public actor ClipboardStore {
                 + " RETURNING image",
             [.real(oldest), .integer(retention.items)]
         ) { $0.string(0) }
+        for image in removed {
+            try? FileManager.default.removeItem(at: images.appending(path: image))
+        }
+    }
+
+    public func clear() throws {
+        let removed = try database.rows("DELETE FROM clips RETURNING image", []) { $0.string(0) }
         for image in removed {
             try? FileManager.default.removeItem(at: images.appending(path: image))
         }

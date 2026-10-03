@@ -46,12 +46,32 @@ import Testing
         settings.stopIgnoring(Self.onePassword)
 
         let data = try JSONEncoder().encode(settings)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: [String]]
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let restored = try JSONDecoder().decode(ClipboardSettings.self, from: data)
         let empty = try JSONDecoder().decode(ClipboardSettings.self, from: Data("{}".utf8))
 
-        #expect(json == ["addedApps": [Self.notes], "removedApps": [Self.onePassword]])
+        #expect(json?["addedApps"] as? [String] == [Self.notes])
+        #expect(json?["removedApps"] as? [String] == [Self.onePassword])
         #expect(restored == settings)
         #expect(empty == ClipboardSettings())
+    }
+
+    @Test func keepsTheChosenRetention() throws {
+        var settings = ClipboardSettings()
+        settings.retention = ClipboardStore.Retention(days: 7, items: 500)
+
+        let restored = try JSONDecoder().decode(
+            ClipboardSettings.self, from: JSONEncoder().encode(settings))
+
+        #expect(ClipboardSettings().retention == ClipboardStore.Retention(days: 30, items: 1_000))
+        #expect(restored.retention == ClipboardStore.Retention(days: 7, items: 500))
+    }
+
+    @Test(arguments: [#"{"days": 0, "items": 500}"#, #"{"days": 7, "items": -1}"#])
+    func fallsBackToTheDefaultRetentionWhenTheSavedOneKeepsNothing(_ saved: String) throws {
+        let restored = try JSONDecoder().decode(
+            ClipboardSettings.self, from: Data(#"{"retention": \#(saved)}"#.utf8))
+
+        #expect(restored.retention == ClipboardStore.Retention())
     }
 }

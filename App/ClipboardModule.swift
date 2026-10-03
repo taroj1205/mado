@@ -18,7 +18,7 @@ struct ClipboardModule: Module {
             logger.error("Clipboard history failed to open: \(error, privacy: .public)")
             return
         }
-        let retention = ClipboardStore.Retention()
+        let retention = settings().retention
         context.run("prune clipboard history") {
             do {
                 try await store.prune(keeping: retention, now: .now)
@@ -28,7 +28,8 @@ struct ClipboardModule: Module {
         }
         PasteboardWatch.install(name: "pasteboard watch", context: context) { [settings] sources in
             let apps = sources.isEmpty ? "an unknown app" : sources.joined(separator: " or ")
-            if settings().ignores(any: sources) {
+            let current = settings()
+            if current.ignores(any: sources) {
                 logger.debug("Skipped a copy from \(apps, privacy: .public), which is ignored")
                 return
             }
@@ -39,7 +40,7 @@ struct ClipboardModule: Module {
             }
             context.run("save copy") {
                 do {
-                    try await store.add(clip, keeping: retention)
+                    try await store.add(clip, keeping: current.retention)
                 } catch {
                     logger.error("Saving a copy failed: \(error, privacy: .public)")
                 }

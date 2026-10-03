@@ -7,6 +7,7 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
         "com.apple.keychainaccess": "System",
     ]
 
+    public var retention: ClipboardStore.Retention
     private var addedApps: [String]
     private var removedApps: [String]
 
@@ -15,6 +16,7 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
     }
 
     public init() {
+        retention = ClipboardStore.Retention()
         addedApps = []
         removedApps = []
     }
@@ -25,6 +27,10 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
         addedApps = try values.decodeIfPresent([String].self, forKey: .addedApps) ?? addedApps
         removedApps =
             try values.decodeIfPresent([String].self, forKey: .removedApps) ?? removedApps
+        let saved = try values.decodeIfPresent(ClipboardStore.Retention.self, forKey: .retention)
+        if let saved, saved.days > 0, saved.items > 0 {
+            retention = saved
+        }
     }
 
     public func ignores(any apps: [String]) -> Bool {

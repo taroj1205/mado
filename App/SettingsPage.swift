@@ -58,8 +58,8 @@ struct SettingsPage {
         },
         Self(
             "Clipboard", "clipboard",
-            module: module("clipboard", "Clipboard history", enabled: true)
-        ) { [$0.ignoredApps.section] },
+            module: module(ClipboardModule.id, clipboardHistory, enabled: true)
+        ) { clipboard($0) },
         Self(
             "Windows", "rectangle.split.2x1",
             module: module("windows", "Windows", enabled: true),

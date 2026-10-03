@@ -87,7 +87,12 @@ final class SettingsPageController: NSViewController {
     func reload() {
         var sections = page.tabs[tab].sections?(context) ?? []
         if let module = page.module {
-            sections.insert(moduleSection(module), at: 0)
+            let toggle = moduleRow(module)
+            if sections.first?.title == module.name {
+                sections[0].rows.insert(toggle, at: 0)
+            } else {
+                sections.insert(SettingsSection(nil, [toggle]), at: 0)
+            }
         }
         let controls = sections.flatMap(\.rows).map(\.control)
         switches = controls.compactMap { $0 as? SettingsSwitch }
@@ -105,13 +110,13 @@ final class SettingsPageController: NSViewController {
         }
     }
 
-    private func moduleSection(_ module: ModuleDescriptor) -> SettingsSection {
+    private func moduleRow(_ module: ModuleDescriptor) -> SettingsSection.Row {
         let modules = context.modules
         let toggle = SettingsSwitch(
             read: { modules?.isEnabled(module.id) ?? false },
             write: { try modules?.setEnabled(module.id, $0) })
         toggle.isEnabled = modules != nil
-        return SettingsSection(nil, [.init(module.name, toggle)])
+        return SettingsSection.Row(module.name, toggle)
     }
 
     private func tabPicker() -> NSSegmentedControl {
