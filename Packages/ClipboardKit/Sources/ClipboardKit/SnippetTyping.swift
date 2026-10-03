@@ -60,7 +60,7 @@ public struct SnippetTyping {
     }
 
     public mutating func expanded(_ inserted: TextInsertion.Inserted) {
-        undoable = inserted.canUndo ? inserted : nil
+        undoable = inserted.canUndo && !inserted.replaced.isEmpty ? inserted : nil
     }
 
     public mutating func forget() {
