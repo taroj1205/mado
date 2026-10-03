@@ -13,13 +13,14 @@ import Testing
         let pasteboard: NSPasteboard
         var changes = 0
         var stops = 0
+        var check: (@MainActor () -> Void)?
 
         init(pasteboard: NSPasteboard) {
             self.pasteboard = pasteboard
         }
 
         func start(context: ModuleContext) {
-            PasteboardWatch.install(
+            check = PasteboardWatch.install(
                 name: "pasteboard watch", context: context, pasteboard: pasteboard
             ) { [weak self] _ in self?.changes += 1 }
         }
@@ -86,6 +87,28 @@ import Testing
 
         #expect(!plainIsPrivate)
         #expect(watch.holdsPrivateData)
+    }
+
+    @Test func aCheckReportsACopyBeforeTheNextPoll() throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let manager = try ModuleManager(
+            store: SettingsStore(url: dir.appending(path: "settings.json")))
+        let module = WatchingModule(pasteboard: pasteboard)
+        try manager.register(module)
+        try manager.setEnabled("clipboard", true)
+        let check = try #require(module.check)
+
+        pasteboard.clearContents()
+        pasteboard.setString("copied", forType: .string)
+        check()
+        let afterCheck = module.changes
+        check()
+
+        #expect(afterCheck == 1)
+        #expect(module.changes == 1)
+        try manager.setEnabled("clipboard", false)
     }
 
     @Test func watchesOnlyWhileTheModuleIsOn() throws {

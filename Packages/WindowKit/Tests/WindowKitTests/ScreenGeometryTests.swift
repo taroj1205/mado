@@ -219,4 +219,17 @@ import Testing
             ScreenGeometry.bottomFrame(of: size, centeredOn: 1_300, below: 760, on: wide)
                 == CGRect(x: 520, y: 70, width: 920, height: 640))
     }
+
+    @Test func placesAPopoverUnderTheCaretAndKeepsItOnScreen() {
+        let size = CGSize(width: 420, height: 300)
+        let screen = CGRect(x: 0, y: 0, width: 1_440, height: 876)
+        let caret = CGRect(x: 120, y: 600, width: 0, height: 17)
+        let low = CGRect(x: 1_300, y: 100, width: 0, height: 17)
+        #expect(
+            ScreenGeometry.frame(of: size, below: caret, gap: 8, in: screen)
+                == CGRect(x: 120, y: 292, width: 420, height: 300))
+        #expect(
+            ScreenGeometry.frame(of: size, below: low, gap: 8, in: screen)
+                == CGRect(x: 1_020, y: 125, width: 420, height: 300))
+    }
 }

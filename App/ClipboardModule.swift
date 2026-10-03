@@ -10,6 +10,7 @@ struct ClipboardModule: Module {
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
     let history: ClipboardHistory
+    let snippets: Snippets
 
     private static func recognizeImages(
         in store: ClipboardStore, for history: ClipboardHistory, logger: Logger
@@ -23,6 +24,7 @@ struct ClipboardModule: Module {
 
     func start(context: ModuleContext) {
         let logger = context.logger
+        snippets.start(with: context)
         let store: ClipboardStore
         do {
             store = try .standard()
@@ -35,9 +37,22 @@ struct ClipboardModule: Module {
         context.run("recognize image text") {
             await Self.recognizeImages(in: store, for: history, logger: logger)
         }
-        PasteboardWatch.install(name: "pasteboard watch", context: context) { [settings] sources in
+        snippets.checkCopies(with: watchCopies(into: store, context: context))
+        logger.debug("Started")
+    }
+
+    func stop() {
+        Log.logger(descriptor.id).debug("Stopped")
+    }
+
+    private func watchCopies(
+        into store: ClipboardStore, context: ModuleContext
+    ) -> @MainActor () -> Void {
+        let logger = context.logger
+        let readSettings = settings
+        return PasteboardWatch.install(name: "pasteboard watch", context: context) { sources in
             let apps = sources.isEmpty ? "an unknown app" : sources.joined(separator: " or ")
-            let current = settings()
+            let current = readSettings()
             if current.ignores(any: sources) {
                 logger.debug("Skipped a copy from \(apps, privacy: .public), which is ignored")
                 return
@@ -60,11 +75,6 @@ struct ClipboardModule: Module {
                 }
             }
         }
-        logger.debug("Started")
-    }
-
-    func stop() {
-        Log.logger(descriptor.id).debug("Stopped")
     }
 
     private func keepPruned(_ store: ClipboardStore, in context: ModuleContext) {
