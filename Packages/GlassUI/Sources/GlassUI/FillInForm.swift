@@ -30,7 +30,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     private static let popUpWidth: CGFloat = 160
     private static let previewSize: CGFloat = 12.5
     private static let previewLine: CGFloat = 1.55
-    private static let previewCharacters = 2_000
+    private static let previewScalars = 2_000
     private static let buttonSize: CGFloat = 13
     private static let buttonHeight: CGFloat = 26
 
@@ -141,7 +141,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     @objc
     private func showPreview() {
         let shown = preview(values)
-        let visible = String(shown.text.prefix(Self.previewCharacters))
+        let visible = String(shown.text.unicodeScalars.prefix(Self.previewScalars))
         let length = visible.utf16.count
         let style = NSMutableParagraphStyle()
         style.lineHeightMultiple = Self.previewLine
