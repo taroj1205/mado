@@ -38,7 +38,7 @@ struct SettingsSection {
 
     let title: String?
     let note: String?
-    let rows: [Row]
+    var rows: [Row]
     let footer: NSAttributedString?
     let accessory: NSView?
     let headerAccessory: NSView?
