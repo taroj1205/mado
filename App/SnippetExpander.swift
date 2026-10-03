@@ -148,7 +148,7 @@ final class SnippetExpander {
             keyword = TypedKeyword(
                 typed, before: focused?.textBeforeCaret, selecting: focused?.selectsText == true)
         }
-        return keyword != .changed
+        return keyword == .inPlace || keyword == .unreadable
     }
 
     private func undo(_ inserted: TextInsertion.Inserted) {
