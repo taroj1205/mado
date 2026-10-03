@@ -73,4 +73,13 @@ public enum ScreenGeometry {
             x: visibleFrame.midX - width * half, y: visibleFrame.midY - height * half,
             width: width, height: height)
     }
+
+    public static func bottomFrame(
+        of size: CGSize, centeredOn midX: CGFloat, below top: CGFloat, on screen: Screen
+    ) -> CGRect {
+        let lowest = min(screen.visibleFrame.minY, top - size.height)
+        return CGRect(
+            x: midX - size.width * half, y: max(screen.frame.minY, lowest), width: size.width,
+            height: size.height)
+    }
 }

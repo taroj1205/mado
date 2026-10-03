@@ -13,6 +13,8 @@ extension LauncherView {
 
     public var widgetOverhang: CGFloat { widgetGrid.overhang }
 
+    public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }
+
     var showsWidgets: Bool {
         onEmptyRootQuery && (editingWidgets || !widgetGrid.shown.isEmpty)
     }

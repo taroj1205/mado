@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import WindowKit
 
 @MainActor
 final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
@@ -8,7 +9,6 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
     private static let height: CGFloat = 640
     private static let radius: CGFloat = 26
     private static let filter = NSToolbarItem.Identifier("filter")
-    private static let half: CGFloat = 0.5
 
     private let modules: ModuleManager?
     private let gallery = WidgetGallery(cards: Widgets.gallery)
@@ -33,13 +33,15 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
         present()
     }
 
-    func show(over launcher: NSWindow) {
+    func show(over launcher: NSWindow, below top: CGFloat) {
         refresh()
         gallery.hintsDrag = true
         window.level = NSWindow.Level(launcher.level.rawValue + 1)
-        if !window.isVisible, let visible = launcher.screen?.visibleFrame {
-            window.setFrameOrigin(
-                NSPoint(x: launcher.frame.midX - window.frame.width * Self.half, y: visible.minY))
+        if !window.isVisible, let screen = launcher.screen {
+            let frame = ScreenGeometry.bottomFrame(
+                of: window.frame.size, centeredOn: launcher.frame.midX, below: top,
+                on: .init(frame: screen.frame, visibleFrame: screen.visibleFrame))
+            window.setFrameOrigin(frame.origin)
         }
         NSRunningApplication.current.activate(
             from: NSWorkspace.shared.frontmostApplication ?? .current, options: [])

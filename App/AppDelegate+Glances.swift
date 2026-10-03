@@ -57,7 +57,7 @@ extension AppDelegate {
             guard let self, let window = unsafe launcherView.window else { return }
             let gallery = launcherGallery ?? makeLauncherGallery()
             launcherGallery = gallery
-            gallery.show(over: window)
+            gallery.show(over: window, below: window.frame.minY + launcherView.widgetsBottom)
         }
         launcherView.onEndEditingWidgets = { [weak self] in self?.launcherGallery?.close() }
     }
