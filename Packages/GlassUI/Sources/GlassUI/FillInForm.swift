@@ -30,6 +30,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     private static let popUpWidth: CGFloat = 160
     private static let previewSize: CGFloat = 12.5
     private static let previewLine: CGFloat = 1.55
+    private static let previewCharacters = 2_000
     private static let buttonSize: CGFloat = 13
     private static let buttonHeight: CGFloat = 26
 
@@ -140,20 +141,24 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     @objc
     private func showPreview() {
         let shown = preview(values)
+        let visible = String(shown.text.prefix(Self.previewCharacters))
+        let length = visible.utf16.count
         let style = NSMutableParagraphStyle()
         style.lineHeightMultiple = Self.previewLine
         let text = NSMutableAttributedString(
-            string: shown.text,
+            string: visible,
             attributes: [
                 .font: NSFont.systemFont(ofSize: Self.previewSize),
                 .foregroundColor: NSColor.labelColor, .paragraphStyle: style,
             ])
-        for range in shown.values {
+        for range in shown.values where range.location < length {
             text.addAttribute(
-                .font, value: NSFont.boldSystemFont(ofSize: Self.previewSize), range: range)
+                .font, value: NSFont.boldSystemFont(ofSize: Self.previewSize),
+                range: NSRange(
+                    location: range.location, length: min(range.length, length - range.location)))
         }
         previewText.attributedStringValue = text
-        previewText.setAccessibilityLabel("Preview: \(shown.text)")
+        previewText.setAccessibilityLabel("Preview: \(visible)")
         fitWindow()
     }
 
@@ -170,6 +175,9 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
         var frame = window.frame
         frame.origin.y += frame.height - size.height
         frame.size = size
+        if let visible = window.screen?.visibleFrame {
+            frame.origin.y = max(frame.minY, visible.minY)
+        }
         window.setFrame(frame, display: true)
     }
 
