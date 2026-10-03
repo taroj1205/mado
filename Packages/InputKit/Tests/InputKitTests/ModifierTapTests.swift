@@ -78,19 +78,6 @@ import Testing
         #expect(recorder.taps.isEmpty)
     }
 
-    @Test func twoModifiersTogetherAreNotATap() {
-        var recorder = Recorder()
-        recorder.down(.leftShift)
-        recorder.down(.leftCommand)
-        recorder.up(.leftCommand)
-        recorder.up(.leftShift)
-        recorder.down(.leftCommand)
-        recorder.down(.rightCommand)
-        recorder.up(.rightCommand)
-        recorder.up(.leftCommand)
-        #expect(recorder.taps.isEmpty)
-    }
-
     @Test func capsLockWhileHeldIsNotATap() {
         var recorder = Recorder()
         recorder.down(.leftShift)
@@ -142,7 +129,7 @@ import Testing
             recorder.tap(.rightCommand)
         }
         #expect(recorder.taps.map(\.count) == [1, 2, 3, 1])
-        #expect(recorder.taps.allSatisfy { $0.key == .rightCommand })
+        #expect(recorder.taps.allSatisfy { $0.keys == [.rightCommand] })
     }
 
     @Test func aSingleWaitsOnlyWhenItsDoubleIsAlsoBound() {
