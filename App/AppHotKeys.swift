@@ -12,19 +12,26 @@ final class AppHotKeys: NSObject {
     private static let iconSize: CGFloat = 26
 
     private static var footer: NSAttributedString {
-        let text = NSMutableAttributedString(
-            string: AppHotKeyMode.toggle,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: footerSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
-            ])
-        text.append(
-            NSAttributedString(
-                string: AppHotKeyMode.summary,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: footerSize),
-                    .foregroundColor: NSColor.secondaryLabelColor,
-                ]))
+        let text = NSMutableAttributedString()
+        for mode in AppHotKeyMode.allCases {
+            if text.length > 0 {
+                text.append(NSAttributedString(string: " "))
+            }
+            text.append(
+                NSAttributedString(
+                    string: mode.title,
+                    attributes: [
+                        .font: NSFont.systemFont(ofSize: footerSize, weight: .semibold),
+                        .foregroundColor: NSColor.labelColor,
+                    ]))
+            text.append(
+                NSAttributedString(
+                    string: mode.summary,
+                    attributes: [
+                        .font: NSFont.systemFont(ofSize: footerSize),
+                        .foregroundColor: NSColor.secondaryLabelColor,
+                    ]))
+        }
         return text
     }
 
@@ -55,7 +62,15 @@ final class AppHotKeys: NSObject {
 
     private func row(for app: URL) -> SettingsSection.Row {
         let name = Self.name(of: app)
-        let modes = AppHotKeyMode.menu()
+        let modes = SettingsPopUp { [weak self] in
+            let current = AppHotKeyMode(quickPeek: self?.items.settings[app.path].quickPeek == true)
+            let choices = AppHotKeyMode.allCases.map { mode in
+                SettingsPopUp.Choice(title: mode.title, isSelected: mode == current) {
+                    self?.items.setQuickPeek(mode == .quickPeek, for: app.path)
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: choices)]
+        }
         modes.setAccessibilityLabel("\(name) mode")
         modes.widthAnchor.constraint(equalToConstant: Self.modeWidth).isActive = true
         let controls = NSStackView(views: [modes, recorder.button(for: app.path, named: name)])

@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Testing
 
 @testable import WindowKit
@@ -25,5 +25,32 @@ import Testing
         #expect(AppToggle.isSame(URL(filePath: app.path + "/"), URL(filePath: app.path)))
         #expect(AppToggle.isSame(link, app))
         #expect(!AppToggle.isSame(root.appending(path: "Other.app"), app))
+    }
+
+    @Test func aPeekedAppHidesOnceAnotherAppComesForward() throws {
+        let center = NotificationCenter()
+        let peeked = NSRunningApplication.current
+        let other = try #require(
+            NSWorkspace.shared.runningApplications.first { $0 != peeked })
+        var hidden = 0
+        AppToggle.hide(peeked.processIdentifier, whenAnotherAppActivatesIn: center) {
+            hidden += 1
+        }
+        AppToggle.hide(peeked.processIdentifier, whenAnotherAppActivatesIn: center) {
+            hidden += 10
+        }
+
+        activate(peeked, in: center)
+        #expect(hidden == 0)
+
+        activate(other, in: center)
+        activate(other, in: center)
+        #expect(hidden == 1)
+    }
+
+    private func activate(_ app: NSRunningApplication, in center: NotificationCenter) {
+        center.post(
+            name: NSWorkspace.didActivateApplicationNotification, object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: app])
     }
 }

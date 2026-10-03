@@ -123,7 +123,8 @@ final class ItemEditor {
         sheet.show(
             item,
             values: ItemSheet.Values(
-                aliases: current.aliases, hotkey: current.hotkey, favourite: current.favourite),
+                aliases: current.aliases, hotkey: current.hotkey, favourite: current.favourite,
+                quickPeek: current.quickPeek),
             ranking: ranking, opening: field,
             isApp: AppToggle.app(for: item.id) != nil)
     }
@@ -143,6 +144,11 @@ final class ItemEditor {
         settings.save(to: modules)
         onSave?(id, false)
         return nil
+    }
+
+    func setQuickPeek(_ quickPeek: Bool, for id: String) {
+        settings[id].quickPeek = quickPeek
+        settings.save(to: modules)
     }
 
     func assignDefaults(_ defaults: [(id: String, hotkey: Shortcut)]) {
@@ -176,7 +182,8 @@ final class ItemEditor {
             return problem
         }
         settings[id] = ItemSettings.Item(
-            aliases: values.aliases, hotkey: values.hotkey, favourite: values.favourite)
+            aliases: values.aliases, hotkey: values.hotkey, favourite: values.favourite,
+            quickPeek: values.quickPeek)
         settings.save(to: modules)
         close()
         onSave?(id, values.resetsRanking)

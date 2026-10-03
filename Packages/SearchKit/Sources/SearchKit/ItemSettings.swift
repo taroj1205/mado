@@ -6,11 +6,16 @@ public struct ItemSettings: Codable, Equatable, Sendable {
         public var aliases: [String]
         public var hotkey: Shortcut?
         public var favourite: Bool
+        public var quickPeek: Bool
 
-        public init(aliases: [String] = [], hotkey: Shortcut? = nil, favourite: Bool = false) {
+        public init(
+            aliases: [String] = [], hotkey: Shortcut? = nil, favourite: Bool = false,
+            quickPeek: Bool = false
+        ) {
             self.aliases = aliases
             self.hotkey = hotkey
             self.favourite = favourite
+            self.quickPeek = quickPeek
         }
     }
 
@@ -19,11 +24,21 @@ public struct ItemSettings: Codable, Equatable, Sendable {
     public private(set) var hotkeys: [String: Shortcut]
     public private(set) var favourites: [String]
     private var aliases: [String: [String]]
+    private var peeks: Set<String>
 
     public init() {
         hotkeys = [:]
         favourites = []
         aliases = [:]
+        peeks = []
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        hotkeys = try values.decode([String: Shortcut].self, forKey: .hotkeys)
+        favourites = try values.decode([String].self, forKey: .favourites)
+        aliases = try values.decode([String: [String]].self, forKey: .aliases)
+        peeks = try values.decodeIfPresent(Set<String>.self, forKey: .peeks) ?? []
     }
 
     static func fold(_ text: String) -> String {
@@ -58,11 +73,16 @@ public struct ItemSettings: Codable, Equatable, Sendable {
         get {
             Item(
                 aliases: aliases[id] ?? [], hotkey: hotkeys[id],
-                favourite: favourites.contains(id))
+                favourite: favourites.contains(id), quickPeek: peeks.contains(id))
         }
         set {
             aliases[id] = newValue.aliases.isEmpty ? nil : newValue.aliases
             hotkeys[id] = newValue.hotkey
+            if newValue.quickPeek {
+                peeks.insert(id)
+            } else {
+                peeks.remove(id)
+            }
             if !newValue.favourite {
                 favourites.removeAll { $0 == id }
             } else if !favourites.contains(id) {

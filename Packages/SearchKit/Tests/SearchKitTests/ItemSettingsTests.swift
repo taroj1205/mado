@@ -69,10 +69,36 @@ import Testing
     @Test func survivesAJSONRoundTrip() throws {
         var settings = ItemSettings()
         settings["terminal"] = .init(aliases: ["t"], hotkey: controlOptionT, favourite: true)
+        settings["/System/Applications/Dictionary.app"] = .init(quickPeek: true)
 
         let decoded = try JSONDecoder().decode(
             ItemSettings.self, from: JSONEncoder().encode(settings))
 
         #expect(decoded == settings)
+    }
+
+    @Test func remembersWhichAppsQuickPeek() {
+        var settings = ItemSettings()
+        settings["dictionary"] = .init(hotkey: controlOptionT, quickPeek: true)
+        #expect(settings["dictionary"].quickPeek)
+        #expect(!settings["terminal"].quickPeek)
+
+        settings["dictionary"].quickPeek = false
+        #expect(
+            settings
+                == {
+                    var only = ItemSettings()
+                    only["dictionary"] = .init(hotkey: controlOptionT)
+                    return only
+                }())
+    }
+
+    @Test func settingsSavedBeforeQuickPeekStillLoad() throws {
+        let saved = Data(
+            #"{"hotkeys":{},"favourites":["notes"],"aliases":{"notes":["n"]}}"#.utf8)
+
+        let decoded = try JSONDecoder().decode(ItemSettings.self, from: saved)
+
+        #expect(decoded["notes"] == .init(aliases: ["n"], favourite: true))
     }
 }
