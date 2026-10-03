@@ -1,0 +1,138 @@
+import Foundation
+import Testing
+
+@testable import AppCore
+
+@MainActor
+@Suite struct KeyPauseTests {
+    final class KeyModule: Module {
+        let descriptor: ModuleDescriptor
+        let hasKeys: Bool
+        var starts = 0
+        var stops = 0
+        var keyStarts = 0
+        var released: [String] = []
+        var failOnStart = false
+
+        init(id: String, hasKeys: Bool, enabledByDefault: Bool) {
+            descriptor = ModuleDescriptor(id: id, name: id, enabledByDefault: enabledByDefault)
+            self.hasKeys = hasKeys
+        }
+
+        func start(context: ModuleContext) throws {
+            starts += 1
+            if failOnStart {
+                throw StartFailure()
+            }
+            context.own(.other, "command") { [weak self] in self?.released.append("command") }
+            guard hasKeys else { return }
+            context.startKeyFeatures {
+                keyStarts += 1
+                context.own(.other, "remap") { [weak self] in self?.released.append("remap") }
+            }
+        }
+
+        func stop() {
+            stops += 1
+        }
+    }
+
+    struct StartFailure: Error {}
+
+    private static func makeManager() throws -> ModuleManager {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        return try ModuleManager(store: SettingsStore(url: dir.appending(path: "settings.json")))
+    }
+
+    @Test func pausingRestartsOnlyModulesWithKeyFeaturesWithoutThem() throws {
+        let manager = try Self.makeManager()
+        let keyboard = KeyModule(id: "keyboard", hasKeys: true, enabledByDefault: true)
+        let clipboard = KeyModule(id: "clipboard", hasKeys: false, enabledByDefault: true)
+        try manager.register(keyboard)
+        try manager.register(clipboard)
+        try manager.startEnabledModules()
+        var changes = 0
+        manager.onKeysPausedChange = { changes += 1 }
+
+        manager.setKeysPaused(true)
+        manager.setKeysPaused(true)
+        #expect(manager.keysPaused)
+        #expect(changes == 1)
+        #expect(keyboard.stops == 1)
+        #expect(keyboard.starts == 2)
+        #expect(keyboard.keyStarts == 1)
+        #expect(keyboard.released.sorted() == ["command", "remap"])
+        #expect(clipboard.stops == 0)
+        #expect(clipboard.starts == 1)
+        #expect(!manager.activeResources.contains { $0.name == "remap" })
+
+        manager.setKeysPaused(false)
+        #expect(!manager.keysPaused)
+        #expect(changes == 2)
+        #expect(keyboard.keyStarts == 2)
+        #expect(manager.activeResources.contains { $0.name == "remap" })
+        #expect(clipboard.starts == 1)
+    }
+
+    @Test func aModuleTurnedOnOrAddedWhilePausedWaitsForTheResume() throws {
+        let manager = try Self.makeManager()
+        let dictation = KeyModule(id: "dictation", hasKeys: true, enabledByDefault: false)
+        try manager.register(dictation)
+        manager.setKeysPaused(true)
+        let windows = KeyModule(id: "windows", hasKeys: true, enabledByDefault: true)
+        try manager.register(windows)
+
+        try manager.startEnabledModules()
+        try manager.setEnabled("dictation", true)
+        #expect(dictation.starts == 1)
+        #expect(windows.starts == 1)
+        #expect(dictation.keyStarts == 0)
+        #expect(windows.keyStarts == 0)
+
+        manager.setKeysPaused(false)
+        #expect(dictation.keyStarts == 1)
+        #expect(windows.keyStarts == 1)
+    }
+
+    @Test func aModuleThatFailsToRestartIsTriedAgainOnTheNextChange() throws {
+        let manager = try Self.makeManager()
+        let keyboard = KeyModule(id: "keyboard", hasKeys: true, enabledByDefault: true)
+        let windows = KeyModule(id: "windows", hasKeys: true, enabledByDefault: true)
+        let clipboard = KeyModule(id: "clipboard", hasKeys: true, enabledByDefault: true)
+        try manager.register(keyboard)
+        try manager.register(windows)
+        try manager.register(clipboard)
+        try manager.startEnabledModules()
+        try manager.setEnabled("clipboard", false)
+        var changes = 0
+        manager.onKeysPausedChange = { changes += 1 }
+
+        keyboard.failOnStart = true
+        manager.setKeysPaused(true)
+        #expect(changes == 1)
+        #expect(keyboard.stops == 2)
+        #expect(windows.starts == 2)
+        #expect(manager.activeResources.allSatisfy { $0.module == "windows" })
+
+        keyboard.failOnStart = false
+        manager.setKeysPaused(false)
+        #expect(keyboard.starts == 3)
+        #expect(keyboard.keyStarts == 2)
+        #expect(windows.keyStarts == 2)
+        #expect(clipboard.starts == 1)
+    }
+
+    @Test func aContextStartsKeyFeaturesOnlyWhileTheyAreOn() {
+        let context = ModuleContext(
+            moduleID: "keyboard", commands: CommandRegistry(), eventTap: EventTap())
+        var started = 0
+        context.keysPaused = true
+        context.startKeyFeatures { started += 1 }
+        #expect(started == 0)
+        #expect(context.hasKeyFeatures)
+
+        context.keysPaused = false
+        context.startKeyFeatures { started += 1 }
+        #expect(started == 1)
+    }
+}
