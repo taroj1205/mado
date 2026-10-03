@@ -83,7 +83,14 @@ struct SettingsPage {
                     ]
                 },
             ]),
-        Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
+        Self(
+            "Keyboard", "keyboard", module: module(KeyboardModule.id, "Keyboard", enabled: true),
+            tabs: [
+                Tab(title: "Modifier Keys", sections: nil),
+                Tab(title: "Input Sources", sections: nil),
+                Tab(title: "Enter Guard", sections: nil),
+                Tab(title: "Remaps") { RemapSettings.sections($0.modules) },
+            ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),

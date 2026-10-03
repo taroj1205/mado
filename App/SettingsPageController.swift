@@ -10,6 +10,7 @@ final class SettingsPageController: NSViewController {
     private static let headerInset: CGFloat = 4
     private static let captionSize: CGFloat = 11
     private static let rowHeight: CGFloat = 40
+    private static let rowInset: CGFloat = 4
     private static let iconMargin: CGFloat = 18
     private static let iconGap: CGFloat = 10
     private static let footerSize: CGFloat = 12
@@ -244,13 +245,16 @@ final class SettingsPageController: NSViewController {
         view.addArrangedSubview(row.control)
         view.distribution = .fill
         view.edgeInsets = NSEdgeInsets(
-            top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
+            top: Self.rowInset, left: Self.rowPadding, bottom: Self.rowInset,
+            right: Self.rowPadding)
         if let icon = row.icon {
             view.insertArrangedSubview(icon, at: 0)
             view.setCustomSpacing(Self.iconGap, after: icon)
         }
         let height = max(Self.rowHeight, (row.icon?.fittingSize.height ?? 0) + Self.iconMargin)
-        view.heightAnchor.constraint(equalToConstant: height).isActive = true
+        let fixedHeight = view.heightAnchor.constraint(equalToConstant: height)
+        fixedHeight.priority = .defaultHigh - 1
+        fixedHeight.isActive = true
         return view
     }
 

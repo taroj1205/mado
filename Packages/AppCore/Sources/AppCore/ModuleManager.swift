@@ -92,6 +92,12 @@ public final class ModuleManager {
         try start(at: index)
     }
 
+    public func stopAll() {
+        for index in registered.indices {
+            stop(at: index)
+        }
+    }
+
     public func value<Value: Decodable>(_ type: Value.Type, for key: String) throws -> Value? {
         try settings.value(type, for: key)
     }

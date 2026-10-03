@@ -179,6 +179,23 @@ import Testing
         #expect(throws: ModuleError.unknownModule("nope")) { try manager.restart("nope") }
     }
 
+    @Test func stoppingAllReleasesRunningModulesAndKeepsTheirState() throws {
+        let manager = try ModuleManager(store: makeStore())
+        let running = FakeModule(id: "keyboard", enabledByDefault: true)
+        let stopped = FakeModule(id: "clipboard", enabledByDefault: false)
+        try manager.register(running)
+        try manager.register(stopped)
+        try manager.startEnabledModules()
+
+        manager.stopAll()
+        manager.stopAll()
+
+        #expect(running.stops == 1)
+        #expect(running.released == ["frontmost"])
+        #expect(stopped.stops == 0)
+        #expect(manager.isEnabled("keyboard"))
+    }
+
     @Test func duplicateAndUnknownIdsAreRejected() throws {
         let manager = try ModuleManager(store: makeStore())
         try manager.register(FakeModule(id: "launcher", enabledByDefault: false))
