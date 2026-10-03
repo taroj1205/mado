@@ -6,7 +6,7 @@ import Vision
 
 @testable import ClipboardKit
 
-@Suite struct VisionProbeTests {
+@Suite(.serialized) struct VisionProbeTests {
     private static func image() throws -> CGImage {
         let file = FileManager.default.temporaryDirectory.appending(path: "probe-\(UUID()).png")
         defer { try? FileManager.default.removeItem(at: file) }

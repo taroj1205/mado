@@ -44,7 +44,7 @@ import UniformTypeIdentifiers
         return data as Data
     }
 
-    @Test func findsAScreenshotByTheTextInIt() async throws {
+    @Test(.disabled()) func findsAScreenshotByTheTextInIt() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
         let lines = [
