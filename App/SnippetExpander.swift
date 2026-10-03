@@ -106,17 +106,15 @@ final class SnippetExpander {
             return
         }
         let focused = await FocusedText.current(readingBack: typed.utf16.count)
-        guard focused?.isSecure != true, !IsSecureEventInputEnabled() else { return }
-        guard await isInPlace(typed, focused) else {
-            logger.notice("The keyword isn’t plainly before the caret, so it wasn’t replaced")
-            return
-        }
+        guard await canReplace(typed, focused) else { return }
         let template = SnippetTemplate(snippet.text)
         var fields: [String: String] = [:]
         do {
             if !template.fields.isEmpty {
                 fields = try await fillIn.ask(snippet, template, under: focused?.caret)
                 try await target.activate()
+                let after = await FocusedText.current(readingBack: typed.utf16.count)
+                guard await canReplace(typed, after) else { return }
             }
             let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
@@ -135,6 +133,15 @@ final class SnippetExpander {
         } catch {
             logger.error("Expanding a snippet failed: \(error, privacy: .public)")
         }
+    }
+
+    private func canReplace(_ typed: String, _ focused: FocusedText?) async -> Bool {
+        guard focused?.isSecure != true, !IsSecureEventInputEnabled() else { return false }
+        guard await isInPlace(typed, focused) else {
+            logger.notice("The keyword isn’t plainly before the caret, so it wasn’t replaced")
+            return false
+        }
+        return true
     }
 
     private func isInPlace(_ typed: String, _ focused: FocusedText?) async -> Bool {
