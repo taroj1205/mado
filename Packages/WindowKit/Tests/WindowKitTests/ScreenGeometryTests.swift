@@ -185,7 +185,7 @@ import Testing
                 == CGRect(x: 340, y: 60, width: 760, height: 400))
     }
 
-    @Test func bottomFrameDropsOverTheDockToClearTheTopButStaysOnScreen() {
+    @Test func bottomFrameDropsOverTheDockThenShrinksToClearTheTop() {
         let size = CGSize(width: 920, height: 640)
         let screen = ScreenGeometry.Screen(
             frame: CGRect(x: 0, y: 0, width: 1_440, height: 900),
@@ -198,6 +198,6 @@ import Testing
                 == CGRect(x: 260, y: 40, width: 920, height: 640))
         #expect(
             ScreenGeometry.bottomFrame(of: size, centeredOn: 720, below: 500, on: screen)
-                == CGRect(x: 260, y: 0, width: 920, height: 640))
+                == CGRect(x: 260, y: 0, width: 920, height: 500))
     }
 }

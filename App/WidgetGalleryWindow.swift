@@ -9,6 +9,7 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
     private static let height: CGFloat = 640
     private static let radius: CGFloat = 26
     private static let filter = NSToolbarItem.Identifier("filter")
+    private static let contentRect = NSRect(x: 0, y: 0, width: width, height: height)
 
     private let modules: ModuleManager?
     private let gallery = WidgetGallery(cards: Widgets.gallery)
@@ -38,10 +39,11 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
         gallery.hintsDrag = true
         window.level = NSWindow.Level(launcher.level.rawValue + 1)
         if !window.isVisible, let screen = launcher.screen {
+            let size = window.frameRect(forContentRect: Self.contentRect).size
             let frame = ScreenGeometry.bottomFrame(
-                of: window.frame.size, centeredOn: launcher.frame.midX, below: top,
+                of: size, centeredOn: launcher.frame.midX, below: top,
                 on: .init(frame: screen.frame, visibleFrame: screen.visibleFrame))
-            window.setFrameOrigin(frame.origin)
+            window.setFrame(frame, display: false)
         }
         NSRunningApplication.current.activate(
             from: NSWorkspace.shared.frontmostApplication ?? .current, options: [])
@@ -92,7 +94,7 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let made = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: Self.width, height: Self.height),
+            contentRect: Self.contentRect,
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered, defer: true)
         made.title = "Add Widgets"
