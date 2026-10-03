@@ -126,14 +126,22 @@ import Testing
         #expect(sources.selected == [japanese])
     }
 
-    @Test func startingInAnAppSetsItsSourceAndKeepsALastUsedOne() async {
-        let sources = Sources(current: "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese")
-        let terminal = Self.makeSwitch(front: "com.apple.Terminal", sources)
-        await Self.activate("com.apple.Terminal", on: terminal)
-        let messages = Self.makeSwitch(front: "com.apple.MobileSMS", sources)
-        await Self.activate("com.apple.MobileSMS", on: messages)
+    @Test func startingInAnAppSetsItsFixedOrRememberedSource() async {
+        let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        let sources = Sources(current: japanese)
+        let memory = AppInputSwitch.Memory()
+        let learned = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        await Self.activate("com.apple.Terminal", on: learned)
 
-        #expect(sources.selected == ["com.apple.keylayout.ABC", "com.apple.keylayout.ABC"])
+        let resumed = Self.makeSwitch(front: nil, sources, memory: memory)
+        await Self.activate("com.apple.MobileSMS", on: resumed)
+        let started = Self.makeSwitch(front: nil, sources, memory: memory)
+        await Self.activate("com.apple.Terminal", on: started)
+
+        #expect(
+            sources.selected == [
+                "com.apple.keylayout.ABC", japanese, "com.apple.keylayout.ABC",
+            ])
     }
 
     @Test func lastUsedChangesNothingUntilTheAppHasBeenLeft() async {

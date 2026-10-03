@@ -38,7 +38,7 @@ public final class AppInputSwitch {
     ) {
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let switcher = Self(
-            front: frontmost, current: { InputSource.currentID }, select: InputSource.select,
+            front: nil, current: { InputSource.currentID }, select: InputSource.select,
             settle: .milliseconds(settleMilliseconds), memory: memory)
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
