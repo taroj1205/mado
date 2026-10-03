@@ -47,13 +47,13 @@ final class ClipboardHistory: NSObject {
         filter.setAccessibilityLabel("Filter by type or app")
     }
 
-    static func assignDefaultHotKey(in editor: ItemEditor, modules: ModuleManager?) {
+    static func assignDefaultHotKey(in editor: ItemEditor, modules: ModuleManager?) -> Bool {
         var settings = ClipboardSettings.load(from: modules)
-        guard !settings.assignedDefaultHotKey, modules?.isEnabled(ClipboardModule.id) == true
-        else { return }
+        guard !settings.assignedDefaultHotKey else { return false }
         editor.assignDefaults([(commandID, hotkey)])
         settings.assignedDefaultHotKey = true
         settings.save(to: modules)
+        return true
     }
 
     private static func app(_ id: String) -> (name: String, icon: NSImage?) {

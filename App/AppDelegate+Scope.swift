@@ -19,13 +19,8 @@ extension AppDelegate {
     func connectClipboardHistory() {
         clipboardHistory.onOpen = { [weak self] in self?.openClipboardHistory() }
         clipboardHistory.onFilter = { [weak self] in self?.searchAgain() }
-        clipboardHistory.onRunningChange = { [weak self] in
-            guard let self else { return }
-            if !clipboardHistory.isRunning, scope == .clipboard {
-                launcherView.leave()
-            }
-            editor.refreshHotKey(for: ClipboardHistory.commandID)
-        }
+        clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
+        clipboardRunningChanged()
     }
 
     func results(for query: String) async -> [ResultList.Section] {
@@ -71,6 +66,17 @@ extension AppDelegate {
             case .root:
                 LauncherResult.context(for: sections, query: launcherView.field.stringValue)
             }
+    }
+
+    private func clipboardRunningChanged() {
+        if clipboardHistory.isRunning {
+            if ClipboardHistory.assignDefaultHotKey(in: editor, modules: modules) {
+                settings?.reload()
+            }
+        } else if scope == .clipboard {
+            launcherView.leave()
+        }
+        editor.refreshHotKey(for: ClipboardHistory.commandID)
     }
 
     private func openClipboardHistory() {
