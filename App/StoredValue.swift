@@ -80,6 +80,10 @@ extension GestureSettings.Target {
     }
 }
 
+extension RemapSettings: StoredValue {
+    static let key = "remaps"
+}
+
 extension WidgetSettings: StoredValue {
     static let key = "widgets"
 }
