@@ -6,38 +6,25 @@ public enum InputMode: Sendable {
 
     private static let japaneseModeID = "com.apple.inputmethod.Japanese"
 
-    private static func property(_ source: TISInputSource, _ key: CFString) -> String? {
-        guard let value = unsafe TISGetInputSourceProperty(source, key) else { return nil }
-        return unsafe Unmanaged<CFString>.fromOpaque(value).takeUnretainedValue() as String
+    @MainActor
+    public func select() {
+        guard let target = source() else { return }
+        InputSource.select(target)
     }
 
     @MainActor
-    public func select() {
-        let current = unsafe TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
-        guard let target = source(current: current),
-            Self.property(target, kTISPropertyInputSourceID)
-                != current.flatMap({ Self.property($0, kTISPropertyInputSourceID) })
-        else {
-            return
-        }
-        TISSelectInputSource(target)
-    }
-
-    private func source(current: TISInputSource?) -> TISInputSource? {
+    private func source() -> TISInputSource? {
         switch self {
         case .english:
             return unsafe TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue()
 
         case .japanese:
-            let filter: [String: Any] = [
-                kTISPropertyInputSourceIsSelectCapable as String: true,
-                kTISPropertyInputModeID as String: Self.japaneseModeID,
-            ]
-            let sources =
-                unsafe TISCreateInputSourceList(filter as CFDictionary, false)?
-                .takeRetainedValue() as? [TISInputSource] ?? []
-            let bundle = current.flatMap { Self.property($0, kTISPropertyBundleID) }
-            return sources.first { Self.property($0, kTISPropertyBundleID) == bundle }
+            let sources = InputSource.sources(
+                matching: [kTISPropertyInputModeID: Self.japaneseModeID],
+                includeAllInstalled: false)
+            let current = unsafe TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+            let bundle = current.flatMap { InputSource.string($0, kTISPropertyBundleID) }
+            return sources.first { InputSource.string($0, kTISPropertyBundleID) == bundle }
                 ?? sources.first
         }
     }

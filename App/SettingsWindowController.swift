@@ -118,12 +118,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     ) {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = IgnoredAppsSettings(modules: modules)
+        let inputDefaults = AppInputDefaults(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
-            gallery: WidgetGalleryWindow(modules: modules))
+            inputDefaults: inputDefaults, gallery: WidgetGalleryWindow(modules: modules))
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
@@ -154,6 +155,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         window.delegate = self
         ignoredApps.onChange = { [weak self] in self?.reload() }
+        inputDefaults.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)

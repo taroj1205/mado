@@ -25,7 +25,8 @@ extension ModuleDescriptor {
                 descriptor: self, settings: { [weak modules] in .load(from: modules) },
                 history: clipboardHistory)
 
-        case KeyboardModule.id: KeyboardModule(descriptor: self)
+        case KeyboardModule.id:
+            KeyboardModule(descriptor: self) { [weak modules] in .load(from: modules) }
 
         case WindowsModule.id:
             WindowsModule(

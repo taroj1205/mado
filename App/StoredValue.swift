@@ -1,6 +1,7 @@
 import AppCore
 import ClipboardKit
 import GlassUI
+import InputKit
 import os
 import SearchKit
 import WindowKit
@@ -60,6 +61,10 @@ extension StatusBarLayout: StoredValue {
 
 extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
+}
+
+extension InputSourceSettings: StoredValue {
+    static let key = "input_sources"
 }
 
 extension GestureSettings: StoredValue {
