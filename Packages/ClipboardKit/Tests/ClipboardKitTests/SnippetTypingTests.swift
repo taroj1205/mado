@@ -92,6 +92,30 @@ import Testing
         #expect(try Self.type("u", into: &typing) == [";fu"])
     }
 
+    @Test func notesInputThatArrivesAfterTheKeywordMatched() throws {
+        var typing = Self.typing()
+        let click = try #require(
+            CGEvent(
+                mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: .zero,
+                mouseButton: .left))
+        let posted = try TestKeys.event(kVK_Delete, "\u{7F}", [])
+        posted.setIntegerValueField(.eventSourceUserData, value: Keystrokes.marker)
+
+        _ = try Self.type(";fu", into: &typing)
+        let matched = typing.inputAfterMatch
+        _ = typing.handle(.keyDown, posted, canExpand: false)
+        let afterOwnKeys = typing.inputAfterMatch
+        _ = try Self.type("x", into: &typing, canExpand: false)
+        let afterTyping = typing.inputAfterMatch
+        _ = try Self.type(";fu", into: &typing)
+        _ = typing.handle(.leftMouseDown, click, canExpand: false)
+
+        #expect(!matched)
+        #expect(!afterOwnKeys)
+        #expect(afterTyping)
+        #expect(typing.inputAfterMatch)
+    }
+
     @Test func undoesOnlyWithCommandZRightAfter() throws {
         var typing = Self.typing()
         typing.expanded(try Self.inserted())

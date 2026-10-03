@@ -22,6 +22,7 @@ final class SnippetExpander {
     private let fillIn = SnippetFillIn()
     private var typing = SnippetTyping()
     private var busy = false
+    private var stopped = false
 
     init(logger: Logger) {
         self.logger = logger
@@ -48,6 +49,7 @@ final class SnippetExpander {
             on: DistributedNotificationCenter.default(), reading: \.name
         ) { [weak self] _ in self?.forget() }
         context.own(.other, "snippet fill-in") { [weak self] in
+            self?.stopped = true
             self?.forget()
             self?.fillIn.close()
         }
@@ -66,7 +68,9 @@ final class SnippetExpander {
     }
 
     private func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
-        let canExpand = !busy && NSApp.keyWindow == nil && !IsSecureEventInputEnabled()
+        let inMado = NSApp.keyWindow != nil
+        if busy, inMado { return false }
+        let canExpand = !busy && !inMado && !IsSecureEventInputEnabled()
         switch typing.handle(type, event, canExpand: canExpand) {
         case .pass:
             return false
@@ -108,6 +112,11 @@ final class SnippetExpander {
             }
             let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
+            guard !stopped else { return }
+            guard typed.isEmpty || (!typing.inputAfterMatch && target.app.isActive) else {
+                logger.notice("Input moved on after the keyword, so it wasn’t replaced")
+                return
+            }
             let insertion = TextInsertion.standard
             let inserted = try insertion.replace(typed, with: expansion)
             typing.expanded(inserted)
