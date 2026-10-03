@@ -140,7 +140,7 @@ final class Snippets: NSObject, NSWindowDelegate {
     }
 
     private func paste(_ values: SnippetEditor.Values) {
-        guard let target, let expander else {
+        guard let target, let expander, !expander.isBusy else {
             NSSound.beep()
             return
         }
