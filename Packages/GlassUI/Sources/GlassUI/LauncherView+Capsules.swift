@@ -21,4 +21,12 @@ extension LauncherView {
     static func makeActionsToggle() -> CapsuleButton {
         CapsuleButton("Actions", keys: ["⌘", "K"])
     }
+
+    func showPrimary(_ shown: Bool) {
+        guard let stack = actionCapsule.contentView as? NSStackView else { return }
+        for view in stack.arrangedSubviews where view !== actionsToggle {
+            view.isHidden = !shown
+        }
+        stack.edgeInsets.left = shown ? Self.actionLeading : Self.actionTrailing
+    }
 }

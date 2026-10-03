@@ -2,12 +2,12 @@ public import AppKit
 
 public final class LauncherView: NSView {
     private static let searchBarHeight: CGFloat = 60
-    private static let searchInset: CGFloat = 20
+    static let searchInset: CGFloat = 20
     private static let searchFontSize: CGFloat = 20
     static let searchIconGap: CGFloat = 12
     static let searchPlaceholder = "Search apps and commands…"
-    private static let backInset: CGFloat = 14
-    private static let resultsInset: CGFloat = 8
+    static let backInset: CGFloat = 14
+    static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
     private static let previewHint = "⌘Y to preview"
     private static let previewSymbol = "eye"
@@ -46,6 +46,9 @@ public final class LauncherView: NSView {
     var selectedPill: Int?
     var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
+    let detail = DetailPane()
+    var previewer: ((ResultList.Item) -> Preview?)?
+    var filter: NSPopUpButton?
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
@@ -55,6 +58,10 @@ public final class LauncherView: NSView {
     let icon = NSImageView()
     lazy var fieldLeading = field.leadingAnchor.constraint(
         equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
+    lazy var fieldTrailing = field.trailingAnchor.constraint(
+        equalTo: trailingAnchor, constant: -Self.searchInset)
+    lazy var resultsTrailing = results.trailingAnchor.constraint(
+        equalTo: trailingAnchor, constant: -Self.resultsInset)
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
@@ -76,7 +83,7 @@ public final class LauncherView: NSView {
         separator.boxType = .separator
         let bar = NSLayoutGuide()
         addLayoutGuide(bar)
-        for view in [icon, back, field, separator, widgetGrid, results] {
+        for view in [icon, back, field, separator, widgetGrid, results, detail] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -88,18 +95,18 @@ public final class LauncherView: NSView {
             back.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.backInset),
             back.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             fieldLeading,
-            field.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.searchInset),
+            fieldTrailing,
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
             separator.topAnchor.constraint(equalTo: bar.bottomAnchor),
             results.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.resultsInset),
-            results.trailingAnchor.constraint(
-                equalTo: trailingAnchor, constant: -Self.resultsInset),
+            resultsTrailing,
             results.topAnchor.constraint(equalTo: widgetGrid.bottomAnchor),
             results.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         placeWidgets(below: separator)
+        placeDetail(below: separator)
         placeCapsules()
     }
 
@@ -156,7 +163,7 @@ public final class LauncherView: NSView {
         case "y" where results.selectedItem?.file != nil: togglePreview()
 
         case let key?:
-            return runActionShortcut(event) || runShortcut(key)
+            return runActionShortcut(event) || openFilter(key) || runShortcut(key)
                 || super.performKeyEquivalent(with: event)
 
         default: return super.performKeyEquivalent(with: event)
@@ -164,15 +171,9 @@ public final class LauncherView: NSView {
         return true
     }
 
-    func replaceQuery(with query: String) {
-        field.stringValue = query
-        field.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
-        endBrowsing()
-        onQuery?(query)
-    }
-
     private func selectionChanged(to item: ResultList.Item?) {
         showAction(of: item)
+        showDetail(of: item)
         if previewing {
             showPreview()
         }
@@ -184,6 +185,7 @@ public final class LauncherView: NSView {
             ?? selectedWidget.map { widgetGrid.shown[$0].action }
             ?? item?.action
         actionLabel.stringValue = action ?? ""
+        showPrimary(action?.isEmpty == false)
         actionCapsule.isHidden = action == nil
         showContext()
     }
@@ -256,17 +258,5 @@ public final class LauncherView: NSView {
         leavePillsAndWidgets()
         browsing = true
         showContext()
-    }
-
-    func run(_ action: Int) {
-        guard let item = results.selectedItem else { return }
-        onRun?(item, action)
-    }
-
-    private func runSecondary() {
-        guard let item = results.selectedItem,
-            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
-        else { return }
-        onRun?(item, index)
     }
 }

@@ -35,13 +35,6 @@ extension CalculatorHistory {
         id == commandID
     }
 
-    private static func title(of day: Date, now: Date, calendar: Calendar) -> String {
-        if calendar.isDate(day, inSameDayAs: now) { return "Today" }
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)
-        if let yesterday, calendar.isDate(day, inSameDayAs: yesterday) { return "Yesterday" }
-        return day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
-    }
-
     private static func item(_ entry: Entry) -> ResultList.Item {
         ResultList.Item(
             id: entryPrefix + entry.expression, title: "\(entry.expression) = \(entry.result)",
@@ -84,7 +77,7 @@ extension CalculatorHistory {
         }
         return days.map { day, calculations in
             ResultList.Section(
-                title: Self.title(of: day, now: now, calendar: calendar),
+                title: RelativeDay.title(of: day, now: now, calendar: calendar),
                 items: calculations.map(Self.item))
         }
     }
