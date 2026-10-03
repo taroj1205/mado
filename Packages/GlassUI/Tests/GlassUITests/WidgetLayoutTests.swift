@@ -58,7 +58,8 @@ import Testing
 
     private func numbered(_ number: Int) -> WidgetGrid.Widget {
         .init(
-            id: "\(number)", value: "\(number)", detail: "", action: "Open \(number)",
+            id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
+            action: "Open \(number)",
             spoken: "Widget \(number)")
     }
 

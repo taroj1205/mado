@@ -38,7 +38,7 @@ import Testing
     @Test func aboveGivesTheTrackTwoColumnsLikeTheInlineGrid() {
         let track = WidgetGrid.Track(title: "Song", artist: "Band", artwork: nil, isPlaying: true)
         view.widgets =
-            [.init(id: "music", track: track, action: "Play", spoken: "Song")]
+            [.init(id: "music", name: "Now Playing", track: track, action: "Play", spoken: "Song")]
             + (1...5).map(numbered)
         view.widgetLayout = .above
         let floats = view.widgetGrid.floats
@@ -133,7 +133,8 @@ import Testing
 
     private func numbered(_ number: Int) -> WidgetGrid.Widget {
         .init(
-            id: "\(number)", value: "\(number)", detail: "", action: "Open \(number)",
+            id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
+            action: "Open \(number)",
             spoken: "Widget \(number)")
     }
 

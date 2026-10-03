@@ -13,11 +13,13 @@ extension LauncherView {
 
     public var widgetOverhang: CGFloat { widgetGrid.overhang }
 
+    public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }
+
     var showsWidgets: Bool {
-        onEmptyRootQuery && !widgetGrid.shown.isEmpty
+        onEmptyRootQuery && (editingWidgets || !widgetGrid.shown.isEmpty)
     }
 
-    private func changeWidgets(_ change: () -> Void) {
+    func changeWidgets(_ change: () -> Void) {
         let selected = selectedWidget.map { widgetGrid.shown[$0].id }
         change()
         if let index = widgetGrid.shown.firstIndex(where: { $0.id == selected }) {
@@ -37,6 +39,8 @@ extension LauncherView {
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
+        widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
+        placeEditBar()
     }
 
     func leavePillsAndWidgets() {
@@ -51,7 +55,7 @@ extension LauncherView {
         }
         selectedWidget = index
         widgetGrid.highlight(index)
-        results.hidesSelection = index != nil
+        results.hidesSelection = index != nil || editingWidgets
         if index != nil {
             closePreview()
         }
@@ -64,8 +68,14 @@ extension LauncherView {
     }
 
     func handleModifiedKey(_ event: NSEvent) -> Bool {
-        guard !event.modifierFlags.isDisjoint(with: Self.modifierKeys) else { return false }
+        guard !editingWidgets, !event.modifierFlags.isDisjoint(with: Self.modifierKeys) else {
+            return false
+        }
         let command = event.modifierFlags.intersection(Self.modifierKeys) == .command
+        if command, selectedWidget != nil, event.charactersIgnoringModifiers == "k" {
+            showActions()
+            return true
+        }
         if command, let widget = selectedWidget, widgetGrid.shown[widget].track != nil {
             switch event.specialKey {
             case .leftArrow:
@@ -85,7 +95,9 @@ extension LauncherView {
 
     func pressWidget(_ index: Int) {
         selectWidget(index)
-        onWidget?(widgetGrid.shown[index])
+        if !editingWidgets {
+            onWidget?(widgetGrid.shown[index])
+        }
     }
 
     func moveUp() {
