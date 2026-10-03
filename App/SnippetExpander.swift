@@ -12,6 +12,8 @@ final class SnippetExpander {
     private static let types: [CGEventType] = [
         .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown,
     ]
+    private static let keywordChecks = 5
+    private static let keywordCheckMilliseconds = 30
 
     var settings: SnippetSettings {
         get { typing.settings }
@@ -101,8 +103,12 @@ final class SnippetExpander {
             logger.notice("Snippets can’t type until Accessibility is allowed")
             return
         }
-        let focused = await FocusedText.current()
+        let focused = await FocusedText.current(readingBack: typed.utf16.count)
         guard focused?.isSecure != true, !IsSecureEventInputEnabled() else { return }
+        guard await isInPlace(typed, focused?.textBeforeCaret) else {
+            logger.notice("The app changed the keyword as it was typed, so it wasn’t replaced")
+            return
+        }
         let template = SnippetTemplate(snippet.text)
         var fields: [String: String] = [:]
         do {
@@ -126,6 +132,16 @@ final class SnippetExpander {
         } catch {
             logger.error("Expanding a snippet failed: \(error, privacy: .public)")
         }
+    }
+
+    private func isInPlace(_ typed: String, _ before: String?) async -> Bool {
+        var keyword = TypedKeyword(typed, before: before)
+        for _ in 0..<Self.keywordChecks where keyword == .arriving {
+            try? await Task.sleep(for: .milliseconds(Self.keywordCheckMilliseconds))
+            let focused = await FocusedText.current(readingBack: typed.utf16.count)
+            keyword = TypedKeyword(typed, before: focused?.textBeforeCaret)
+        }
+        return keyword != .changed
     }
 
     private func undo(_ inserted: TextInsertion.Inserted) {

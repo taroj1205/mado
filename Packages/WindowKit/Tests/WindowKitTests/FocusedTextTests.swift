@@ -17,6 +17,16 @@ import Testing
         #expect(FocusedText.rect("AXBounds" as CFString) == nil)
     }
 
+    @Test func readsBackOnlyAsFarAsTheStartOfTheText() {
+        let middle = FocusedText.readBack(3, from: 10)
+        let start = FocusedText.readBack(3, from: 1)
+
+        #expect(middle.location == 7)
+        #expect(middle.length == 3)
+        #expect(start.location == 0)
+        #expect(start.length == 1)
+    }
+
     @Test func ignoresAnEmptyCaret() throws {
         var empty = CGRect.zero
         let bounds = try #require(unsafe AXValueCreate(.cgRect, &empty))
