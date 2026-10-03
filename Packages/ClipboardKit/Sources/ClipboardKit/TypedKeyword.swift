@@ -4,7 +4,11 @@ public enum TypedKeyword: Equatable, Sendable {
     case inPlace
     case unreadable
 
-    public init(_ keyword: String, before text: String?) {
+    public init(_ keyword: String, before text: String?, selecting: Bool) {
+        guard !selecting else {
+            self = .changed
+            return
+        }
         guard let text else {
             self = .unreadable
             return

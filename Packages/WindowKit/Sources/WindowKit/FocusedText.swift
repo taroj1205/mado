@@ -4,6 +4,7 @@ public struct FocusedText: Sendable {
     public let isSecure: Bool
     public let caret: CGRect?
     public let textBeforeCaret: String?
+    public let selectsText: Bool
 
     @AccessibilityActor
     public static func current(readingBack length: Int) -> Self? {
@@ -23,7 +24,8 @@ public struct FocusedText: Sendable {
             textBeforeCaret: selection.flatMap { selection in
                 guard length > 0 else { return nil }
                 return text(in: readBack(length, from: selection.location), of: element)
-            })
+            },
+            selectsText: (selection?.length ?? 0) > 0)
     }
 
     static func readBack(_ length: Int, from location: Int) -> CFRange {

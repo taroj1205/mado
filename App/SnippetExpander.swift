@@ -105,8 +105,8 @@ final class SnippetExpander {
         }
         let focused = await FocusedText.current(readingBack: typed.utf16.count)
         guard focused?.isSecure != true, !IsSecureEventInputEnabled() else { return }
-        guard await isInPlace(typed, focused?.textBeforeCaret) else {
-            logger.notice("The app changed the keyword as it was typed, so it wasn’t replaced")
+        guard await isInPlace(typed, focused) else {
+            logger.notice("The keyword isn’t plainly before the caret, so it wasn’t replaced")
             return
         }
         let template = SnippetTemplate(snippet.text)
@@ -134,12 +134,16 @@ final class SnippetExpander {
         }
     }
 
-    private func isInPlace(_ typed: String, _ before: String?) async -> Bool {
-        var keyword = TypedKeyword(typed, before: before)
+    private func isInPlace(_ typed: String, _ focused: FocusedText?) async -> Bool {
+        guard !typed.isEmpty else { return true }
+        var focused = focused
+        var keyword = TypedKeyword(
+            typed, before: focused?.textBeforeCaret, selecting: focused?.selectsText == true)
         for _ in 0..<Self.keywordChecks where keyword == .arriving {
             try? await Task.sleep(for: .milliseconds(Self.keywordCheckMilliseconds))
-            let focused = await FocusedText.current(readingBack: typed.utf16.count)
-            keyword = TypedKeyword(typed, before: focused?.textBeforeCaret)
+            focused = await FocusedText.current(readingBack: typed.utf16.count)
+            keyword = TypedKeyword(
+                typed, before: focused?.textBeforeCaret, selecting: focused?.selectsText == true)
         }
         return keyword != .changed
     }
