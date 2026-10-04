@@ -20,6 +20,40 @@ import Testing
         #expect(second.acquire())
     }
 
+    @MainActor
+    @Test func aRestartKeepsTheLockFromAnotherProcess() async throws {
+        let url = Self.url()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let owner = try #require(RemapLock.claim(url))
+        let other = try #require(RemapLock(url: url))
+        #expect(owner.acquire())
+
+        owner.handOver()
+        let next = try #require(RemapLock.claim(url))
+        #expect(next.handle === owner.handle)
+        #expect(!other.acquire())
+        await Task.yield()
+        #expect(next.acquire())
+        #expect(!other.acquire())
+    }
+
+    @MainActor
+    @Test func aLockHandedOverToNoOneIsReleased() async throws {
+        let url = Self.url()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let owner = try #require(RemapLock.claim(url))
+        let other = try #require(RemapLock(url: url))
+        #expect(owner.acquire())
+
+        owner.handOver()
+        #expect(!other.acquire())
+        for _ in 0..<10 where !other.acquire() {
+            await Task.yield()
+        }
+        #expect(other.acquire())
+        #expect(RemapLock.claim(url)?.handle !== owner.handle)
+    }
+
     @Test func aChildGivenTheHandleKeepsTheLockAfterTheOwnerIsGone() throws {
         let url = Self.url()
         defer { try? FileManager.default.removeItem(at: url) }

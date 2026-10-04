@@ -68,10 +68,11 @@ public final class KeyboardRemapper {
     private var waiting: Task<Void, Never>?
     private var watcher: KeyboardWatcher?
     private var watchdog: Watchdog?
+    private var isStopped = false
 
     public init?(settings: RemapSettings) {
         guard let destination = settings.usage else { return nil }
-        guard let opened = RemapLock(url: Self.lockURL) else {
+        guard let opened = RemapLock.claim(Self.lockURL) else {
             logger.error("Caps Lock remap lock can't be opened")
             return nil
         }
@@ -154,15 +155,20 @@ public final class KeyboardRemapper {
     }
 
     public func stop() {
+        guard !isStopped else { return }
+        isStopped = true
         waiting?.cancel()
         waiting = nil
-        guard watcher != nil else { return }
+        guard watcher != nil else {
+            lock.handOver()
+            return
+        }
         watcher = nil
         let services = Self.services(client)
         let failed = write(mappings.restore(from: Self.currentMappings(of: services)), to: services)
         if failed.isEmpty {
             watchdog?.cancel()
-            lock.release()
+            lock.handOver()
         } else {
             watchdog?.restoreNow()
         }
