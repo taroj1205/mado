@@ -75,6 +75,7 @@ final class WidgetTile: NSView {
     var onRemove: (() -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
     var onDrop: ((String?) -> Bool)?
+    var onDragStart: (() -> Void)?
     var onDragEnd: (() -> Void)?
 
     var selected = false {

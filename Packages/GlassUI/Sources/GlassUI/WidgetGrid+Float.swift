@@ -76,4 +76,32 @@ extension WidgetGrid {
     private static func rows(of placed: [Placed]) -> Int {
         cells(of: placed.map(\.widget)).last.map { $0.row + 1 } ?? 0
     }
+
+    static func makeFloat(for tile: WidgetTile) -> GlassPanel {
+        let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .rounded(WidgetTile.radius))
+        panel.ignoresMouseEvents = false
+        panel.glass.contentView = tile
+        tile.registerForDraggedTypes([dragType])
+        if tile.editing {
+            panel.contentView = WidgetFloatFrame(glass: panel.glass, badge: tile.remove)
+        }
+        return panel
+    }
+
+    func placeFloats() {
+        guard let window = unsafe window, !isHidden else {
+            floats.forEach { $0.orderOut(nil) }
+            rails.orderOut(nil)
+            return
+        }
+        placeRails(beside: window)
+        let frames = Self.floatingFrames(of: placed, beside: window.frame)
+        for (float, frame) in zip(floats, frames) {
+            let margin = editing ? -WidgetFloatFrame.margin : 0
+            float.setFrame(frame.insetBy(dx: margin, dy: margin), display: false)
+            if float.parent !== window {
+                window.addChildWindow(float, ordered: .above)
+            }
+        }
+    }
 }

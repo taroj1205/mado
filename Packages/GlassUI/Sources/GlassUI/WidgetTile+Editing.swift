@@ -1,8 +1,8 @@
 import AppKit
 
 extension WidgetTile: NSDraggingSource {
-    private static let badgeSize: CGFloat = 22
-    private static let badgeOverhang: CGFloat = 8
+    static let badgeSize: CGFloat = 22
+    static let badgeOverhang: CGFloat = 8
     private static let gripSize: CGFloat = 14
     private static let gripInset: CGFloat = 8
     private static let half: CGFloat = 0.5
@@ -12,6 +12,7 @@ extension WidgetTile: NSDraggingSource {
         dash.autoresizingMask = [.width, .height]
         addSubview(dash)
         let centre = Self.badgeSize * Self.half - Self.badgeOverhang
+        remove.onPress = { [weak self] in self?.onRemove?() }
         for view in [remove, grip] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -51,6 +52,7 @@ extension WidgetTile: NSDraggingSource {
         let dragging = NSDraggingItem(pasteboardWriter: item)
         dragging.setDraggingFrame(bounds, contents: snapshot())
         beginDraggingSession(with: [dragging], event: event, source: self)
+        onDragStart?()
     }
 
     func draggingSession(

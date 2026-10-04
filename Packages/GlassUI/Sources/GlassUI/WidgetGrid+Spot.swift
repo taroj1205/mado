@@ -13,6 +13,21 @@ extension WidgetGrid {
         case rightMiddle = "right_middle"
         case rightBottom = "right_bottom"
 
+        public var title: String {
+            switch self {
+            case .panel: "In the Panel"
+            case .aboveLeft: "Above · Left"
+            case .aboveCentre: "Above · Centre"
+            case .aboveRight: "Above · Right"
+            case .leftTop: "Left · Top"
+            case .leftMiddle: "Left · Middle"
+            case .leftBottom: "Left · Bottom"
+            case .rightTop: "Right · Top"
+            case .rightMiddle: "Right · Middle"
+            case .rightBottom: "Right · Bottom"
+            }
+        }
+
         var side: Side {
             switch self {
             case .panel: .panel
@@ -80,6 +95,11 @@ extension WidgetGrid {
     }
 
     func spot(of widget: Widget) -> Spot {
-        editing ? .panel : spots[widget.id] ?? .panel
+        if widget.id == dragged, let moving { return moving }
+        return home(of: widget.id)
+    }
+
+    func home(of id: String) -> Spot {
+        spots[id] ?? .panel
     }
 }

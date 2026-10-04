@@ -111,6 +111,8 @@ public final class WidgetGrid: NSView {
     static let inset: CGFloat = 14
     static let top: CGFloat = 12
     private static let bottom: CGFloat = 4
+    private static let dockInset: CGFloat = 6
+    private static let dockEdge: CGFloat = 1.5
     static let floatingGap: CGFloat = 10
     static let lift: CGFloat = 16
     static let sideWidth: CGFloat = 220
@@ -158,6 +160,21 @@ public final class WidgetGrid: NSView {
     }
 
     var dragged: String?
+    var moving: Spot? {
+        didSet {
+            if moving != oldValue { update() }
+        }
+    }
+
+    var refused: Spot? {
+        didSet {
+            if refused != oldValue { placeFloats() }
+        }
+    }
+
+    var carrying = false
+    var source: WidgetTile?
+    let rails = WidgetRails()
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     var onPress: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
@@ -168,6 +185,7 @@ public final class WidgetGrid: NSView {
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
     let dropFrame = WidgetDropFrame()
+    let dock = DashedOutline(colour: WidgetRailsView.dock, width: dockEdge, fill: .clear)
 
     var layoutInUse: Layout? { editing ? .grid : tileLayout }
 
@@ -185,7 +203,7 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = Self.cells(spanning: spans).last.map { $0.row + 1 } ?? 0
+        let rows = max(Self.cells(spanning: spans).last.map { $0.row + 1 } ?? 0, editing ? 1 : 0)
         guard !isHidden, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
@@ -202,20 +220,18 @@ public final class WidgetGrid: NSView {
         setAccessibilityRole(.group)
         setAccessibilityLabel("Widgets")
         dropFrame.isHidden = true
+        dock.isHidden = true
+        addSubview(dock)
         addSubview(dropFrame)
+        rails.board.onDrag = { [weak self] id, point, source in
+            self?.onDrag?(id, point, source) ?? []
+        }
+        rails.board.onDrop = { [weak self] id in self?.onDrop?(id) ?? false }
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
-    }
-
-    private static func makeFloat(for tile: WidgetTile) -> GlassPanel {
-        let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .rounded(WidgetTile.radius))
-        panel.ignoresMouseEvents = false
-        panel.glass.contentView = tile
-        tile.registerForDraggedTypes([dragType])
-        return panel
     }
 
     override public func layout() {
@@ -227,26 +243,9 @@ public final class WidgetGrid: NSView {
         if incoming != nil, let last = frames.last {
             dropFrame.frame = last
         }
-    }
-
-    func highlight(_ index: Int?) {
-        for (position, tile) in tiles.enumerated() {
-            tile.selected = position == index
-        }
-    }
-
-    func placeFloats() {
-        guard let window = unsafe window, !isHidden else {
-            floats.forEach { $0.orderOut(nil) }
-            return
-        }
-        let frames = Self.floatingFrames(of: placed, beside: window.frame)
-        for (float, frame) in zip(floats, frames) {
-            float.setFrame(frame, display: false)
-            if float.parent !== window {
-                window.addChildWindow(float, ordered: .above)
-            }
-        }
+        dock.frame = bounds.insetBy(dx: Self.dockInset, dy: 0)
+        dock.frame.origin.y = Self.dockInset
+        dock.frame.size.height = bounds.height - Self.dockInset - Self.bottom
     }
 
     private func update(rebuilding: Bool = false) {
@@ -265,6 +264,7 @@ public final class WidgetGrid: NSView {
             tile.lifted = widget.id == dragged
         }
         dropFrame.isHidden = incoming == nil
+        dock.isHidden = !editing
         placeFloats()
         invalidateIntrinsicContentSize()
         needsLayout = true

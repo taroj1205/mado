@@ -84,6 +84,15 @@ final class Widgets {
 
     static func edit(_ edit: WidgetSettings.Edit, in modules: ModuleManager?) {
         var settings = WidgetSettings.load(from: modules)
+        let placement = WidgetPlacement.load(from: modules)
+        if case .place = edit, placement != .custom {
+            settings.keep(settings.spots(placement.arrangement, from: ids))
+            do {
+                try WidgetPlacement.custom.save(to: modules)
+            } catch {
+                logger.error("Placement failed to save: \(error, privacy: .public)")
+            }
+        }
         settings.apply(edit, from: ids)
         settings.save(to: modules)
     }

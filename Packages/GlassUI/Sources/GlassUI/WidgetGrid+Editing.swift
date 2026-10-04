@@ -27,34 +27,14 @@ extension WidgetGrid {
         tile.onRemove = { [weak self] in self?.onRemove?(index) }
         tile.onDrag = { [weak self] id, point, source in self?.onDrag?(id, point, source) ?? [] }
         tile.onDrop = { [weak self] id in self?.onDrop?(id) ?? false }
+        tile.onDragStart = { [weak self, weak tile] in self?.carry(tile) }
         tile.onDragEnd = { [weak self] in self?.onDragEnd?() }
         return tile
     }
 
-    @discardableResult
-    func preview(moving id: String, to point: NSPoint) -> Bool {
-        let visible = shown
-        var ids = visible.map(\.id)
-        guard let from = ids.firstIndex(of: id), let window = unsafe window else { return false }
-        dragged = id
-        let frames =
-            frames(spanning: inPanel.map(\.span)).map { convert($0, to: nil) }
-            + Self.floatingFrames(of: placed, beside: window.frame).map(window.convertFromScreen)
-        let spot = spot(of: visible[from])
-        let target = frames.indices.first { index in
-            frames[index].contains(point) && self.spot(of: visible[index]) == spot
+    func highlight(_ index: Int?) {
+        for (position, tile) in tiles.enumerated() {
+            tile.selected = position == index
         }
-        if let target, target != from {
-            ids.remove(at: from)
-            ids.insert(id, at: target)
-        }
-        order = ids
-        return target != nil
-    }
-
-    func endDrag() {
-        dragged = nil
-        order = []
-        incoming = nil
     }
 }

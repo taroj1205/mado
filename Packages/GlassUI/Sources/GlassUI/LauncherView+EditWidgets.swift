@@ -3,7 +3,7 @@ import AppKit
 extension LauncherView {
     static let editTitle = "Edit Widgets"
     static let doneTitle = "Done"
-    static let editHint = "Drag to reorder · ⌫ removes the selected widget"
+    static let editHint = "Drag a widget anywhere around the panel · ⌫ removes the selected one"
     static let editSymbol = "square.grid.2x2"
     private static let editInset: CGFloat = 14
     private static let dimmed: CGFloat = 0.45
@@ -82,9 +82,9 @@ extension LauncherView {
             widgetGrid.incoming = (source as? WidgetGalleryCard)?.card.size.span ?? 1
             return .copy
         }
-        var overTile = false
-        changeWidgets { overTile = widgetGrid.preview(moving: id, to: point) }
-        return overTile || editingWidgets ? .move : []
+        var droppable = false
+        changeWidgets { droppable = widgetGrid.preview(moving: id, to: point) }
+        return droppable || (editingWidgets && widgetGrid.refused == nil) ? .move : []
     }
 
     private func firstHidden(after widget: String?, shown: [String]) -> String? {
@@ -96,19 +96,26 @@ extension LauncherView {
     }
 
     func dropWidget(_ id: String?) -> Bool {
-        guard let id, editingWidgets || widgetGrid.widgets.contains(where: { $0.id == id })
-        else { return false }
+        guard let id, editingWidgets || widgetGrid.widgets.contains(where: { $0.id == id }),
+            widgetGrid.refused == nil
+        else {
+            endWidgetDrag()
+            return false
+        }
         let spot = widgetGrid.shown.first { $0.id == id }.map(widgetGrid.spot)
         let order = widgetGrid.shown.filter { widgetGrid.spot(of: $0) == spot }.map(\.id)
         let all = widgetGrid.widgets.map(\.id)
+        let before = order.firstIndex(of: id).map { index in
+            order.dropFirst(index + 1).first
+                ?? firstHidden(after: order.dropLast().last, shown: order)
+        }
         let edit: WidgetSettings.Edit? =
             if widgetGrid.incoming != nil {
                 .add(id)
-            } else if order != all.filter(order.contains), let index = order.firstIndex(of: id) {
-                .move(
-                    id,
-                    before: order.dropFirst(index + 1).first
-                        ?? firstHidden(after: order.dropLast().last, shown: order))
+            } else if let spot, let before, spot != widgetGrid.home(of: id) {
+                .place(id, spot, before: before)
+            } else if order != all.filter(order.contains), let before {
+                .move(id, before: before)
             } else {
                 nil
             }
