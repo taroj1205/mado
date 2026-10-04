@@ -16,7 +16,7 @@ extension LauncherView {
     public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }
 
     var showsWidgets: Bool {
-        onEmptyRootQuery && (editingWidgets || !widgetGrid.shown.isEmpty)
+        homeShown && (editingWidgets || !widgetGrid.shown.isEmpty)
     }
 
     func changeWidgets(_ change: () -> Void) {

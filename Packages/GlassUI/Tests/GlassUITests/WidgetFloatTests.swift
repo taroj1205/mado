@@ -18,6 +18,7 @@ import Testing
         panel.contentView = view
         view.results.sections = [.init(title: "Commands", items: [item("Safari")])]
         view.widgets = (1...7).map(numbered)
+        view.onQuery = { [view] _ in view.show(view.results.sections) }
         panel.makeFirstResponder(view.field)
     }
 

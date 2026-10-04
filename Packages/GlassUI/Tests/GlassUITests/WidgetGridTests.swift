@@ -31,6 +31,7 @@ import Testing
                 id: "uptime", name: "Uptime", symbol: "clock", value: "17h",
                 action: "Show System Report")
         ]
+        view.onQuery = { [view] _ in view.show(view.results.sections) }
         panel.makeFirstResponder(view.field)
     }
 
@@ -51,6 +52,20 @@ import Testing
         view.leave()
         view.widgets = []
         #expect(view.widgetGrid.isHidden)
+    }
+
+    @Test func theGridStaysUntilTheResultsForTheQueryArrive() {
+        view.onQuery = nil
+        view.layoutSubtreeIfNeeded()
+        let listTop = view.results.frame.maxY
+        press(kVK_ANSI_A, "a")
+        view.layoutSubtreeIfNeeded()
+        #expect(!view.widgetGrid.isHidden)
+        #expect(view.results.frame.maxY == listTop)
+        view.show(view.results.sections)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.widgetGrid.isHidden)
+        #expect(abs(view.results.frame.maxY - listTop - 94) < 0.01)
     }
 
     @Test func tilesFillSixColumnsBelowTheSearchBar() throws {
