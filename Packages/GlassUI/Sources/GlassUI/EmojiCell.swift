@@ -1,6 +1,15 @@
 import AppKit
 
 final class EmojiCell: NSCollectionViewItem {
+    final class Face: NSView {
+        var onPress: (() -> Void)?
+
+        override func accessibilityPerformPress() -> Bool {
+            onPress?()
+            return onPress != nil
+        }
+    }
+
     static let id = NSUserInterfaceItemIdentifier("emoji")
     private static let glyphSize: CGFloat = 28
     private static let radius: CGFloat = 12
@@ -8,13 +17,19 @@ final class EmojiCell: NSCollectionViewItem {
 
     private let glyph = NSTextField(labelWithString: "")
     private let backdrop = NSBox()
+    private let face = Face()
+
+    var onPress: (() -> Void)? {
+        get { face.onPress }
+        set { face.onPress = newValue }
+    }
 
     override var isSelected: Bool {
         didSet { backdrop.isHidden = !isSelected }
     }
 
     override func loadView() {
-        let cell = NSView()
+        let cell = face
         backdrop.boxType = .custom
         backdrop.cornerRadius = Self.radius
         backdrop.borderWidth = Self.ring

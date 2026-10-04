@@ -125,6 +125,19 @@ import Testing
         #expect(grid.visibleRect.intersects(frame))
     }
 
+    @Test func voiceOverPressingAnEmojiPicksIt() throws {
+        var runs: [String] = []
+        view.onRun = { item, _ in runs.append(item.title) }
+        view.show(Self.sections(), gridHome: "")
+        view.layoutSubtreeIfNeeded()
+        let grid = view.emojiGrid.collection
+        let cell = try #require(grid.item(at: IndexPath(item: 1, section: 1)))
+
+        #expect(cell.view.accessibilityPerformPress())
+        #expect(runs == ["purple"])
+        #expect(view.selectedItem?.title == "purple")
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

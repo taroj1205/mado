@@ -195,6 +195,14 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
         }
     }
 
+    func pick(_ indexPath: IndexPath) {
+        select(indexPath)
+        onMove?()
+        if let selectedItem {
+            onPick?(selectedItem)
+        }
+    }
+
     @discardableResult
     func move(_ direction: Direction) -> Bool {
         guard let selected else { return false }
@@ -218,7 +226,10 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
         _ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath
     ) -> NSCollectionViewItem {
         let cell = collectionView.makeItem(withIdentifier: EmojiCell.id, for: indexPath)
-        (cell as? EmojiCell)?.show(sections[indexPath.section].items[indexPath.item])
+        if let emoji = cell as? EmojiCell {
+            emoji.show(sections[indexPath.section].items[indexPath.item])
+            emoji.onPress = { [weak self] in self?.pick(indexPath) }
+        }
         return cell
     }
 
