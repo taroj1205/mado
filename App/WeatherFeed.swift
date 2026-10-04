@@ -13,6 +13,12 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
         case ready(Weather)
     }
 
+    private struct Reading {
+        let city: String
+        let time: Date
+        let weather: Weather
+    }
+
     private static let stale: TimeInterval = 900
 
     var onChange: (() -> Void)?
@@ -26,7 +32,7 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
     private let locations = CLLocationManager()
     private var located: CheckedContinuation<CLLocation, any Error>?
     private var fetching: (city: String, task: Task<Void, Never>)?
-    private var fetched: (city: String, at: Date)?
+    private var fetched: Reading?
     private var described: String?
 
     private var blocked: State? {
@@ -52,7 +58,11 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
             state = reason
             return
         }
-        if let fetched, fetched.city == city, -fetched.at.timeIntervalSinceNow < Self.stale {
+        if let fetched, fetched.city == city, -fetched.time.timeIntervalSinceNow < Self.stale {
+            fetching?.task.cancel()
+            fetching = nil
+            described = city
+            state = .ready(fetched.weather)
             return
         }
         if let fetching {
@@ -88,7 +98,7 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
                 return
             }
             let weather = try await Weather.forecast(at: place)
-            fetched = (city, .now)
+            fetched = Reading(city: city, time: .now, weather: weather)
             finish(city, .ready(weather))
         } catch {
             guard !Task.isCancelled else { return }
