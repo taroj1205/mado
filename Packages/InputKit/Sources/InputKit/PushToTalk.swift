@@ -1,6 +1,5 @@
 public import AppCore
 import CoreGraphics
-import Dispatch
 
 public struct PushToTalk {
     public enum Event: Equatable, Sendable {
@@ -43,13 +42,18 @@ public struct PushToTalk {
         onEvent: @escaping @MainActor (Event) -> Void
     ) -> @MainActor (CGEventType, CGEvent) -> Void {
         var talk = Self(key: key, window: window)
+        var undelivered = 0
         return { type, event in
             let change = talk.handle(
                 type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-                timestamp: event.timestamp, isActive: isActive())
+                timestamp: event.timestamp, isActive: undelivered > 0 || isActive())
             if let change {
-                DispatchQueue.main.async { onEvent(change) }
+                undelivered += 1
+                Task {
+                    undelivered -= 1
+                    onEvent(change)
+                }
             }
         }
     }
