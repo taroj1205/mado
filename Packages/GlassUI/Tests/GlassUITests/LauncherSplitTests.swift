@@ -35,6 +35,18 @@ import Testing
             action: action, tint: tint)
     }
 
+    private static func png() throws -> URL {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).png")
+        let drawn = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
+            NSColor.systemBlue.setFill()
+            rect.fill()
+            return true
+        }
+        let bitmap = try #require(drawn.tiffRepresentation.flatMap(NSBitmapImageRep.init))
+        try #require(bitmap.representation(using: .png, properties: [:])).write(to: file)
+        return file
+    }
+
     private static func preview(of item: ResultList.Item) -> LauncherView.Preview {
         .init(
             text: "\(item.title) text", image: nil,
@@ -88,15 +100,8 @@ import Testing
     }
 
     @Test func showsAnImageInPlaceOfTextAndLetsGoOfItOnLeaving() async throws {
-        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).png")
+        let file = try Self.png()
         defer { try? FileManager.default.removeItem(at: file) }
-        let drawn = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
-            NSColor.systemBlue.setFill()
-            rect.fill()
-            return true
-        }
-        let bitmap = try #require(drawn.tiffRepresentation.flatMap(NSBitmapImageRep.init))
-        try #require(bitmap.representation(using: .png, properties: [:])).write(to: file)
         let thumbnail = Thumbnails.Request(url: file, side: 48)
         #expect(await Thumbnails.shared.load(thumbnail) != nil)
         let image = NSImage(size: NSSize(width: 4, height: 4))
@@ -110,6 +115,25 @@ import Testing
 
         #expect(view.detail.image.image == nil)
         #expect(Thumbnails.shared.cached(thumbnail) == nil)
+    }
+
+    @Test func leavingWhileAThumbnailLoadsKeepsItOutOfTheCache() async throws {
+        let file = try Self.png()
+        defer { try? FileManager.default.removeItem(at: file) }
+        enter()
+        let image = ResultList.Item(
+            id: "image", title: "Image", subtitle: "", kind: "Image", symbol: "photo", action: "",
+            thumbnail: file)
+        view.results.sections = [.init(title: "Today", items: [image])]
+        let cell = try #require(
+            view.results.table.view(atColumn: 0, row: 1, makeIfNecessary: true) as? GlyphCell)
+        let loading = try #require(cell.loading)
+
+        view.leave()
+        await loading.value
+
+        let side = Int((GlyphCell.thumbnailSize * panel.backingScaleFactor).rounded(.up))
+        #expect(Thumbnails.shared.cached(.init(url: file, side: side)) == nil)
     }
 
     @Test func theFilterSitsAtTheEndOfTheBarAndCommandPOpensIt() {

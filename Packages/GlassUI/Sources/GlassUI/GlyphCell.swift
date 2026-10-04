@@ -78,6 +78,7 @@ final class GlyphCell: NSTableCellView {
             }
         guard next != request else { return }
         request = next
+        loading?.cancel()
         loading = nil
         let cached = next.flatMap(thumbnails.cached)
         display(cached)

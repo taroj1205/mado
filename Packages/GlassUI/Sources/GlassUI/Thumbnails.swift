@@ -68,8 +68,9 @@ final class Thumbnails {
         if let image = cached(request) {
             return image
         }
+        guard !Task.isCancelled else { return nil }
         let image = await Task.detached(priority: .userInitiated) { Self.decode(request) }.value
-        if let image {
+        if let image, !Task.isCancelled {
             cache.setObject(image, forKey: request)
         }
         return image

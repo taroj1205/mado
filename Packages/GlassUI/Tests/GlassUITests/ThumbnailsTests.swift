@@ -87,6 +87,19 @@ import Testing
         #expect(thumbnails.cached(.init(url: url, side: 96)) == nil)
     }
 
+    @Test func aCancelledLoadLeavesTheCacheAlone() async throws {
+        let url = try image("cancelled.png", width: 64, height: 64)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let thumbnails = Thumbnails()
+        let request = Thumbnails.Request(url: url, side: 48)
+
+        let loading = Task { await thumbnails.load(request) }
+        loading.cancel()
+        _ = await loading.value
+
+        #expect(thumbnails.cached(request) == nil)
+    }
+
     @Test func anImageRowShowsItsThumbnailInPlaceOfTheGlyph() async throws {
         let url = try image("row.png", width: 300, height: 200)
         defer { try? FileManager.default.removeItem(at: folder) }
