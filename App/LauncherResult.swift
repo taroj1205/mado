@@ -34,7 +34,7 @@ enum LauncherResult {
         case .app(let app): app.url.path
         case .command(let command): command.id
         case .pane(let pane): pane.id
-        case .file(let file): file.url.path
+        case .file(let file): file.path
         case .quicklink(let link, _): link.id
         }
     }
@@ -100,11 +100,11 @@ enum LauncherResult {
         let aliased = items.ids(withAlias: trimmed)
         let files = typed ? sources.files.files : []
         async let rankedFiles = FileIndex.rank(
-            aliased.isEmpty ? files : files.filter { !aliased.contains($0.url.path) },
+            aliased.isEmpty ? files : files.filter { !aliased.contains($0.path) },
             by: query, items: items, usage: usage, at: now)
         let (filled, links) = quicklinks(for: trimmed, in: sources)
         let hoisted =
-            aliased.isEmpty ? [] : files.filter { aliased.contains($0.url.path) }.map(Self.file)
+            aliased.isEmpty ? [] : files.filter { aliased.contains($0.path) }.map(Self.file)
         let candidates =
             typed
             ? sources.apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane)
@@ -244,9 +244,9 @@ enum LauncherResult {
 
     private static func item(for file: FileIndex.File, at now: Date) -> ResultList.Item {
         ResultList.Item(
-            id: file.url.path, title: file.name, subtitle: file.folder,
+            id: file.path, title: file.name, subtitle: file.folder,
             kind: FileIndex.kind(of: file, at: now), symbol: "", action: "Open",
-            icon: NSWorkspace.shared.icon(forFile: file.url.path), file: file.url)
+            icon: NSWorkspace.shared.icon(forFile: file.path), file: file.url)
     }
 
     private static func item(for answer: Calculator.Answer) -> ResultList.Item {

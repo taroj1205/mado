@@ -26,6 +26,7 @@ import Testing
         #expect(files.map(\.name) == ["Mado.app", "Planning", "Q3 Roadmap.pdf", "notes.md"])
         #expect(files[2].folder.hasSuffix("/\(root.lastPathComponent)/Planning"))
         #expect(files[2].key == Fuzzy.Key("Q3 Roadmap.pdf"))
+        #expect(files[2].path == files[2].url.path)
     }
 
     @Test func ranksFilesWithTheUseAndAliasesSavedForTheirPath() async {
@@ -33,7 +34,7 @@ import Testing
         let files = ["Report.pdf", "Recipe.pdf"].map { name in
             FileIndex.File(
                 name: name, folder: "~", url: URL(filePath: "/tmp/\(name)"),
-                key: Fuzzy.Key(name), isFolder: false, modified: nil)
+                path: "/tmp/\(name)", key: Fuzzy.Key(name), isFolder: false, modified: nil)
         }
         var usage = Usage()
         usage.record("/tmp/Recipe.pdf", at: .now)
