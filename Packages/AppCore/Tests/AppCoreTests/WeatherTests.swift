@@ -38,6 +38,12 @@ import Testing
         #expect(try decode(forecast(code: code)).sky == sky)
     }
 
+    @Test func placesNowWithinTodaysRange() throws {
+        #expect(abs(try decode(forecast()).position - (15.4 - 11.0) / (17.1 - 11.0)) < 0.0001)
+        #expect(try decode(forecast(highs: "[11.0]")).position == 0.5)
+        #expect(try decode(forecast(highs: "[14.0]")).position == 1)
+    }
+
     @Test func nightIsKept() throws {
         #expect(try !decode(forecast(isDay: 0)).isDay)
     }

@@ -18,6 +18,17 @@ extension Widgets {
         .rainShowers: ("Showers", "cloud.sun.rain"), .snowShowers: ("Snow showers", "cloud.snow"),
         .thunderstorm: ("Thunderstorms", "cloud.bolt.rain"),
     ]
+    private static let freezing = -10.0
+    private static let cold = 0.0
+    private static let cool = 10.0
+    private static let mild = 18.0
+    private static let warm = 24.0
+    private static let hot = 30.0
+    private static let scorching = 38.0
+    private static let scale: [(celsius: Double, colour: NSColor)] = [
+        (freezing, .systemIndigo), (cold, .systemBlue), (cool, .systemTeal), (mild, .systemGreen),
+        (warm, .systemYellow), (hot, .systemOrange), (scorching, .systemRed),
+    ]
     private static let nightSymbols: [Weather.Sky: String] = [
         .clear: "moon.stars", .mainlyClear: "moon.stars", .partlyCloudy: "cloud.moon",
         .rainShowers: "cloud.moon.rain",
@@ -58,10 +69,24 @@ extension Widgets {
         let low = degrees(now.low)
         return .init(
             id: weather, name: name(of: weather), value: degrees(now.temperature),
-            detail: "H \(high) L \(low)", action: openWeather,
+            detail: look.condition, action: openWeather,
             spoken: "\(name(of: weather)): \(degrees(now.temperature, width: .wide)), "
                 + "\(look.condition.lowercased()), high \(high), low \(low)",
-            symbol: now.isDay ? look.symbol : nightSymbols[now.sky] ?? look.symbol)
+            symbol: now.isDay ? look.symbol : nightSymbols[now.sky] ?? look.symbol,
+            span: .init(
+                low: low, high: high, position: now.position, cold: colour(of: now.low),
+                warm: colour(of: now.high)))
+    }
+
+    private static func colour(of temperature: Measurement<UnitTemperature>) -> NSColor {
+        let celsius = temperature.converted(to: .celsius).value
+        guard let upper = scale.firstIndex(where: { $0.celsius >= celsius }) else {
+            return scale.last?.colour ?? .systemRed
+        }
+        guard upper > 0 else { return scale[upper].colour }
+        let (below, above) = (scale[upper - 1], scale[upper])
+        let fraction = (celsius - below.celsius) / (above.celsius - below.celsius)
+        return below.colour.blended(withFraction: fraction, of: above.colour) ?? above.colour
     }
 
     private static func notice(

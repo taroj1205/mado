@@ -42,6 +42,26 @@ import Testing
         panel.makeFirstResponder(view.field)
     }
 
+    @Test func aThirdLineFitsTheGridButNotTheStrip() throws {
+        let forecast = WidgetGrid.Widget(
+            id: "weather", name: "Weather", value: "11°", detail: "Partly cloudy",
+            action: "Open Weather", spoken: "Weather: 11 degrees",
+            span: .init(
+                low: "9°", high: "15°", position: 0.33, cold: .systemTeal, warm: .systemGreen))
+        view.widgets = [forecast, small("clock")]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.first)
+        #expect(visible(in: tile) == [tile.value, tile.detail, tile.span])
+        #expect([tile.span.low.stringValue, tile.span.high.stringValue] == ["9°", "15°"])
+        #expect(tile.span.position == 0.33)
+        let box = tile.convert(tile.span.bounds, from: tile.span)
+        #expect(tile.bounds.insetBy(dx: 0, dy: WidgetTile.vertical - 0.5).contains(box))
+        view.widgetLayout = .strip
+        view.layoutSubtreeIfNeeded()
+        let strip = try #require(view.widgetGrid.tiles.first)
+        #expect(visible(in: strip) == [strip.value, strip.detail])
+    }
+
     @Test func wideTilesSpanTwoColumnsAndTheNextTileWrapsWhenARowIsFull() {
         view.layoutSubtreeIfNeeded()
         let frames = view.widgetGrid.tiles.map(\.frame)
@@ -196,7 +216,7 @@ import Testing
     private func visible(in tile: WidgetTile) -> [NSView] {
         let parts: [NSView] =
             [tile.title, tile.value, tile.headline] + tile.skeleton
-            + [tile.detail, tile.reason, tile.allow]
+            + [tile.detail, tile.span, tile.reason, tile.allow]
         return parts.filter { !$0.isHiddenOrHasHiddenAncestor }
     }
 

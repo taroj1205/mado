@@ -59,12 +59,19 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let searchAPI = "https://geocoding-api.open-meteo.com/v1/search"
     private static let coordinateScale = 100.0
     private static let success = 200
+    private static let middle = 0.5
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
     public let low: Measurement<UnitTemperature>
     public let sky: Sky
     public let isDay: Bool
+
+    public var position: Double {
+        let range = high.value - low.value
+        guard range > 0 else { return Self.middle }
+        return min(max((temperature.value - low.value) / range, 0), 1)
+    }
 
     public init(from decoder: any Decoder) throws {
         let root = try decoder.container(keyedBy: Keys.self)

@@ -37,10 +37,11 @@ public final class WidgetGrid: NSView {
 
         public init(
             id: String, name: String, value: String, detail: String, action: String,
-            spoken: String, symbol: String? = nil
+            spoken: String, symbol: String? = nil, span: Span? = nil
         ) {
             self.init(
-                id: id, name: name, content: .value(value, detail: detail, symbol: symbol),
+                id: id, name: name,
+                content: .value(value, detail: detail, symbol: symbol, span: span),
                 action: action, spoken: spoken)
         }
 
@@ -57,7 +58,7 @@ public final class WidgetGrid: NSView {
     }
 
     public enum Content: Sendable, Equatable {
-        case value(String, detail: String, symbol: String? = nil)
+        case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
         case loading(title: String)
@@ -278,6 +279,7 @@ public final class WidgetGrid: NSView {
             if !floating { tiles.forEach(addSubview) }
         }
         for (tile, widget) in zip(tiles, visible) {
+            tile.compact = layoutInUse == .strip
             tile.show(widget)
             tile.lifted = widget.id == dragged
         }
