@@ -40,11 +40,13 @@ extension LauncherView {
         level.priority = .defaultHigh
         level.isActive = true
         spotPicker = picker
-        panel.onCommand = { [weak self] selector in self?.pickerCommand(selector) ?? false }
+        panel.onCommand = { [weak self] selector in
+            self?.pickerCommand(selector, moving: widget.id) ?? false
+        }
     }
 
     func closeSpotPicker() {
-        spotPicker?.glass.removeFromSuperview()
+        spotPicker?.dismiss()
         spotPicker = nil
         actionPanel?.onCommand = nil
     }
@@ -54,7 +56,7 @@ extension LauncherView {
             closeActions()
             return
         }
-        guard widgetGrid.accepts(id, at: spot) else {
+        guard widgetGrid.accepts(id, at: spot, before: nil) else {
             NSSound.beep()
             return
         }
@@ -62,8 +64,8 @@ extension LauncherView {
         onWidgetEdit?(.place(id, spot, before: nil))
     }
 
-    private func pickerCommand(_ selector: Selector) -> Bool {
-        guard let picker = spotPicker, let index = selectedWidget else { return false }
+    private func pickerCommand(_ selector: Selector, moving id: String) -> Bool {
+        guard let picker = spotPicker else { return false }
         switch selector {
         case #selector(NSResponder.moveUp): picker.step(.top)
         case #selector(NSResponder.moveDown): picker.step(.bottom)
@@ -71,7 +73,7 @@ extension LauncherView {
         case #selector(NSResponder.moveRight): picker.step(.right)
 
         case #selector(NSResponder.insertNewline):
-            place(widgetGrid.shown[index].id, at: picker.value)
+            place(id, at: picker.value)
 
         case #selector(NSResponder.cancelOperation): closeSpotPicker()
         default: return false

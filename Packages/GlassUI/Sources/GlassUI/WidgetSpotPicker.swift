@@ -86,6 +86,11 @@ final class WidgetSpotPicker: NSView {
         unsafe glass.superview != nil && glass.convert(glass.bounds, to: nil).contains(point)
     }
 
+    func dismiss() {
+        glass.removeFromSuperview()
+        glass.contentView = nil
+    }
+
     func step(_ heading: WidgetGrid.Heading) {
         value = value.neighbour(toward: heading) ?? value
     }

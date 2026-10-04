@@ -83,11 +83,13 @@ extension WidgetGrid {
         case end
     }
 
+    var listed: [Widget] { editing ? widgets : widgets.filter { !$0.isUnavailable } }
+
     var shown: [Widget] {
         guard let layoutInUse else { return [] }
-        let listed = editing ? widgets : widgets.filter { !$0.isUnavailable }
+        let available = listed
         let arranged =
-            order.isEmpty ? listed : order.compactMap { id in listed.first { $0.id == id } }
+            order.isEmpty ? available : order.compactMap { id in available.first { $0.id == id } }
         let panelWidgets = arranged.filter { spot(of: $0) == .panel }
         let rows =
             layoutInUse == .strip ? Self.cells(of: panelWidgets).count { $0.row == 0 } : nil

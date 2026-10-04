@@ -156,14 +156,14 @@ import Testing
         view.onWidgetEdit = { edits.append($0) }
         view.widgetLayout = .strip
         view.widgetSpots = ["7": .leftTop]
-        #expect(!view.widgetGrid.accepts("7", at: .panel))
+        #expect(!view.widgetGrid.accepts("7", at: .panel, before: nil))
         start(dragging: 6)
         #expect(view.dragWidget("7", at: window(CGPoint(x: 500, y: 300)), from: nil).isEmpty)
         #expect(view.widgetGrid.refused == .panel)
         #expect(!view.dropWidget("7"))
         #expect(edits.isEmpty)
         view.widgetSpots = ["6": .leftTop, "7": .leftTop]
-        #expect(view.widgetGrid.accepts("7", at: .panel))
+        #expect(view.widgetGrid.accepts("7", at: .panel, before: nil))
     }
 
     private func start(dragging index: Int) {

@@ -77,10 +77,13 @@ extension WidgetGrid {
         return frame
     }
 
-    func accepts(_ id: String, at target: Spot) -> Bool {
-        guard let window = unsafe window else { return false }
-        let others = shown.filter { $0.id != id }
-        let all = others + shown.filter { $0.id == id }
+    func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
+        guard let window = unsafe window, let mover = listed.first(where: { $0.id == id }) else {
+            return false
+        }
+        var all = listed.filter { $0.id != id }
+        all.insert(
+            mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
         let spot = { (widget: Widget) in widget.id == id ? target : self.spot(of: widget) }
         let placed = Spot.allCases.dropFirst().flatMap { candidate in
             all.filter { spot($0) == candidate }.map { ($0, candidate) }
@@ -204,7 +207,7 @@ extension WidgetGrid {
     }
 
     private func move(_ id: String, to target: Spot, before other: String?) -> Bool {
-        guard accepts(id, at: target) else {
+        guard accepts(id, at: target, before: other) else {
             refused = target
             return false
         }
