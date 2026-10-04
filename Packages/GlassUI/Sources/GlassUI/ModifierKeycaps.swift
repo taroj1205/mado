@@ -4,12 +4,14 @@ public import AppKit
 public final class ModifierKeycaps: NSStackView {
     public init(_ modifiers: Shortcut.Modifiers) {
         super.init(frame: .zero)
-        setViews(HotKeyButton.keycaps(HotKeyLabel.symbols(modifiers)), in: .leading)
+        setViews(
+            HotKeyButton.keycaps(HotKeyLabel.spelledOutSymbols(modifiers)),
+            in: .leading)
         spacing = HotKeyButton.keyGap
         setHuggingPriority(.defaultHigh, for: .horizontal)
         setAccessibilityElement(true)
         setAccessibilityRole(.staticText)
-        setAccessibilityValue(HotKeyLabel.spoken(modifiers))
+        setAccessibilityValue(HotKeyLabel.spelledOutSpoken(modifiers))
     }
 
     @available(*, unavailable)

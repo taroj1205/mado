@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
+        HyperGlyph.isShown = RemapSettings.load(from: modules).showsHyperGlyph
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
@@ -93,7 +94,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
-                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory))
+                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory
+                    ) { [weak self] in self?.showLauncher() })
             }
             try manager.startEnabledModules()
             return manager

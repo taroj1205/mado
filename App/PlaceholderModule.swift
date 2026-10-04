@@ -17,7 +17,8 @@ struct PlaceholderModule: Module {
 extension ModuleDescriptor {
     @MainActor
     func makeModule(
-        in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory
+        in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory,
+        openLauncher: @escaping @MainActor () -> Void
     ) -> any Module {
         switch id {
         case ClipboardModule.id:
@@ -29,7 +30,8 @@ extension ModuleDescriptor {
             KeyboardModule(
                 descriptor: self,
                 inputSourceSettings: { [weak modules] in .load(from: modules) },
-                remapSettings: { [weak modules] in .load(from: modules) })
+                remapSettings: { [weak modules] in .load(from: modules) },
+                openLauncher: openLauncher)
 
         case WindowsModule.id:
             WindowsModule(

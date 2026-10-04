@@ -218,6 +218,7 @@ public final class HotKeyRecorder: NSView {
             warningLabel.stringValue =
                 "\(owner) uses \(keycaps.joined()). Turn it off in System Settings › "
                 + "Keyboard Shortcuts, or keep yours anyway."
+            warningLabel.setAccessibilityValue(HotKeyLabel.spoken(text: warningLabel.stringValue))
             warning.isHidden = false
             controls.setViews([openSettings, useAnyway], in: .trailing)
         }

@@ -1,3 +1,4 @@
+public import AppCore
 import IOKit.hid
 
 public struct RemapSettings: Codable, Equatable, Sendable {
@@ -7,32 +8,73 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         case escape = "escape"
         case hyper = "hyper"
 
+        public var isModifier: Bool {
+            [.control, .hyper].contains(self)
+        }
+
         var usage: UInt64? {
             switch self {
             case .capsLock: nil
-            case .control: KeyMappings.usage(kHIDUsage_KeyboardLeftControl)
+            case .control: KeyMappings.usage(kHIDUsage_KeyboardRightControl)
             case .escape: KeyMappings.usage(kHIDUsage_KeyboardEscape)
             case .hyper: KeyMappings.usage(kHIDUsage_KeyboardF18)
             }
         }
     }
 
+    public enum TapAction: String, Codable, CaseIterable, Sendable {
+        case nothing = "nothing"
+        case escape = "escape"
+        case capsLock = "caps_lock"
+        case openMado = "open_mado"
+        case shortcut = "shortcut"
+    }
+
+    private enum LegacyKeys: String, CodingKey {
+        case sendsEscape = "tapSendsEscape"
+    }
+
     public var capsLock: CapsLock
-    public var tapSendsEscape: Bool
+    public var tapAction: TapAction
+    public var tapShortcut: Shortcut?
+    public var hyperAsGlyph: Bool
     public var excludedKeyboards: [Keyboard]
+
+    public var tap: CapsLockTap? {
+        guard capsLock.isModifier else { return nil }
+        switch tapAction {
+        case .nothing: return nil
+        case .escape: return .escape
+        case .capsLock: return .capsLock
+        case .openMado: return .openMado
+        case .shortcut: return tapShortcut.map(CapsLockTap.shortcut)
+        }
+    }
+
+    public var showsHyperGlyph: Bool {
+        hyperAsGlyph && capsLock == .hyper
+    }
 
     public init() {
         capsLock = .capsLock
-        tapSendsEscape = false
+        tapAction = .nothing
+        tapShortcut = nil
+        hyperAsGlyph = false
         excludedKeyboards = []
     }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
         self.init()
         capsLock = try values.decodeIfPresent(CapsLock.self, forKey: .capsLock) ?? capsLock
-        tapSendsEscape =
-            try values.decodeIfPresent(Bool.self, forKey: .tapSendsEscape) ?? tapSendsEscape
+        let sendsEscape = try legacy.decodeIfPresent(Bool.self, forKey: .sendsEscape) == true
+        tapAction =
+            try values.decodeIfPresent(TapAction.self, forKey: .tapAction)
+            ?? (sendsEscape ? .escape : tapAction)
+        tapShortcut = try values.decodeIfPresent(Shortcut.self, forKey: .tapShortcut)
+        hyperAsGlyph =
+            try values.decodeIfPresent(Bool.self, forKey: .hyperAsGlyph) ?? hyperAsGlyph
         excludedKeyboards =
             try values.decodeIfPresent([Keyboard].self, forKey: .excludedKeyboards)
             ?? excludedKeyboards
