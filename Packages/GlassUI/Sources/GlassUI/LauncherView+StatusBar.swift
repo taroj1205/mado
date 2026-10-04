@@ -2,7 +2,7 @@ import AppKit
 
 extension LauncherView {
     var showsStatusBar: Bool {
-        onEmptyRootQuery && !pills.isEmpty && !editingWidgets
+        homeShown && !pills.isEmpty && !editingWidgets
     }
 
     func arrangePills() {

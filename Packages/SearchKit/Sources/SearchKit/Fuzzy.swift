@@ -31,12 +31,16 @@ public enum Fuzzy {
     ) -> [Item] {
         let needle = Key(query.trimmingCharacters(in: .whitespacesAndNewlines)).letters
             .map(\.character)
-        let scored = items.enumerated().compactMap { offset, item in
+        var scored: [(score: Int, offset: Int)] = []
+        for (offset, item) in items.enumerated() {
             let best =
                 needle.isEmpty ? 0 : keys(item).compactMap { score(needle, in: $0.letters) }.max()
-            return best.map { (item: item, score: $0 + bonus(item), offset: offset) }
+            if let best {
+                scored.append((best + bonus(item), offset))
+            }
         }
-        return scored.sorted { ($1.score, $0.offset) < ($0.score, $1.offset) }.map(\.item)
+        scored.sort { ($1.score, $0.offset) < ($0.score, $1.offset) }
+        return scored.map { items[$0.offset] }
     }
 
     private static func score(_ needle: [Character], in text: [Letter]) -> Int? {

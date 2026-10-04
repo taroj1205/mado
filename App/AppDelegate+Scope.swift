@@ -38,9 +38,9 @@ extension AppDelegate {
             return history.sections(for: query)
 
         case .root:
-            return signposter.withIntervalSignpost("search") {
-                LauncherResult.sections(for: query, in: sources, usage: usage)
-            }
+            let state = signposter.beginInterval("search")
+            defer { signposter.endInterval("search", state) }
+            return await LauncherResult.sections(for: query, in: sources, usage: usage)
         }
     }
 
@@ -57,6 +57,11 @@ extension AppDelegate {
                 for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor,
                 pastingInto: pasteTarget)
         }
+    }
+
+    func connectActions() {
+        launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
+        launcherView.shortcutKeys = LauncherMenu.shortcutKeys + ColourAnswer.shortcutKeys
     }
 
     func show(_ sections: [ResultList.Section]) {

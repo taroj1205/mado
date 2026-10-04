@@ -31,6 +31,7 @@ import Testing
         ]
         view.pills = pills
         view.statusBar.reducesMotion = { true }
+        view.onQuery = { [view] _ in view.show(view.results.sections) }
         panel.makeFirstResponder(view.field)
     }
 

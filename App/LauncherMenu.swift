@@ -12,6 +12,11 @@ struct LauncherMenu {
         case edit(ItemEditor.Edit)
     }
 
+    static let shortcutKeys = [
+        FileActions.showInfoKeys, FileActions.copyPathKeys, FileActions.quitKeys,
+        ItemEditor.createQuicklinkKeys,
+    ]
+
     let groups: [[Entry]]
     let recordsUse: Bool
 

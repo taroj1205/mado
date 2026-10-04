@@ -8,9 +8,13 @@ public final class AppIndex {
         public let name: String
         public let folder: String
         public let url: URL
+        public let keys: [Fuzzy.Key]
 
-        public var keys: [String] {
-            [name, url.deletingPathExtension().lastPathComponent]
+        init(name: String, folder: String, url: URL) {
+            self.name = name
+            self.folder = folder
+            self.url = url
+            keys = [name, url.deletingPathExtension().lastPathComponent].map(Fuzzy.Key.init)
         }
     }
 

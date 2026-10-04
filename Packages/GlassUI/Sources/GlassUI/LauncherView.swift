@@ -12,6 +12,7 @@ public final class LauncherView: NSView {
     static let capsuleInset: CGFloat = 10
     static let previewHint = "⌘Y to preview"
     static let previewSymbol = "eye"
+    static let previewKeys = ["⌘", "Y"]
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -23,6 +24,7 @@ public final class LauncherView: NSView {
     public var onLeave: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
+    public var shortcutKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
@@ -62,7 +64,10 @@ public final class LauncherView: NSView {
     var actionPanel: ActionPanel?
     private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
+    var passKeyOn = { (event: NSEvent) in _ = NSApp.mainMenu?.performKeyEquivalent(with: event) }
     var rootQuery: String?
+    var shownQuery = (text: "", scoped: false)
+    var afterResults: (() -> Void)?
     let icon = NSImageView()
     lazy var fieldLeading = field.leadingAnchor.constraint(
         equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
@@ -161,7 +166,7 @@ public final class LauncherView: NSView {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
-        if handleModifiedKey(event) { return true }
+        if handleModifiedKey(event) || holdsForResults(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
@@ -209,16 +214,8 @@ public final class LauncherView: NSView {
         }
     }
 
-    public func show(_ sections: [ResultList.Section]) {
-        let previewed = results.selectedItem?.file
-        let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
-        results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
-        if results.selectedItem?.file != previewed {
-            closePreview()
-        }
-    }
-
     public func endBrowsing() {
+        afterResults = nil
         finishEditingWidgets()
         browsing = false
         leavePillsAndWidgets()

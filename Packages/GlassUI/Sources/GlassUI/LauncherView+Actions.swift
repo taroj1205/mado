@@ -38,12 +38,16 @@ extension LauncherView {
             self.choices = choices
         }
 
-        func matches(_ event: NSEvent) -> Bool {
-            let held = Set(Self.modifiers.filter { event.modifierFlags.contains($0.0) }.map(\.1))
+        static func keys(_ keys: [String], match event: NSEvent) -> Bool {
+            let held = Set(modifiers.filter { event.modifierFlags.contains($0.0) }.map(\.1))
             guard let key = keys.last, !held.isEmpty, Set(keys.dropLast()) == held else {
                 return false
             }
             return event.charactersIgnoringModifiers?.uppercased() == key
+        }
+
+        func matches(_ event: NSEvent) -> Bool {
+            Self.keys(keys, match: event)
         }
     }
 
@@ -74,16 +78,37 @@ extension LauncherView {
         }
     }
 
+    func waitsForResults(then retry: @escaping (LauncherView) -> Void) -> Bool {
+        guard shownQuery != (field.stringValue, scoped) else { return false }
+        afterResults = { [weak self] in
+            if let self { retry(self) }
+        }
+        return true
+    }
+
     func run(_ action: Int) {
+        if waitsForResults(then: { $0.run(action) }) { return }
         guard let item = results.selectedItem, action != 0 || !item.action.isEmpty else { return }
         onRun?(item, action)
     }
 
     func run(keyed keys: [String]) {
+        if waitsForResults(then: { $0.run(keyed: keys) }) { return }
         guard let item = results.selectedItem,
             let index = actions?(item).firstIndex(where: { $0.keys == keys })
         else { return }
         onRun?(item, index)
+    }
+
+    func holdsForResults(_ event: NSEvent) -> Bool {
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
+            (shortcutKeys + [Self.previewKeys]).contains(where: { Action.keys($0, match: event) })
+        else { return false }
+        return waitsForResults { view in
+            if !view.performKeyEquivalent(with: event) {
+                view.passKeyOn(event)
+            }
+        }
     }
 
     func runActionShortcut(_ event: NSEvent) -> Bool {
@@ -117,6 +142,7 @@ extension LauncherView {
             }
             return
         }
+        if waitsForResults(then: { $0.showActions() }) { return }
         guard let item = results.selectedItem else { return }
         selectPill(nil)
         present(actions?(item) ?? [], for: item.title) { [weak self] index in

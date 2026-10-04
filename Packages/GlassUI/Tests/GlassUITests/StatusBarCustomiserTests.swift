@@ -33,6 +33,7 @@ import Testing
     init() {
         panel.contentView = view
         view.pills = pills
+        view.onQuery = { [view] _ in view.show(view.results.sections) }
         panel.makeFirstResponder(view.field)
     }
 

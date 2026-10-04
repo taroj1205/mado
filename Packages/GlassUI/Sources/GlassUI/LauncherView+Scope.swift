@@ -3,8 +3,25 @@ public import AppKit
 extension LauncherView {
     public var scoped: Bool { rootQuery != nil }
 
-    var onEmptyRootQuery: Bool {
-        !scoped && field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    var homeShown: Bool {
+        !shownQuery.scoped
+            && shownQuery.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    public func show(_ sections: [ResultList.Section]) {
+        shownQuery = (field.stringValue, scoped)
+        if !homeShown {
+            leavePillsAndWidgets()
+        }
+        let previewed = results.selectedItem?.file
+        let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
+        results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
+        if results.selectedItem?.file != previewed {
+            closePreview()
+        }
+        let waiting = afterResults
+        afterResults = nil
+        waiting?()
     }
 
     public func enter(

@@ -117,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
-        launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
+        connectActions()
         connectGlances()
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
@@ -132,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             deliver: { [weak self] sections in self?.show(sections) })
     }
 
-    private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
+    func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
         menu(for: item).actions(
             labelling: { editor.action(for: $0, on: item.id) },
             running: { [weak self] in self?.run($0, for: item, recordingUse: $1) })

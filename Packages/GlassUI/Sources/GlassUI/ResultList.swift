@@ -90,8 +90,9 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public var sections: [Section] = [] {
         didSet {
             reloading = true
+            let shown = rows.count
             rows = Self.rows(for: sections)
-            table.reloadData()
+            reloadRows(keeping: shown)
             let keptRow = kept.flatMap { id in rows.firstIndex { $0.itemID == id } }
             if let row = keptRow ?? rows.firstIndex(where: \.isItem) {
                 table.selectRowIndexes([row], byExtendingSelection: false)
@@ -210,8 +211,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         let view =
             tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
-        let answer = if case .item(let item) = rows[row] { item.answer != nil } else { false }
-        view.radius = answer ? AnswerCell.radius : rowRadius
+        view.radius = radius(ofRow: row)
         return view
     }
 
