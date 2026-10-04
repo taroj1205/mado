@@ -100,16 +100,18 @@ extension LauncherView {
         onRun?(item, index)
     }
 
-    func runActionShortcut(_ event: NSEvent) -> Bool {
-        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false else {
-            return false
-        }
-        let item = results.selectedItem
-        let index = item.flatMap { actions?($0).firstIndex { $0.matches(event) } }
-        guard index != nil || actionKeys.contains(where: { Action.keys($0, match: event) })
+    func holdsForResults(_ event: NSEvent) -> Bool {
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
+            shortcutKeys.contains(where: { Action.keys($0, match: event) })
         else { return false }
-        if waitsForResults(then: { _ = $0.runActionShortcut(event) }) { return true }
-        guard let item, let index else { return false }
+        return waitsForResults { _ = $0.performKeyEquivalent(with: event) }
+    }
+
+    func runActionShortcut(_ event: NSEvent) -> Bool {
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
+            let item = results.selectedItem,
+            let index = actions?(item).firstIndex(where: { $0.matches(event) })
+        else { return false }
         onRun?(item, index)
         return true
     }
@@ -119,7 +121,6 @@ extension LauncherView {
             if case .item(let item) = row { item } else { nil }
         }
         guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
-        if waitsForResults(then: { _ = $0.runShortcut(key) }) { return true }
         onRun?(item, 0)
         return true
     }

@@ -19,7 +19,7 @@ import Testing
             [.init("Open", keys: ["↵"]), .init("Show in Finder", keys: ["⌘", "↵"])]
                 + (item.id == "Notes" ? [.init("Show Info", keys: ["⌘", "I"])] : [])
         }
-        view.actionKeys = [["⌘", "I"]]
+        view.shortcutKeys = [["⌘", "I"], ["⌘", "1"]]
         panel.makeFirstResponder(view.field)
     }
 
@@ -57,6 +57,19 @@ import Testing
         #expect(runs.isEmpty)
         view.show([results("Notes")])
         #expect(runs == ["Notes 2"])
+    }
+
+    @Test func aRowShortcutWaitsEvenWhenNoShownRowHasIt() {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        press(kVK_ANSI_N, "n")
+        press(kVK_ANSI_1, "1", [.command])
+        #expect(runs.isEmpty)
+        let copy = ResultList.Item(
+            id: "rgb", title: "Copy RGB", subtitle: "", kind: "", symbol: "doc.on.doc",
+            action: "Copy RGB", shortcut: ["⌘", "1"])
+        view.show([results("Notes"), .init(title: "Copy as", items: [copy])])
+        #expect(runs == ["rgb 0"])
     }
 
     @Test func aWidgetPickedBeforeTheResultsArriveIsLetGo() {

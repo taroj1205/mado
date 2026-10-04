@@ -23,7 +23,7 @@ public final class LauncherView: NSView {
     public var onLeave: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
-    public var actionKeys: [[String]] = []
+    public var shortcutKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
@@ -164,7 +164,7 @@ public final class LauncherView: NSView {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
-        if handleModifiedKey(event) { return true }
+        if handleModifiedKey(event) || holdsForResults(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
