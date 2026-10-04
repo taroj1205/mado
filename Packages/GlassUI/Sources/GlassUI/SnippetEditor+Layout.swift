@@ -1,14 +1,14 @@
 import AppKit
 
 extension SnippetEditor {
-    static let newSize: CGFloat = 13
     static let newHeight: CGFloat = 26
     private static let chipSize: CGFloat = 11.5
     static let chipFont = NSFont.monospacedSystemFont(ofSize: chipSize, weight: .regular)
     static let capsuleInset: CGFloat = 10
     private static let barHeight: CGFloat = 60
     private static let barInset: CGFloat = 20
-    private static let barTrailing: CGFloat = 14
+    private static let half: CGFloat = 0.5
+    private static let barTrailing = (barHeight - newHeight) * half
     private static let barGap: CGFloat = 12
     private static let searchSize: CGFloat = 20
     private static let listWidth: CGFloat = 260
@@ -163,7 +163,6 @@ extension SnippetEditor {
         search.drawsBackground = false
         search.focusRingType = .none
         search.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        newSnippet.title = "New Snippet"
         let bar = NSStackView(views: [icon, search, newSnippet])
         bar.spacing = Self.barGap
         bar.edgeInsets = NSEdgeInsets(

@@ -36,9 +36,9 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     public var tokens: (String) -> [NSRange] = { _ in [] }
 
     let search = NSTextField()
-    let newSnippet = ChipButton(
-        font: .systemFont(ofSize: SnippetEditor.newSize, weight: .medium),
-        height: SnippetEditor.newHeight, symbol: "plus")
+    let newSnippet = PillButton(
+        "New Snippet", height: SnippetEditor.newHeight, symbol: "plus",
+        fill: FloatingCapsule.keycapFill, text: .labelColor)
     let list = SnippetList()
     let empty = NSTextField(labelWithString: "")
     let nameField = NSTextField()
@@ -82,7 +82,11 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
             field.delegate = self
         }
         textView.delegate = self
-        newSnippet.onPress = { [weak self] in self?.startNew() }
+        newSnippet.target = self
+        newSnippet.action = #selector(startNew)
+        newSnippet.keyEquivalent = "n"
+        newSnippet.keyEquivalentModifierMask = .command
+        newSnippet.toolTip = "New Snippet (⌘N)"
         for (chip, token) in zip(chips, Self.placeholders + [Self.fillIn]) {
             chip.title = token
             chip.setAccessibilityLabel("Insert \(token)")
@@ -203,6 +207,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         highlightTokens()
     }
 
+    @objc
     private func startNew() {
         closeActions()
         list.select(nil)
