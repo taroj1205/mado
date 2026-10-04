@@ -82,10 +82,6 @@ public final class WidgetGrid: NSView {
     public enum Layout: Sendable {
         case grid
         case strip
-        case above
-        case around
-
-        var floating: Bool { self == .above || self == .around }
     }
 
     public enum Skip: Sendable {
@@ -119,7 +115,7 @@ public final class WidgetGrid: NSView {
     static let lift: CGFloat = 16
     static let sideWidth: CGFloat = 220
     static let sideGap: CGFloat = 20
-    static let sides = 2
+    nonisolated static let sides = 2
 
     var widgets: [Widget] = [] {
         didSet {
@@ -130,6 +126,12 @@ public final class WidgetGrid: NSView {
     var tileLayout: Layout? = .grid {
         didSet {
             if tileLayout != oldValue { update(rebuilding: true) }
+        }
+    }
+
+    var spots: [String: Spot] = [:] {
+        didSet {
+            if spots != oldValue { update() }
         }
     }
 
@@ -167,31 +169,10 @@ public final class WidgetGrid: NSView {
     private(set) var floats: [GlassPanel] = []
     let dropFrame = WidgetDropFrame()
 
-    var shown: [Widget] {
-        let listed = editing ? widgets : widgets.filter { !$0.isUnavailable }
-        let arranged =
-            order.isEmpty ? listed : order.compactMap { id in listed.first { $0.id == id } }
-        switch layoutInUse {
-        case .grid, .above, .around: return arranged
-        case .strip: return Array(arranged.prefix(Self.cells(of: arranged).count { $0.row == 0 }))
-        case nil: return []
-        }
-    }
-
     var layoutInUse: Layout? { editing ? .grid : tileLayout }
 
     var rowHeight: CGFloat {
         layoutInUse == .strip ? Self.stripHeight : Self.rowHeight
-    }
-
-    var floating: Bool { layoutInUse?.floating == true }
-
-    private var spans: [Int] { shown.map(\.span) + (incoming.map { [$0] } ?? []) }
-
-    var overhang: CGFloat {
-        let rows = CGFloat(Self.cells(of: shown).last.map { $0.row + 1 } ?? 0)
-        guard layoutInUse == .above, rows > 0 else { return 0 }
-        return Self.lift + rows * Self.rowHeight + (rows - 1) * Self.floatingGap
     }
 
     override public var isFlipped: Bool { true }
@@ -205,7 +186,7 @@ public final class WidgetGrid: NSView {
 
     override public var intrinsicContentSize: NSSize {
         let rows = Self.cells(spanning: spans).last.map { $0.row + 1 } ?? 0
-        guard !isHidden, !floating, rows > 0 else {
+        guard !isHidden, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
         let height = CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Self.gap
@@ -239,9 +220,8 @@ public final class WidgetGrid: NSView {
 
     override public func layout() {
         super.layout()
-        guard !floating else { return }
         let frames = frames(spanning: spans)
-        for (index, (tile, frame)) in zip(tiles, frames).enumerated() {
+        for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
             place(tile, in: frame, tilt: tilt(at: index))
         }
         if incoming != nil, let last = frames.last {
@@ -256,11 +236,11 @@ public final class WidgetGrid: NSView {
     }
 
     func placeFloats() {
-        guard let window = unsafe window, let layoutInUse, !isHidden else {
+        guard let window = unsafe window, !isHidden else {
             floats.forEach { $0.orderOut(nil) }
             return
         }
-        let frames = Self.floatingFrames(layoutInUse, for: shown, beside: window.frame)
+        let frames = Self.floatingFrames(of: placed, beside: window.frame)
         for (float, frame) in zip(floats, frames) {
             float.setFrame(frame, display: false)
             if float.parent !== window {
@@ -271,12 +251,13 @@ public final class WidgetGrid: NSView {
 
     private func update(rebuilding: Bool = false) {
         let visible = shown
-        if rebuilding || visible.count != tiles.count {
+        let floating = visible.map { spot(of: $0) != .panel }
+        if rebuilding || floating != tiles.map(\.floating) {
             tiles.forEach { $0.removeFromSuperview() }
             floats.forEach { $0.orderOut(nil) }
-            tiles = visible.indices.map(makeTile)
-            floats = floating ? tiles.map(Self.makeFloat) : []
-            if !floating { tiles.forEach(addSubview) }
+            tiles = zip(visible.indices, floating).map(makeTile)
+            floats = tiles.filter(\.floating).map(Self.makeFloat)
+            tiles.filter { !$0.floating }.forEach(addSubview)
         }
         for (tile, widget) in zip(tiles, visible) {
             tile.compact = layoutInUse == .strip

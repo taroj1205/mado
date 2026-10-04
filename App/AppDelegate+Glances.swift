@@ -9,15 +9,17 @@ extension AppDelegate {
     private static let gridLauncherHeight: CGFloat = 548
     private static let half: CGFloat = 0.5
 
-    var widgetPlacement: WidgetPlacement? {
-        modules?.isEnabled(Widgets.moduleID) == false ? nil : .load(from: modules)
+    var launcherSize: CGSize {
+        CGSize(
+            width: Self.launcherWidth,
+            height: launcherView.widgetsFillPanel ? Self.gridLauncherHeight : Self.launcherHeight)
     }
 
-    var launcherSize: CGSize {
-        let grid = launcherView.widgetLayout == .grid
-        return CGSize(
-            width: Self.launcherWidth,
-            height: grid ? Self.gridLauncherHeight : Self.launcherHeight)
+    func arrangeWidgets() {
+        let shown = modules?.isEnabled(Widgets.moduleID) != false
+        launcherView.widgetLayout = shown ? WidgetInlineStyle.load(from: modules).layout : nil
+        launcherView.widgetSpots = WidgetSettings.load(from: modules).spots(
+            WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids)
     }
 
     func launcherFrame(in visible: CGRect) -> CGRect {
@@ -74,6 +76,7 @@ extension AppDelegate {
     }
 
     private func widgetsChanged() {
+        arrangeWidgets()
         widgets.show(Widgets.added(in: modules), in: launcherView)
     }
 
