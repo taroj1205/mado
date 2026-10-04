@@ -15,6 +15,7 @@ final class Widgets {
     private static let clockWidget = "clock"
     private static let system = "system"
     static let music = "music"
+    static let weather = "weather"
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
     private static let logger = Log.logger("Widgets")
@@ -37,8 +38,16 @@ final class Widgets {
     private static let batteryBlue: CGFloat = 0.345
     private static let batteryIcon = NSColor(
         srgbRed: batteryRed, green: batteryGreen, blue: batteryBlue, alpha: 1)
+    private static let weatherRed: CGFloat = 0.114
+    private static let weatherGreen: CGFloat = 0.435
+    private static let weatherBlue: CGFloat = 0.839
+    private static let weatherIcon = NSColor(
+        srgbRed: weatherRed, green: weatherGreen, blue: weatherBlue, alpha: 1)
 
     static let gallery: [WidgetGallery.Card] = [
+        .init(
+            id: weather, name: "Weather", summary: "Now, high and low", size: .small,
+            group: nil, symbol: "sun.max.fill", colour: weatherIcon),
         .init(
             id: clockWidget, name: "Clock", summary: "Time and date", size: .small,
             group: .time, symbol: "clock.fill", colour: icon),
@@ -62,6 +71,8 @@ final class Widgets {
     }
 
     var shown: [String] = []
+    var city = ""
+    let weatherFeed = WeatherFeed()
     private var stats: SystemStats?
     private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
@@ -77,29 +88,18 @@ final class Widgets {
         settings.save(to: modules)
     }
 
-    private static func name(of id: String) -> String {
+    static func name(of id: String) -> String {
         gallery.first { $0.id == id }?.name ?? id
     }
 
-    static func action(for widget: WidgetGrid.Widget) -> CommandAction {
-        switch widget.id {
-        case system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
-        case battery: return SettingsPane.battery.open
-        default: break
-        }
-        guard let clock else { return SettingsPane.dateAndTime.open }
-        return CommandAction(id: "open", title: widget.action) {
-            _ = try await NSWorkspace.shared.openApplication(
-                at: clock, configuration: NSWorkspace.OpenConfiguration())
-        }
-    }
-
     private static func current(
-        at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?
+        at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?,
+        weather: WeatherFeed.State
     ) -> [WidgetGrid.Widget] {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
+            widget(for: weather),
             .init(
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
                 detail: date.formatted(day),
@@ -191,8 +191,27 @@ final class Widgets {
         }
     }
 
+    func action(for widget: WidgetGrid.Widget) -> CommandAction {
+        switch widget.id {
+        case Self.system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
+        case Self.battery: return SettingsPane.battery.open
+        case Self.weather: return weatherAction(titled: widget.action)
+        default: break
+        }
+        guard let clock = Self.clock else { return SettingsPane.dateAndTime.open }
+        return CommandAction(id: "open", title: widget.action) {
+            _ = try await NSWorkspace.shared.openApplication(
+                at: clock, configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
     func show(in view: LauncherView) {
         stop()
+        weatherFeed.onChange = { [weak self, weak view] in
+            guard let self, let view else { return }
+            refresh(view)
+        }
+        refreshWeather()
         refresh(view)
         ticking = Task { [weak self, weak view] in
             while !Task.isCancelled {
@@ -200,6 +219,7 @@ final class Widgets {
                 let wait = Self.minute - now.truncatingRemainder(dividingBy: Self.minute)
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled, let self, let view else { return }
+                refreshWeather()
                 refresh(view)
             }
         }
@@ -216,6 +236,7 @@ final class Widgets {
 
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
+        refreshWeather()
         refresh(view)
     }
 
@@ -245,7 +266,8 @@ final class Widgets {
     }
 
     private func refresh(_ view: LauncherView) {
-        let all = Self.current(at: .now, stats: stats, playing: playing)
+        let all = Self.current(
+            at: .now, stats: stats, playing: playing, weather: weatherFeed.state)
         view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
     }
 }

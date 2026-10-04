@@ -36,7 +36,7 @@ extension AppDelegate {
             if widget.id == Widgets.music {
                 widgets.control(.playPause, in: launcherView)
             } else {
-                runGlance(Widgets.action(for: widget), for: widget.id)
+                runGlance(widgets.action(for: widget), for: widget.id)
             }
         }
         launcherView.onSkip = { [weak self] skip in
@@ -79,6 +79,7 @@ extension AppDelegate {
 
     func showGlances() {
         widgets.shown = Widgets.added(in: modules)
+        widgets.city = WeatherSettings.load(from: modules).city
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

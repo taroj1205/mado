@@ -7,12 +7,11 @@ final class SettingsPageController: NSViewController {
     private static let titleCenter: CGFloat = 26
     private static let titleSize: CGFloat = 15
     private static let headerSize: CGFloat = 12
-    private static let headerInset: CGFloat = 4
+    static let headerInset: CGFloat = 4
     private static let captionSize: CGFloat = 11
     private static let rowHeight: CGFloat = 40
     private static let iconMargin: CGFloat = 18
     private static let iconGap: CGFloat = 10
-    private static let footerSize: CGFloat = 12
     private static let rowPadding: CGFloat = 12
     private static let cornerRadius: CGFloat = 10
     private static let sectionSpacing: CGFloat = 14
@@ -148,13 +147,7 @@ final class SettingsPageController: NSViewController {
             parts.append(content)
         }
         if let footer = section.footer {
-            let label = NSTextField(wrappingLabelWithString: "")
-            label.font = .systemFont(ofSize: Self.footerSize)
-            label.textColor = .secondaryLabelColor
-            label.attributedStringValue = footer
-            let inset = NSStackView(views: [label])
-            inset.edgeInsets = NSEdgeInsets(top: 0, left: Self.headerInset, bottom: 0, right: 0)
-            parts.append(inset)
+            parts.append(Self.footer(footer))
         }
         let group = NSStackView(views: parts)
         group.orientation = .vertical

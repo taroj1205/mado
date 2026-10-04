@@ -113,6 +113,14 @@ import Testing
         #expect(SystemPermissionProbe().status(for: .calendars) == .unsupported)
     }
 
+    @Test func locationOpensLocationServices() {
+        #expect(SystemPermissionProbe().status(for: .location) == .unsupported)
+        #expect(
+            PermissionManager.settingsURL(for: .location).absoluteString
+                == "x-apple.systempreferences:com.apple.preference.security?"
+                + "Privacy_LocationServices")
+    }
+
     func waitUntil(_ condition: @MainActor () -> Bool) async throws {
         for _ in 0..<200 where !condition() {
             try await Task.sleep(for: .milliseconds(10))
