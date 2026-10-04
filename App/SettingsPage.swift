@@ -37,6 +37,11 @@ struct SettingsPage {
                             SettingsSwitch(
                                 read: { LaunchAtLogin.isEnabled },
                                 write: LaunchAtLogin.setEnabled)),
+                        .init(
+                            "Open when Mado starts",
+                            SettingsSwitch(
+                                read: { OpenOnLaunch.isEnabled(in: context.modules) },
+                                write: { try OpenOnLaunch.setEnabled($0, in: context.modules) })),
                     ]),
                 SettingsSection(
                     "Window",

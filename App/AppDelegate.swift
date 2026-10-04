@@ -81,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
         #endif
         signposter.endInterval("launch", launch)
+        if OpenOnLaunch.isEnabled(in: modules) { showLauncher() }
     }
 
     private func makeModules() -> ModuleManager? {
@@ -207,23 +208,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func searchAgain() {
         search?.run(launcherView.field.stringValue)
-    }
-
-    func windowDidResignKey(_: Notification) {
-        guard !launcherView.sharing, launcherGallery?.isVisible != true else { return }
-        #if DEBUG
-            if KeepLauncherOpen.isEnabled { return }
-        #endif
-        hideLauncher()
-    }
-
-    func applicationDidResignActive(_: Notification) {
-        #if DEBUG
-            let hides = !KeepLauncherOpen.isEnabled
-        #else
-            let hides = launcherGallery?.isVisible == true
-        #endif
-        if hides, !launcherView.sharing, launcher?.isVisible == true { hideLauncher() }
     }
 
     func hideLauncher() {
