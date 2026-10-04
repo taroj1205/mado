@@ -17,6 +17,8 @@ import Testing
         shape: .rounded(20))
     private let editor = SnippetEditor()
     private var saved: [(String?, SnippetEditor.Values)] = []
+    private var deleted: [String] = []
+    private var turned: [Bool] = []
     private var problem: String?
 
     init() {
@@ -24,6 +26,14 @@ import Testing
         editor.fillInToken = Self.fillIn
         editor.onSave = { [weak self] id, values in
             self?.saved.append((id, values))
+            return self?.problem
+        }
+        editor.onDelete = { [weak self] id in
+            self?.deleted.append(id)
+            return self?.problem
+        }
+        editor.onExpandChange = { [weak self] isOn in
+            self?.turned.append(isOn)
             return self?.problem
         }
     }
@@ -92,7 +102,7 @@ import Testing
         #expect(editor.nameField.stringValue == "Home address")
     }
 
-    @Test func returnSavesTheTrimmedFormAndShowsAProblem() {
+    @Test func returnSavesTheTrimmedFormAndFailuresShowAProblem() {
         editor.show([Self.signOff], selecting: "sig")
         editor.nameField.stringValue = "  Sign-off "
         problem = "“\\sig” already expands Bug report."
@@ -102,6 +112,13 @@ import Testing
         #expect(saved.map(\.0) == ["sig"])
         #expect(saved.first?.1 == .init(name: "Sign-off", keyword: #"\sig"#, text: "Bye {cursor}"))
         #expect(!editor.problemLabel.isHidden)
+        #expect(editor.problemLabel.stringValue == problem)
+
+        problem = "Couldn’t delete."
+        press(kVK_ANSI_X, "x", .control)
+        #expect(editor.problemLabel.stringValue == problem && editor.editing == "sig")
+        problem = "Couldn’t turn it off."
+        editor.expandSwitch.performClick(nil)
         #expect(editor.problemLabel.stringValue == problem)
 
         problem = nil
@@ -190,10 +207,8 @@ import Testing
 
     @Test func shortcutsPasteSaveDeleteAndClose() {
         var pasted: [SnippetEditor.Values] = []
-        var deleted: [String] = []
         var closes = 0
         editor.onPaste = { pasted.append($0) }
-        editor.onDelete = { deleted.append($0) }
         editor.onClose = { closes += 1 }
         editor.show([Self.signOff], selecting: "sig")
         panel.makeFirstResponder(editor.textView)
@@ -228,9 +243,6 @@ import Testing
     }
 
     @Test func theSwitchShowsWhereExpansionIsOff() {
-        var turned: [Bool] = []
-        editor.onExpandChange = { turned.append($0) }
-
         editor.showExpansion(true, offIn: ["Terminal", "1Password"])
         #expect(editor.expandSwitch.state == .on)
         #expect(editor.expandDetail.stringValue == "Off in: Terminal, 1Password")

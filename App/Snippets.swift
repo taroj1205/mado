@@ -108,12 +108,19 @@ final class Snippets: NSObject, NSWindowDelegate {
         expander = nil
     }
 
-    private func update(_ change: (inout SnippetSettings) -> Void) -> SnippetSettings {
+    private func update(_ change: (inout SnippetSettings) -> Void) throws -> SnippetSettings {
         var settings = SnippetSettings.load(from: modules)
         change(&settings)
-        settings.save(to: modules)
+        try modules?.setValue(settings, for: SnippetSettings.key)
         reload()
         return settings
+    }
+
+    private func failed(_ error: any Error) -> String {
+        Log.logger("App").error(
+            "Saving \(SnippetSettings.key, privacy: .public) failed: \(error, privacy: .public)")
+        reload()
+        return error.localizedDescription
     }
 
     private func save(_ values: SnippetEditor.Values, as id: String?) -> String? {
@@ -126,17 +133,30 @@ final class Snippets: NSObject, NSWindowDelegate {
         let snippet = Snippet(
             name: values.name, keyword: values.keyword, text: values.text,
             id: id ?? UUID().uuidString)
-        let saved = update { $0.save(snippet) }
-        editor.show(Self.entries(saved), selecting: snippet.id)
-        return nil
+        do {
+            editor.show(Self.entries(try update { $0.save(snippet) }), selecting: snippet.id)
+            return nil
+        } catch {
+            return failed(error)
+        }
     }
 
-    private func delete(_ id: String) {
-        editor.show(Self.entries(update { $0.remove(id) }), selecting: nil)
+    private func delete(_ id: String) -> String? {
+        do {
+            editor.show(Self.entries(try update { $0.remove(id) }), selecting: nil)
+            return nil
+        } catch {
+            return failed(error)
+        }
     }
 
-    private func setExpands(_ expands: Bool) {
-        _ = update { $0.expands = expands }
+    private func setExpands(_ expands: Bool) -> String? {
+        do {
+            _ = try update { $0.expands = expands }
+            return nil
+        } catch {
+            return failed(error)
+        }
     }
 
     private func paste(_ values: SnippetEditor.Values) {

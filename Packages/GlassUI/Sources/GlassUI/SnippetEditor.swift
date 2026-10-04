@@ -29,8 +29,8 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
 
     public var onSave: ((_ id: String?, Values) -> String?)?
     public var onPaste: ((Values) -> Void)?
-    public var onDelete: ((String) -> Void)?
-    public var onExpandChange: ((Bool) -> Void)?
+    public var onDelete: ((String) -> String?)?
+    public var onExpandChange: ((Bool) -> String?)?
     public var onClose: (() -> Void)?
     public var fillInToken = ""
     public var tokens: (String) -> [NSRange] = { _ in [] }
@@ -239,7 +239,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
         case 1: saveValues()
 
         default:
-            if let editing { onDelete?(editing) }
+            if let editing { show(problem: onDelete?(editing)) }
         }
     }
 
@@ -270,6 +270,8 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
 
     @objc
     private func expandChanged() {
-        onExpandChange?(expandSwitch.state == .on)
+        if let problem = onExpandChange?(expandSwitch.state == .on) {
+            show(problem: problem)
+        }
     }
 }
