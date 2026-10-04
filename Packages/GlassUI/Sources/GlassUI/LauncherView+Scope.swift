@@ -109,6 +109,7 @@ extension LauncherView {
     }
 
     func placeSearchBar(_ bar: NSLayoutGuide) {
+        chip.onPress = { [weak self] in self?.leave() }
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: topAnchor),
             bar.heightAnchor.constraint(equalToConstant: Self.searchBarHeight),

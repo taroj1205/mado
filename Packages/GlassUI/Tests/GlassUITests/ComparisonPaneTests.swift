@@ -47,9 +47,9 @@ import Testing
         #expect(!view.comparisonPane.isHidden && view.detail.isHidden)
         #expect(!view.results.compact)
 
-        view.leave()
+        #expect(view.chip.accessibilityPerformPress())
 
-        #expect(view.chip.isHidden && view.comparisonPane.isHidden)
+        #expect(view.chip.isHidden && view.comparisonPane.isHidden && !view.scoped)
     }
 
     @Test func dimmedRowsFadeAndTheirComparisonExplainsWhy() throws {

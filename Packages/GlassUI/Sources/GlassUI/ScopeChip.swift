@@ -10,6 +10,7 @@ final class ScopeChip: NSBox {
 
     private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
+    var onPress: (() -> Void)?
 
     init() {
         super.init(frame: .zero)
@@ -37,12 +38,30 @@ final class ScopeChip: NSBox {
         setContentHuggingPriority(.required, for: .horizontal)
         setContentCompressionResistancePriority(.required, for: .horizontal)
         setAccessibilityElement(true)
-        setAccessibilityRole(.staticText)
+        setAccessibilityRole(.button)
+        setAccessibilityHelp("Go back to search")
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        frame.contains(point) ? self : nil
+    }
+
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with _: NSEvent) {
+        onPress?()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPress?()
+        return onPress != nil
     }
 
     func show(_ chip: LauncherView.Chip?) {

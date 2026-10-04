@@ -10,6 +10,7 @@ public struct EmojiCatalog: Sendable {
 
     private static let probeSize: CGFloat = 16
     private static let emojiFont = "AppleColorEmoji"
+    private static let joiners: Set<Unicode.Scalar> = ["\u{200D}", "\u{FE0F}"]
 
     public let groups: [Group]
     private let byCharacter: [String: Emoji]
@@ -32,7 +33,7 @@ public struct EmojiCatalog: Sendable {
             found[found.count - 1].append(
                 Emoji(
                     character: character, name: name, keywords: keywords, group: found.count - 1,
-                    takesTone: !tone.isEmpty))
+                    tonePositions: Set(tone.split(separator: ",").compactMap { Int($0) })))
         }
         groups = zip(names, found).map(Group.init)
         byCharacter = Dictionary(found.joined().map { ($0.character, $0) }) { first, _ in first }
@@ -50,10 +51,15 @@ public struct EmojiCatalog: Sendable {
         let text = NSAttributedString(string: emoji, attributes: [.font: font as Any])
         let line = CTLineCreateWithAttributedString(text)
         guard let runs = CTLineGetGlyphRuns(line) as? [CTRun], runs.count == 1,
-            let run = runs.first, CTRunGetGlyphCount(run) == 1
+            let run = runs.first,
+            let attributes = CTRunGetAttributes(run) as? [NSAttributedString.Key: Any],
+            (attributes[.font] as? NSFont)?.fontName == emojiFont
         else { return false }
-        let attributes = CTRunGetAttributes(run) as? [NSAttributedString.Key: Any]
-        return (attributes?[.font] as? NSFont)?.fontName == emojiFont
+        let parts = emoji.unicodeScalars.filter { scalar in
+            !joiners.contains(scalar) && !scalar.properties.isEmojiModifier
+        }
+        let glyphs = CTRunGetGlyphCount(run)
+        return glyphs == 1 || glyphs < parts.count
     }
 
     public func emoji(_ character: String) -> Emoji? {

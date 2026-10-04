@@ -51,7 +51,8 @@ final class TextTools {
     private var store: ClipboardStore?
     private var source: Source?
     private var pasteTarget: PasteTarget?
-    private var reading = 0
+    private var request = 0
+    private var reading = false
 
     private static func tool(for id: String) -> TextTool? {
         id.hasPrefix(toolPrefix) ? TextTool(rawValue: String(id.dropFirst(toolPrefix.count))) : nil
@@ -97,7 +98,8 @@ final class TextTools {
     }
 
     func close() {
-        reading += 1
+        request += 1
+        reading = false
         source = nil
         pasteTarget = nil
     }
@@ -129,12 +131,13 @@ final class TextTools {
         let found = findTarget?()
         source = nil
         pasteTarget = found
-        reading += 1
-        let request = reading
+        request += 1
+        let current = request
+        reading = true
         onOpen?()
         let read = await read(from: found)
-        guard request == reading else { return }
-        reading = 0
+        guard current == request else { return }
+        reading = false
         source = read
         onRead?()
     }
@@ -153,7 +156,7 @@ final class TextTools {
     func sections(for query: String) -> [ResultList.Section] {
         guard let source else {
             let notice =
-                reading > 0
+                reading
                 ? ResultList.Notice(title: "Reading the text…", detail: "")
                 : ResultList.Notice(
                     title: "No text to work on",
@@ -209,8 +212,14 @@ final class TextTools {
         guard let pasteTarget else { return [(copy, LauncherView.Action.secondaryKeys)] }
         let paste = pasteTarget.action(pasting: output)
         let replace = CommandAction(
-            id: paste.id, title: source.isSelection ? Self.replaceTitle : paste.title,
-            perform: paste.perform)
+            id: paste.id, title: source.isSelection ? Self.replaceTitle : paste.title
+        ) {
+            if source.isSelection, await Self.selection(in: pasteTarget) != source.text {
+                NSSound.beep()
+                return
+            }
+            try await paste.perform()
+        }
         return [
             (replace, LauncherView.Action.primaryKeys), (copy, LauncherView.Action.secondaryKeys),
         ]

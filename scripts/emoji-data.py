@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import itertools
 import re
 import sys
 import urllib.request
@@ -8,6 +9,7 @@ from pathlib import Path
 UNICODE = "17.0.0"
 CLDR = "release-48-2"
 TEST = f"https://www.unicode.org/Public/{UNICODE}/emoji/emoji-test.txt"
+DATA = f"https://www.unicode.org/Public/{UNICODE}/ucd/emoji/emoji-data.txt"
 ANNOTATIONS = f"https://raw.githubusercontent.com/unicode-org/cldr/{CLDR}/common/{{}}/en.xml"
 OUT = (
     Path(__file__).resolve().parent.parent
@@ -34,15 +36,39 @@ def keywords():
     return found
 
 
-def toned(emoji):
-    rest = emoji[1:]
-    if rest.startswith(VARIATION):
-        rest = rest[1:]
-    return emoji[0] + MEDIUM + rest
+def modifier_bases():
+    bases = set()
+    for line in fetch(DATA).splitlines():
+        fields = line.split("#")[0].split(";")
+        if len(fields) == 2 and fields[1].strip() == "Emoji_Modifier_Base":
+            first, _, last = fields[0].strip().partition("..")
+            bases.update(range(int(first, 16), int(last or first, 16) + 1))
+    return bases
+
+
+def toned(emoji, positions):
+    out = ""
+    for index, scalar in enumerate(emoji):
+        if scalar == VARIATION and index - 1 in positions:
+            continue
+        out += scalar
+        if index in positions:
+            out += MEDIUM
+    return out
+
+
+def tone_positions(emoji, bases, qualified):
+    candidates = [index for index, scalar in enumerate(emoji) if ord(scalar) in bases]
+    for size in range(len(candidates), 0, -1):
+        for positions in itertools.combinations(candidates, size):
+            if toned(emoji, positions) in qualified:
+                return ",".join(map(str, positions))
+    return ""
 
 
 def main():
     words = keywords()
+    bases = modifier_bases()
     groups = []
     qualified = set()
     for line in fetch(TEST).splitlines():
@@ -72,7 +98,7 @@ def main():
                 for word in words.get(emoji.replace(VARIATION, ""), [])
                 if word.lower() not in name.lower().split() + [name.lower()]
             ]
-            tone = "1" if toned(emoji) in qualified else ""
+            tone = tone_positions(emoji, bases, qualified)
             rows.append("\t".join([emoji, name, "|".join(extra), tone]))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(rows) + "\n", encoding="utf-8")

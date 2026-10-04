@@ -44,7 +44,7 @@ public struct Emoji: Equatable, Sendable {
     public let character: String
     public let name: String
     public let group: Int
-    public let takesTone: Bool
+    let tonePositions: Set<Int>
     let nameWords: [Substring]
     let keywords: [Substring]
 
@@ -52,11 +52,13 @@ public struct Emoji: Equatable, Sendable {
         ":" + Self.words(of: name).joined(separator: "_") + ":"
     }
 
-    init(character: String, name: String, keywords: String, group: Int, takesTone: Bool) {
+    public var takesTone: Bool { !tonePositions.isEmpty }
+
+    init(character: String, name: String, keywords: String, group: Int, tonePositions: Set<Int>) {
         self.character = character
         self.name = name
         self.group = group
-        self.takesTone = takesTone
+        self.tonePositions = tonePositions
         nameWords = Self.words(of: name)
         self.keywords = Self.words(of: keywords)
     }
@@ -66,15 +68,15 @@ public struct Emoji: Equatable, Sendable {
     }
 
     public func toned(_ tone: Tone) -> String {
-        guard takesTone, let modifier = tone.modifier,
-            let first = character.unicodeScalars.first
-        else { return character }
-        var rest = character.unicodeScalars.dropFirst()
-        if rest.first == Self.variation {
-            rest = rest.dropFirst()
+        guard let modifier = tone.modifier else { return character }
+        var scalars = String.UnicodeScalarView()
+        for (index, scalar) in character.unicodeScalars.enumerated() {
+            if scalar == Self.variation, tonePositions.contains(index - 1) { continue }
+            scalars.append(scalar)
+            if tonePositions.contains(index) {
+                scalars.append(modifier)
+            }
         }
-        var scalars = String.UnicodeScalarView([first, modifier])
-        scalars.append(contentsOf: rest)
         return String(scalars)
     }
 

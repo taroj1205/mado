@@ -9,9 +9,9 @@ import Testing
         😄\tgrinning face with smiling eyes\thappy|laugh|smile\t
         😍\tsmiling face with heart-eyes\tlove\t
         @People & Body
-        👍\tthumbs up\t+1|good|hand\t1
-        ☝️\tindex pointing up\tfinger\t1
-        🧑‍💻\ttechnologist\tcoder\t1
+        👍\tthumbs up\t+1|good|hand\t0
+        ☝️\tindex pointing up\tfinger\t0
+        🧑‍💻\ttechnologist\tcoder\t0
         @Symbols
         💙\tblue heart\tlove\t
         ❤️\tred heart\tlove\t
@@ -74,6 +74,10 @@ import Testing
         #expect(bundled.search("flag canada").first?.character == "🇨🇦")
         #expect(bundled.emoji("1️⃣")?.shortcode == ":keycap_1:")
         #expect(bundled.emoji("👨‍🦰")?.toned(.medium) == "👨🏽‍🦰")
+        #expect(bundled.emoji("🧑‍🤝‍🧑")?.toned(.dark) == "🧑🏿‍🤝‍🧑🏿")
+        let kiss = "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F468}"
+        let lightKiss = "\u{1F469}\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}"
+        #expect(bundled.emoji(kiss)?.toned(.light) == lightKiss + "\u{200D}\u{1F468}\u{1F3FB}")
     }
 
     @Test func keepsTheNewestRecentEmojiFirst() {
