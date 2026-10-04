@@ -6,6 +6,8 @@ final class StatusPill: NSView {
     private static let leading: CGFloat = 11
     private static let trailing: CGFloat = 13
     private static let gap: CGFloat = 6
+    private static let glyphGap: CGFloat = 8
+    private static let glyphSize: CGFloat = 20
     private static let fontSize: CGFloat = 13
     private static let selectedAlpha = (dark: 0.17, light: 0.90)
     private static let selectedEdgeAlpha = (dark: 0.30, light: 0.14)
@@ -20,6 +22,7 @@ final class StatusPill: NSView {
     }
 
     let icon = NSImageView()
+    let glyph = NSTextField(labelWithString: "")
     let label = NSTextField(labelWithString: "")
     let glass: GlassView
     private let highlight = NSBox()
@@ -41,8 +44,11 @@ final class StatusPill: NSView {
     init() {
         icon.symbolConfiguration = .init(pointSize: Self.fontSize, weight: .medium)
         icon.contentTintColor = .secondaryLabelColor
-        let stack = NSStackView(views: [icon, label])
+        glyph.font = .systemFont(ofSize: Self.glyphSize)
+        glyph.isHidden = true
+        let stack = NSStackView(views: [icon, glyph, label])
         stack.spacing = Self.gap
+        stack.setCustomSpacing(Self.glyphGap, after: glyph)
         glass = FloatingCapsule.make(
             stack, leading: Self.leading, trailing: Self.trailing,
             height: Self.height, radius: Self.radius)
@@ -105,9 +111,16 @@ final class StatusPill: NSView {
         show(text.map(Self.styled), symbol: symbol)
     }
 
+    func show(_ text: NSAttributedString, glyph: String?) {
+        show(text, symbol: nil)
+        self.glyph.stringValue = glyph ?? ""
+        self.glyph.isHidden = glyph == nil
+    }
+
     func show(_ text: NSAttributedString?, symbol: String?) {
         isHidden = text == nil
         self.symbol = symbol
+        glyph.isHidden = true
         label.attributedStringValue = text ?? NSAttributedString()
         icon.image = symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
         icon.isHidden = icon.image == nil

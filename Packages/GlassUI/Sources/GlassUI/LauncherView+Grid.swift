@@ -1,9 +1,6 @@
 import AppKit
 
 extension LauncherView {
-    private static let glyphSize: CGFloat = 20
-    private static let glyphGap = "  "
-
     public var showsGrid: Bool { gridHome != nil }
 
     var selectedItem: ResultList.Item? {
@@ -64,13 +61,10 @@ extension LauncherView {
         afterResults = { [weak self] in self?.emojiGrid.scroll(toSection: tab.section) }
     }
 
-    func gridContext() -> NSAttributedString? {
+    func gridContext() -> (text: NSAttributedString, glyph: String?)? {
         guard showsGrid, let item = emojiGrid.selectedItem else { return nil }
-        let text = NSMutableAttributedString(
-            string: (item.glyph ?? "") + Self.glyphGap,
-            attributes: [.font: NSFont.systemFont(ofSize: Self.glyphSize)])
-        text.append(
-            StatusPill.styled(bold: "", rest: [item.title, item.subtitle].joined(separator: " · ")))
-        return text
+        let text = StatusPill.styled(
+            bold: "", rest: [item.title, item.subtitle].joined(separator: " · "))
+        return (text, item.glyph)
     }
 }

@@ -92,7 +92,7 @@ extension LauncherView {
         }
         widgetGrid.isHidden = !showsWidgets
         if let selected = gridContext() {
-            contextPill.show(selected, symbol: nil)
+            contextPill.show(selected.text, glyph: selected.glyph)
             return
         }
         let hintsPreview = (browsing || previewing) && selectedItem?.file != nil

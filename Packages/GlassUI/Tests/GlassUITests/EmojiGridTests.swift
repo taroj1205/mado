@@ -63,7 +63,8 @@ import Testing
         #expect(view.showsGrid && grids == [true])
         #expect(view.results.isHidden && !view.emojiGrid.isHidden)
         #expect(view.selectedItem?.title == "blue_heart")
-        #expect(view.contextPill.text == "💙  blue_heart · :blue_heart:")
+        #expect(view.contextPill.glyph.stringValue == "💙" && !view.contextPill.glyph.isHidden)
+        #expect(view.contextPill.text == "blue_heart · :blue_heart:")
         let stack = view.actionCapsule.contentView as? NSStackView
         #expect((stack?.arrangedSubviews.first as? CapsuleButton)?.accessibilityLabel() == "Copy")
         #expect(stack?.arrangedSubviews.last === view.actionsToggle)
@@ -71,6 +72,7 @@ import Testing
         view.show([.init(title: "Results", items: [Self.emoji("x", "row")])])
 
         #expect(!view.showsGrid && grids == [true, false])
+        #expect(view.contextPill.glyph.isHidden)
         #expect(!view.results.isHidden && view.emojiGrid.isHidden)
         #expect(view.selectedItem?.title == "row")
     }
