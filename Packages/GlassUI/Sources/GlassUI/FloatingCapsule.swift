@@ -22,15 +22,9 @@ enum FloatingCapsule {
     static func make(
         _ stack: NSStackView, leading: CGFloat, trailing: CGFloat, height: CGFloat, radius: CGFloat
     ) -> GlassView {
-        let glass = GlassView(shape: .rounded(radius))
-        glass.sheen.isHidden = true
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
         stack.setHuggingPriority(.defaultHigh, for: .horizontal)
-        glass.contentView = stack
-        let border = GlassBorder(radius: radius)
-        border.frame = glass.container.bounds
-        border.autoresizingMask = [.width, .height]
-        glass.container.addSubview(border)
+        let glass = glass(stack, radius: radius)
         glass.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -40,6 +34,17 @@ enum FloatingCapsule {
             stack.topAnchor.constraint(equalTo: glass.topAnchor),
             stack.bottomAnchor.constraint(equalTo: glass.bottomAnchor),
         ])
+        return glass
+    }
+
+    static func glass(_ content: NSView, radius: CGFloat) -> GlassView {
+        let glass = GlassView(shape: .rounded(radius))
+        glass.sheen.isHidden = true
+        glass.contentView = content
+        let border = GlassBorder(radius: radius)
+        border.frame = glass.container.bounds
+        border.autoresizingMask = [.width, .height]
+        glass.container.addSubview(border)
         return glass
     }
 

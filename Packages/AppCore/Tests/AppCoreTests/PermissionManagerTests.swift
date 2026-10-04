@@ -92,6 +92,16 @@ import Testing
             ])
     }
 
+    @Test func requestAsksTheSystemAndReadsTheAnswer() async {
+        let probe = FakeProbe()
+        probe.set(.microphone, .notDetermined)
+        probe.answer(.microphone, with: .granted)
+        let manager = makeManager(probe)
+        #expect(await manager.request(.microphone) == .granted)
+        #expect(manager.statuses[.microphone] == .granted)
+        #expect(probe.requests == [.microphone])
+    }
+
     @Test func mapsMicrophoneStatus() {
         #expect(SystemPermissionProbe.microphone(.authorized) == .granted)
         #expect(SystemPermissionProbe.microphone(.notDetermined) == .notDetermined)
