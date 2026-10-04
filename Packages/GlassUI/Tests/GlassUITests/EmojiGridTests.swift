@@ -154,6 +154,21 @@ import Testing
         #expect(tabs.allSatisfy { !$0.isOn })
     }
 
+    @Test func pickingWithNowhereToPasteCopies() throws {
+        var runs: [Int] = []
+        view.onRun = { runs.append($1) }
+        view.actions = { _ in [.init("Copy", keys: LauncherView.Action.secondaryKeys)] }
+        var copyOnly = ResultList.Item(
+            id: "emoji.copy", title: "red", subtitle: "", kind: "", symbol: "", action: "")
+        copyOnly.glyph = "❤️"
+        view.show([.init(title: "Recently used", items: [copyOnly])], gridHome: "")
+        view.layoutSubtreeIfNeeded()
+        let cell = try #require(view.emojiGrid.collection.item(at: IndexPath(item: 0, section: 0)))
+
+        #expect(cell.view.accessibilityPerformPress())
+        #expect(runs == [0])
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }
