@@ -52,6 +52,15 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         }
     }
 
+    var mappings: KeyMappings? {
+        guard let usage else { return nil }
+        let rightControl = KeyMappings.usage(kHIDUsage_KeyboardRightControl)
+        let leftControl = KeyMappings.usage(kHIDUsage_KeyboardLeftControl)
+        let others = usage == rightControl ? [KeyMappings.entry(rightControl, to: leftControl)] : []
+        return KeyMappings(
+            remapped: [KeyMappings.entry(KeyMappings.capsLock, to: usage)] + others, others: others)
+    }
+
     public var showsHyperGlyph: Bool {
         hyperAsGlyph && capsLock == .hyper
     }

@@ -62,22 +62,21 @@ public final class KeyboardRemapper {
     private let logger = Log.logger("keyboard")
     private let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
     private let settings: RemapSettings
-    private let usage: UInt64
     private let lock: RemapLock
-    private var mappings = KeyMappings()
+    private var mappings: KeyMappings
     private var waiting: Task<Void, Never>?
     private var watcher: KeyboardWatcher?
     private var watchdog: Watchdog?
     private var isStopped = false
 
     public init?(settings: RemapSettings) {
-        guard let destination = settings.usage else { return nil }
+        guard let keyMappings = settings.mappings else { return nil }
         guard let opened = RemapLock.claim(Self.lockURL) else {
             logger.error("Caps Lock remap lock can't be opened")
             return nil
         }
         self.settings = settings
-        usage = destination
+        mappings = keyMappings
         lock = opened
     }
 
@@ -185,7 +184,7 @@ public final class KeyboardRemapper {
         let current = Self.currentMappings(of: services)
         let remapping = Set(services.filter { settings.applies(to: $0.keyboard) }.map(\.id))
         let earlier = mappings
-        let writes = mappings.sync(current, remapping: remapping, to: usage)
+        let writes = mappings.sync(current, remapping: remapping)
         guard arm(mappings.restores(from: current), services) else {
             mappings = earlier
             restoreAll(current, services)
