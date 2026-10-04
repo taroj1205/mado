@@ -80,6 +80,14 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
         locations.requestWhenInUseAuthorization()
     }
 
+    func cancel() {
+        fetching?.task.cancel()
+        fetching = nil
+        located?.resume(throwing: CancellationError())
+        located = nil
+        locations.stopUpdatingLocation()
+    }
+
     func locationManager(_: CLLocationManager, didUpdateLocations found: [CLLocation]) {
         guard let location = found.last else { return }
         located?.resume(returning: location)
@@ -97,7 +105,9 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
                 finish(city, .notFound(city))
                 return
             }
+            guard isCurrent(city) else { return }
             let weather = try await Weather.forecast(at: place)
+            guard isCurrent(city) else { return }
             fetched = Reading(city: city, time: .now, weather: weather)
             finish(city, .ready(weather))
         } catch {
@@ -107,8 +117,12 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    private func isCurrent(_ city: String) -> Bool {
+        !Task.isCancelled && fetching?.city == city
+    }
+
     private func finish(_ city: String, _ result: State) {
-        guard !Task.isCancelled, fetching?.city == city else { return }
+        guard isCurrent(city) else { return }
         fetching = nil
         state = result
     }

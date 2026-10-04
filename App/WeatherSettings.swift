@@ -5,15 +5,16 @@ struct WeatherSettings: StoredValue, Equatable {
     static let key = "weather"
     private static let footerSize: CGFloat = 12
     private static let openMeteo = "Open-Meteo.com"
+    private static let geoNames = "GeoNames"
     private static let licence = "CC BY 4.0"
     private static let links = [
-        (openMeteo, "https://open-meteo.com/"),
+        (openMeteo, "https://open-meteo.com/"), (geoNames, "https://www.geonames.org/"),
         (licence, "https://creativecommons.org/licenses/by/4.0/"),
     ]
 
     private static var footer: NSAttributedString {
         let text = NSMutableAttributedString(
-            string: "Weather data by \(openMeteo), under \(licence).",
+            string: "Weather data by \(openMeteo) and places by \(geoNames), under \(licence).",
             attributes: [
                 .font: NSFont.systemFont(ofSize: footerSize),
                 .foregroundColor: NSColor.secondaryLabelColor,

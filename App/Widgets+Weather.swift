@@ -89,6 +89,8 @@ extension Widgets {
     func refreshWeather() {
         if shown.contains(Self.weather) {
             weatherFeed.refresh(for: city)
+        } else {
+            weatherFeed.cancel()
         }
     }
 

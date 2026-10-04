@@ -58,6 +58,7 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let forecastAPI = "https://api.open-meteo.com/v1/forecast"
     private static let searchAPI = "https://geocoding-api.open-meteo.com/v1/search"
     private static let coordinateScale = 100.0
+    private static let success = 200
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
@@ -88,13 +89,11 @@ public struct Weather: Decodable, Equatable, Sendable {
     }
 
     public static func forecast(at place: Place) async throws -> Self {
-        let (data, _) = try await URLSession.shared.data(from: forecastURL(at: place))
-        return try JSONDecoder().decode(Self.self, from: data)
+        try await JSONDecoder().decode(Self.self, from: data(from: forecastURL(at: place)))
     }
 
     public static func place(named name: String) async throws -> Place? {
-        let (data, _) = try await URLSession.shared.data(from: searchURL(for: name))
-        return try place(fromSearch: data)
+        try await place(fromSearch: data(from: searchURL(for: name)))
     }
 
     static func forecastURL(at place: Place) throws -> URL {
@@ -114,6 +113,14 @@ public struct Weather: Decodable, Equatable, Sendable {
 
     static func place(fromSearch data: Data) throws -> Place? {
         try JSONDecoder().decode(Search.self, from: data).results.first
+    }
+
+    private static func data(from url: URL) async throws -> Data {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard (response as? HTTPURLResponse)?.statusCode == success else {
+            throw URLError(.badServerResponse)
+        }
+        return data
     }
 
     private static func rounded(_ degrees: Double) -> String {
