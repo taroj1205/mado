@@ -91,6 +91,11 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         case #selector(NSResponder.moveUp): list.moveSelection(by: -1)
         case #selector(NSResponder.moveDown): list.moveSelection(by: 1)
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): list.press()
+
+        case #selector(NSResponder.insertNewlineIgnoringFieldEditor)
+        where !textView.hasMarkedText():
+            runAction(keyed: LauncherView.Action.alternateKeys)
+
         case #selector(NSResponder.cancelOperation): cancel()
         default: return false
         }
@@ -111,14 +116,17 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
             close()
 
         case let key where LauncherView.returnKeys.contains(key):
-            let secondary = LauncherView.Action.secondaryKeys
-            guard let index = actions.firstIndex(where: { $0.keys == secondary }) else {
-                return false
-            }
-            run(index)
+            return runAction(keyed: LauncherView.Action.secondaryKeys)
 
         default: return false
         }
+        return true
+    }
+
+    @discardableResult
+    private func runAction(keyed keys: [String]) -> Bool {
+        guard let index = actions.firstIndex(where: { $0.keys == keys }) else { return false }
+        run(index)
         return true
     }
 

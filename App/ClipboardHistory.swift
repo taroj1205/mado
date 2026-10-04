@@ -84,7 +84,7 @@ final class ClipboardHistory: NSObject {
         entryPrefix + String(entry.id)
     }
 
-    private static func item(_ entry: ClipboardStore.Entry) -> ResultList.Item {
+    private static func item(_ entry: ClipboardStore.Entry, action: String) -> ResultList.Item {
         let tint = entry.rgb.map { rgb in
             NSColor(
                 srgbRed: CGFloat(rgb.red) / byte, green: CGFloat(rgb.green) / byte,
@@ -92,7 +92,7 @@ final class ClipboardHistory: NSObject {
         }
         return ResultList.Item(
             id: id(of: entry), title: entry.title, subtitle: "",
-            kind: entry.kind.title, symbol: symbol(for: entry.kind), action: "",
+            kind: entry.kind.title, symbol: symbol(for: entry.kind), action: action,
             thumbnail: entry.image, tint: tint)
     }
 
@@ -115,7 +115,9 @@ final class ClipboardHistory: NSObject {
         onRunningChange?()
     }
 
-    func sections(for query: String) async -> [ResultList.Section] {
+    func sections(
+        for query: String, pastingInto target: PasteTarget?
+    ) async -> [ResultList.Section] {
         guard let store else { return [] }
         let (kind, source): (Clip.Kind?, String?) =
             switch selected {
@@ -141,10 +143,11 @@ final class ClipboardHistory: NSObject {
         }
         let now = Date.now
         let calendar = Calendar.current
+        let action = target?.title ?? ""
         return ClipboardStore.Entry.byDay(found, calendar: calendar).map { day, entries in
             ResultList.Section(
                 title: RelativeDay.title(of: day, now: now, calendar: calendar),
-                items: entries.map(Self.item))
+                items: entries.map { Self.item($0, action: action) })
         }
     }
 
@@ -166,13 +169,24 @@ final class ClipboardHistory: NSObject {
             details: entry.details(source: source, now: .now, calendar: .current, counts: counts))
     }
 
-    func actions(for id: String) -> [CommandAction] {
+    func actions(
+        for id: String, pastingInto target: PasteTarget?
+    ) -> [(action: CommandAction, keys: [String])] {
         guard let entry = entries[id], let store else { return [] }
         let copy = CommandAction(id: "copy", title: "Copy to Clipboard") {
             let data = try await store.data(for: entry.id)
             try entry.copy(data: data)
         }
-        return [copy]
+        guard let target else { return [(copy, LauncherView.Action.secondaryKeys)] }
+        let paste = CommandAction(id: "paste", title: target.title) {
+            try await entry.paste(data: store.data(for: entry.id), into: target)
+        }
+        let plain = CommandAction(id: "paste.plain", title: "Paste as Plain Text") {
+            try await entry.pastePlainText(into: target)
+        }
+        return [(paste, LauncherView.Action.primaryKeys)]
+            + (entry.plainText == nil ? [] : [(plain, LauncherView.Action.alternateKeys)])
+            + [(copy, LauncherView.Action.secondaryKeys)]
     }
 
     private func count(_ entry: ClipboardStore.Entry) {

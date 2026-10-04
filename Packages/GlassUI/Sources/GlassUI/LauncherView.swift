@@ -166,7 +166,7 @@ public final class LauncherView: NSView {
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
-        case let key where Self.returnKeys.contains(key): runSecondary()
+        case let key where Self.returnKeys.contains(key): run(keyed: Action.secondaryKeys)
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
 
