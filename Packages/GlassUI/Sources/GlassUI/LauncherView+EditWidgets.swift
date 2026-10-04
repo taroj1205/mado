@@ -82,8 +82,9 @@ extension LauncherView {
             widgetGrid.incoming = (source as? WidgetGalleryCard)?.card.size.span ?? 1
             return .copy
         }
-        changeWidgets { widgetGrid.preview(moving: id, to: point) }
-        return .move
+        var overTile = false
+        changeWidgets { overTile = widgetGrid.preview(moving: id, to: point) }
+        return overTile || editingWidgets ? .move : []
     }
 
     func endWidgetDrag() {

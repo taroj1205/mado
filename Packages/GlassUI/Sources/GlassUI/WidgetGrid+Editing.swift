@@ -31,9 +31,10 @@ extension WidgetGrid {
         return tile
     }
 
-    func preview(moving id: String, to point: NSPoint) {
+    @discardableResult
+    func preview(moving id: String, to point: NSPoint) -> Bool {
         var ids = shown.map(\.id)
-        guard let from = ids.firstIndex(of: id), let window = unsafe window else { return }
+        guard let from = ids.firstIndex(of: id), let window = unsafe window else { return false }
         dragged = id
         let frames =
             if floating, let layoutInUse {
@@ -42,11 +43,13 @@ extension WidgetGrid {
             } else {
                 frames(spanning: shown.map(\.span)).map { convert($0, to: nil) }
             }
-        if let target = frames.firstIndex(where: { $0.contains(point) }), target != from {
+        let target = frames.firstIndex { $0.contains(point) }
+        if let target, target != from {
             ids.remove(at: from)
             ids.insert(id, at: target)
         }
         order = ids
+        return target != nil
     }
 
     func endDrag() {
