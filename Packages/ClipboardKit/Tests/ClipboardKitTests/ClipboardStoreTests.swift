@@ -157,6 +157,70 @@ import Testing
         #expect(try await reopened.search("", limit: 10).map(\.pinned) == [true])
     }
 
+    @Test func clearsEverythingButPinnedItems() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let png = Data([0x89, 0x50, 0x4E, 0x47])
+        for (index, text) in ["pinned", "copied", "kept image", "image"].enumerated() {
+            let date = Date(timeIntervalSince1970: Double(index))
+            try await store.add(
+                text.hasSuffix("image")
+                    ? Clip(.image, text: text, type: .png, data: png, source: nil, date: date)
+                    : Self.text(text, at: Double(index)),
+                keeping: Self.roomy)
+        }
+        for entry in try await store.search("", limit: 10) where entry.text.hasPrefix("k") {
+            try await store.setPinned(true, id: entry.id)
+        }
+        let pinned = try #require(try await store.search("pinned", limit: 1).first)
+        try await store.setPinned(true, id: pinned.id)
+        try Data().write(to: directory.appending(path: "Images/left-behind.png"))
+
+        try await store.clear()
+        let kept = try await store.search("", limit: 10)
+
+        #expect(kept.map(\.text) == ["kept image", "pinned"])
+        #expect(try images() == [try #require(kept[0].image).lastPathComponent])
+    }
+
+    @Test func removesTheOtherImagesWhenOneCannotBeRemoved() async throws {
+        let folder = directory.appending(path: "Images")
+        let locked = folder.appending(path: "locked")
+        let files = FileManager.default
+        defer {
+            try? files.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+            try? files.removeItem(at: directory)
+        }
+        let store = try ClipboardStore(directory: directory)
+        try files.createDirectory(at: locked, withIntermediateDirectories: true)
+        try Data().write(to: locked.appending(path: "stuck.png"))
+        try files.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        for index in 0..<20 {
+            try Data().write(to: folder.appending(path: "orphan-\(index).png"))
+        }
+
+        await #expect(throws: (any Error).self) { try await store.clear() }
+
+        #expect(try images() == ["locked"])
+    }
+
+    @Test func leavesNoClearedTextInTheHistoryFile() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let path = directory.appending(path: ClipboardStore.fileName)
+        try Database(path: path.path(percentEncoded: false)).execute(
+            """
+            WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2000)
+            INSERT INTO clips (kind, text, date, pinned)
+            SELECT 'text', 'secret ' || i || ' ' || hex(randomblob(50)), i, i = 1000 FROM n
+            """)
+
+        try await store.clear()
+        let file = try Data(contentsOf: path)
+
+        #expect(file.ranges(of: Data("secret ".utf8)).count == 1)
+    }
+
     @Test func matchesWildcardCharactersLiterally() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
@@ -164,7 +228,7 @@ import Testing
         let texts = ["50% off", "500 off", "a_b", "axb", #"C:\temp"#, "nul\0inside"]
         for (index, text) in texts.enumerated() {
             try await store.add(
-                Self.text(text, at: Double(index)), keeping: .init(days: .max, items: 100))
+                Self.text(text, at: Double(index)), keeping: .init(period: nil, items: 100))
         }
 
         #expect(try await store.search("0%", limit: 10).map(\.text) == ["50% off"])
