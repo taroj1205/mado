@@ -58,4 +58,10 @@ extension WidgetTile: NSDraggingSource {
     ) -> NSDragOperation {
         context == .withinApplication ? .move : []
     }
+
+    func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation: NSDragOperation) {
+        if operation.isEmpty {
+            onDragEnd?()
+        }
+    }
 }

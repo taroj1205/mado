@@ -159,6 +159,9 @@ public final class WidgetGrid: NSView {
     var onPress: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
     var onRemove: ((Int) -> Void)?
+    var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
+    var onDrop: ((String?) -> Bool)?
+    var onDragEnd: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
     let dropFrame = WidgetDropFrame()
@@ -174,13 +177,13 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    private var layoutInUse: Layout? { editing ? .grid : tileLayout }
+    var layoutInUse: Layout? { editing ? .grid : tileLayout }
 
     var rowHeight: CGFloat {
         layoutInUse == .strip ? Self.stripHeight : Self.rowHeight
     }
 
-    private var floating: Bool { layoutInUse?.floating == true }
+    var floating: Bool { layoutInUse?.floating == true }
 
     private var spans: [Int] { shown.map(\.span) + (incoming.map { [$0] } ?? []) }
 
@@ -229,6 +232,7 @@ public final class WidgetGrid: NSView {
         let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .rounded(WidgetTile.radius))
         panel.ignoresMouseEvents = false
         panel.glass.contentView = tile
+        tile.registerForDraggedTypes([dragType])
         return panel
     }
 
@@ -269,14 +273,7 @@ public final class WidgetGrid: NSView {
         if rebuilding || visible.count != tiles.count {
             tiles.forEach { $0.removeFromSuperview() }
             floats.forEach { $0.orderOut(nil) }
-            tiles = visible.indices.map { index in
-                let tile = WidgetTile(floating: floating)
-                tile.editing = editing
-                tile.onPress = { [weak self] in self?.onPress?(index) }
-                tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
-                tile.onRemove = { [weak self] in self?.onRemove?(index) }
-                return tile
-            }
+            tiles = visible.indices.map(makeTile)
             floats = floating ? tiles.map(Self.makeFloat) : []
             if !floating { tiles.forEach(addSubview) }
         }
