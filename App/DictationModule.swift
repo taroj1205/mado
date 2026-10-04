@@ -15,7 +15,8 @@ struct DictationModule: Module {
                 do {
                     try PushToTalk.install(
                         Dictation.key, name: "dictation key", context: context,
-                        isActive: { dictation.isActive }, onEvent: dictation.handle)
+                        isActive: { dictation.isActive },
+                        onEvent: context.untilStopped(dictation.handle))
                     return true
                 } catch {
                     return false

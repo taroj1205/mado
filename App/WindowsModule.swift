@@ -58,7 +58,7 @@ struct WindowsModule: Module {
             do {
                 try ModifierTrigger.install(
                     trigger, name: "radial trigger", context: context,
-                    onEvent: radialMenu.handle)
+                    onEvent: context.untilStopped(radialMenu.handle))
                 return true
             } catch {
                 return false
@@ -76,9 +76,11 @@ struct WindowsModule: Module {
             let name = "\(mode) gesture trigger"
             context.installWhenTrusted(name) {
                 do {
-                    try ModifierTrigger.install(held, name: name, context: context) { event in
-                        gesture.handle(event, mode: mode, held: held)
-                    }
+                    try ModifierTrigger.install(
+                        held, name: name, context: context,
+                        onEvent: context.untilStopped { event in
+                            gesture.handle(event, mode: mode, held: held)
+                        })
                     return true
                 } catch {
                     return false
@@ -106,7 +108,7 @@ struct WindowsModule: Module {
             do {
                 try SwitcherKeys.install(
                     name: "window switcher keys", context: context,
-                    isOpen: { switcher.isOpen }, onEvent: switcher.handle)
+                    isOpen: { switcher.isOpen }, onEvent: context.untilStopped(switcher.handle))
                 return true
             } catch {
                 return false
