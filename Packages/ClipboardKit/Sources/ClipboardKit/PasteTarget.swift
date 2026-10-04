@@ -19,6 +19,10 @@ public struct PasteTarget {
 
     public let app: NSRunningApplication
 
+    public var title: String {
+        "Paste to \(app.localizedName ?? "Previous App")"
+    }
+
     init?(app: NSRunningApplication?) {
         guard let app, app != .current, !app.isTerminated else { return nil }
         self.app = app
@@ -41,7 +45,7 @@ public struct PasteTarget {
     }
 
     public func action(pasting text: String) -> CommandAction {
-        CommandAction(id: "paste", title: "Paste to \(app.localizedName ?? "Previous App")") {
+        CommandAction(id: "paste", title: title) {
             let item = NSPasteboardItem()
             item.setString(text, forType: .string)
             try await paste([item])

@@ -19,8 +19,8 @@ struct LauncherMenu {
         self.init(groups: [Self.entries(for: actions)], recordsUse: false)
     }
 
-    init(unkeyed actions: [CommandAction]) {
-        let entries = actions.map { Entry.run($0, keys: [], isDestructive: false) }
+    init(keyed actions: [(action: CommandAction, keys: [String])]) {
+        let entries = actions.map { Entry.run($0.action, keys: $0.keys, isDestructive: false) }
         self.init(groups: [entries], recordsUse: false)
     }
 

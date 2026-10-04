@@ -65,6 +65,10 @@ extension ClipboardStore.Entry {
             blue: value & Self.byte)
     }
 
+    public var plainText: String? {
+        kind == .image ? nil : text
+    }
+
     public var counts: Counts {
         count { false }
     }
@@ -161,6 +165,25 @@ extension ClipboardStore.Entry {
     @MainActor
     public func copy(data: Data?, to pasteboard: NSPasteboard = .general) throws {
         try PasteTarget.write(pasteboardItems(data: data), to: pasteboard)
+    }
+
+    @MainActor
+    public func paste(data: Data?, into target: PasteTarget) async throws {
+        try await target.paste(pasteboardItems(data: data))
+    }
+
+    @MainActor
+    public func pastePlainText(into target: PasteTarget) async throws {
+        try await target.paste(plainTextItems())
+    }
+
+    @MainActor
+    func plainTextItems() throws -> [NSPasteboardItem] {
+        guard let plainText else { throw PasteTarget.Failure.notWritten }
+        let item = NSPasteboardItem()
+        item.setString(plainText, forType: .string)
+        item.setData(Data(), forType: PasteboardWatch.transientType)
+        return [item]
     }
 
     @MainActor

@@ -32,7 +32,7 @@ extension AppDelegate {
     func results(for query: String) async -> [ResultList.Section] {
         switch scope {
         case .clipboard:
-            return await clipboardHistory.sections(for: query)
+            return await clipboardHistory.sections(for: query, pastingInto: pasteTarget)
 
         case .calculator:
             return history.sections(for: query)
@@ -47,7 +47,7 @@ extension AppDelegate {
     func menu(for item: ResultList.Item) -> LauncherMenu {
         switch scope {
         case .clipboard:
-            LauncherMenu(unkeyed: clipboardHistory.actions(for: item.id))
+            LauncherMenu(keyed: clipboardHistory.actions(for: item.id, pastingInto: pasteTarget))
 
         case .calculator:
             LauncherMenu(actions: history.actions(for: item.id))

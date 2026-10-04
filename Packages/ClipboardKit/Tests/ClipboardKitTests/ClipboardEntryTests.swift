@@ -171,4 +171,20 @@ import Testing
                 .copy(data: nil, to: pasteboard)
         }
     }
+
+    @Test func pastesAsPlainTextWithoutTheStyleOrLinkTypes() throws {
+        let rtf = NSPasteboard.PasteboardType.rtf.rawValue
+        for entry in [
+            Self.entry(.richText, "bold", type: rtf), Self.entry(.url, "https://apple.com"),
+            Self.entry(.file, "/tmp/a b.txt\n/tmp/c.txt"), Self.entry(.color, "#0A84FF"),
+        ] {
+            let items = try entry.plainTextItems()
+            #expect(items.count == 1)
+            #expect(Set(items.first?.types ?? []) == [.string, PasteboardWatch.transientType])
+            #expect(items.first?.string(forType: .string) == entry.text)
+        }
+        let image = Self.entry(.image, "recognized words", type: "public.png")
+        #expect(image.plainText == nil)
+        #expect(throws: PasteTarget.Failure.notWritten) { try image.plainTextItems() }
+    }
 }

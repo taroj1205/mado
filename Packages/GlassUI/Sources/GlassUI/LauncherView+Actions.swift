@@ -14,8 +14,10 @@ public struct ActionChoice {
 
 extension LauncherView {
     public struct Action {
-        public static let primaryKeys = ["↵"]
-        public static let secondaryKeys = ["⌘", "↵"]
+        public static let primaryKeys = [returnKey]
+        public static let secondaryKeys = ["⌘", returnKey]
+        public static let alternateKeys = ["⌥", returnKey]
+        private static let returnKey = "↵"
         private static let modifiers: [(NSEvent.ModifierFlags, String)] = [
             (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
         ]
@@ -77,9 +79,9 @@ extension LauncherView {
         onRun?(item, action)
     }
 
-    func runSecondary() {
+    func run(keyed keys: [String]) {
         guard let item = results.selectedItem,
-            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
+            let index = actions?(item).firstIndex(where: { $0.keys == keys })
         else { return }
         onRun?(item, index)
     }
