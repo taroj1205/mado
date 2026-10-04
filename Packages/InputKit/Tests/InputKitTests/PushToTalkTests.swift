@@ -60,6 +60,22 @@ import Testing
         var events: [PushToTalk.Event] = []
     }
 
+    @MainActor
+    static func tapThenPress(into observe: @MainActor (CGEventType, CGEvent) -> Void) throws {
+        let held: CGEventFlags = [
+            .maskAlternate, CGEventFlags(rawValue: ModifierTap.Key.rightOption.flag),
+        ]
+        for (isDown, milliseconds) in [(true, 0), (false, 80), (true, 160)] {
+            let event = try #require(
+                CGEvent(
+                    keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightOption),
+                    keyDown: isDown))
+            event.flags = isDown ? held : []
+            event.timestamp = CGEventTimestamp(1_000 + milliseconds) * 1_000_000
+            observe(.flagsChanged, event)
+        }
+    }
+
     @Test func holdingTheKeyRecordsUntilItIsReleased() {
         var recorder = Recorder()
         recorder.down(.rightOption)
@@ -167,7 +183,7 @@ import Testing
         let inbox = Inbox()
         let observe = PushToTalk.observe(
             .rightOption, window: ModifierTap.defaultWindow, isActive: { false },
-            onEvent: { inbox.events.append($0) })
+            onEvent: { inbox.events.append($0) }, later: PushToTalk.later)
         let event = try #require(
             CGEvent(
                 keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightOption), keyDown: true))
@@ -188,22 +204,25 @@ import Testing
         let observe = PushToTalk.observe(
             .rightOption, window: ModifierTap.defaultWindow,
             isActive: { [.started, .toggled].contains(inbox.events.last) },
-            onEvent: { inbox.events.append($0) })
-        let held: CGEventFlags = [
-            .maskAlternate, CGEventFlags(rawValue: ModifierTap.Key.rightOption.flag),
-        ]
-        for (isDown, milliseconds) in [(true, 0), (false, 80), (true, 160)] {
-            let event = try #require(
-                CGEvent(
-                    keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightOption),
-                    keyDown: isDown))
-            event.flags = isDown ? held : []
-            event.timestamp = CGEventTimestamp(1_000 + milliseconds) * 1_000_000
-            observe(.flagsChanged, event)
-        }
+            onEvent: { inbox.events.append($0) }, later: PushToTalk.later)
+        try Self.tapThenPress(into: observe)
         #expect(inbox.events.isEmpty)
         await withCheckedContinuation { continuation in
             DispatchQueue.main.async { continuation.resume() }
+        }
+        #expect(inbox.events == [.started, .toggled, .stopped])
+    }
+
+    @MainActor
+    @Test func queuedEventsArriveInOrderWhicheverDeliveryRunsFirst() throws {
+        let inbox = Inbox()
+        var jobs: [@MainActor () -> Void] = []
+        let observe = PushToTalk.observe(
+            .rightOption, window: ModifierTap.defaultWindow, isActive: { false },
+            onEvent: { inbox.events.append($0) }, later: { jobs.append($0) })
+        try Self.tapThenPress(into: observe)
+        for job in jobs.reversed() {
+            job()
         }
         #expect(inbox.events == [.started, .toggled, .stopped])
     }

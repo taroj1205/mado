@@ -33,27 +33,31 @@ public struct PushToTalk {
     ) throws(ModuleError) {
         try context.observeEvents(
             name, matching: ModifierTap.types,
-            observe: observe(key, window: window, isActive: isActive, onEvent: onEvent))
+            observe: observe(
+                key, window: window, isActive: isActive, onEvent: onEvent, later: later))
+    }
+
+    @MainActor
+    static func later(_ job: @escaping @MainActor () -> Void) {
+        Task { job() }
     }
 
     @MainActor
     static func observe(
         _ key: ModifierTap.Key, window: Duration, isActive: @escaping @MainActor () -> Bool,
-        onEvent: @escaping @MainActor (Event) -> Void
+        onEvent: @escaping @MainActor (Event) -> Void,
+        later: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void
     ) -> @MainActor (CGEventType, CGEvent) -> Void {
         var talk = Self(key: key, window: window)
-        var undelivered = 0
+        var pending: [Event] = []
         return { type, event in
             let change = talk.handle(
                 type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-                timestamp: event.timestamp, isActive: undelivered > 0 || isActive())
+                timestamp: event.timestamp, isActive: !pending.isEmpty || isActive())
             if let change {
-                undelivered += 1
-                Task {
-                    undelivered -= 1
-                    onEvent(change)
-                }
+                pending.append(change)
+                later { onEvent(pending.removeFirst()) }
             }
         }
     }
