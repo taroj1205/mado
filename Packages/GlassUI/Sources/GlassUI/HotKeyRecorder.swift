@@ -6,6 +6,7 @@ public final class HotKeyRecorder: NSView {
     enum State: Equatable {
         case captured(HotKey)
         case conflict(HotKey, String)
+        case refused(HotKey, String)
         case waiting
     }
 
@@ -23,7 +24,7 @@ public final class HotKeyRecorder: NSView {
         kVK_Shift: .leftShift, kVK_RightShift: .rightShift,
     ]
 
-    public var onSave: ((HotKey) -> Void)?
+    public var onSave: ((HotKey) -> String?)?
     public var onCancel: (() -> Void)?
     public var onClear: (() -> Void)? {
         didSet { render() }
@@ -189,9 +190,11 @@ public final class HotKeyRecorder: NSView {
     private func saveCaptured() {
         switch state {
         case let .captured(hotKey), let .conflict(hotKey, _):
-            onSave?(hotKey)
+            if let problem = onSave?(hotKey) {
+                state = .refused(hotKey, problem)
+            }
 
-        case .waiting:
+        case .refused, .waiting:
             break
         }
     }
@@ -238,6 +241,14 @@ public final class HotKeyRecorder: NSView {
             warningLabel.setAccessibilityValue(HotKeyLabel.spoken(text: warningLabel.stringValue))
             warning.isHidden = false
             controls.setViews([openSettings, useAnyway], in: .trailing)
+
+        case let .refused(hotKey, problem):
+            field.show(HotKeyLabel.keycaps(hotKey), suffix: nil, style: .conflict)
+            warningLabel.stringValue = problem
+            warningLabel.setAccessibilityValue(problem)
+            warning.isHidden = false
+            hint.stringValue = "esc cancels · ⌫ clears"
+            controls.setViews([hint], in: .leading)
         }
     }
 }

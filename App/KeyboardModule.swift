@@ -17,10 +17,13 @@ struct KeyboardModule: Module {
     func start(context: ModuleContext) {
         AppInputSwitch.trackActivationsWhileStopped(context: context, memory: inputMemory)
         context.startKeyFeatures {
-            installInputKeys(inputSourceSettings().keys, context: context)
+            let remaps = remapSettings()
+            let claimed = remaps.claimsRightControlTap ? HotKey.modifierTap(.rightControl) : nil
+            installInputKeys(
+                inputSourceSettings().keys.filter { $0.hotKey != claimed }, context: context)
             AppInputSwitch.install(
                 context: context, settings: inputSourceSettings, memory: inputMemory)
-            startRemaps(remapSettings(), context: context)
+            startRemaps(remaps, context: context)
         }
     }
 

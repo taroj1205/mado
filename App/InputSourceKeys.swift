@@ -175,9 +175,22 @@ final class InputSourceKeys: NSObject {
         _ name: String, for target: InputTarget, clearable: Bool, from anchor: NSView
     ) {
         guard modules != nil else { return }
-        recorder.recordKey(named: name, clearable: clearable, from: anchor) { [weak self] key in
-            self?.bind(key, to: target)
+        let assign: (HotKey?) -> Void = { [weak self] key in self?.bind(key, to: target) }
+        recorder.recordKey(
+            named: name, clearable: clearable, from: anchor,
+            refusal: { [weak self] in self?.refusal(for: $0) }, assign: assign)
+    }
+
+    private func refusal(for hotKey: HotKey) -> String? {
+        let claimed = RemapSettings.load(from: modules).claimsRightControlTap
+        if hotKey == .modifierTap(.rightControl), claimed {
+            return "Caps Lock’s tap uses Right ⌃ while Caps Lock is Control. Try another key."
         }
+        let owned = InputSourceSettings.load(from: modules).keys.map(\.hotKey)
+        guard case .shortcut(let shortcut) = hotKey, !owned.contains(hotKey),
+            !recorder.accepts(shortcut)
+        else { return nil }
+        return "macOS wouldn’t register this hotkey. Try another."
     }
 
     private func bind(_ hotKey: HotKey?, to target: InputTarget) {

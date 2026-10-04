@@ -78,7 +78,10 @@ import Testing
         let recorder = HotKeyRecorder()
         var saved: [HotKey] = []
         recorder.systemConflict = { $0 == Self.commandSpace ? "Spotlight" : nil }
-        recorder.onSave = { saved.append($0) }
+        recorder.onSave = { hotKey in
+            saved.append(hotKey)
+            return nil
+        }
         recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
         #expect(recorder.state == .conflict(Self.commandSpace, "Spotlight"))
         recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
@@ -90,7 +93,10 @@ import Testing
         var cancelled = 0
         var saved: [HotKey] = []
         recorder.onCancel = { cancelled += 1 }
-        recorder.onSave = { saved.append($0) }
+        recorder.onSave = { hotKey in
+            saved.append(hotKey)
+            return nil
+        }
         recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
         #expect(saved.isEmpty)
         recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
@@ -206,5 +212,20 @@ import Testing
         #expect(
             button.hotKey == .shortcut(Shortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: .option)))
         #expect(button.accessibilityValue() as? String == "⌥ S")
+    }
+
+    @Test func aRefusedSaveKeepsTheRecorderOpenWithTheReason() throws {
+        let recorder = HotKeyRecorder()
+        let reason = "macOS wouldn’t register this hotkey. Try another."
+        var attempts = 0
+        recorder.onSave = { _ in
+            attempts += 1
+            return reason
+        }
+        recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
+        recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
+        #expect(recorder.state == .refused(Self.commandSpace, reason))
+        recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
+        #expect(attempts == 1)
     }
 }

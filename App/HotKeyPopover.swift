@@ -83,7 +83,7 @@ final class HotKeyPopover: NSObject, NSPopoverDelegate {
 
     func recordKey(
         named name: String, clearable: Bool, from anchor: NSView,
-        assign: @escaping (HotKey?) -> Void
+        refusal: @escaping (HotKey) -> String?, assign: @escaping (HotKey?) -> Void
     ) {
         recorderTitle.stringValue = "Press a key for \(name)"
         recorder.reset()
@@ -95,10 +95,20 @@ final class HotKeyPopover: NSObject, NSPopoverDelegate {
             assign(hotKey)
             popover?.close()
         }
-        recorder.onSave = finish
+        recorder.onSave = { hotKey in
+            if let problem = refusal(hotKey) {
+                return problem
+            }
+            finish(hotKey)
+            return nil
+        }
         recorder.onClear = clearable ? { finish(nil) } : nil
         items.suspendHotKeys(true)
         present(recorderContent, focusing: recorder, from: anchor)
+    }
+
+    func accepts(_ shortcut: Shortcut) -> Bool {
+        items.accepts(shortcut)
     }
 
     private func present(_ content: NSViewController, focusing view: NSView, from anchor: NSView) {

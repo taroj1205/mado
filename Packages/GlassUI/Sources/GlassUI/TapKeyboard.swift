@@ -7,12 +7,16 @@ public final class TapKeyboard: NSStackView {
         let word: String
         let width: CGFloat
         let modifier: HotKey.ModifierKey?
+        var showsOnlyWhenBound = false
     }
 
     private static let narrow: CGFloat = 40
     private static let wide: CGFloat = 70
     private static let space: CGFloat = 200
     private static let keys = [
+        Key(
+            symbol: "⇧", word: "shift", width: wide, modifier: .leftShift,
+            showsOnlyWhenBound: true),
         Key(symbol: "fn", word: "globe", width: narrow, modifier: nil),
         Key(symbol: "⌃", word: "control", width: narrow, modifier: .leftControl),
         Key(symbol: "⌥", word: "option", width: narrow, modifier: .leftOption),
@@ -20,6 +24,12 @@ public final class TapKeyboard: NSStackView {
         Key(symbol: "", word: "", width: space, modifier: nil),
         Key(symbol: "⌘", word: "command", width: wide, modifier: .rightCommand),
         Key(symbol: "⌥", word: "option", width: narrow, modifier: .rightOption),
+        Key(
+            symbol: "⌃", word: "control", width: narrow, modifier: .rightControl,
+            showsOnlyWhenBound: true),
+        Key(
+            symbol: "⇧", word: "shift", width: wide, modifier: .rightShift,
+            showsOnlyWhenBound: true),
     ]
     private static let keyHeight: CGFloat = 42
     private static let keyRadius: CGFloat = 8
@@ -50,8 +60,11 @@ public final class TapKeyboard: NSStackView {
     }
 
     public func show(_ labels: [HotKey.ModifierKey: String]) {
+        let shown = Self.keys.filter { key in
+            !key.showsOnlyWhenBound || key.modifier.flatMap { labels[$0] } != nil
+        }
         setViews(
-            Self.keys.map { key in
+            shown.map { key in
                 let label = key.modifier.flatMap { labels[$0] }
                 let column = NSStackView(views: [cap(key, bound: label != nil), chip(label)])
                 column.orientation = .vertical

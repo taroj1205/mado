@@ -178,4 +178,19 @@ import Testing
         registry.unregister(second)
         #expect(backend.registered.isEmpty)
     }
+
+    @Test func acceptsOnlyAShortcutMacOSWouldRegisterAndLeavesNothingBehind() throws {
+        let backend = FakeBackend()
+        let registry = HotKeyRegistry(backend: backend)
+        let free = Shortcut(keyCode: UInt32(kVK_ANSI_J), modifiers: [.control, .option])
+
+        #expect(registry.accepts(free))
+        #expect(backend.registered.isEmpty)
+
+        try registry.register(Self.shortcut) { Issue.record("The handler shouldn’t run") }
+        #expect(!registry.accepts(Self.shortcut))
+
+        backend.status = Int32(eventHotKeyExistsErr)
+        #expect(!registry.accepts(free))
+    }
 }
