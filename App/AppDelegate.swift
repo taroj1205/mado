@@ -87,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
-            let library = Snippets(modules: manager)
+            let library = try Snippets.registered(in: manager)
             snippets = library
             let openHistory = CalculatorHistory.command { [weak self] in
                 self?.openCalculatorHistory()

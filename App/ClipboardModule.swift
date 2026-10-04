@@ -24,7 +24,6 @@ struct ClipboardModule: Module {
 
     func start(context: ModuleContext) {
         let logger = context.logger
-        snippets.start(with: context)
         let store: ClipboardStore
         do {
             store = try .standard()
@@ -38,6 +37,7 @@ struct ClipboardModule: Module {
             await Self.recognizeImages(in: store, for: history, logger: logger)
         }
         snippets.checkCopies(with: watchCopies(into: store, context: context))
+        context.own(.other, "snippet copy check") { [snippets] in snippets.checkCopies(with: nil) }
         logger.debug("Started")
     }
 

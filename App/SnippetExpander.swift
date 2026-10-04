@@ -28,13 +28,14 @@ final class SnippetExpander {
     private let fillIn = SnippetFillIn()
     private var typing = SnippetTyping()
     private var busy = false
-    private var stopped = false
+    private var listening = false
 
     init(logger: Logger) {
         self.logger = logger
     }
 
     func install(in context: ModuleContext) {
+        listening = true
         context.installWhenTrusted(Self.route) { [weak self, weak context] in
             guard let context else { return true }
             do {
@@ -55,7 +56,7 @@ final class SnippetExpander {
             on: DistributedNotificationCenter.default(), reading: \.name
         ) { [weak self] _ in self?.forget() }
         context.own(.other, "snippet fill-in") { [weak self] in
-            self?.stopped = true
+            self?.listening = false
             self?.forget()
             self?.fillIn.close()
         }
@@ -107,35 +108,44 @@ final class SnippetExpander {
             logger.notice("Snippets can’t type until Accessibility is allowed")
             return
         }
-        let focused = await FocusedText.current(readingBack: typed.utf16.count)
-        guard await canReplace(typed, focused) else { return }
         let template = SnippetTemplate(snippet.text)
         var values = SnippetTemplate.Values.now(
             fields: [:], clipboard: NSPasteboard.general.string(forType: .string) ?? "")
         do {
             if !template.fields.isEmpty {
+                let focused = await FocusedText.current(readingBack: typed.utf16.count)
+                guard await canReplace(typed, focused) else { return }
                 values.fields = try await fillIn.ask(
                     snippet, template, values: values, under: focused?.caret)
                 try await target.activate()
-                let after = await FocusedText.current(readingBack: typed.utf16.count)
-                guard await canReplace(typed, after) else { return }
             }
             let expansion = template.expand(values)
-            guard !stopped else { return }
-            guard target.app.isActive, typed.isEmpty || !typing.inputAfterMatch else {
-                logger.notice("Focus or input moved on, so the snippet wasn’t inserted")
-                return
-            }
             beforeReplacing?()
             let insertion = TextInsertion.standard
-            let inserted = try insertion.replace(typed, with: expansion)
+            guard
+                let inserted = try await insertion.replace(
+                    typed, with: expansion, if: { await canInsert(typed, into: target) })
+            else { return }
             typing.expanded(inserted)
             await insertion.restore(inserted)
         } catch is CancellationError {
             logger.debug("Fill-in fields were canceled; the keyword stays as typed")
+        } catch TextInsertion.Failure.clipboardChanged {
+            logger.notice(
+                "Something was copied while the snippet was expanding, so it wasn’t inserted")
         } catch {
             logger.error("Expanding a snippet failed: \(error, privacy: .public)")
         }
+    }
+
+    private func canInsert(_ typed: String, into target: PasteTarget) async -> Bool {
+        let focused = await FocusedText.current(readingBack: typed.utf16.count)
+        guard await canReplace(typed, focused), typed.isEmpty || listening else { return false }
+        guard target.app.isActive, typed.isEmpty || !typing.inputAfterMatch else {
+            logger.notice("Focus or input moved on, so the snippet wasn’t inserted")
+            return false
+        }
+        return true
     }
 
     private func canReplace(_ typed: String, _ focused: FocusedText?) async -> Bool {

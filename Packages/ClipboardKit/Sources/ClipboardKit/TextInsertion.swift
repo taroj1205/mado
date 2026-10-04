@@ -4,6 +4,10 @@ import os
 
 @MainActor
 public struct TextInsertion {
+    public enum Failure: Error {
+        case clipboardChanged
+    }
+
     public struct Inserted {
         let length: Int
         let caretBack: Int
@@ -63,9 +67,12 @@ public struct TextInsertion {
     }
 
     public func replace(
-        _ typed: String, with expansion: SnippetTemplate.Expansion
-    ) throws -> Inserted {
+        _ typed: String, with expansion: SnippetTemplate.Expansion,
+        if isCurrent: @MainActor () async -> Bool
+    ) async throws -> Inserted? {
+        let changeCount = pasteboard.changeCount
         let saved = pasteboard.pasteboardItems?.map(Self.copy) ?? []
+        guard await isCurrent() else { return nil }
         let delete = try Keystrokes.press(CGKeyCode(kVK_Delete), flags: [], times: typed.count)
         let caretBack = expansion.caretBack <= Self.keyLimit ? expansion.caretBack : 0
         let back = try Keystrokes.press(
@@ -76,6 +83,7 @@ public struct TextInsertion {
         guard item.setDataProvider(text, forTypes: [.string]) else {
             throw PasteTarget.Failure.notWritten
         }
+        guard pasteboard.changeCount == changeCount else { throw Failure.clipboardChanged }
         do {
             try PasteTarget.write([Self.transient(item)], to: pasteboard)
         } catch {

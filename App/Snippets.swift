@@ -7,18 +7,23 @@ import SearchKit
 import WindowKit
 
 @MainActor
-final class Snippets: NSObject, NSWindowDelegate {
+final class Snippets: NSObject, NSWindowDelegate, Module {
     static let commandID = "clipboard.snippets"
+    static let moduleID = "snippets"
     private static let title = "Snippets"
     private static let width: CGFloat = 760
     private static let height: CGFloat = 560
     private static let radius: CGFloat = 20
 
+    let descriptor = ModuleDescriptor(
+        id: Snippets.moduleID, name: Snippets.title, enabledByDefault: true)
+
     private weak var modules: ModuleManager?
     private let editor = SnippetEditor()
+    private let expander = SnippetExpander(logger: Log.logger(Snippets.moduleID))
     private lazy var panel = makePanel()
-    private var expander: SnippetExpander?
     private var target: PasteTarget?
+    private var copyCheck: (@MainActor () -> Void)?
 
     init(modules: ModuleManager?) {
         self.modules = modules
@@ -30,6 +35,20 @@ final class Snippets: NSObject, NSWindowDelegate {
         editor.onPaste = { [weak self] in self?.paste($0) }
         editor.onExpandChange = { [weak self] in self?.setExpands($0) }
         editor.onClose = { [weak self] in self?.close() }
+        expander.beforeReplacing = { [weak self] in self?.copyCheck?() }
+    }
+
+    static func registered(in manager: ModuleManager) throws -> Snippets {
+        let snippets = Snippets(modules: manager)
+        try manager.register(snippets)
+        let open = CommandAction(id: "open", title: "Open \(title)") { [weak snippets] in
+            snippets?.open()
+        }
+        try manager.commands.register(
+            Command(
+                id: commandID, name: title, icon: "text.alignleft", actions: [open],
+                keywords: ["snippets", "text expansion", "keyword", "template"]))
+        return snippets
     }
 
     private static func name(of app: String) -> String {
@@ -49,33 +68,24 @@ final class Snippets: NSObject, NSWindowDelegate {
             }
     }
 
-    func start(with context: ModuleContext) {
-        let made = SnippetExpander(logger: context.logger)
-        expander = made
+    func start(context: ModuleContext) {
         reload()
-        made.install(in: context)
-        context.own(.other, "snippets") { [weak self] in self?.stop() }
-        let open = CommandAction(id: "open", title: "Open \(Self.title)") { [weak self] in
-            self?.open()
-        }
-        do {
-            try context.register(
-                Command(
-                    id: Self.commandID, name: Self.title, icon: "text.alignleft", actions: [open],
-                    keywords: ["snippets", "text expansion", "keyword", "template"]))
-        } catch {
-            context.logger.error(
-                "Snippets command failed: \(String(describing: error), privacy: .public)")
-        }
+        guard expander.settings.expands else { return }
+        expander.install(in: context)
+        context.logger.debug("Started")
     }
 
-    func checkCopies(with check: @escaping @MainActor () -> Void) {
-        expander?.beforeReplacing = check
+    func stop() {
+        Log.logger(Self.moduleID).debug("Stopped")
+    }
+
+    func checkCopies(with check: (@MainActor () -> Void)?) {
+        copyCheck = check
     }
 
     func reload() {
         let settings = SnippetSettings.load(from: modules)
-        expander?.settings = settings
+        expander.settings = settings
         editor.showExpansion(settings.expands, offIn: settings.appsWithoutExpansion.map(Self.name))
     }
 
@@ -101,11 +111,6 @@ final class Snippets: NSObject, NSWindowDelegate {
 
     private func close() {
         panel.orderOut(nil)
-    }
-
-    private func stop() {
-        close()
-        expander = nil
     }
 
     private func update(_ change: (inout SnippetSettings) -> Void) throws -> SnippetSettings {
@@ -153,6 +158,7 @@ final class Snippets: NSObject, NSWindowDelegate {
     private func setExpands(_ expands: Bool) -> String? {
         do {
             _ = try update { $0.expands = expands }
+            try modules?.restart(Self.moduleID)
             return nil
         } catch {
             return failed(error)
@@ -160,7 +166,7 @@ final class Snippets: NSObject, NSWindowDelegate {
     }
 
     private func paste(_ values: SnippetEditor.Values) {
-        guard let target, let expander, !expander.isBusy else {
+        guard let target, !expander.isBusy else {
             NSSound.beep()
             return
         }

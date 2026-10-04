@@ -31,7 +31,7 @@ import Testing
         }
     }
 
-    private static func inserted(_ typed: String = ";fu") throws -> TextInsertion.Inserted {
+    private static func inserted(_ typed: String = ";fu") async throws -> TextInsertion.Inserted {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         let insertion = TextInsertion(
@@ -41,7 +41,7 @@ import Testing
         }
         let expansion = SnippetTemplate("Hi").expand(
             .init(fields: [:], date: "", time: "", clipboard: ""))
-        return try insertion.replace(typed, with: expansion)
+        return try #require(await insertion.replace(typed, with: expansion) { true })
     }
 
     private static func commandZ() throws -> CGEvent {
@@ -118,17 +118,17 @@ import Testing
         #expect(typing.inputAfterMatch)
     }
 
-    @Test func undoesOnlyATypedKeywordWithCommandZRightAfter() throws {
+    @Test func undoesOnlyATypedKeywordWithCommandZRightAfter() async throws {
         var typing = Self.typing()
-        typing.expanded(try Self.inserted())
+        typing.expanded(try await Self.inserted())
 
         let undo = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
         let again = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
-        typing.expanded(try Self.inserted())
+        typing.expanded(try await Self.inserted())
         _ = try Self.type("x", into: &typing)
         let late = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
-        typing.expanded(try Self.inserted())
-        typing.expanded(try Self.inserted(""))
+        typing.expanded(try await Self.inserted())
+        typing.expanded(try await Self.inserted(""))
         let pasted = typing.handle(.keyDown, try Self.commandZ(), canExpand: true)
 
         guard case .undo(let inserted) = undo else {
