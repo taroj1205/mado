@@ -244,7 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         pasteTarget = .frontmost()
         let opening = signposter.beginInterval("open launcher")
         let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main
-        launcherView.widgetLayout = widgetPlacement?.layout
+        arrangeWidgets()
         showGlances()
         if let visible = screen?.visibleFrame {
             panel.setFrame(launcherFrame(in: visible), display: false)

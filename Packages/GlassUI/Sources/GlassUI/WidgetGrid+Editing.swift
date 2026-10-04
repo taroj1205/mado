@@ -19,7 +19,7 @@ extension WidgetGrid {
         }
     }
 
-    func makeTile(at index: Int) -> WidgetTile {
+    func makeTile(at index: Int, floating: Bool) -> WidgetTile {
         let tile = WidgetTile(floating: floating)
         tile.editing = editing
         tile.onPress = { [weak self] in self?.onPress?(index) }
@@ -33,17 +33,17 @@ extension WidgetGrid {
 
     @discardableResult
     func preview(moving id: String, to point: NSPoint) -> Bool {
-        var ids = shown.map(\.id)
+        let visible = shown
+        var ids = visible.map(\.id)
         guard let from = ids.firstIndex(of: id), let window = unsafe window else { return false }
         dragged = id
         let frames =
-            if floating, let layoutInUse {
-                Self.floatingFrames(layoutInUse, for: shown, beside: window.frame)
-                    .map(window.convertFromScreen)
-            } else {
-                frames(spanning: shown.map(\.span)).map { convert($0, to: nil) }
-            }
-        let target = frames.firstIndex { $0.contains(point) }
+            frames(spanning: inPanel.map(\.span)).map { convert($0, to: nil) }
+            + Self.floatingFrames(of: placed, beside: window.frame).map(window.convertFromScreen)
+        let spot = spot(of: visible[from])
+        let target = frames.indices.first { index in
+            frames[index].contains(point) && self.spot(of: visible[index]) == spot
+        }
         if let target, target != from {
             ids.remove(at: from)
             ids.insert(id, at: target)

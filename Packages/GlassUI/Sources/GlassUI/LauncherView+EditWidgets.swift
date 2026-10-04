@@ -98,7 +98,8 @@ extension LauncherView {
     func dropWidget(_ id: String?) -> Bool {
         guard let id, editingWidgets || widgetGrid.widgets.contains(where: { $0.id == id })
         else { return false }
-        let order = widgetGrid.shown.map(\.id)
+        let spot = widgetGrid.shown.first { $0.id == id }.map(widgetGrid.spot)
+        let order = widgetGrid.shown.filter { widgetGrid.spot(of: $0) == spot }.map(\.id)
         let all = widgetGrid.widgets.map(\.id)
         let edit: WidgetSettings.Edit? =
             if widgetGrid.incoming != nil {

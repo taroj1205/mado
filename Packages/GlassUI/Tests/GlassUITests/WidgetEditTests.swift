@@ -204,8 +204,9 @@ import Testing
                 id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
                 action: "Open \(number)", spoken: "\(number)")
         }
-        for layout: WidgetGrid.Layout in [.strip, .above] {
-            view.widgetLayout = layout
+        view.widgetLayout = .strip
+        for arrangement: WidgetSettings.Arrangement in [.inPanel, .above] {
+            arrange(arrangement)
             edit()
             #expect(view.widgetGrid.shown.count == 7)
             #expect(view.widgetGrid.floats.isEmpty)
@@ -213,7 +214,7 @@ import Testing
             view.finishEditingWidgets()
         }
         #expect(view.widgetGrid.floats.count == 7)
-        view.widgetLayout = .strip
+        arrange(.inPanel)
         #expect(view.widgetGrid.shown.count == 6)
     }
 
@@ -262,5 +263,9 @@ import Testing
         .init(
             id: title, title: title, subtitle: "", kind: "Command", symbol: "star",
             action: "Run Command")
+    }
+
+    private func arrange(_ arrangement: WidgetSettings.Arrangement) {
+        view.widgetSpots = WidgetSettings().spots(arrangement, from: view.widgets.map(\.id))
     }
 }
