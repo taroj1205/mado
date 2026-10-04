@@ -22,10 +22,13 @@ public final class AppIndex {
         URL.homeDirectory.appending(path: "Applications"),
     ]
 
-    public private(set) var apps: [App] = []
+    public private(set) var apps: [App] = [] {
+        didSet { byPath = Dictionary(apps.map { ($0.url.path, $0) }) { first, _ in first } }
+    }
     public var onChange: (() -> Void)?
 
     private let logger = Log.logger("AppIndex")
+    private var byPath: [String: App] = [:]
     private let folders: [URL]
     private var watcher: FolderWatcher?
     private var icons: [URL: NSImage] = [:]
@@ -72,6 +75,10 @@ public final class AppIndex {
             logger.error("Watching the app folders failed; installs show after relaunch")
         }
         refresh()
+    }
+
+    public func app(atPath path: String) -> App? {
+        byPath[path]
     }
 
     public func icon(for app: App) -> NSImage {

@@ -85,6 +85,8 @@ import Testing
         await index.scan?.value
         #expect(index.files.count == 4)
         #expect(changes == 1)
+        let notes = try #require(index.files.first { $0.name == "notes.md" }).url.path
+        #expect(index.file(atPath: notes)?.name == "notes.md")
 
         try Data().write(to: root.appending(path: "draft.txt"))
         try FileManager.default.removeItem(at: root.appending(path: "notes.md"))
@@ -96,6 +98,7 @@ import Testing
         }
         #expect(index.files.map(\.name).sorted() == expected)
         #expect(changes == 2)
+        #expect(index.file(atPath: notes) == nil)
 
         try FileManager.default.setAttributes(
             [.modificationDate: Date(timeIntervalSinceNow: -3_600)],

@@ -38,6 +38,8 @@ import Testing
         index.start()
         await index.scan?.value
         #expect(index.apps.map(\.name) == ["Alpha", "Beta", "Flagged"])
+        let beta = try #require(index.apps.first { $0.name == "Beta" }).url.path
+        #expect(index.app(atPath: beta)?.name == "Beta")
 
         try FileManager.default.createDirectory(
             at: root.appending(path: "Gamma.app"), withIntermediateDirectories: false)
@@ -49,5 +51,6 @@ import Testing
             try await Task.sleep(for: .milliseconds(100))
         }
         #expect(index.apps.map(\.name) == expected)
+        #expect(index.app(atPath: beta) == nil)
     }
 }
