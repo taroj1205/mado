@@ -61,12 +61,16 @@ public struct ItemSettings: Codable, Equatable, Sendable {
         keys: (Item) -> [Fuzzy.Key]
     ) -> [Item] {
         let aliased = ids(withAlias: query)
-        let tagged = items.map { (item: $0, id: id($0)) }
-        let ranked = Fuzzy.rank(
-            tagged, by: query,
-            bonus: { bonus($0.id) + (aliased.contains($0.id) ? Self.aliasBonus : 0) },
-            keys: { (aliases[$0.id] ?? []).map(Fuzzy.Key.init) + keys($0.item) })
-        return ranked.map(\.item)
+        let aliasKeys = aliases.mapValues { $0.map(Fuzzy.Key.init) }
+        return Fuzzy.rank(
+            items, by: query,
+            bonus: { item in
+                let itemID = id(item)
+                return bonus(itemID) + (aliased.contains(itemID) ? Self.aliasBonus : 0)
+            },
+            keys: { item in
+                aliasKeys.isEmpty ? keys(item) : (aliasKeys[id(item)] ?? []) + keys(item)
+            })
     }
 
     public subscript(id: String) -> Item {

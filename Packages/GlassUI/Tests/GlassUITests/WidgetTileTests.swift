@@ -14,7 +14,8 @@ import Testing
     @Test func aSymbolSitsAtTheTopRightBesideTheValue() {
         tile.show(
             .init(
-                id: "battery", value: "100%", detail: "Charged", action: "Battery Settings",
+                id: "battery", name: "Battery", value: "100%", detail: "Charged",
+                action: "Battery Settings",
                 spoken: "Battery: 100%, charged", symbol: "battery.100percent"))
         tile.layoutSubtreeIfNeeded()
         let glyph = tile.icon.alignmentRect(forFrame: tile.icon.frame)
@@ -30,11 +31,13 @@ import Testing
     @Test func aTileWithoutASymbolDropsTheIcon() {
         tile.show(
             .init(
-                id: "battery", value: "100%", detail: "Charged", action: "Battery Settings",
+                id: "battery", name: "Battery", value: "100%", detail: "Charged",
+                action: "Battery Settings",
                 spoken: "Battery: 100%, charged", symbol: "battery.100percent"))
         tile.show(
             .init(
-                id: "clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
+                id: "clock", name: "Clock", value: "9:41", detail: "Wed 30 Sep",
+                action: "Open Clock",
                 spoken: "Time: 9:41 AM, Wednesday 30 September"))
         #expect(tile.icon.image == nil)
     }

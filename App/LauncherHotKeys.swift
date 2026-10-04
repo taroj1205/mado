@@ -33,6 +33,9 @@ final class LauncherHotKeys {
     private static let guideWidth: CGFloat = 800
     private static let guideHeight: CGFloat = 660
     private static let guideRadius: CGFloat = 26
+    #if DEBUG
+        private static let areOff = UserDefaults.standard.bool(forKey: "MadoNoHotKey")
+    #endif
 
     var onChange: (() -> Void)?
 
@@ -64,7 +67,7 @@ final class LauncherHotKeys {
 
     static func makeRegistry() -> HotKeyRegistry? {
         #if DEBUG
-            if UserDefaults.standard.bool(forKey: "MadoNoHotKey") { return nil }
+            if areOff { return nil }
         #endif
         do {
             return try HotKeyRegistry()
@@ -73,6 +76,12 @@ final class LauncherHotKeys {
                 "Launcher hotkey failed: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    static func pauseKeysIfOff(in modules: ModuleManager) {
+        #if DEBUG
+            if areOff { modules.setKeysPaused(true) }
+        #endif
     }
 
     func start() {

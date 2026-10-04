@@ -12,11 +12,21 @@ struct LauncherMenu {
         case edit(ItemEditor.Edit)
     }
 
+    static let shortcutKeys = [
+        FileActions.showInfoKeys, FileActions.copyPathKeys, FileActions.quitKeys,
+        ItemEditor.createQuicklinkKeys,
+    ]
+
     let groups: [[Entry]]
     let recordsUse: Bool
 
     init(actions: [CommandAction]) {
         self.init(groups: [Self.entries(for: actions)], recordsUse: false)
+    }
+
+    init(keyed actions: [(action: CommandAction, keys: [String])]) {
+        let entries = actions.map { Entry.run($0.action, keys: $0.keys, isDestructive: false) }
+        self.init(groups: [entries], recordsUse: false)
     }
 
     init(

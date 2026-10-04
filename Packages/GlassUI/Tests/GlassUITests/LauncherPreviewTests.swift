@@ -63,6 +63,16 @@ import Testing
         #expect(view.field.stringValue.isEmpty)
     }
 
+    @Test func commandYWaitsForTheResultsOfTheTypedQuery() {
+        defer { view.closePreview() }
+        view.show([.init(title: "Files", items: [file("a.txt")])])
+        press(kVK_ANSI_B, "b")
+        previewKey()
+        #expect(!view.previewing)
+        view.show([.init(title: "Files", items: [file("b.txt")])])
+        #expect(view.preview?.title.stringValue == "b.txt")
+    }
+
     @Test func commandYAgainClosesThePreview() {
         view.results.sections = [.init(title: "Files", items: [file("a.txt")])]
         previewKey()

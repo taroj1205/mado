@@ -16,12 +16,24 @@ struct PlaceholderModule: Module {
 
 extension ModuleDescriptor {
     @MainActor
-    func makeModule(in modules: ModuleManager, hotKeys: HotKeyRegistry?) -> any Module {
+    func makeModule(
+        in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory,
+        snippets: Snippets, showLauncher: @escaping @MainActor (_ toggles: Bool) -> Void
+    ) -> any Module {
         switch id {
         case ClipboardModule.id:
-            ClipboardModule(descriptor: self) { [weak modules] in .load(from: modules) }
+            ClipboardModule(
+                descriptor: self, settings: { [weak modules] in .load(from: modules) },
+                history: clipboardHistory, snippets: snippets)
 
-        case KeyboardModule.id: KeyboardModule(descriptor: self)
+        case DictationModule.id: DictationModule(descriptor: self)
+
+        case KeyboardModule.id:
+            KeyboardModule(
+                descriptor: self,
+                inputSourceSettings: { [weak modules] in .load(from: modules) },
+                remapSettings: { [weak modules] in .load(from: modules) },
+                showLauncher: showLauncher)
 
         case WindowsModule.id:
             WindowsModule(

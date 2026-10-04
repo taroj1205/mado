@@ -11,7 +11,7 @@ import Testing
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
     private let clock = WidgetGrid.Widget(
-        id: "clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
+        id: "clock", name: "Clock", value: "9:41", detail: "Wed 30 Sep", action: "Open Clock",
         spoken: "Time: 9:41 AM, Wednesday 30 September")
 
     init() {
@@ -140,7 +140,7 @@ import Testing
 
     private func song(isPlaying: Bool, artwork: Data? = nil) -> WidgetGrid.Widget {
         .init(
-            id: "music",
+            id: "music", name: "Now Playing",
             track: .init(
                 title: "Low Tide", artist: "Harbour Lights", artwork: artwork,
                 isPlaying: isPlaying),

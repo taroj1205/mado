@@ -20,6 +20,7 @@ final class ItemEditor {
         let focus: NSView?
     }
 
+    static let createQuicklinkKeys = ["⌘", "⇧", "L"]
     private static let badLink = "Mado can’t open this link. Use a web address or a folder path."
 
     let sheet = ItemSheet()
@@ -33,17 +34,20 @@ final class ItemEditor {
     private let modules: ModuleManager?
     private let registry: HotKeyRegistry?
     private let name: (String) -> String?
+    private let isAvailable: (String) -> Bool
     private var registrations: [String: HotKeyRegistration] = [:]
     private var host: Host?
 
     init(
-        modules: ModuleManager?, registry: HotKeyRegistry?, name: @escaping (String) -> String?
+        modules: ModuleManager?, registry: HotKeyRegistry?, name: @escaping (String) -> String?,
+        isAvailable: @escaping (String) -> Bool
     ) {
         settings = ItemSettings.load(from: modules)
         quicklinks = Quicklinks.load(from: modules)
         self.modules = modules
         self.registry = registry
         self.name = name
+        self.isAvailable = isAvailable
         sheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
         sheet.onCancel = { [weak self] in self?.close() }
         quicklinkSheet.onRecording = { [weak self] in self?.suspendHotKeys($0) }
@@ -59,6 +63,21 @@ final class ItemEditor {
         }
     }
 
+    func refreshHotKeys() {
+        for id in settings.hotkeys.keys {
+            refreshHotKey(for: id)
+        }
+    }
+
+    func refreshHotKey(for id: String) {
+        if let registration = registrations.removeValue(forKey: id) {
+            registry?.unregister(registration)
+        }
+        if let hotkey = settings[id].hotkey {
+            register(hotkey, for: id)
+        }
+    }
+
     func edits(for id: String) -> [Edit] {
         if quicklinks[id] != nil { return [.field(.favourite), .editQuicklink] }
         let fields: [Edit] = [.field(.favourite), .field(.hotkey), .field(.aliases)]
@@ -68,7 +87,10 @@ final class ItemEditor {
     func action(for edit: Edit, on id: String) -> LauncherView.Action {
         switch edit {
         case .field(let field): LauncherView.Action(field.title(favourite: settings[id].favourite))
-        case .createQuicklink: LauncherView.Action(Quicklink.createTitle, keys: ["⌘", "⇧", "L"])
+
+        case .createQuicklink:
+            LauncherView.Action(Quicklink.createTitle, keys: Self.createQuicklinkKeys)
+
         case .editQuicklink: LauncherView.Action("Edit Quicklink")
         }
     }
@@ -167,6 +189,10 @@ final class ItemEditor {
         if LauncherHotKeys.Key.allCases.contains(where: { $0.shortcut == hotkey }) {
             return "Mado"
         }
+        let switcherOn = modules?.isEnabled(WindowsModule.id) == true
+        if switcherOn, WindowsModule.switcherShortcuts.contains(hotkey) {
+            return "Window switcher"
+        }
         if let owner = settings.owner(of: hotkey), owner != id {
             return name(owner) ?? "Another item"
         }
@@ -228,8 +254,13 @@ final class ItemEditor {
     private func register(_ hotkey: Shortcut, for id: String) -> Bool {
         guard let registry else { return true }
         do {
-            registrations[id] = try registry.register(hotkey) { [weak self] in
+            let registration = try registry.register(hotkey) { [weak self] in
                 self?.onHotKey?(id)
+            }
+            if isAvailable(id) {
+                registrations[id] = registration
+            } else {
+                registry.unregister(registration)
             }
             return true
         } catch {

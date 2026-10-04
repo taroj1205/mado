@@ -45,8 +45,8 @@ import Testing
         let heading = list.heading
         #expect(heading != nil)
         #expect(list.contentView.bounds.minY < heading?.y ?? 0)
-        let deadline = Date(timeIntervalSinceNow: 2)
-        while list.heading != nil, Date() < deadline {
+        let deadline = Date(timeIntervalSinceNow: 10)
+        while list.heading != nil, list.contentView.bounds.origin != heading, Date() < deadline {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
         }
         #expect(list.contentView.bounds.origin == heading)

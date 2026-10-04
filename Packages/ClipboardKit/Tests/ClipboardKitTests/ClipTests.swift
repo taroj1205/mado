@@ -57,6 +57,7 @@ import Testing
 
         #expect(clip.kind == .file)
         #expect(clip.text == "/tmp/a.txt\n/tmp/b c.txt")
+        #expect(clip.data == Data("/tmp/a.txt\0/tmp/b c.txt".utf8))
     }
 
     @Test(arguments: ["https://developer.apple.com/documentation/appkit", " http://a.io "])

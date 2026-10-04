@@ -1,14 +1,29 @@
 import CoreGraphics
+import Dispatch
 import os
 
 @MainActor
 @safe
 final class EventTap {
+    private static let hangMilliseconds = 250
+    private static let hang: Duration = .milliseconds(hangMilliseconds)
+
+    var onUnresponsive: (@MainActor () -> Void)?
+    var isPaused = false {
+        didSet { _ = install(mask) }
+    }
+
+    private let logger = Log.logger("EventTap")
     private let signposter = Log.signposter("EventTap")
     private var routes = EventRoutes()
     private(set) var port: CFMachPort?
     private var source: CFRunLoopSource?
     private var installedMask: CGEventMask = 0
+    private var isReleasing = false
+
+    private var mask: CGEventMask {
+        isPaused || isReleasing ? 0 : routes.mask
+    }
 
     func add(
         types: [CGEventType], swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
@@ -24,23 +39,50 @@ final class EventTap {
 
     func remove(_ id: UInt) {
         routes.remove(id)
-        _ = install(routes.mask)
+        _ = install(mask)
     }
 
     func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        switch type {
+        case .tapDisabledByUserInput:
             if let port {
                 CGEvent.tapEnable(tap: port, enable: true)
             }
             return true
+
+        case .tapDisabledByTimeout:
+            release("macOS found it unresponsive")
+            return true
+
+        default:
+            let clock = ContinuousClock()
+            let start = clock.now
+            let state = signposter.beginInterval("dispatch")
+            let swallowed = routes.dispatch(type, event)
+            signposter.endInterval("dispatch", state)
+            if clock.now - start >= Self.hang {
+                release("a route held an event past \(Self.hang)")
+            }
+            return !swallowed
         }
-        let state = signposter.beginInterval("dispatch")
-        defer { signposter.endInterval("dispatch", state) }
-        return !routes.dispatch(type, event)
+    }
+
+    private func release(_ reason: String) {
+        isReleasing = true
+        if let port {
+            CGEvent.tapEnable(tap: port, enable: false)
+        }
+        logger.error("Released the event tap: \(reason, privacy: .public)")
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            isReleasing = false
+            isPaused = true
+            onUnresponsive?()
+        }
     }
 
     private func installed(_ id: UInt) -> UInt? {
-        guard install(routes.mask) else {
+        guard install(mask) else {
             routes.remove(id)
             return nil
         }

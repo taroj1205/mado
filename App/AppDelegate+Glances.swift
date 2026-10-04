@@ -43,6 +43,38 @@ extension AppDelegate {
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
+        connectWidgetEditing()
+    }
+
+    private func connectWidgetEditing() {
+        launcherView.onWidgetEdit = { [weak self] edit in
+            guard let self else { return }
+            Widgets.edit(edit, in: modules)
+            launcherGallery?.refresh()
+            widgetsChanged()
+        }
+        launcherView.onAddWidgets = { [weak self] in
+            guard let self, let window = unsafe launcherView.window else { return }
+            let gallery = launcherGallery ?? makeLauncherGallery()
+            launcherGallery = gallery
+            gallery.show(over: window, below: window.frame.minY + launcherView.widgetsBottom)
+        }
+        launcherView.onEndEditingWidgets = { [weak self] in self?.launcherGallery?.close() }
+    }
+
+    private func makeLauncherGallery() -> WidgetGalleryWindow {
+        let gallery = WidgetGalleryWindow(modules: modules)
+        gallery.onChange = { [weak self] in self?.widgetsChanged() }
+        gallery.onClose = { [weak self] in
+            guard let self, launcherView.editingWidgets, let window = unsafe launcherView.window
+            else { return }
+            window.makeKey()
+        }
+        return gallery
+    }
+
+    private func widgetsChanged() {
+        widgets.show(Widgets.added(in: modules), in: launcherView)
     }
 
     func showGlances() {

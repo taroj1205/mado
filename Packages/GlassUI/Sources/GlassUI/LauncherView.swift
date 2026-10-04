@@ -2,15 +2,17 @@ public import AppKit
 
 public final class LauncherView: NSView {
     private static let searchBarHeight: CGFloat = 60
-    private static let searchInset: CGFloat = 20
+    static let searchInset: CGFloat = 20
+    static let searchSymbol = "magnifyingglass"
     private static let searchFontSize: CGFloat = 20
     static let searchIconGap: CGFloat = 12
     static let searchPlaceholder = "Search apps and commands…"
-    private static let backInset: CGFloat = 14
-    private static let resultsInset: CGFloat = 8
+    static let backInset: CGFloat = 14
+    static let resultsInset: CGFloat = 8
     static let capsuleInset: CGFloat = 10
-    private static let previewHint = "⌘Y to preview"
-    private static let previewSymbol = "eye"
+    static let previewHint = "⌘Y to preview"
+    static let previewSymbol = "eye"
+    static let previewKeys = ["⌘", "Y"]
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -19,8 +21,10 @@ public final class LauncherView: NSView {
     public let results = ResultList()
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
+    public var onLeave: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
+    public var shortcutKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
@@ -31,6 +35,10 @@ public final class LauncherView: NSView {
     }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
+    public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
+    public var onAddWidgets: (() -> Void)?
+    public var onEndEditingWidgets: (() -> Void)?
+    public internal(set) var editingWidgets = false
     public var context: String? {
         didSet { showContext() }
     }
@@ -40,30 +48,42 @@ public final class LauncherView: NSView {
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let actionsToggle = LauncherView.makeActionsToggle()
+    let actionsDivider = FloatingCapsule.divider()
     let actionCapsule: GlassView
     let contextPill = StatusPill()
     let statusBar = StatusBar()
     var selectedPill: Int?
     var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
+    let detail = DetailPane()
+    var previewer: ((ResultList.Item) -> Preview?)?
+    var filter: NSPopUpButton?
+    let editBar = WidgetEditBar()
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
-    private var browsing = false
+    private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
+    var passKeyOn = { (event: NSEvent) in _ = NSApp.mainMenu?.performKeyEquivalent(with: event) }
     var rootQuery: String?
+    var shownQuery = (text: "", scoped: false)
+    var afterResults: (() -> Void)?
     let icon = NSImageView()
     lazy var fieldLeading = field.leadingAnchor.constraint(
         equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
+    lazy var fieldTrailing = field.trailingAnchor.constraint(
+        equalTo: trailingAnchor, constant: -Self.searchInset)
+    lazy var resultsTrailing = results.trailingAnchor.constraint(
+        equalTo: trailingAnchor, constant: -Self.resultsInset)
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
     public var choosingAction: Bool { actionPanel?.isVisible == true }
 
     override public init(frame: NSRect) {
-        actionCapsule = Self.makeActionCapsule(actionLabel, actionsToggle)
+        actionCapsule = Self.makeActionCapsule(actionLabel, actionsDivider, actionsToggle)
         super.init(frame: frame)
-        icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+        icon.image = NSImage(systemSymbolName: Self.searchSymbol, accessibilityDescription: nil)
         icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         field.placeholderString = Self.searchPlaceholder
@@ -76,7 +96,7 @@ public final class LauncherView: NSView {
         separator.boxType = .separator
         let bar = NSLayoutGuide()
         addLayoutGuide(bar)
-        for view in [icon, back, field, separator, widgetGrid, results] {
+        for view in [icon, back, field, separator, widgetGrid, results, detail] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -88,18 +108,18 @@ public final class LauncherView: NSView {
             back.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.backInset),
             back.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             fieldLeading,
-            field.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.searchInset),
+            fieldTrailing,
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
             separator.topAnchor.constraint(equalTo: bar.bottomAnchor),
             results.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.resultsInset),
-            results.trailingAnchor.constraint(
-                equalTo: trailingAnchor, constant: -Self.resultsInset),
+            resultsTrailing,
             results.topAnchor.constraint(equalTo: widgetGrid.bottomAnchor),
             results.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         placeWidgets(below: separator)
+        placeDetail(below: separator)
         placeCapsules()
     }
 
@@ -146,17 +166,17 @@ public final class LauncherView: NSView {
         if choosingAction, let actionPanel {
             return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
         }
-        if handleModifiedKey(event) { return true }
+        if handleModifiedKey(event) || holdsForResults(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
             let editor = field.currentEditor() as? NSTextView, !editor.hasMarkedText()
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
-        case let key where Self.returnKeys.contains(key): runSecondary()
+        case let key where Self.returnKeys.contains(key): run(keyed: Action.secondaryKeys)
         case "k" where results.selectedItem != nil: showActions()
         case "y" where results.selectedItem?.file != nil: togglePreview()
 
         case let key?:
-            return runActionShortcut(event) || runShortcut(key)
+            return runActionShortcut(event) || openFilter(key) || runShortcut(key)
                 || super.performKeyEquivalent(with: event)
 
         default: return super.performKeyEquivalent(with: event)
@@ -164,53 +184,39 @@ public final class LauncherView: NSView {
         return true
     }
 
-    func replaceQuery(with query: String) {
-        field.stringValue = query
-        field.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
-        endBrowsing()
-        onQuery?(query)
+    override public func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        draggingUpdated(sender)
+    }
+
+    override public func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dragWidget(
+            sender.draggingPasteboard.string(forType: WidgetGrid.dragType),
+            at: sender.draggingLocation, from: sender.draggingSource)
+    }
+
+    override public func draggingExited(_: (any NSDraggingInfo)?) {
+        endWidgetDrag()
+    }
+
+    override public func draggingEnded(_: any NSDraggingInfo) {
+        endWidgetDrag()
+    }
+
+    override public func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        dropWidget(sender.draggingPasteboard.string(forType: WidgetGrid.dragType))
     }
 
     private func selectionChanged(to item: ResultList.Item?) {
         showAction(of: item)
+        showDetail(of: item)
         if previewing {
             showPreview()
         }
     }
 
-    func showAction(of item: ResultList.Item?) {
-        let action =
-            selectedPill.map { statusBar.pills[$0].action }
-            ?? selectedWidget.map { widgetGrid.shown[$0].action }
-            ?? item?.action
-        actionLabel.stringValue = action ?? ""
-        actionCapsule.isHidden = action == nil
-        showContext()
-    }
-
-    func showContext() {
-        statusBar.isHidden = !showsStatusBar
-        if statusBar.isHidden {
-            closeCustomiser()
-        }
-        widgetGrid.isHidden = !showsWidgets
-        let hintsPreview = (browsing || previewing) && results.selectedItem?.file != nil
-        let text = hintsPreview ? Self.previewHint : context
-        contextPill.show(
-            statusBar.isHidden ? text : nil,
-            symbol: hintsPreview ? Self.previewSymbol : contextSymbol)
-    }
-
-    public func show(_ sections: [ResultList.Section]) {
-        let previewed = results.selectedItem?.file
-        let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
-        results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
-        if results.selectedItem?.file != previewed {
-            closePreview()
-        }
-    }
-
     public func endBrowsing() {
+        afterResults = nil
+        finishEditingWidgets()
         browsing = false
         leavePillsAndWidgets()
         closePreview()
@@ -256,17 +262,5 @@ public final class LauncherView: NSView {
         leavePillsAndWidgets()
         browsing = true
         showContext()
-    }
-
-    func run(_ action: Int) {
-        guard let item = results.selectedItem else { return }
-        onRun?(item, action)
-    }
-
-    private func runSecondary() {
-        guard let item = results.selectedItem,
-            let index = actions?(item).firstIndex(where: { $0.keys == Action.secondaryKeys })
-        else { return }
-        onRun?(item, index)
     }
 }

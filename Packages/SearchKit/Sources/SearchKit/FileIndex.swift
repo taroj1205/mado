@@ -8,6 +8,7 @@ public final class FileIndex {
         public let name: String
         public let folder: String
         public let url: URL
+        public let path: String
         public let key: Fuzzy.Key
         public let isFolder: Bool
         public let modified: Date?
@@ -23,10 +24,13 @@ public final class FileIndex {
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
     ]
 
-    public private(set) var files: [File] = []
+    public private(set) var files: [File] = [] {
+        didSet { byPath = Dictionary(files.map { ($0.path, $0) }) { first, _ in first } }
+    }
     public var onChange: (() -> Void)?
 
     private let logger = Log.logger("FileIndex")
+    private var byPath: [String: File] = [:]
     private let folders: [URL]
     private var watcher: FolderWatcher?
     private(set) var scan: Task<Void, Never>?
@@ -37,6 +41,13 @@ public final class FileIndex {
 
     @concurrent nonisolated static func files(in folders: [URL]) async -> [File] {
         walk(folders)
+    }
+
+    @concurrent nonisolated public static func rank(
+        _ files: [File], by query: String, items: ItemSettings, usage: Usage, at now: Date
+    ) async -> [File] {
+        let bonus = { usage.bonus(for: $0, at: now) }
+        return items.rank(files, by: query, bonus: bonus, id: \.path) { [$0.key] }
     }
 
     nonisolated private static func walk(_ folders: [URL]) -> [File] {
@@ -55,7 +66,7 @@ public final class FileIndex {
                     File(
                         name: name,
                         folder: abbreviated(url.deletingLastPathComponent()),
-                        url: url, key: Fuzzy.Key(name),
+                        url: url, path: url.path, key: Fuzzy.Key(name),
                         isFolder: values?.isDirectory == true && values?.isPackage != true,
                         modified: values?.contentModificationDate))
             }
@@ -85,6 +96,10 @@ public final class FileIndex {
         let week = calendar.date(byAdding: .day, value: -daysShownAsWeekday, to: today) ?? today
         if edited >= week { return edited.formatted(style.weekday()) }
         return edited.formatted(style.day().month().year())
+    }
+
+    public func file(atPath path: String) -> File? {
+        byPath[path]
     }
 
     public func start() {

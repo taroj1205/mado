@@ -12,6 +12,10 @@ extension WidgetGallery {
         private static let cellGap: CGFloat = 1.5
         private static let cellRadius: CGFloat = 1.2
 
+        var span: Int {
+            self == .small ? Self.single : WidgetGrid.Widget.wideSpan
+        }
+
         var title: String {
             switch self {
             case .small: "Small"

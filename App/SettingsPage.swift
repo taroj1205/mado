@@ -12,7 +12,11 @@ struct SettingsPage {
         let recorder: HotKeyPopover
         let apps: AppHotKeys
         let radial: RadialMenuSettings
-        let ignoredApps: IgnoredAppsSettings
+        let clipboardHistory: ClipboardHistorySettings
+        let ignoredApps: AppListSettings
+        let withoutExpansion: AppListSettings
+        let inputDefaults: AppInputDefaults
+        let remaps: RemapsSettings
         let gallery: WidgetGalleryWindow
     }
 
@@ -59,7 +63,16 @@ struct SettingsPage {
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)
-        ) { [$0.ignoredApps.section] },
+        ) { context in
+            let hotkey = context.recorder.button(
+                for: ClipboardHistory.commandID, named: "Open history")
+            var history = context.clipboardHistory.section
+            history.rows.insert(.init("Open history", hotkey), at: 0)
+            return [
+                history, context.ignoredApps.section, context.clipboardHistory.clearSection,
+                context.withoutExpansion.section,
+            ]
+        },
         Self(
             "Windows", "rectangle.split.2x1",
             module: module("windows", "Windows", enabled: true),
@@ -83,7 +96,15 @@ struct SettingsPage {
                     ]
                 },
             ]),
-        Self("Keyboard", "keyboard", module: module("keyboard", "Keyboard", enabled: true)),
+        Self(
+            "Keyboard", "keyboard",
+            module: module("keyboard", "Keyboard", enabled: true),
+            tabs: [
+                Tab(title: "Modifier Keys", sections: nil),
+                Tab(title: "Input Sources") { [$0.inputDefaults.section] },
+                Tab(title: "Enter Guard", sections: nil),
+                Tab(title: "Remaps") { $0.remaps.sections },
+            ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),

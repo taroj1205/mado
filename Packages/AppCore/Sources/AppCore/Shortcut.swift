@@ -5,6 +5,7 @@ public struct Shortcut: Hashable, Sendable, Codable {
         public static let option = Self(rawValue: 1 << 2)
         public static let shift = Self(rawValue: 1 << 3)
         public static let function = Self(rawValue: 1 << 4)
+        public static let hyper: Self = [.control, .option, .shift, .command]
 
         public let rawValue: UInt8
 

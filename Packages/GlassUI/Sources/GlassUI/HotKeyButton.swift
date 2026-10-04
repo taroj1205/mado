@@ -210,6 +210,6 @@ public final class HotKeyButton: NSView {
         }
         let keys = HotKeyLabel.keycaps(.shortcut(shortcut))
         content.setViews(Self.keycaps(keys), in: .leading)
-        setAccessibilityValue(keys.joined(separator: " "))
+        setAccessibilityValue(HotKeyLabel.spoken(text: keys.joined(separator: " ")))
     }
 }

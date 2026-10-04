@@ -27,9 +27,12 @@ extension LauncherView: NSTextFieldDelegate {
         case #selector(NSResponder.moveDown): moveDown()
 
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): run(0)
-        case #selector(NSResponder.cancelOperation) where previewing: closePreview()
-        case #selector(NSResponder.cancelOperation) where scoped: leave()
-        case #selector(NSResponder.cancelOperation): onCancel?()
+
+        case #selector(NSResponder.insertNewlineIgnoringFieldEditor)
+        where !textView.hasMarkedText():
+            run(keyed: Action.alternateKeys)
+
+        case #selector(NSResponder.cancelOperation): cancelInField()
         case #selector(NSResponder.deleteBackward) where scoped && textView.string.isEmpty: leave()
 
         default:
@@ -37,5 +40,15 @@ extension LauncherView: NSTextFieldDelegate {
             return false
         }
         return true
+    }
+
+    private func cancelInField() {
+        if previewing {
+            closePreview()
+        } else if scoped {
+            leave()
+        } else {
+            onCancel?()
+        }
     }
 }

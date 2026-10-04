@@ -34,7 +34,7 @@ enum LauncherResult {
         case .app(let app): app.url.path
         case .command(let command): command.id
         case .pane(let pane): pane.id
-        case .file(let file): file.url.path
+        case .file(let file): file.path
         case .quicklink(let link, _): link.id
         }
     }
@@ -82,7 +82,7 @@ enum LauncherResult {
 
     private var keys: [Fuzzy.Key] {
         switch self {
-        case .app(let app): app.keys.map(Fuzzy.Key.init)
+        case .app(let app): app.keys
         case .command(let command): ([command.name] + command.keywords).map(Fuzzy.Key.init)
         case .pane(let pane): pane.keys.map(Fuzzy.Key.init)
         case .file(let file): [file.key]
@@ -92,37 +92,41 @@ enum LauncherResult {
 
     static func sections(
         for query: String, in sources: Sources, usage: Usage
-    ) -> [ResultList.Section] {
+    ) async -> [ResultList.Section] {
         let items = sources.items
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let typed = !trimmed.isEmpty
         let now = Date.now
-        let rank = { (results: [Self]) in
-            items.rank(
-                results, by: query, bonus: { usage.bonus(for: $0, at: now) }, id: \.id,
-                keys: \.keys)
-        }
         let aliased = items.ids(withAlias: trimmed)
+        let files = typed ? sources.files.files : []
+        async let rankedFiles = FileIndex.rank(
+            aliased.isEmpty ? files : files.filter { !aliased.contains($0.path) },
+            by: query, items: items, usage: usage, at: now)
         let (filled, links) = quicklinks(for: trimmed, in: sources)
-        let files = typed ? sources.files.files.map(Self.file) : []
-        let hoisted = aliased.isEmpty ? [] : files.filter { aliased.contains($0.id) }
+        let hoisted =
+            aliased.isEmpty ? [] : files.filter { aliased.contains($0.path) }.map(Self.file)
         let candidates =
             typed
             ? sources.apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane)
                 + sources.commands.map(Self.command) + links + hoisted
             : sources.commands.filter { !items.favourites.contains($0.id) }.map(Self.command)
-        let ranked = filled + rank(candidates)
-        let found = rank(aliased.isEmpty ? files : files.filter { !aliased.contains($0.id) })
+        let ranked =
+            filled
+            + items.rank(
+                candidates, by: query, bonus: { usage.bonus(for: $0, at: now) }, id: \.id,
+                keys: \.keys)
         let favourites = typed ? [] : items.favourites.compactMap { result(for: $0, in: sources) }
         let item = { (result: Self) in
             result.item(icons: sources.apps, hotkey: items.hotkeys[result.id], at: now)
         }
+        let answer = answerSection(for: trimmed, in: sources)
+        let found = await rankedFiles.prefix(fileLimit).map(Self.file)
         let results = [
             ResultList.Section(title: "Favourites", items: favourites.map(item)),
             ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
-            ResultList.Section(title: "Files", items: found.prefix(fileLimit).map(item)),
+            ResultList.Section(title: "Files", items: found.map(item)),
         ]
-        guard let answer = answerSection(for: trimmed, in: sources) else {
+        guard let answer else {
             if typed, ranked.isEmpty, found.isEmpty {
                 return [Fallback.section(for: trimmed, matched: false)]
             }
@@ -132,13 +136,13 @@ enum LauncherResult {
     }
 
     static func result(for id: String, in sources: Sources) -> Self? {
-        if let file = sources.files.files.first(where: { $0.url.path == id }) {
+        if let file = sources.files.file(atPath: id) {
             return .file(file)
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) {
             return .pane(pane)
         }
-        if let app = sources.apps.apps.first(where: { $0.url.path == id }) {
+        if let app = sources.apps.app(atPath: id) {
             return .app(app)
         }
         if let link = sources.quicklinks.first(where: { $0.id == id }) {
@@ -240,9 +244,9 @@ enum LauncherResult {
 
     private static func item(for file: FileIndex.File, at now: Date) -> ResultList.Item {
         ResultList.Item(
-            id: file.url.path, title: file.name, subtitle: file.folder,
+            id: file.path, title: file.name, subtitle: file.folder,
             kind: FileIndex.kind(of: file, at: now), symbol: "", action: "Open",
-            icon: NSWorkspace.shared.icon(forFile: file.url.path), file: file.url)
+            icon: NSWorkspace.shared.icon(forFile: file.path), file: file.url)
     }
 
     private static func item(for answer: Calculator.Answer) -> ResultList.Item {

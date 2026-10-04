@@ -20,6 +20,9 @@ public final class ModuleContext {
     private let eventTap: EventTap
     private var entries: [UInt: Entry] = [:]
     private var nextID: UInt = 0
+    private var generation = 0
+    var keysPaused = false
+    private(set) var hasKeyFeatures = false
 
     var active: [ActiveResource] {
         entries.keys.sorted().compactMap { entries[$0]?.resource }
@@ -33,8 +36,25 @@ public final class ModuleContext {
         signposter = Log.signposter(moduleID)
     }
 
+    public func startKeyFeatures(_ start: () -> Void) {
+        hasKeyFeatures = true
+        if !keysPaused {
+            start()
+        }
+    }
+
     public func own(_ kind: ResourceKind, _ name: String, release: @escaping () -> Void) {
         add(Entry(resource: resource(kind, name), release: release, task: nil))
+    }
+
+    public func untilStopped<Value>(
+        _ handler: @escaping @MainActor (Value) -> Void
+    ) -> @MainActor (Value) -> Void {
+        let started = generation
+        return { [weak self] value in
+            guard self?.generation == started else { return }
+            handler(value)
+        }
     }
 
     public func register(_ command: Command) throws {
@@ -53,6 +73,18 @@ public final class ModuleContext {
         }
         timer.tolerance = interval * Self.timerTolerance
         own(.timer, name) { timer.invalidate() }
+    }
+
+    public func observe<Value: Sendable>(
+        _ name: Notification.Name, on center: NotificationCenter,
+        reading read: @escaping @Sendable (Notification) -> Value,
+        handler: @escaping @MainActor (Value) -> Void
+    ) {
+        let token = center.addObserver(forName: name, object: nil, queue: .main) { notification in
+            let value = read(notification)
+            MainActor.assumeIsolated { handler(value) }
+        }
+        own(.observer, name.rawValue) { center.removeObserver(token) }
     }
 
     public func tapEvents(
@@ -79,6 +111,7 @@ public final class ModuleContext {
     }
 
     func releaseAll() {
+        generation += 1
         let released = entries
         for (id, entry) in released {
             entry.release()

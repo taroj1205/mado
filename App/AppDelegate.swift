@@ -11,12 +11,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let launcherRadius: CGFloat = 20
 
     private let logger = Log.logger("App")
-    private let signposter: OSSignposter
+    let signposter: OSSignposter
     private let launch: OSSignpostIntervalState
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
     private(set) var settings: SettingsWindowController?
-    private var launcher: GlassPanel?
+    private(set) var snippets: Snippets?
+    private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private(set) var pasteTarget: PasteTarget?
     let launcherView = LauncherView()
@@ -26,15 +27,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let widgets = Widgets()
-    private var usage = Usage()
-    private var history = CalculatorHistory()
+    var launcherGallery: WidgetGalleryWindow?
+    private(set) var usage = Usage()
+    private(set) var history = CalculatorHistory()
+    let clipboardHistory = ClipboardHistory()
+    var clipboardScoped = false
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
-    lazy var editor = ItemEditor(modules: modules, registry: registry) { [weak self] id in
-        (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
-    }
+    lazy var editor = ItemEditor(
+        modules: modules, registry: registry,
+        name: { [weak self] id in
+            (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
+        },
+        isAvailable: { [weak self] id in
+            self?.modules?.keysPaused != true
+                && (id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true)
+        })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
     #endif
@@ -46,12 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
+        HyperGlyph.isShown = RemapSettings.load(from: modules).showsHyperGlyph
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
-        statusItem = StatusMenu.makeItem(
-            target: self, open: #selector(showLauncher), settings: #selector(showSettings),
-            hide: #selector(hideStatusItem))
+        statusItem = makeStatusItem(settings: #selector(showSettings))
         launcher = makeLauncher()
         search = makeSearch()
         searchAgain()
@@ -66,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.onHotKey = { [weak self] in self?.runHotKey(of: $0) }
         editor.onSave = { [weak self] in self?.saved($0, resettingRanking: $1) }
         editor.start()
+        connectClipboardHistory()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
@@ -76,13 +86,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
+            LauncherHotKeys.pauseKeysIfOff(in: manager)
+            let library = try Snippets.registered(in: manager)
+            snippets = library
             let openHistory = CalculatorHistory.command { [weak self] in
-                self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
+                self?.openCalculatorHistory()
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
             try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
-                try manager.register(descriptor.makeModule(in: manager, hotKeys: registry))
+                try manager.register(
+                    descriptor.makeModule(
+                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory,
+                        snippets: library
+                    ) { [weak self] in $0 ? self?.toggleLauncher() : self?.showLauncher() })
             }
             try manager.startEnabledModules()
             return manager
@@ -100,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
-        launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
+        connectActions()
         connectGlances()
         panel.onEvent = { [launcherView] in launcherView.handle($0) }
         panel.glass.contentView = launcherView
@@ -111,32 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func makeSearch() -> SearchRunner<[ResultList.Section]> {
         SearchRunner(
-            search: { [weak self] query in
-                guard let self else { return [] }
-                if launcherView.scoped { return history.sections(for: query) }
-                return signposter.withIntervalSignpost("search") {
-                    LauncherResult.sections(for: query, in: sources, usage: usage)
-                }
-            },
-            deliver: { [launcherView] sections in
-                launcherView.show(sections)
-                (launcherView.context, launcherView.contextSymbol) =
-                    launcherView.scoped
-                    ? (CalculatorHistory.title, CalculatorHistory.symbol)
-                    : LauncherResult.context(
-                        for: sections, query: launcherView.field.stringValue)
-            })
+            search: { [weak self] query in await self?.results(for: query) ?? [] },
+            deliver: { [weak self] sections in self?.show(sections) })
     }
 
-    private func menu(for item: ResultList.Item) -> LauncherMenu {
-        launcherView.scoped
-            ? LauncherMenu(actions: history.actions(for: item.id))
-            : LauncherMenu(
-                for: item.id, query: launcherView.field.stringValue, in: sources, editor: editor,
-                pastingInto: pasteTarget)
-    }
-
-    private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
+    func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
         menu(for: item).actions(
             labelling: { editor.action(for: $0, on: item.id) },
             running: { [weak self] in self?.run($0, for: item, recordingUse: $1) })
@@ -156,7 +152,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
-        if !CalculatorHistory.opens(item.id), item.id != Quicklink.createID { hideLauncher() }
+        let opensView =
+            CalculatorHistory.opens(item.id)
+            || [Quicklink.createID, ClipboardHistory.commandID].contains(item.id)
+        if !opensView { hideLauncher() }
         history.remember(item, in: modules)
         perform(action, for: item.id, recordingUse: recordingUse)
     }
@@ -171,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
-        if launcher?.isVisible == true {
+        if launcher?.isVisible == true, id != ClipboardHistory.commandID {
             hideLauncher()
         }
         perform(action, for: id, recordingUse: true)
@@ -211,20 +210,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
-        guard !launcherView.sharing else { return }
+        guard !launcherView.sharing, launcherGallery?.isVisible != true else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }
         #endif
         hideLauncher()
     }
 
-    #if DEBUG
-        func applicationDidResignActive(_: Notification) {
-            if !KeepLauncherOpen.isEnabled, !launcherView.sharing, launcher?.isVisible == true {
-                hideLauncher()
-            }
-        }
-    #endif
+    func applicationDidResignActive(_: Notification) {
+        #if DEBUG
+            let hides = !KeepLauncherOpen.isEnabled
+        #else
+            let hides = launcherGallery?.isVisible == true
+        #endif
+        if hides, !launcherView.sharing, launcher?.isVisible == true { hideLauncher() }
+    }
 
     func hideLauncher() {
         editor.close()
@@ -244,7 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc
-    private func showLauncher() {
+    func showLauncher() {
         guard let panel = launcher else { return }
         pasteTarget = .frontmost()
         let opening = signposter.beginInterval("open launcher")
@@ -275,7 +275,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let controller =
             settings
             ?? SettingsWindowController(
-                modules: modules, hotKeys: hotKeys, rates: rates, items: editor)
+                modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
+                snippets: snippets)
         settings = controller
         controller.showWindow(nil)
     }

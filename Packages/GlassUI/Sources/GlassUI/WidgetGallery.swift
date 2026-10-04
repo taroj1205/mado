@@ -23,6 +23,10 @@ public final class WidgetGallery: NSView {
         didSet { update() }
     }
 
+    public var hintsDrag = false {
+        didSet { update() }
+    }
+
     let cards: [WidgetGalleryCard]
     let grid = NSStackView()
     let count = NSTextField(labelWithString: "")
@@ -118,8 +122,9 @@ public final class WidgetGallery: NSView {
         for card in cards {
             card.isAdded = added.contains(card.card.id)
         }
+        let total = "\(added.count) \(added.count == 1 ? "widget" : "widgets") on the empty query"
         count.stringValue =
-            "\(added.count) \(added.count == 1 ? "widget" : "widgets") on the empty query"
+            hintsDrag ? "\(total) · drag a card onto the launcher to place it" : total
     }
 
     private func fadeIn(_ views: [NSView]) {

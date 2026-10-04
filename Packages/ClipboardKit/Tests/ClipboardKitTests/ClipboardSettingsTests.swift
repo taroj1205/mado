@@ -45,13 +45,45 @@ import Testing
         settings.ignore(Self.notes)
         settings.stopIgnoring(Self.onePassword)
 
+        settings.retention = ClipboardStore.Retention(period: .init(7, .day), items: 100)
+
         let data = try JSONEncoder().encode(settings)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: [String]]
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let retention = json?["retention"] as? [String: Any]
         let restored = try JSONDecoder().decode(ClipboardSettings.self, from: data)
         let empty = try JSONDecoder().decode(ClipboardSettings.self, from: Data("{}".utf8))
 
-        #expect(json == ["addedApps": [Self.notes], "removedApps": [Self.onePassword]])
+        #expect(json?["addedApps"] as? [String] == [Self.notes])
+        #expect(json?["removedApps"] as? [String] == [Self.onePassword])
+        #expect(retention?["period"] as? [String: AnyHashable] == ["count": 7, "unit": "days"])
+        #expect(retention?["items"] as? Int == 100)
         #expect(restored == settings)
         #expect(empty == ClipboardSettings())
+        #expect(empty.retention == ClipboardStore.Retention(period: .init(30, .day), items: 1_000))
+    }
+
+    @Test func keepsTheDefaultLimitsForMissingOrNonPositiveValues() throws {
+        let saved = Data(#"{"retention": {"days": 0, "items": -5}}"#.utf8)
+        let partial = Data(#"{"retention": {"days": 7}}"#.utf8)
+
+        let invalid = try JSONDecoder().decode(ClipboardSettings.self, from: saved).retention
+        let some = try JSONDecoder().decode(ClipboardSettings.self, from: partial).retention
+
+        #expect(invalid == ClipboardStore.Retention())
+        #expect(some == ClipboardStore.Retention(period: .init(7, .day), items: 1_000))
+    }
+
+    @Test func remembersThatTheDefaultHotKeyWasAssigned() throws {
+        var settings = ClipboardSettings()
+        settings.assignedDefaultHotKey = true
+
+        let restored = try JSONDecoder().decode(
+            ClipboardSettings.self, from: JSONEncoder().encode(settings))
+        let earlier = try JSONDecoder().decode(
+            ClipboardSettings.self, from: Data(#"{"addedApps":["com.apple.Notes"]}"#.utf8))
+
+        #expect(restored.assignedDefaultHotKey)
+        #expect(!earlier.assignedDefaultHotKey)
+        #expect(earlier.ignores(any: [Self.notes]))
     }
 }

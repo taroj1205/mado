@@ -2,11 +2,14 @@ import AppKit
 
 final class PillButton: NSButton {
     private static let titleSize: CGFloat = 13
+    private static let symbolSize: CGFloat = 11
+    private static let symbolGap: CGFloat = 6
     private static let padding: CGFloat = 12
     private static let pressedDarkening: CGFloat = 0.18
     private static let half: CGFloat = 0.5
 
     private let height: CGFloat
+    private let fill: NSColor
 
     override var wantsUpdateLayer: Bool { true }
 
@@ -21,17 +24,24 @@ final class PillButton: NSButton {
 
     override var focusRingMaskBounds: NSRect { bounds }
 
-    init(_ title: String, height: CGFloat) {
+    convenience init(_ title: String, height: CGFloat) {
+        self.init(title, height: height, symbol: nil, fill: .controlAccentColor, text: .white)
+    }
+
+    init(_ title: String, height: CGFloat, symbol: String?, fill: NSColor, text: NSColor) {
         self.height = height
+        self.fill = fill
         super.init(frame: .zero)
         isBordered = false
         wantsLayer = true
-        attributedTitle = NSAttributedString(
-            string: title,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: Self.titleSize, weight: .medium),
-                .foregroundColor: NSColor.white,
-            ])
+        let font = NSFont.systemFont(ofSize: Self.titleSize, weight: .medium)
+        let label = NSMutableAttributedString(
+            string: title, attributes: [.font: font, .foregroundColor: text])
+        if let symbol {
+            label.insert(Self.icon(symbol, colour: .secondaryLabelColor, font: font), at: 0)
+            setAccessibilityLabel(title)
+        }
+        attributedTitle = label
         setContentHuggingPriority(.required, for: .horizontal)
         setContentCompressionResistancePriority(.required, for: .horizontal)
     }
@@ -41,10 +51,26 @@ final class PillButton: NSButton {
         nil
     }
 
+    private static func icon(_ name: String, colour: NSColor, font: NSFont) -> NSAttributedString {
+        let configuration = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: .bold)
+            .applying(.init(paletteColors: [colour]))
+        let symbol =
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(configuration) ?? NSImage()
+        let size = NSSize(width: symbol.size.width + symbolGap, height: symbol.size.height)
+        let attachment = NSTextAttachment()
+        attachment.image = NSImage(size: size, flipped: false) { _ in
+            symbol.draw(in: NSRect(origin: .zero, size: symbol.size))
+            return true
+        }
+        attachment.bounds = NSRect(
+            origin: NSPoint(x: 0, y: (font.capHeight - size.height) * half), size: size)
+        return NSAttributedString(attachment: attachment)
+    }
+
     override func updateLayer() {
-        let fill = NSColor.controlAccentColor
-        let pressed = fill.blended(withFraction: Self.pressedDarkening, of: .black) ?? fill
         effectiveAppearance.performAsCurrentDrawingAppearance {
+            let pressed = fill.blended(withFraction: Self.pressedDarkening, of: .black) ?? fill
             layer?.backgroundColor = (isHighlighted ? pressed : fill).cgColor
         }
         layer?.cornerRadius = bounds.height * Self.half

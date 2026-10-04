@@ -1,7 +1,6 @@
 public import AppCore
 import Carbon.HIToolbox
 import CoreGraphics
-import Dispatch
 import IOKit.hidsystem
 
 public struct ModifierTap {
@@ -46,11 +45,19 @@ public struct ModifierTap {
     }
 
     public struct Tap: Hashable, Sendable {
-        public let key: Key
+        public let keys: Set<Key>
         public let count: Int
 
         public init(_ key: Key, count: Int = 1) {
-            self.key = key
+            self.init(keys: [key], count: count)
+        }
+
+        public init(_ first: Key, _ second: Key) {
+            self.init(keys: [first, second], count: 1)
+        }
+
+        init(keys: Set<Key>, count: Int) {
+            self.keys = keys
             self.count = count
         }
     }
@@ -79,8 +86,11 @@ public struct ModifierTap {
                 type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
                 timestamp: event.timestamp)
-            if let fired, let action = bindings[fired] {
-                DispatchQueue.main.async { action() }
+            if let fired, bindings[fired] != nil {
+                run { [weak self] in
+                    guard !Task.isCancelled else { return }
+                    self?.bindings[fired]?()
+                }
             }
             guard tap.held != nil, tap.held != previous else { return }
             waits += 1
@@ -106,7 +116,7 @@ public struct ModifierTap {
 
     private let window: Duration
     private let bound: Set<Tap>
-    private var pressed: (key: Key, since: CGEventTimestamp)?
+    private var pressed: (keys: Set<Key>, since: CGEventTimestamp)?
     private var streak: (last: Tap, releasedAt: CGEventTimestamp)?
     private(set) var held: Tap?
 
@@ -131,24 +141,35 @@ public struct ModifierTap {
     ) -> Tap? {
         let press = pressed
         pressed = nil
-        let key =
-            type == .flagsChanged ? Key.allCases.first { $0.keyCode == keyCode } : nil
-        let down = Key.allCases.filter { flags.rawValue & $0.flag != 0 }
-        if let key, down == [key] {
-            pressed = (key, timestamp)
-            if let streak, streak.last.key == key, within(streak.releasedAt, timestamp) {
+        guard type == .flagsChanged, let key = Key.allCases.first(where: { $0.keyCode == keyCode })
+        else {
+            return flush()
+        }
+        let down = Set(Key.allCases.filter { flags.rawValue & $0.flag != 0 })
+        if down == [key] {
+            pressed = ([key], timestamp)
+            if let streak, streak.last.keys == [key], within(streak.releasedAt, timestamp) {
                 return nil
             }
             return flush()
         }
-        guard let key, down.isEmpty, let press, press.key == key, within(press.since, timestamp)
-        else {
+        guard let press else { return flush() }
+        if press.keys.count == 1, !press.keys.contains(key), down == press.keys.union([key]) {
+            pressed = (down, press.since)
             return flush()
         }
-        let tap = Tap(key, count: (streak?.last.count ?? 0) + 1)
+        if press.keys.count > 1, press.keys.contains(key), down == press.keys.subtracting([key]) {
+            pressed = press
+            return nil
+        }
+        guard down.isEmpty, press.keys.contains(key), within(press.since, timestamp) else {
+            return flush()
+        }
+        let tap = Tap(keys: press.keys, count: (streak?.last.count ?? 0) + 1)
         held = nil
-        streak = bound.contains { $0.key == key && $0.count > tap.count } ? (tap, timestamp) : nil
-        guard bound.contains(tap), bound.contains(Tap(key, count: tap.count + 1)) else {
+        streak =
+            bound.contains { $0.keys == tap.keys && $0.count > tap.count } ? (tap, timestamp) : nil
+        guard bound.contains(tap), bound.contains(Tap(keys: tap.keys, count: tap.count + 1)) else {
             return tap
         }
         held = tap

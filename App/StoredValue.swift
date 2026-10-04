@@ -1,6 +1,7 @@
 import AppCore
 import ClipboardKit
 import GlassUI
+import InputKit
 import os
 import SearchKit
 import WindowKit
@@ -62,6 +63,14 @@ extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
 }
 
+extension SnippetSettings: StoredValue {
+    static let key = "snippets"
+}
+
+extension InputSourceSettings: StoredValue {
+    static let key = "input_sources"
+}
+
 extension GestureSettings: StoredValue {
     static let key = "gestures"
 }
@@ -73,6 +82,10 @@ extension GestureSettings.Target {
         case .underMouse: "Window Under Mouse"
         }
     }
+}
+
+extension RemapSettings: StoredValue {
+    static let key = "remaps"
 }
 
 extension WidgetSettings: StoredValue {

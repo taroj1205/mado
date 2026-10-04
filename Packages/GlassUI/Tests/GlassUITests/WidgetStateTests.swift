@@ -11,20 +11,20 @@ import Testing
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
     private let upNext = WidgetGrid.Widget(
-        id: "next",
+        id: "next", name: "Up Next",
         content: .notice(
             title: "Up Next", headline: "Nothing else today",
             detail: "Tomorrow 10:00 · Stand-up"),
         action: "Open Calendar", spoken: "Up next: nothing else today", isWide: true)
     private let calendar = WidgetGrid.Widget(
-        id: "calendar",
+        id: "calendar", name: "Calendar",
         content: .permission(
             title: "Calendar", request: "Allow calendar access",
             reason: "To show your next meeting"),
         action: "Allow Calendar Access", spoken: "Calendar: allow calendar access",
         isWide: true)
     private let weather = WidgetGrid.Widget(
-        id: "weather", content: .loading(title: "Weather"), action: "Open Weather",
+        id: "weather", name: "Weather", content: .loading(title: "Weather"), action: "Open Weather",
         spoken: "Weather: loading")
 
     init() {
@@ -78,7 +78,8 @@ import Testing
         for content in states {
             view.widgets = [
                 .init(
-                    id: "next", content: content, action: "Open Calendar", spoken: "Up next",
+                    id: "next", name: "Up Next", content: content, action: "Open Calendar",
+                    spoken: "Up next",
                     isWide: true),
                 calendar, weather, small("clock"), small("system"),
             ]
@@ -162,6 +163,36 @@ import Testing
         #expect(tile.value.stringValue == "value")
     }
 
+    @Test func aWidgetWithNothingToShowAppearsOnlyWhileEditingSoItCanBeRemoved() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        let music = WidgetGrid.Widget(
+            id: "music", name: "Now Playing",
+            content: .unavailable(title: "Now Playing", summary: "Music controls"), action: "",
+            spoken: "Now Playing: Music controls", isWide: true)
+        view.widgets = [small("clock"), music, small("system")]
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "system"])
+        view.selectWidget(1)
+        view.editWidgets()
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "music", "system"])
+        #expect(view.selectedWidget == 2)
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        #expect(visible(in: tile) == [tile.title, tile.headline])
+        #expect(tile.title.stringValue == "NOW PLAYING")
+        #expect(tile.headline.stringValue == "Music controls")
+        #expect(tile.accessibilityLabel() == "Now Playing: Music controls")
+        #expect(tile.frame.width > view.widgetGrid.tiles[0].frame.width * 2)
+        press(kVK_LeftArrow, "\u{F702}")
+        press(kVK_Delete, "\u{7F}")
+        #expect(edits == [.remove("music")])
+        view.finishEditingWidgets()
+        #expect(view.widgetGrid.shown.map(\.id) == ["clock", "system"])
+        #expect(view.selectedWidget == nil)
+        view.widgets = [music]
+        #expect(view.widgetGrid.isHidden)
+    }
+
     private func visible(in tile: WidgetTile) -> [NSView] {
         let parts: [NSView] =
             [tile.title, tile.value, tile.headline] + tile.skeleton
@@ -170,7 +201,7 @@ import Testing
     }
 
     private func small(_ id: String) -> WidgetGrid.Widget {
-        .init(id: id, value: id, detail: "", action: "Open \(id)", spoken: id)
+        .init(id: id, name: id, value: id, detail: "", action: "Open \(id)", spoken: id)
     }
 
     private func press(_ keyCode: Int, _ characters: String) {

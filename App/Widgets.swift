@@ -71,6 +71,16 @@ final class Widgets {
         WidgetSettings.load(from: modules).added(from: ids)
     }
 
+    static func edit(_ edit: WidgetSettings.Edit, in modules: ModuleManager?) {
+        var settings = WidgetSettings.load(from: modules)
+        settings.apply(edit, from: ids)
+        settings.save(to: modules)
+    }
+
+    private static func name(of id: String) -> String {
+        gallery.first { $0.id == id }?.name ?? id
+    }
+
     static func action(for widget: WidgetGrid.Widget) -> CommandAction {
         switch widget.id {
         case system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
@@ -91,21 +101,23 @@ final class Widgets {
         let memory = stats?.memory
         return [
             .init(
-                id: clockWidget, value: date.formatted(time), detail: date.formatted(day),
+                id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
+                detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
                 spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
             playing.map(widget(for:)),
             stats == nil
                 ? .init(
-                    id: battery, content: .loading(title: "Battery"), action: batteryAction,
-                    spoken: "Battery: loading")
+                    id: battery, name: name(of: battery), content: .loading(title: "Battery"),
+                    action: batteryAction, spoken: "Battery: loading")
                 : stats.flatMap(batteries),
             cpu == nil
                 ? .init(
-                    id: system, content: .loading(title: "System"),
+                    id: system, name: name(of: system), content: .loading(title: "System"),
                     action: "Open Activity Monitor", spoken: "System: loading")
                 : .init(
-                    id: system, meters: [meter("CPU", cpu), meter("RAM", memory)],
+                    id: system, name: name(of: system),
+                    meters: [meter("CPU", cpu), meter("RAM", memory)],
                     action: "Open Activity Monitor",
                     spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
         ]
@@ -115,7 +127,7 @@ final class Widgets {
     private static func widget(for playing: MusicPlayer.Track) -> WidgetGrid.Widget {
         let song = playing.artist.isEmpty ? playing.title : "\(playing.title) by \(playing.artist)"
         return .init(
-            id: music,
+            id: music, name: name(of: music),
             track: .init(
                 title: playing.title, artist: playing.artist, artwork: playing.artwork,
                 isPlaying: playing.isPlaying),
@@ -129,7 +141,8 @@ final class Widgets {
         guard let headphones = stats.headphones else {
             guard let mac, let macStatus else { return nil }
             return .init(
-                id: battery, value: percent(mac.level), detail: status(of: mac),
+                id: battery, name: name(of: battery), value: percent(mac.level),
+                detail: status(of: mac),
                 action: batteryAction, spoken: "Battery: \(macStatus)",
                 symbol: StatusPills.symbol(for: mac))
         }
@@ -138,7 +151,7 @@ final class Widgets {
             "\(headphones.name) \(percent(headphones.level))",
         ]
         return .init(
-            id: battery,
+            id: battery, name: name(of: battery),
             meters: [
                 mac.map { meter(macName, $0.level) },
                 meter(headphones.name.replacing(owner, with: ""), headphones.level),
@@ -169,6 +182,15 @@ final class Widgets {
         level?.formatted(StatusPills.percent) ?? StatusPills.unknown
     }
 
+    private static func unavailable(_ id: String) -> WidgetGrid.Widget? {
+        gallery.first { $0.id == id }.map { card in
+            .init(
+                id: id, name: card.name,
+                content: .unavailable(title: card.name, summary: card.summary), action: "",
+                spoken: "\(card.name): \(card.summary)", isWide: card.size != .small)
+        }
+    }
+
     func show(in view: LauncherView) {
         stop()
         refresh(view)
@@ -190,6 +212,11 @@ final class Widgets {
                 try? await Task.sleep(for: .seconds(Self.listenSeconds))
             }
         }
+    }
+
+    func show(_ ids: [String], in view: LauncherView) {
+        shown = ids
+        refresh(view)
     }
 
     func show(_ stats: SystemStats, in view: LauncherView) {
@@ -219,6 +246,6 @@ final class Widgets {
 
     private func refresh(_ view: LauncherView) {
         let all = Self.current(at: .now, stats: stats, playing: playing)
-        view.widgets = shown.compactMap { id in all.first { $0.id == id } }
+        view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
     }
 }

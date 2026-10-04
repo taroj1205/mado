@@ -7,6 +7,10 @@ import SearchKit
 enum ColourAnswer {
     static let context = "Colour"
     static let symbol = "paintpalette.fill"
+    static let shortcutKeys = [rgbKeys, hslKeys, appKitKeys]
+    private static let rgbKeys = ["⌘", "1"]
+    private static let hslKeys = ["⌘", "2"]
+    private static let appKitKeys = ["⌘", "3"]
     private static let prefix = "colour."
     private static let byte: CGFloat = 255
 
@@ -42,11 +46,11 @@ enum ColourAnswer {
     private static func copies(of colour: Colour) -> [ResultList.Item] {
         [
             ("hex", "Copy HEX", colour.hex, "number", ["↵"]),
-            ("rgb", "Copy RGB", colour.rgb, "doc.on.doc", ["⌘", "1"]),
-            ("hsl", "Copy HSL", colour.hsl, "doc.on.doc", ["⌘", "2"]),
+            ("rgb", "Copy RGB", colour.rgb, "doc.on.doc", rgbKeys),
+            ("hsl", "Copy HSL", colour.hsl, "doc.on.doc", hslKeys),
             (
                 "appkit", "Copy for AppKit", colour.appKit,
-                "chevron.left.forwardslash.chevron.right", ["⌘", "3"]
+                "chevron.left.forwardslash.chevron.right", appKitKeys
             ),
         ].map { id, title, value, symbol, keys in
             ResultList.Item(

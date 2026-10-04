@@ -3,6 +3,9 @@ import AppKit
 import Carbon.HIToolbox
 
 enum HotKeyLabel {
+    private static let hyperSymbol = "✦"
+    private static let hyperName = "Hyper"
+
     private static let symbols: [(Shortcut.Modifiers, String)] = [
         (.function, "fn"), (.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘"),
     ]
@@ -32,6 +35,7 @@ enum HotKeyLabel {
         kVK_PageDown: "Page Down",
     ]
 
+    @MainActor
     static func keycaps(_ hotKey: HotKey) -> [String] {
         switch hotKey {
         case .shortcut(let shortcut):
@@ -47,17 +51,36 @@ enum HotKeyLabel {
         }
     }
 
+    @MainActor
     static func symbols(_ modifiers: Shortcut.Modifiers) -> [String] {
-        symbols.filter { modifiers.contains($0.0) }.map(\.1)
+        label(modifiers, from: symbols, hyper: hyperSymbol, collapsing: HyperGlyph.isShown)
     }
 
+    static func spelledOutSymbols(_ modifiers: Shortcut.Modifiers) -> [String] {
+        label(modifiers, from: symbols, hyper: hyperSymbol, collapsing: false)
+    }
+
+    @MainActor
     static func spoken(_ shortcut: Shortcut) -> String {
         let key = spokenKeys[Int(shortcut.keyCode)] ?? keyName(shortcut.keyCode)
         return (names(shortcut.modifiers) + [key]).joined(separator: " ")
     }
 
+    @MainActor
     static func spoken(_ modifiers: Shortcut.Modifiers) -> String {
         names(modifiers).joined(separator: " ")
+    }
+
+    static func spelledOutSpoken(_ modifiers: Shortcut.Modifiers) -> String {
+        label(modifiers, from: modifierNames, hyper: hyperName, collapsing: false)
+            .joined(separator: " ")
+    }
+
+    static func spoken(text: String) -> String {
+        text
+            .replacing(hyperSymbol, with: " \(hyperName) ")
+            .split(separator: " ")
+            .joined(separator: " ")
     }
 
     static func modifier(of key: HotKey.ModifierKey) -> Shortcut.Modifiers {
@@ -69,8 +92,18 @@ enum HotKeyLabel {
         }
     }
 
+    @MainActor
     private static func names(_ modifiers: Shortcut.Modifiers) -> [String] {
-        modifierNames.filter { modifiers.contains($0.0) }.map(\.1)
+        label(modifiers, from: modifierNames, hyper: hyperName, collapsing: HyperGlyph.isShown)
+    }
+
+    private static func label(
+        _ modifiers: Shortcut.Modifiers, from table: [(Shortcut.Modifiers, String)],
+        hyper: String, collapsing: Bool
+    ) -> [String] {
+        let collapses = collapsing && modifiers.isSuperset(of: .hyper)
+        let shown = collapses ? modifiers.subtracting(.hyper) : modifiers
+        return table.filter { shown.contains($0.0) }.map(\.1) + (collapses ? [hyper] : [])
     }
 
     static func keyName(_ keyCode: UInt32) -> String {

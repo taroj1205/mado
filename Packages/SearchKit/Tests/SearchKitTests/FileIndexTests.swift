@@ -26,6 +26,27 @@ import Testing
         #expect(files.map(\.name) == ["Mado.app", "Planning", "Q3 Roadmap.pdf", "notes.md"])
         #expect(files[2].folder.hasSuffix("/\(root.lastPathComponent)/Planning"))
         #expect(files[2].key == Fuzzy.Key("Q3 Roadmap.pdf"))
+        #expect(files[2].path == files[2].url.path)
+    }
+
+    @Test func ranksFilesWithTheUseAndAliasesSavedForTheirPath() async {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = ["Report.pdf", "Recipe.pdf"].map { name in
+            FileIndex.File(
+                name: name, folder: "~", url: URL(filePath: "/tmp/\(name)"),
+                path: "/tmp/\(name)", key: Fuzzy.Key(name), isFolder: false, modified: nil)
+        }
+        var usage = Usage()
+        usage.record("/tmp/Recipe.pdf", at: .now)
+        var items = ItemSettings()
+        items["/tmp/Report.pdf"] = .init(aliases: ["taxes"])
+        let rank = { (query: String) async in
+            await FileIndex.rank(files, by: query, items: items, usage: usage, at: .now)
+                .map(\.name)
+        }
+
+        #expect(await rank("re") == ["Recipe.pdf", "Report.pdf"])
+        #expect(await rank("taxes") == ["Report.pdf"])
     }
 
     @Test func aCancelledScanStopsWalkingTheFolders() async {
@@ -85,6 +106,8 @@ import Testing
         await index.scan?.value
         #expect(index.files.count == 4)
         #expect(changes == 1)
+        let notes = try #require(index.files.first { $0.name == "notes.md" }).url.path
+        #expect(index.file(atPath: notes)?.name == "notes.md")
 
         try Data().write(to: root.appending(path: "draft.txt"))
         try FileManager.default.removeItem(at: root.appending(path: "notes.md"))
@@ -96,6 +119,7 @@ import Testing
         }
         #expect(index.files.map(\.name).sorted() == expected)
         #expect(changes == 2)
+        #expect(index.file(atPath: notes) == nil)
 
         try FileManager.default.setAttributes(
             [.modificationDate: Date(timeIntervalSinceNow: -3_600)],

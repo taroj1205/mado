@@ -1,3 +1,5 @@
+import os
+
 @MainActor
 public final class ModuleManager {
     private struct Registered {
@@ -13,9 +15,12 @@ public final class ModuleManager {
     private static let settingsKey = "core"
 
     public let commands: CommandRegistry
+    public private(set) var keysPaused = false
+    public var onKeysPausedChange: (@MainActor () -> Void)?
 
+    private let logger = Log.logger("Modules")
     private let store: SettingsStore
-    private let eventTap = EventTap()
+    let eventTap = EventTap()
     private var settings: Settings
     private var states: States
     private var registered: [Registered] = []
@@ -30,6 +35,7 @@ public final class ModuleManager {
         let loaded = try store.load()
         settings = loaded
         states = try loaded.value(States.self, for: Self.settingsKey) ?? States()
+        eventTap.onUnresponsive = { [weak self] in self?.setKeysPaused(true) }
     }
 
     public func register(_ module: any Module) throws {
@@ -37,11 +43,9 @@ public final class ModuleManager {
         guard !registered.contains(where: { $0.module.descriptor.id == id }) else {
             throw ModuleError.duplicateModule(id)
         }
-        registered.append(
-            Registered(
-                module: module,
-                context: ModuleContext(moduleID: id, commands: commands, eventTap: eventTap),
-                isRunning: false))
+        let context = ModuleContext(moduleID: id, commands: commands, eventTap: eventTap)
+        context.keysPaused = keysPaused
+        registered.append(Registered(module: module, context: context, isRunning: false))
     }
 
     public func isEnabled(_ id: String) -> Bool {
@@ -60,27 +64,28 @@ public final class ModuleManager {
         guard let index = registered.firstIndex(where: { $0.module.descriptor.id == id }) else {
             throw ModuleError.unknownModule(id)
         }
-        var nextStates = states
-        nextStates.enabled[id] = enabled
-        var nextSettings = settings
-        try nextSettings.setValue(nextStates, for: Self.settingsKey)
-        if enabled {
-            let wasRunning = registered[index].isRunning
-            try start(at: index)
-            do {
-                try store.save(nextSettings)
-            } catch {
-                if !wasRunning {
-                    stop(at: index)
+        let previous = states
+        states.enabled[id] = enabled
+        do {
+            if enabled {
+                let wasRunning = registered[index].isRunning
+                try start(at: index)
+                do {
+                    try saveStates()
+                } catch {
+                    if !wasRunning {
+                        stop(at: index)
+                    }
+                    throw error
                 }
-                throw error
+            } else {
+                try saveStates()
+                stop(at: index)
             }
-        } else {
-            try store.save(nextSettings)
-            stop(at: index)
+        } catch {
+            states = previous
+            throw error
         }
-        states = nextStates
-        settings = nextSettings
     }
 
     public func restart(_ id: String) throws {
@@ -90,6 +95,26 @@ public final class ModuleManager {
         guard registered[index].isRunning else { return }
         stop(at: index)
         try start(at: index)
+    }
+
+    public func setKeysPaused(_ paused: Bool) {
+        guard paused != keysPaused else { return }
+        keysPaused = paused
+        eventTap.isPaused = paused
+        for index in registered.indices {
+            let context = registered[index].context
+            let id = registered[index].module.descriptor.id
+            context.keysPaused = paused
+            guard context.hasKeyFeatures, isEnabled(id) else { continue }
+            stop(at: index)
+            do {
+                try start(at: index)
+            } catch {
+                logger.error(
+                    "\(id, privacy: .public) failed to restart: \(error, privacy: .public)")
+            }
+        }
+        onKeysPausedChange?()
     }
 
     public func value<Value: Decodable>(_ type: Value.Type, for key: String) throws -> Value? {
@@ -108,6 +133,13 @@ public final class ModuleManager {
         for item in registered {
             await item.context.drain()
         }
+    }
+
+    private func saveStates() throws {
+        var nextSettings = settings
+        try nextSettings.setValue(states, for: Self.settingsKey)
+        try store.save(nextSettings)
+        settings = nextSettings
     }
 
     private func start(at index: Int) throws {
