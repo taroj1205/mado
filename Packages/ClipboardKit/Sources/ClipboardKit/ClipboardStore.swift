@@ -2,25 +2,9 @@ public import Foundation
 import UniformTypeIdentifiers
 
 public actor ClipboardStore {
-    public struct Retention: Codable, Equatable, Sendable {
-        public var days: Int
-        public var items: Int
-
-        public init(days: Int = 30, items: Int = 1_000) {
-            self.days = days
-            self.items = items
-        }
-
-        public init(from decoder: any Decoder) throws {
-            let values = try decoder.container(keyedBy: CodingKeys.self)
-            let fallback = Self()
-            let savedDays = try values.decodeIfPresent(Int.self, forKey: .days) ?? fallback.days
-            let savedItems =
-                try values.decodeIfPresent(Int.self, forKey: .items) ?? fallback.items
-            self.init(
-                days: savedDays > 0 ? savedDays : fallback.days,
-                items: savedItems > 0 ? savedItems : fallback.items)
-        }
+    public struct Usage: Equatable, Sendable {
+        public let items: Int
+        public let bytes: Int
     }
 
     public struct Entry: Equatable, Sendable {
@@ -65,8 +49,9 @@ public actor ClipboardStore {
         """,
         "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;",
     ]
+    private static let unpinnedIndex =
+        "CREATE INDEX IF NOT EXISTS clips_unpinned_by_date ON clips (date) WHERE pinned = 0"
     private static let columns = Column.allCases.map { "\($0)" }.joined(separator: ", ")
-    private static let secondsPerDay: TimeInterval = 86_400
 
     @MainActor private static var shared: ClipboardStore?
 
@@ -80,6 +65,7 @@ public actor ClipboardStore {
             path: directory.appending(path: Self.fileName).path(percentEncoded: false))
         try database.execute("PRAGMA secure_delete = ON")
         try Self.migrate(database)
+        try database.execute(Self.unpinnedIndex)
     }
 
     @MainActor
@@ -141,16 +127,31 @@ public actor ClipboardStore {
     }
 
     public func prune(keeping retention: Retention, now: Date) throws {
-        let oldest = now.timeIntervalSince1970 - Double(retention.days) * Self.secondsPerDay
-        let removed = try database.rows(
-            "DELETE FROM clips WHERE pinned = 0 AND (date < ? OR id NOT IN"
-                + " (SELECT id FROM clips WHERE pinned = 0 ORDER BY date DESC, id DESC LIMIT ?))"
-                + " RETURNING image",
-            [.real(oldest), .integer(retention.items)]
-        ) { $0.string(0) }
+        var removed: [String] = []
+        if let oldest = retention.period?.start(before: now, in: .current) {
+            removed += try database.rows(
+                "DELETE FROM clips WHERE pinned = 0 AND date < ? RETURNING image",
+                [.real(oldest.timeIntervalSince1970)]
+            ) { $0.string(0) }
+        }
+        if let items = retention.items, let first = try newestUnpinned(skipping: items) {
+            removed += try database.rows(
+                "DELETE FROM clips WHERE pinned = 0 AND (date, id) <= (?, ?) RETURNING image",
+                [.real(first.date), .integer(Int(first.id))]
+            ) { $0.string(0) }
+        }
         for image in removed {
             try? FileManager.default.removeItem(at: images.appending(path: image))
         }
+    }
+
+    private func newestUnpinned(skipping count: Int) throws -> (date: Double, id: Int64)? {
+        try database.rows(
+            "SELECT date, id FROM clips WHERE pinned = 0 ORDER BY date DESC, id DESC"
+                + " LIMIT 1 OFFSET ?",
+            [.integer(count)]
+        ) { (date: $0.real(0), id: $0.integer(1)) }
+        .first
     }
 
     public func clear() throws {
@@ -167,9 +168,27 @@ public actor ClipboardStore {
                 failure = failure ?? error
             }
         }
+        try compact()
         if let failure {
             throw failure
         }
+    }
+
+    public func compact() throws {
+        try database.execute("VACUUM")
+    }
+
+    public func usage() throws -> Usage {
+        let items = try database.rows("SELECT COUNT(*) FROM clips", []) { Int($0.integer(0)) }
+        let files = try FileManager.default.contentsOfDirectory(
+            at: images, includingPropertiesForKeys: [.totalFileAllocatedSizeKey])
+        let history = images.deletingLastPathComponent().appending(path: Self.fileName)
+        let bytes = try ([history] + files).reduce(0) { total, file in
+            try total
+                + (file.resourceValues(forKeys: [.totalFileAllocatedSizeKey])
+                    .totalFileAllocatedSize ?? 0)
+        }
+        return Usage(items: items.first ?? 0, bytes: bytes)
     }
 
     public func setPinned(_ pinned: Bool, id: Int64) throws {

@@ -45,19 +45,21 @@ import Testing
         settings.ignore(Self.notes)
         settings.stopIgnoring(Self.onePassword)
 
-        settings.retention = ClipboardStore.Retention(days: 7, items: 100)
+        settings.retention = ClipboardStore.Retention(period: .init(7, .day), items: 100)
 
         let data = try JSONEncoder().encode(settings)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let retention = json?["retention"] as? [String: Any]
         let restored = try JSONDecoder().decode(ClipboardSettings.self, from: data)
         let empty = try JSONDecoder().decode(ClipboardSettings.self, from: Data("{}".utf8))
 
         #expect(json?["addedApps"] as? [String] == [Self.notes])
         #expect(json?["removedApps"] as? [String] == [Self.onePassword])
-        #expect(json?["retention"] as? [String: Int] == ["days": 7, "items": 100])
+        #expect(retention?["period"] as? [String: AnyHashable] == ["count": 7, "unit": "days"])
+        #expect(retention?["items"] as? Int == 100)
         #expect(restored == settings)
         #expect(empty == ClipboardSettings())
-        #expect(empty.retention == ClipboardStore.Retention(days: 30, items: 1_000))
+        #expect(empty.retention == ClipboardStore.Retention(period: .init(30, .day), items: 1_000))
     }
 
     @Test func keepsTheDefaultLimitsForMissingOrNonPositiveValues() throws {
@@ -68,6 +70,6 @@ import Testing
         let some = try JSONDecoder().decode(ClipboardSettings.self, from: partial).retention
 
         #expect(invalid == ClipboardStore.Retention())
-        #expect(some == ClipboardStore.Retention(days: 7, items: 1_000))
+        #expect(some == ClipboardStore.Retention(period: .init(7, .day), items: 1_000))
     }
 }

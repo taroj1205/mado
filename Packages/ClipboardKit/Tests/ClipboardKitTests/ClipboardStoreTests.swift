@@ -228,7 +228,7 @@ import Testing
         let texts = ["50% off", "500 off", "a_b", "axb", #"C:\temp"#, "nul\0inside"]
         for (index, text) in texts.enumerated() {
             try await store.add(
-                Self.text(text, at: Double(index)), keeping: .init(days: .max, items: 100))
+                Self.text(text, at: Double(index)), keeping: .init(period: nil, items: 100))
         }
 
         #expect(try await store.search("0%", limit: 10).map(\.text) == ["50% off"])
