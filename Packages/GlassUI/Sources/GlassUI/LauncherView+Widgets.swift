@@ -11,6 +11,13 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.tileLayout = newValue } }
     }
 
+    public var widgetSpots: [String: WidgetGrid.Spot] {
+        get { widgetGrid.spots }
+        set { changeWidgets { widgetGrid.spots = newValue } }
+    }
+
+    public var widgetsFillPanel: Bool { widgetGrid.fillsPanel }
+
     public var widgetOverhang: CGFloat { widgetGrid.overhang }
 
     public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }

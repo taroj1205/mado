@@ -90,4 +90,35 @@ import Testing
             #"{"custom": true, "added": ["weather", "system", "system", "clock"]}"#)
         #expect(widgets.added(from: Self.available) == ["system", "clock"])
     }
+
+    @Test func eachPlacementPutsEveryAddedWidgetInItsSpot() {
+        let widgets = WidgetSettings()
+        let ids = Self.available
+        #expect(
+            widgets.spots(.inPanel, from: ids) == [
+                "clock": .panel, "system": .panel, "battery": .panel,
+            ])
+        #expect(
+            widgets.spots(.above, from: ids)
+                == ["clock": .aboveLeft, "system": .aboveLeft, "battery": .aboveLeft])
+        #expect(
+            widgets.spots(.around, from: ids)
+                == ["clock": .leftTop, "system": .leftTop, "battery": .rightTop])
+    }
+
+    @Test func customSpotsComeBackFromSavedSettingsAndDefaultToThePanel() throws {
+        var widgets = try settings(
+            #"{"custom": true, "added": ["clock", "system"], "#
+                + #""spots": {"system": "right_bottom", "weather": "left_top"}}"#)
+        #expect(
+            widgets.spots(.custom, from: Self.available) == [
+                "clock": .panel, "system": .rightBottom,
+            ])
+        widgets.apply(.remove("system"), from: Self.available)
+        widgets.apply(.add("system"), from: Self.available)
+        #expect(
+            widgets.spots(.custom, from: Self.available) == ["clock": .panel, "system": .panel])
+        let older = try settings(#"{"custom": true, "added": ["clock"]}"#)
+        #expect(older.spots(.custom, from: Self.available) == ["clock": .panel])
+    }
 }

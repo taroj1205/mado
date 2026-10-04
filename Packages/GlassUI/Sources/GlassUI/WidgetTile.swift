@@ -63,6 +63,7 @@ final class WidgetTile: NSView {
     let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
+    let floating: Bool
     private let looks: (resting: Look, picked: Look)
     private(set) var widgetID = ""
     private var hasTrack = false
@@ -91,6 +92,7 @@ final class WidgetTile: NSView {
     }
 
     init(floating: Bool) {
+        self.floating = floating
         looks = floating ? Self.floatingLooks : Self.inlineLooks
         super.init(frame: .zero)
         box.boxType = .custom

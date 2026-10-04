@@ -1,4 +1,11 @@
 public struct WidgetSettings: Codable, Equatable, Sendable {
+    public enum Arrangement: Sendable {
+        case inPanel
+        case above
+        case around
+        case custom
+    }
+
     public enum Edit: Equatable, Sendable {
         case add(String)
         case move(String, before: String?)
@@ -7,16 +14,41 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
 
     private var custom: Bool
     private var added: [String]
+    private var spots: [String: WidgetGrid.Spot]
 
     public init() {
         custom = false
         added = []
+        spots = [:]
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        custom = try values.decode(Bool.self, forKey: .custom)
+        added = try values.decode([String].self, forKey: .added)
+        spots = try values.decodeIfPresent([String: WidgetGrid.Spot].self, forKey: .spots) ?? [:]
     }
 
     public func added(from available: [String]) -> [String] {
         guard custom else { return available }
         var seen: Set<String> = []
         return added.filter { available.contains($0) && seen.insert($0).inserted }
+    }
+
+    public func spots(
+        _ arrangement: Arrangement, from available: [String]
+    ) -> [String: WidgetGrid.Spot] {
+        let ids = added(from: available)
+        let left = (ids.count + WidgetGrid.sides - 1) / WidgetGrid.sides
+        return Dictionary(
+            uniqueKeysWithValues: ids.enumerated().map { index, id in
+                switch arrangement {
+                case .inPanel: (id, .panel)
+                case .above: (id, .aboveLeft)
+                case .around: (id, index < left ? .leftTop : .rightTop)
+                case .custom: (id, spots[id] ?? .panel)
+                }
+            })
     }
 
     public mutating func apply(_ edit: Edit, from available: [String]) {
@@ -36,6 +68,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         case .remove(let id):
             guard added(from: available).contains(id) else { return }
             added = (custom ? added : available).filter { $0 != id }
+            spots[id] = nil
             custom = true
         }
     }

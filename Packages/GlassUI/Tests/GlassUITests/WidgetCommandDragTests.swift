@@ -100,25 +100,33 @@ import Testing
         #expect(edits.isEmpty)
     }
 
-    @Test func floatingTilesTakeTheDragAndReorderAroundThePanel() throws {
+    @Test func floatingTilesTakeTheDragAndReorderWithinTheirSpot() throws {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
-        view.widgetLayout = .around
+        arrange(.around)
         let accepting = view.widgetGrid.tiles.map(\.registeredDraggedTypes)
         #expect(accepting.allSatisfy { $0 == [WidgetGrid.dragType] })
-        let target = view.widgetGrid.floats[2].frame
-        let tile = view.widgetGrid.tiles[0]
+        let target = view.widgetGrid.floats[3].frame
+        let tile = view.widgetGrid.tiles[2]
         let over = try #require(tile.onDrag)
-        #expect(over("clock", NSPoint(x: target.midX, y: target.midY), nil) == .move)
-        #expect(ids == ["weather", "battery", "clock", "system"])
-        #expect(view.widgetGrid.floats[2].frame == target)
-        #expect(view.widgetGrid.tiles.map(\.lifted) == [false, false, true, false])
-        #expect(tile.onDrop?("clock") == true)
-        #expect(edits == [.move("clock", before: "system")])
+        #expect(over("battery", NSPoint(x: target.midX, y: target.midY), nil) == .move)
+        #expect(ids == ["clock", "weather", "system", "battery"])
+        #expect(view.widgetGrid.floats[3].frame == target)
+        #expect(view.widgetGrid.tiles.map(\.lifted) == [false, false, false, true])
+        #expect(tile.onDrop?("battery") == true)
+        #expect(edits == [.move("battery", before: nil)])
+    }
+
+    @Test func aTileDraggedOverAnotherSpotKeepsItsPlace() throws {
+        arrange(.around)
+        let other = view.widgetGrid.floats[2].frame
+        let over = try #require(view.widgetGrid.tiles[0].onDrag)
+        #expect(over("clock", NSPoint(x: other.midX, y: other.midY), nil).isEmpty)
+        #expect(ids == widgets.map(\.id))
     }
 
     @Test func aDragThatEndsNowherePutsTheFloatsBack() {
-        view.widgetLayout = .above
+        arrange(.above)
         let target = view.widgetGrid.floats[3].frame
         let tile = view.widgetGrid.tiles[0]
         #expect(tile.onDrag?("clock", NSPoint(x: target.midX, y: target.midY), nil) == .move)
@@ -147,5 +155,9 @@ import Testing
                 with: .leftMouseDown, location: point, modifierFlags: flags, timestamp: 0,
                 windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
                 pressure: 1))
+    }
+
+    private func arrange(_ arrangement: WidgetSettings.Arrangement) {
+        view.widgetSpots = WidgetSettings().spots(arrangement, from: view.widgets.map(\.id))
     }
 }
