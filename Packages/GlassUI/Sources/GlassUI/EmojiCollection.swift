@@ -9,7 +9,8 @@ final class EmojiCollection: NSCollectionView {
 
     override func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
-        if event.clickCount == Self.doubleClick {
+        let hit = indexPathForItem(at: convert(event.locationInWindow, from: nil))
+        if event.clickCount == Self.doubleClick, let hit, selectionIndexPaths.contains(hit) {
             onDoubleClick?()
         }
     }

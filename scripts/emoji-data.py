@@ -44,7 +44,7 @@ def toned(emoji):
 def main():
     words = keywords()
     groups = []
-    names = {}
+    qualified = set()
     for line in fetch(TEST).splitlines():
         if line.startswith("# group: "):
             groups.append((line[len("# group: ") :], []))
@@ -54,7 +54,7 @@ def main():
             continue
         emoji = "".join(chr(int(point, 16)) for point in match.group(1).split())
         name = match.group(2)
-        names[name] = emoji
+        qualified.add(emoji)
         if "skin tone" not in name:
             groups[-1][1].append((emoji, name))
     rows = [
@@ -72,7 +72,7 @@ def main():
                 for word in words.get(emoji.replace(VARIATION, ""), [])
                 if word.lower() not in name.lower().split() + [name.lower()]
             ]
-            tone = "1" if names.get(f"{name}: medium skin tone") == toned(emoji) else ""
+            tone = "1" if toned(emoji) in qualified else ""
             rows.append("\t".join([emoji, name, "|".join(extra), tone]))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(rows) + "\n", encoding="utf-8")

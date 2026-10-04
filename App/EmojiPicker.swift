@@ -159,8 +159,9 @@ final class EmojiPicker: NSObject {
         let glyph = emoji.toned(settings.tone)
         let copy = CommandAction(id: "copy", title: "Copy") { [weak self] in
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(glyph, forType: .string)
-            self?.use(character)
+            if NSPasteboard.general.setString(glyph, forType: .string) {
+                self?.use(character)
+            }
         }
         guard let target else { return [(copy, LauncherView.Action.secondaryKeys)] }
         let paste = CommandAction(id: "paste", title: Self.pasteTitle) { [weak self] in

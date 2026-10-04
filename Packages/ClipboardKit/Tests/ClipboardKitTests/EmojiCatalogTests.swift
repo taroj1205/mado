@@ -73,6 +73,7 @@ import Testing
         #expect(bundled.emoji("😄")?.name == "grinning face with smiling eyes")
         #expect(bundled.search("flag canada").first?.character == "🇨🇦")
         #expect(bundled.emoji("1️⃣")?.shortcode == ":keycap_1:")
+        #expect(bundled.emoji("👨‍🦰")?.toned(.medium) == "👨🏽‍🦰")
     }
 
     @Test func keepsTheNewestRecentEmojiFirst() {

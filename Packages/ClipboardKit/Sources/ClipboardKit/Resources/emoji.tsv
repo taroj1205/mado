@@ -239,26 +239,26 @@
 👦	boy	bright-eyed|child|grandson|kid|son|young|younger	1
 👧	girl	bright-eyed|child|daughter|granddaughter|kid|Virgo|young|younger|zodiac	1
 🧑	person	adult	1
-👱	person: blond hair	blond-haired|human|person	
+👱	person: blond hair	blond-haired|human|person	1
 👨	man	adult|bro	1
-🧔	person: beard	bearded|person|whiskers	
-🧔‍♂️	man: beard	bearded|man|whiskers	
-🧔‍♀️	woman: beard	bearded|whiskers|woman	
-👨‍🦰	man: red hair	adult|bro|man|red hair	
-👨‍🦱	man: curly hair	adult|bro|curly hair|man	
-👨‍🦳	man: white hair	adult|bro|man|white hair	
-👨‍🦲	man: bald	adult|bro|man	
+🧔	person: beard	bearded|person|whiskers	1
+🧔‍♂️	man: beard	bearded|man|whiskers	1
+🧔‍♀️	woman: beard	bearded|whiskers|woman	1
+👨‍🦰	man: red hair	adult|bro|man|red hair	1
+👨‍🦱	man: curly hair	adult|bro|curly hair|man	1
+👨‍🦳	man: white hair	adult|bro|man|white hair	1
+👨‍🦲	man: bald	adult|bro|man	1
 👩	woman	adult|lady	1
-👩‍🦰	woman: red hair	adult|lady|red hair|woman	
-🧑‍🦰	person: red hair	adult|person|red hair	
-👩‍🦱	woman: curly hair	adult|curly hair|lady|woman	
-🧑‍🦱	person: curly hair	adult|curly hair|person	
-👩‍🦳	woman: white hair	adult|lady|white hair|woman	
-🧑‍🦳	person: white hair	adult|person|white hair	
-👩‍🦲	woman: bald	adult|lady|woman	
-🧑‍🦲	person: bald	adult|person	
-👱‍♀️	woman: blond hair	blond-haired|blonde|woman	
-👱‍♂️	man: blond hair	blond-haired|man	
+👩‍🦰	woman: red hair	adult|lady|red hair|woman	1
+🧑‍🦰	person: red hair	adult|person|red hair	1
+👩‍🦱	woman: curly hair	adult|curly hair|lady|woman	1
+🧑‍🦱	person: curly hair	adult|curly hair|person	1
+👩‍🦳	woman: white hair	adult|lady|white hair|woman	1
+🧑‍🦳	person: white hair	adult|person|white hair	1
+👩‍🦲	woman: bald	adult|lady|woman	1
+🧑‍🦲	person: bald	adult|person	1
+👱‍♀️	woman: blond hair	blond-haired|blonde|woman	1
+👱‍♂️	man: blond hair	blond-haired|man	1
 🧓	older person	adult|elderly|grandparent|old|wise	1
 👴	old man	adult|bald|elderly|gramps|grandfather|grandpa|wise	1
 👵	old woman	adult|elderly|grandma|grandmother|granny|lady|wise	1
