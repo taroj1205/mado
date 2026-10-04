@@ -49,6 +49,7 @@ import Testing
             events.append(event)
             switch event {
             case .started: isActive = true
+            case .toggled: break
             case .stopped, .cancelled: isActive = false
             }
         }
@@ -71,12 +72,12 @@ import Testing
     @Test func aTapKeepsRecordingUntilTheNextPress() {
         var recorder = Recorder()
         recorder.tap()
-        #expect(recorder.events == [.started])
+        #expect(recorder.events == [.started, .toggled])
         recorder.wait(.seconds(5))
         recorder.down(.rightOption)
-        #expect(recorder.events == [.started, .stopped])
+        #expect(recorder.events == [.started, .toggled, .stopped])
         recorder.up(.rightOption)
-        #expect(recorder.events == [.started, .stopped])
+        #expect(recorder.events == [.started, .toggled, .stopped])
     }
 
     @Test func typingWhileToggledOnKeepsRecording() {
@@ -86,10 +87,10 @@ import Testing
         recorder.send(.keyDown)
         recorder.up(.leftCommand)
         recorder.send(.leftMouseDown)
-        #expect(recorder.events == [.started])
+        #expect(recorder.events == [.started, .toggled])
         recorder.down(.leftShift)
         recorder.down(.rightOption)
-        #expect(recorder.events == [.started, .stopped])
+        #expect(recorder.events == [.started, .toggled, .stopped])
     }
 
     @Test func aPressAtTheEdgeOfTheWindowStillToggles() {
@@ -97,12 +98,12 @@ import Testing
         recorder.down(.rightOption)
         recorder.wait(ModifierTap.defaultWindow)
         recorder.up(.rightOption)
-        #expect(recorder.events == [.started])
+        #expect(recorder.events == [.started, .toggled])
         recorder.tap()
         recorder.down(.rightOption)
         recorder.wait(ModifierTap.defaultWindow + .nanoseconds(1))
         recorder.up(.rightOption)
-        #expect(recorder.events == [.started, .stopped, .started, .stopped])
+        #expect(recorder.events == [.started, .toggled, .stopped, .started, .stopped])
     }
 
     @Test(arguments: [CGEventType.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown])
@@ -149,7 +150,7 @@ import Testing
         recorder.tap()
         recorder.isActive = false
         recorder.down(.rightOption)
-        #expect(recorder.events == [.started, .started])
+        #expect(recorder.events == [.started, .toggled, .started])
     }
 
     @Test func aMissedReleaseEndsTheHoldAtTheNextModifierChange() {

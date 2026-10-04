@@ -5,6 +5,7 @@ import Dispatch
 public struct PushToTalk {
     public enum Event: Equatable, Sendable {
         case started
+        case toggled
         case stopped
         case cancelled
     }
@@ -83,7 +84,7 @@ public struct PushToTalk {
             }
             let isTap = timestamp >= since && .nanoseconds(timestamp - since) <= window
             state = isTap ? .toggled : .idle
-            return isTap ? nil : .stopped
+            return isTap ? .toggled : .stopped
         }
     }
 }

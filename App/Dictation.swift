@@ -17,6 +17,7 @@ final class Dictation {
     private let microphone = Microphone()
     private let pill = DictationPill()
     private var request: Task<Void, Never>?
+    private var asksOnRelease = false
 
     var isActive: Bool {
         microphone.isRunning
@@ -34,12 +35,14 @@ final class Dictation {
     func handle(_ event: PushToTalk.Event) {
         switch event {
         case .started: start()
-        case .stopped: if isActive { stop() }
+        case .toggled: askForAccess()
+        case .stopped: if isActive { stop() } else { askForAccess() }
         case .cancelled: stop()
         }
     }
 
     func stop() {
+        asksOnRelease = false
         request?.cancel()
         request = nil
         microphone.stop()
@@ -54,11 +57,17 @@ final class Dictation {
             record()
 
         case .notDetermined:
-            request = Task { [permissions] in await permissions.request(.microphone) }
+            asksOnRelease = true
 
         case .denied, .unsupported:
             pill.show(.failed(Self.denied, fix: Self.openSettings), on: screen)
         }
+    }
+
+    private func askForAccess() {
+        guard asksOnRelease else { return }
+        asksOnRelease = false
+        request = Task { [permissions] in await permissions.request(.microphone) }
     }
 
     private func record() {
