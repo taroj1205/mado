@@ -88,7 +88,8 @@ final class ClipboardHistory: NSObject {
         }
         return ResultList.Item(
             id: id(of: entry), title: entry.title, subtitle: "",
-            kind: entry.kind.title, symbol: symbol(for: entry.kind), action: "", tint: tint)
+            kind: entry.kind.title, symbol: symbol(for: entry.kind), action: "",
+            thumbnail: entry.image, tint: tint)
     }
 
     func start(with store: ClipboardStore, context: ModuleContext) {

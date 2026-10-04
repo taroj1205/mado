@@ -11,6 +11,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let action: String
         public let icon: NSImage?
         public let file: URL?
+        public let thumbnail: URL?
         public let answer: Answer?
         public let tint: NSColor?
         public let shortcut: [String]
@@ -18,8 +19,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil,
-            tint: NSColor? = nil, shortcut: [String] = []
+            action: String, icon: NSImage? = nil, file: URL? = nil, thumbnail: URL? = nil,
+            answer: Answer? = nil, tint: NSColor? = nil, shortcut: [String] = []
         ) {
             self.id = id
             self.title = title
@@ -29,6 +30,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.action = action
             self.icon = icon
             self.file = file
+            self.thumbnail = thumbnail
             self.answer = answer
             self.tint = tint
             self.shortcut = shortcut

@@ -25,6 +25,7 @@ extension LauncherView {
         showScope(placeholder: nil)
         show(filter: nil)
         split(nil)
+        Thumbnails.shared.removeAll()
         replaceQuery(with: query)
     }
 

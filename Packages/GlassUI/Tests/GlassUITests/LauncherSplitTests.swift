@@ -87,7 +87,18 @@ import Testing
         #expect(!view.detail.isHidden)
     }
 
-    @Test func showsAnImageInPlaceOfTextAndLetsGoOfItOnLeaving() {
+    @Test func showsAnImageInPlaceOfTextAndLetsGoOfItOnLeaving() async throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).png")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let drawn = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
+            NSColor.systemBlue.setFill()
+            rect.fill()
+            return true
+        }
+        let bitmap = try #require(drawn.tiffRepresentation.flatMap(NSBitmapImageRep.init))
+        try #require(bitmap.representation(using: .png, properties: [:])).write(to: file)
+        let thumbnail = Thumbnails.Request(url: file, side: 48)
+        #expect(await Thumbnails.shared.load(thumbnail) != nil)
         let image = NSImage(size: NSSize(width: 4, height: 4))
         view.enter(placeholder: "Filter") { _ in .init(text: "", image: image, details: []) }
         view.results.sections = [.init(title: "Today", items: [Self.item("image")])]
@@ -98,6 +109,7 @@ import Testing
         view.leave()
 
         #expect(view.detail.image.image == nil)
+        #expect(Thumbnails.shared.cached(thumbnail) == nil)
     }
 
     @Test func theFilterSitsAtTheEndOfTheBarAndCommandPOpensIt() {
