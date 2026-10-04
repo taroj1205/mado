@@ -50,6 +50,7 @@ final class TextTools {
     private var store: ClipboardStore?
     private var source: Source?
     private var pasteTarget: PasteTarget?
+    private var opening = 0
 
     private static func tool(for id: String) -> TextTool? {
         id.hasPrefix(toolPrefix) ? TextTool(rawValue: String(id.dropFirst(toolPrefix.count))) : nil
@@ -123,10 +124,18 @@ final class TextTools {
     }
 
     private func open() async {
+        opening += 1
+        let request = opening
         let found = findTarget?()
-        source = await read(from: found)
+        let read = await read(from: found)
+        guard request == opening else { return }
+        source = read
         pasteTarget = found
         onOpen?()
+    }
+
+    func cancelOpening() {
+        opening += 1
     }
 
     private func run(_ tool: TextTool) async throws {

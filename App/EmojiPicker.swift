@@ -72,7 +72,7 @@ final class EmojiPicker: NSObject {
         }
         context.run("load emoji") { [weak self] in
             let loaded = await Task.detached { EmojiCatalog.bundled() }.value
-            guard let self, let loaded else { return }
+            guard let self, let loaded, !Task.isCancelled else { return }
             catalog = loaded
             onLoad?(Self.tabs(for: loaded))
         }

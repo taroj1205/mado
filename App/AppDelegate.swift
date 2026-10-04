@@ -222,6 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func hideLauncher() {
+        textTools.cancelOpening()
         editor.close()
         launcherView.leave()
         launcherView.endBrowsing()

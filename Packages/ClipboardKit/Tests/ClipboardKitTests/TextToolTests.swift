@@ -23,6 +23,15 @@ import Testing
         #expect(TextTool.sortLines.apply(to: "a\nb") == .unchanged)
     }
 
+    @Test func treatsWindowsLineEndingsAsLineBreaksAndKeepsThem() {
+        let text = "b\r\na\r\nb\r\n"
+
+        #expect(TextTool.sortLines.apply(to: text) == .changed("a\r\nb\r\nb\r\n"))
+        #expect(TextTool.removeDuplicateLines.apply(to: text) == .changed("b\r\na\r\n"))
+        #expect(TextTool.duplicateLines(in: text) == [2])
+        #expect(TextTool.Counts(of: text).lines == 3)
+    }
+
     @Test func changesCase() {
         #expect(TextTool.titleCase.apply(to: "banana BREAD") == .changed("Banana Bread"))
         #expect(TextTool.uppercase.apply(to: "Straße") == .changed("STRASSE"))

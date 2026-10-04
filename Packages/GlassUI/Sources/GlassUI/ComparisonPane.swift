@@ -91,8 +91,8 @@ final class ComparisonPane: NSView {
         style.maximumLineHeight = style.minimumLineHeight
         let font = NSFont.monospacedSystemFont(ofSize: textSize, weight: .regular)
         let shown = NSMutableAttributedString()
-        let lines = String(text.prefix(textLimit)).split(
-            separator: "\n", omittingEmptySubsequences: false)
+        let lines = text.prefix(textLimit).split(
+            omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         for (index, line) in lines.enumerated() {
             let isStruck = struck.contains(index)
             var attributes: [NSAttributedString.Key: Any] = [

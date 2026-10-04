@@ -111,8 +111,8 @@ public enum TextTool: String, CaseIterable, Sendable {
     }
 
     static func lines(of text: String) -> [Substring] {
-        let body = text.hasSuffix("\n") ? text.dropLast() : Substring(text)
-        return body.split(separator: "\n", omittingEmptySubsequences: false)
+        let body = text.last?.isNewline == true ? text.dropLast() : Substring(text)
+        return body.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
     }
 
     public static func duplicateLines(in text: String) -> IndexSet {
@@ -127,7 +127,9 @@ public enum TextTool: String, CaseIterable, Sendable {
     }
 
     private static func rejoin(_ lines: [Substring], like text: String) -> String {
-        lines.joined(separator: "\n") + (text.hasSuffix("\n") ? "\n" : "")
+        let separator = text.first(where: \.isNewline).map(String.init) ?? "\n"
+        return lines.joined(separator: separator)
+            + (text.last?.isNewline == true ? separator : "")
     }
 
     private static func withoutDuplicateLines(_ text: String) -> String {

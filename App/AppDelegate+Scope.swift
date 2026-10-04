@@ -42,7 +42,9 @@ extension AppDelegate {
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
         textTools.onOpen = { [weak self] in self?.openTextTools() }
-        textTools.findTarget = { [weak self] in PasteTarget.frontmost() ?? self?.pasteTarget }
+        textTools.findTarget = { [weak self] in
+            PasteTarget.frontmost() ?? (self?.launcher?.isVisible == true ? self?.pasteTarget : nil)
+        }
         launcherView.onLeave = { [weak self] in
             self?.clipboardHistory.close()
             self?.textTools.close()
