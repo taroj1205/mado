@@ -6,6 +6,7 @@ public final class AppInputSwitch {
     @MainActor
     public final class Memory {
         var lastUsed: [String: String]
+        var stoppedIn: String?
 
         public init() {
             lastUsed = [:]
@@ -49,9 +50,22 @@ public final class AppInputSwitch {
             },
             handler: { app in switcher.activated(app, apps: settings().apps) })
         context.own(.task, "input source switch") {
-            switcher.activated(nil, apps: settings().apps)
+            switcher.stop(apps: settings().apps)
         }
-        switcher.activated(frontmost, apps: settings().apps)
+        switcher.start(in: frontmost, apps: settings().apps)
+    }
+
+    func start(in app: String?, apps: [String: AppInput]) {
+        guard let app, app == memory.stoppedIn, apps[app] == .lastUsed else {
+            activated(app, apps: apps)
+            return
+        }
+        front = app
+    }
+
+    func stop(apps: [String: AppInput]) {
+        memory.stoppedIn = pending == nil ? front : nil
+        activated(nil, apps: apps)
     }
 
     func activated(_ app: String?, apps: [String: AppInput]) {
