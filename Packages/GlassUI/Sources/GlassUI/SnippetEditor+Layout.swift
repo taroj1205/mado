@@ -30,7 +30,6 @@ extension SnippetEditor {
     private static let chipGap: CGFloat = 6
     private static let insertGap: CGFloat = 10
     private static let rowTop: CGFloat = 6
-    private static let rowSide: CGFloat = 12
     private static let rowHeight: CGFloat = 36
     private static let detailGap: CGFloat = 2
     private static let buttonsInset: CGFloat = 5
@@ -252,8 +251,7 @@ extension SnippetEditor {
         expandSwitch.setAccessibilityLabel("Expand in every app")
         let row = NSStackView(views: [text, expandSwitch])
         row.distribution = .equalSpacing
-        row.edgeInsets = NSEdgeInsets(
-            top: Self.rowTop, left: Self.rowSide, bottom: Self.rowTop, right: Self.rowSide)
+        row.edgeInsets = NSEdgeInsets(top: Self.rowTop, left: 0, bottom: Self.rowTop, right: 0)
         row.heightAnchor.constraint(greaterThanOrEqualToConstant: Self.rowHeight).isActive = true
         return row
     }
