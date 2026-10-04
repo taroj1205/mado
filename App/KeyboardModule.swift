@@ -9,7 +9,7 @@ struct KeyboardModule: Module {
     let descriptor: ModuleDescriptor
     let inputSourceSettings: @MainActor () -> InputSourceSettings
     let remapSettings: @MainActor () -> RemapSettings
-    let openLauncher: @MainActor () -> Void
+    let showLauncher: @MainActor (_ toggles: Bool) -> Void
     let inputMemory = AppInputSwitch.Memory()
 
     func start(context: ModuleContext) {
@@ -48,7 +48,7 @@ struct KeyboardModule: Module {
         ) { _ in remapper.stop() }
         let onTap = settings.tap.map { tap in
             { @MainActor (flags: CGEventFlags) in
-                tap.perform(holding: flags, openMado: openLauncher)
+                tap.perform(holding: flags, showMado: showLauncher)
             }
         }
         guard settings.capsLock == .hyper else {

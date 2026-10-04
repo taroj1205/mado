@@ -63,7 +63,7 @@ import Testing
             settings.tapAction = action
             return settings.tap
         }
-        #expect(taps == [nil, .escape, .capsLock, .openMado, .shortcut(shortcut)])
+        #expect(taps == [nil, .escape, .capsLock, .openMado, .toggleMado, .shortcut(shortcut)])
     }
 
     @Test func aShortcutTapNeedsARecordedShortcut() {
