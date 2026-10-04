@@ -151,6 +151,21 @@ import Testing
         #expect(view.widgetGrid.shown.count == 6)
     }
 
+    @Test func aFullStripRefusesAWidgetMovingIntoThePanel() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.widgetLayout = .strip
+        view.widgetSpots = ["7": .leftTop]
+        #expect(!view.widgetGrid.accepts("7", at: .panel))
+        start(dragging: 6)
+        #expect(view.dragWidget("7", at: window(CGPoint(x: 500, y: 300)), from: nil).isEmpty)
+        #expect(view.widgetGrid.refused == .panel)
+        #expect(!view.dropWidget("7"))
+        #expect(edits.isEmpty)
+        view.widgetSpots = ["6": .leftTop, "7": .leftTop]
+        #expect(view.widgetGrid.accepts("7", at: .panel))
+    }
+
     private func start(dragging index: Int) {
         view.widgetGrid.tiles[index].onDragStart?()
     }

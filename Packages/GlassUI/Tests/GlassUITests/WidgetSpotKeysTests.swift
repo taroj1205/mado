@@ -91,6 +91,33 @@ import Testing
         #expect(view.selectedWidget == 1)
     }
 
+    @Test func returnWhileComposingCommitsTheTextInsteadOfMoving() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        _ = try openPicker(on: 0)
+        let editor = try #require(panel.firstResponder as? NSTextView)
+        editor.setMarkedText(
+            "か", selectedRange: NSRange(location: 1, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(editor.hasMarkedText())
+        press(kVK_Return, "\r")
+        #expect(edits.isEmpty)
+        #expect(view.spotPicker != nil)
+    }
+
+    @Test func filteringTheActionsKeepsThePickerInsideTheLauncher() throws {
+        let menu = try openPicker(on: 0)
+        let picker = try #require(view.spotPicker)
+        #expect(abs(picker.glass.frame.maxY - menu.glass.frame.maxY) < 1)
+        press(kVK_ANSI_R, "r")
+        press(kVK_ANSI_E, "e")
+        press(kVK_ANSI_M, "m")
+        view.layoutSubtreeIfNeeded()
+        #expect(menu.rows.count == 1)
+        #expect(picker.glass.frame.minY >= view.bounds.minY)
+        #expect(view.bounds.contains(picker.glass.frame))
+    }
+
     private func openPicker(on index: Int) throws -> ActionPanel {
         view.selectWidget(index)
         press(kVK_ANSI_K, "k", [.command])

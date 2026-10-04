@@ -89,7 +89,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     func control(_: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-        if onCommand?(selector) == true { return true }
+        if !textView.hasMarkedText(), onCommand?(selector) == true { return true }
         switch selector {
         case #selector(NSResponder.moveUp): list.moveSelection(by: -1)
         case #selector(NSResponder.moveDown): list.moveSelection(by: 1)

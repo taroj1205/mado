@@ -51,7 +51,7 @@ extension WidgetGrid {
     ) -> Bool {
         if target == .panel {
             let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
-            return layout != .grid || rows <= maxPanelRows
+            return rows <= (layout == .strip ? 1 : maxPanelRows)
         }
         let side = target.side
         let frames = zip(placed, floatingFrames(of: placed, beside: panel))
@@ -87,7 +87,7 @@ extension WidgetGrid {
         }
         return Self.fits(
             target, inPanel: all.filter { spot($0) == .panel }, placed: placed,
-            layout: layoutInUse, beside: window.frame)
+            layout: tileLayout, beside: window.frame)
     }
 
     func neighbour(of index: Int, toward heading: Heading) -> Int? {
@@ -135,7 +135,7 @@ extension WidgetGrid {
             moving = nil
             order = []
         } else if target != home, target != moving {
-            return move(id, to: target, before: hit?.id, beside: window.frame)
+            return move(id, to: target, before: hit?.id)
         }
         refused = nil
         return reorder(id, at: point, in: window) || editing || moving == target
@@ -203,20 +203,16 @@ extension WidgetGrid {
         return placed.firstIndex { $0.widget.id == dragged }.map { frames[$0] }
     }
 
-    private func move(
-        _ id: String, to target: Spot, before other: String?, beside panel: CGRect
-    ) -> Bool {
-        let previous = (moving, order)
-        var ids = shown.map(\.id).filter { $0 != id }
-        ids.insert(id, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
-        moving = target
-        order = ids
-        guard fits(target, beside: panel) else {
-            (moving, order) = previous
+    private func move(_ id: String, to target: Spot, before other: String?) -> Bool {
+        guard accepts(id, at: target) else {
             refused = target
             return false
         }
+        var ids = shown.map(\.id).filter { $0 != id }
+        ids.insert(id, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
         refused = nil
+        moving = target
+        order = ids
         return true
     }
 
@@ -235,9 +231,5 @@ extension WidgetGrid {
         }
         order = ids
         return target != nil
-    }
-
-    private func fits(_ target: Spot, beside panel: CGRect) -> Bool {
-        Self.fits(target, inPanel: inPanel, placed: placed, layout: layoutInUse, beside: panel)
     }
 }

@@ -33,8 +33,12 @@ extension LauncherView {
             picker.glass.heightAnchor.constraint(equalToConstant: WidgetSpotPicker.size.height),
             picker.glass.trailingAnchor.constraint(
                 equalTo: panel.glass.leadingAnchor, constant: -WidgetSpotPicker.gap),
-            picker.glass.topAnchor.constraint(equalTo: panel.glass.topAnchor),
+            picker.glass.bottomAnchor.constraint(
+                lessThanOrEqualTo: bottomAnchor, constant: -Self.capsuleInset),
         ])
+        let level = picker.glass.topAnchor.constraint(equalTo: panel.glass.topAnchor)
+        level.priority = .defaultHigh
+        level.isActive = true
         spotPicker = picker
         panel.onCommand = { [weak self] selector in self?.pickerCommand(selector) ?? false }
     }
