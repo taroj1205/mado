@@ -168,6 +168,23 @@ import Testing
         #expect(sources.selected == ["com.apple.keylayout.ABC", japanese])
     }
 
+    @Test func lastUsedRestoresItsSourceAfterARoundTripWhileStopped() async {
+        let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        let sources = Sources(current: japanese)
+        let memory = AppInputSwitch.Memory()
+        let paused = Self.makeSwitch(front: "com.apple.MobileSMS", sources, memory: memory)
+        paused.stop(apps: Self.apps)
+        memory.activatedWhileStopped("com.apple.Safari")
+        sources.current = "com.apple.keylayout.ABC"
+        memory.activatedWhileStopped("com.apple.MobileSMS")
+
+        let resumed = Self.makeSwitch(front: nil, sources, memory: memory)
+        resumed.start(in: "com.apple.MobileSMS", apps: Self.apps)
+        await resumed.pending?.value
+
+        #expect(sources.selected == [japanese])
+    }
+
     @Test func lastUsedChangesNothingUntilTheAppHasBeenLeft() async {
         let sources = Sources(current: "com.apple.keylayout.ABC")
         let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)

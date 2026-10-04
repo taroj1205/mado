@@ -13,6 +13,7 @@ struct KeyboardModule: Module {
     let inputMemory = AppInputSwitch.Memory()
 
     func start(context: ModuleContext) {
+        AppInputSwitch.trackActivationsWhileStopped(context: context, memory: inputMemory)
         context.startKeyFeatures {
             context.installWhenTrusted("input mode taps") { installTap(context) }
             AppInputSwitch.install(

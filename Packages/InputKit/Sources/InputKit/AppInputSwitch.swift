@@ -11,6 +11,12 @@ public final class AppInputSwitch {
         public init() {
             lastUsed = [:]
         }
+
+        func activatedWhileStopped(_ app: String?) {
+            if app != stoppedIn {
+                stoppedIn = nil
+            }
+        }
     }
 
     private static let settleMilliseconds = 150
@@ -41,6 +47,20 @@ public final class AppInputSwitch {
         let switcher = Self(
             front: nil, current: { InputSource.currentID }, select: InputSource.select,
             settle: .milliseconds(settleMilliseconds), memory: memory)
+        observeActivations(in: context) { app in switcher.activated(app, apps: settings().apps) }
+        context.own(.task, "input source switch") {
+            switcher.stop(apps: settings().apps)
+        }
+        switcher.start(in: frontmost, apps: settings().apps)
+    }
+
+    public static func trackActivationsWhileStopped(context: ModuleContext, memory: Memory) {
+        observeActivations(in: context) { app in memory.activatedWhileStopped(app) }
+    }
+
+    private static func observeActivations(
+        in context: ModuleContext, handler: @escaping @MainActor (String?) -> Void
+    ) {
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
             on: NSWorkspace.shared.notificationCenter,
@@ -48,11 +68,7 @@ public final class AppInputSwitch {
                 let key = NSWorkspace.applicationUserInfoKey
                 return (notification.userInfo?[key] as? NSRunningApplication)?.bundleIdentifier
             },
-            handler: { app in switcher.activated(app, apps: settings().apps) })
-        context.own(.task, "input source switch") {
-            switcher.stop(apps: settings().apps)
-        }
-        switcher.start(in: frontmost, apps: settings().apps)
+            handler: handler)
     }
 
     func start(in app: String?, apps: [String: AppInput]) {
