@@ -178,7 +178,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
             collection.scrollToItems(at: [indexPath], scrollPosition: Self.revealing)
         }
         let section = indexPath.map { sections[$0.section].title }
-        tabBar.highlight(tabs.firstIndex { $0.section == section } ?? (tabs.isEmpty ? nil : 0))
+        tabBar.highlight(tabs.firstIndex { $0.section == section })
         onSelect?(selectedItem)
     }
 

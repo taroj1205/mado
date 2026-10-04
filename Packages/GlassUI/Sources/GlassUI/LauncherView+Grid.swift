@@ -46,8 +46,7 @@ extension LauncherView {
             default: nil
             }
         guard let direction else { return false }
-        emojiGrid.move(direction)
-        return true
+        return emojiGrid.move(direction) || direction == .above || direction == .below
     }
 
     private func pressTab(_ tab: EmojiGrid.Tab) {

@@ -53,12 +53,14 @@ import Testing
     }
 
     @Test func dimmedRowsFadeAndTheirComparisonExplainsWhy() throws {
+        view.capsuleSlots = [.primary, .keyed(LauncherView.Action.secondaryKeys)]
         view.enter(placeholder: "Filter tools", detail: .comparison(Self.comparison))
         view.show([.init(title: "Text Tools", items: [Self.tool("Trim", dimmed: true)])])
         view.layoutSubtreeIfNeeded()
         let cell = view.results.table.view(atColumn: 0, row: 1, makeIfNecessary: true)
 
         #expect(cell?.alphaValue == 0.45)
+        #expect(view.actionCapsule.isHidden)
         let before = try AttributedString(
             view.comparisonPane.before.text.attributedStringValue, including: \.appKit)
         let struck = before.runs.filter { $0.appKit.strikethroughStyle != nil }

@@ -138,6 +138,22 @@ import Testing
         #expect(view.selectedItem?.title == "purple")
     }
 
+    @Test func anEmptyGridLetsLeftAndRightMoveTheCaret() {
+        let notice = ResultList.Notice(title: "No emoji match “zz”", detail: "")
+        view.show([.init(title: "", items: [], notice: notice)], gridHome: ":")
+
+        #expect(!view.gridCommand(#selector(NSResponder.moveLeft)))
+        #expect(view.gridCommand(#selector(NSResponder.moveDown)))
+    }
+
+    @Test func aMatchingSectionHighlightsNoTab() {
+        view.emojiGrid.tabs = [.init(title: "Recent", symbol: "clock", section: "Recently used")]
+        view.show(Self.sections(), gridHome: ":")
+
+        let tabs = view.emojiGrid.tabBar.arrangedSubviews.compactMap { $0 as? EmojiTab }
+        #expect(tabs.allSatisfy { !$0.isOn })
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

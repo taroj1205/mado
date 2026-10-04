@@ -42,8 +42,9 @@ extension LauncherView {
             } else {
                 capsuleSlots
             }
-        arrangeCapsule(slots.map { capsuleGroup($0, primary: action, for: item) })
-        actionCapsule.isHidden = action == nil
+        let groups = slots.map { capsuleGroup($0, primary: action, for: item) }
+        arrangeCapsule(groups)
+        actionCapsule.isHidden = action == nil || groups.allSatisfy(\.isEmpty)
         showContext()
     }
 
