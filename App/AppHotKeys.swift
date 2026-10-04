@@ -1,7 +1,6 @@
 import AppKit
 import GlassUI
 import SearchKit
-import UniformTypeIdentifiers
 import WindowKit
 
 @MainActor
@@ -84,13 +83,8 @@ final class AppHotKeys: NSObject {
 
     @objc
     private func addApp(_ sender: NSButton) {
-        guard let window = unsafe sender.window else { return }
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.application]
-        panel.directoryURL = URL(filePath: "/Applications")
-        panel.prompt = "Add"
-        panel.beginSheetModal(for: window) { [weak self, weak sender] response in
-            guard response == .OK, let app = panel.url, let sender else { return }
+        AppPicker.pick(from: sender) { [weak self, weak sender] app in
+            guard let sender else { return }
             self?.recorder.record(app.path, named: Self.name(of: app), from: sender)
         }
     }

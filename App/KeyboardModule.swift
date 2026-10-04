@@ -6,9 +6,11 @@ struct KeyboardModule: Module {
     static let id = "keyboard"
 
     let descriptor: ModuleDescriptor
+    let inputSourceSettings: @MainActor () -> InputSourceSettings
 
     func start(context: ModuleContext) {
         context.installWhenTrusted("input mode taps") { installTap(context) }
+        AppInputSwitch.install(context: context, settings: inputSourceSettings)
     }
 
     func stop() {
