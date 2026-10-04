@@ -129,7 +129,7 @@ final class EmojiPicker: NSObject {
             let notice = ResultList.Notice(
                 title: "No emoji match “\(needle)”",
                 detail: "Try another word, like heart or smile.")
-            return sections + [ResultList.Section(title: "", items: [], notice: notice)]
+            return [ResultList.Section(title: "", items: [], notice: notice)]
         }
         var matching = section("Matching “\(needle)”", found, action: action, at: sections.count)
         matching.selectsFirst = true

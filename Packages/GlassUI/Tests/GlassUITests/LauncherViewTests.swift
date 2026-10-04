@@ -35,9 +35,9 @@ import Testing
         #expect(view.field.stringValue.isEmpty)
     }
 
-    @Test func theSearchFieldSharesFocusWithTheResults() {
-        let shared = view.field.accessibilitySharedFocusElements() as? [NSTableView]
-        #expect(shared == [view.results.table])
+    @Test func theSearchFieldSharesFocusWithTheResultsAndTheEmojiGrid() {
+        let shared = view.field.accessibilitySharedFocusElements() as? [NSView]
+        #expect(shared == [view.results.table, view.emojiGrid.collection])
     }
 
     @Test func returnRunsThePrimaryActionAndCommandReturnTheSecondary() {

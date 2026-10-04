@@ -109,6 +109,22 @@ import Testing
         #expect(view.emojiGrid.tabBar.arrangedSubviews.count == 1)
     }
 
+    @Test func movingDownKeepsTheSelectedEmojiOnScreen() throws {
+        let many = (0..<240).map { Self.emoji("😀", "face\($0)") }
+        view.show([.init(title: "Smileys", items: many)], gridHome: "")
+        view.layoutSubtreeIfNeeded()
+        for _ in 0..<12 {
+            press(kVK_DownArrow, "\u{F701}")
+        }
+        view.layoutSubtreeIfNeeded()
+        let grid = view.emojiGrid.collection
+        let selected = try #require(grid.selectionIndexPaths.first)
+        let frame = try #require(grid.layoutAttributesForItem(at: selected)?.frame)
+
+        #expect(selected.item == 144)
+        #expect(grid.visibleRect.intersects(frame))
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

@@ -157,7 +157,7 @@ public final class LauncherView: NSView {
         actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         statusBar.onPress = { [weak self] index in self?.pressPill(index) }
         statusBar.customise.onPress = { [weak self] in self?.toggleCustomiser() }
-        field.setAccessibilitySharedFocusElements([results.table])
+        field.setAccessibilitySharedFocusElements([results.table, emojiGrid.collection])
         showAction(of: nil)
     }
 

@@ -25,6 +25,9 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
     static let gap: CGFloat = 4
     static let side: CGFloat = 8
     static let headerHeight: CGFloat = 33
+    private static let revealing: NSCollectionView.ScrollPosition = [
+        .nearestHorizontalEdge, .nearestVerticalEdge,
+    ]
     private static let tabRowHeight: CGFloat = 42
     private static let tabInset: CGFloat = 12
     private static let tabGap: CGFloat = 2
@@ -154,7 +157,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
         if kept == nil {
             scroll.contentView.scroll(to: .zero)
             if let selected {
-                collection.scrollToItems(at: [selected], scrollPosition: .nearestHorizontalEdge)
+                collection.scrollToItems(at: [selected], scrollPosition: Self.revealing)
             }
         }
     }
@@ -172,7 +175,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
         selected = indexPath
         collection.selectionIndexPaths = Set([indexPath].compactMap(\.self))
         if let indexPath {
-            collection.scrollToItems(at: [indexPath], scrollPosition: .nearestHorizontalEdge)
+            collection.scrollToItems(at: [indexPath], scrollPosition: Self.revealing)
         }
         let section = indexPath.map { sections[$0.section].title }
         tabBar.highlight(tabs.firstIndex { $0.section == section } ?? (tabs.isEmpty ? nil : 0))
