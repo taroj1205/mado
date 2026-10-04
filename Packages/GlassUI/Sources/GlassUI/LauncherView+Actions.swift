@@ -102,9 +102,13 @@ extension LauncherView {
 
     func holdsForResults(_ event: NSEvent) -> Bool {
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
-            shortcutKeys.contains(where: { Action.keys($0, match: event) })
+            (shortcutKeys + [Self.previewKeys]).contains(where: { Action.keys($0, match: event) })
         else { return false }
-        return waitsForResults { _ = $0.performKeyEquivalent(with: event) }
+        return waitsForResults { view in
+            if !view.performKeyEquivalent(with: event) {
+                view.passKeyOn(event)
+            }
+        }
     }
 
     func runActionShortcut(_ event: NSEvent) -> Bool {

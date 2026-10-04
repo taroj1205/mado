@@ -19,7 +19,7 @@ import Testing
             [.init("Open", keys: ["↵"]), .init("Show in Finder", keys: ["⌘", "↵"])]
                 + (item.id == "Notes" ? [.init("Show Info", keys: ["⌘", "I"])] : [])
         }
-        view.shortcutKeys = [["⌘", "I"], ["⌘", "1"]]
+        view.shortcutKeys = [["⌘", "I"], ["⌘", "1"], ["⌘", "Q"]]
         panel.makeFirstResponder(view.field)
     }
 
@@ -70,6 +70,16 @@ import Testing
             action: "Copy RGB", shortcut: ["⌘", "1"])
         view.show([results("Notes"), .init(title: "Copy as", items: [copy])])
         #expect(runs == ["rgb 0"])
+    }
+
+    @Test func aHeldKeyNoRowTakesGoesOnToTheMenu() {
+        var passed: [String] = []
+        view.passKeyOn = { passed.append($0.charactersIgnoringModifiers ?? "") }
+        press(kVK_ANSI_N, "n")
+        press(kVK_ANSI_Q, "q", [.command])
+        #expect(passed.isEmpty)
+        view.show([results("Notes")])
+        #expect(passed == ["q"])
     }
 
     @Test func aWidgetPickedBeforeTheResultsArriveIsLetGo() {

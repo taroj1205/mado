@@ -12,6 +12,7 @@ public final class LauncherView: NSView {
     static let capsuleInset: CGFloat = 10
     static let previewHint = "⌘Y to preview"
     static let previewSymbol = "eye"
+    static let previewKeys = ["⌘", "Y"]
     static let returnKeys: Set<String?> = ["\r", "\u{3}"]
     static let modifierKeys: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -63,6 +64,7 @@ public final class LauncherView: NSView {
     var actionPanel: ActionPanel?
     private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
+    var passKeyOn = { (event: NSEvent) in _ = NSApp.mainMenu?.performKeyEquivalent(with: event) }
     var rootQuery: String?
     var shownQuery = (text: "", scoped: false)
     var afterResults: (() -> Void)?
