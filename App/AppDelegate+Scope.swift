@@ -88,6 +88,7 @@ extension AppDelegate {
         if !visible {
             showLauncher()
         }
+        editor.close()
         clipboardScoped = true
         launcherView.enter(
             placeholder: ClipboardHistory.placeholder, filter: clipboardHistory.filter
