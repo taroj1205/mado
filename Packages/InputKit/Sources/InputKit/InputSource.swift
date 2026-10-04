@@ -51,6 +51,18 @@ public struct InputSource: Sendable {
     }
 
     @MainActor
+    public static func selectNext() {
+        if let nextID = next(after: currentID, in: enabled.map(\.id)) {
+            select(nextID)
+        }
+    }
+
+    static func next(after current: String?, in ids: [String]) -> String? {
+        guard let index = current.flatMap(ids.firstIndex) else { return ids.first }
+        return ids[(index + 1) % ids.count]
+    }
+
+    @MainActor
     static func select(_ source: TISInputSource) {
         guard string(source, kTISPropertyInputSourceID) != currentID else { return }
         TISSelectInputSource(source)

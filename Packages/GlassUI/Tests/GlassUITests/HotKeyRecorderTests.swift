@@ -180,4 +180,31 @@ import Testing
                 == "Option Space")
         #expect(HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_F5), modifiers: [])) == "F5")
     }
+
+    @Test func resetStartsOverAndClearShowsOnlyWhenAsked() throws {
+        let recorder = HotKeyRecorder()
+        recorder.keyDown(with: try event(.keyDown, kVK_F5, []))
+        recorder.reset()
+        #expect(recorder.state == .waiting)
+        #expect(descendant(NSButton.self, in: recorder) == nil)
+
+        var cleared = 0
+        recorder.onClear = { cleared += 1 }
+        let clear = try #require(descendant(NSButton.self, in: recorder))
+        #expect(clear.title == "Clear")
+        clear.performClick(nil)
+        #expect(cleared == 1)
+    }
+
+    @Test func aHotKeyButtonShowsAModifierTapWithItsSide() {
+        let button = HotKeyButton()
+        button.hotKey = .modifierTap(.rightCommand)
+        #expect(button.accessibilityValue() as? String == "Right ⌘ tap")
+        #expect(button.shortcut == nil)
+
+        button.shortcut = Shortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: .option)
+        #expect(
+            button.hotKey == .shortcut(Shortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: .option)))
+        #expect(button.accessibilityValue() as? String == "⌥ S")
+    }
 }

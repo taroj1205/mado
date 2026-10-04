@@ -17,4 +17,19 @@ import Testing
         #expect(plain != shifted)
         #expect(Set([plain, shifted, plain]).count == 2)
     }
+
+    @Test func storesAModifierTapByItsSide() throws {
+        let data = try JSONEncoder().encode(HotKey.modifierTap(.rightCommand))
+        let json = try #require(String(data: data, encoding: .utf8))
+
+        #expect(json == #"{"modifier_tap":"right_command"}"#)
+        #expect(try JSONDecoder().decode(HotKey.self, from: data) == .modifierTap(.rightCommand))
+    }
+
+    @Test func storesAShortcutHotKey() throws {
+        let hotKey = HotKey.shortcut(Shortcut(keyCode: 49, modifiers: [.control, .option]))
+        let decoded = try JSONDecoder().decode(HotKey.self, from: JSONEncoder().encode(hotKey))
+
+        #expect(decoded == hotKey)
+    }
 }

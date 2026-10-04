@@ -25,8 +25,15 @@ public final class HotKeyButton: NSView {
     static let border = adaptive(borderAlpha)
     private static let keycapFill = adaptive(keycapAlpha)
 
-    public var shortcut: Shortcut? {
+    public var hotKey: HotKey? {
         didSet { render() }
+    }
+    public var shortcut: Shortcut? {
+        get {
+            guard case .shortcut(let shortcut) = hotKey else { return nil }
+            return shortcut
+        }
+        set { hotKey = newValue.map(HotKey.shortcut) }
     }
     public var onPress: (() -> Void)?
     public var showsRecording = false {
@@ -41,6 +48,7 @@ public final class HotKeyButton: NSView {
 
     private let content = NSStackView()
     private let prompt = NSTextField(labelWithString: "")
+    private let tapSuffix = NSTextField(labelWithString: "tap")
     private let dot = NSBox()
     private var systemHotKeys = SystemHotKeyPause()
 
@@ -52,6 +60,8 @@ public final class HotKeyButton: NSView {
     public init() {
         super.init(frame: .zero)
         prompt.font = .systemFont(ofSize: Self.fontSize)
+        tapSuffix.font = .systemFont(ofSize: Self.fontSize)
+        tapSuffix.textColor = .secondaryLabelColor
         Self.layOut(content, in: self, dot: dot)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
@@ -202,14 +212,19 @@ public final class HotKeyButton: NSView {
             setAccessibilityValue(prompt.stringValue)
             return
         }
-        guard let shortcut else {
+        guard let hotKey else {
             prompt.stringValue = isRecording ? "Press keys…" : "Record Hotkey"
             content.setViews([prompt], in: .leading)
             setAccessibilityValue(prompt.stringValue)
             return
         }
-        let keys = HotKeyLabel.keycaps(.shortcut(shortcut))
-        content.setViews(Self.keycaps(keys), in: .leading)
+        var keys = HotKeyLabel.keycaps(hotKey)
+        var views = Self.keycaps(keys)
+        if case .modifierTap = hotKey {
+            keys.append(tapSuffix.stringValue)
+            views.append(tapSuffix)
+        }
+        content.setViews(views, in: .leading)
         setAccessibilityValue(HotKeyLabel.spoken(text: keys.joined(separator: " ")))
     }
 }

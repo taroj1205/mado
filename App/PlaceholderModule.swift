@@ -30,7 +30,7 @@ extension ModuleDescriptor {
 
         case KeyboardModule.id:
             KeyboardModule(
-                descriptor: self,
+                descriptor: self, hotKeys: hotKeys,
                 inputSourceSettings: { [weak modules] in .load(from: modules) },
                 remapSettings: { [weak modules] in .load(from: modules) },
                 showLauncher: showLauncher)

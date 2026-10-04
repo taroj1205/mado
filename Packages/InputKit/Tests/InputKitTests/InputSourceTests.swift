@@ -31,4 +31,14 @@ import Testing
 
         #expect(InputSource.currentTypesASCII == isCurrent)
     }
+
+    @Test func nextSourceWrapsAroundAndStartsAtTheFirstWhenTheCurrentIsUnknown() {
+        let ids = ["abc", "kana", "us"]
+
+        #expect(InputSource.next(after: "abc", in: ids) == "kana")
+        #expect(InputSource.next(after: "us", in: ids) == "abc")
+        #expect(InputSource.next(after: "gone", in: ids) == "abc")
+        #expect(InputSource.next(after: nil, in: ids) == "abc")
+        #expect(InputSource.next(after: "abc", in: []) == nil)
+    }
 }
