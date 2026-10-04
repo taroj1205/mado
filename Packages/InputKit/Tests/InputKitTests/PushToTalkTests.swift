@@ -181,4 +181,30 @@ import Testing
         }
         #expect(inbox.events == [.started])
     }
+
+    @MainActor
+    @Test func aSecondPressBeforeTheTapArrivesStopsTheRecording() async throws {
+        let inbox = Inbox()
+        let observe = PushToTalk.observe(
+            .rightOption, window: ModifierTap.defaultWindow,
+            isActive: { [.started, .toggled].contains(inbox.events.last) },
+            onEvent: { inbox.events.append($0) })
+        let held: CGEventFlags = [
+            .maskAlternate, CGEventFlags(rawValue: ModifierTap.Key.rightOption.flag),
+        ]
+        for (isDown, milliseconds) in [(true, 0), (false, 80), (true, 160)] {
+            let event = try #require(
+                CGEvent(
+                    keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_RightOption),
+                    keyDown: isDown))
+            event.flags = isDown ? held : []
+            event.timestamp = CGEventTimestamp(1_000 + milliseconds) * 1_000_000
+            observe(.flagsChanged, event)
+        }
+        #expect(inbox.events.isEmpty)
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        #expect(inbox.events == [.started, .toggled, .stopped])
+    }
 }
