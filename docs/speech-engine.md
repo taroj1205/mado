@@ -9,7 +9,7 @@ Which engine Mado's dictation runs on, and the measurements behind the choice. M
 - It is within about one point of the most accurate engine in both languages: 6.4% CER in Japanese and 4.9% WER in English.
 - It finds the language by itself. It picked the right one on all 10 clips, which is what the "Auto-detect (English, 日本語)" setting on the Speech-model manager board needs. Apple's transcriber needs the language before you speak, and gives back nonsense when it's the wrong one.
 - It runs in about 1.9 GB of memory and turns a 14-second recording into text in under half a second.
-- whisper.cpp is MIT licensed, and so are the Whisper weights. Its builds publish a prebuilt XCFramework (`whisper-b5130-xcframework.zip` came out with 1.9.4) that Swift Package Manager can use as a binary target. Models are separate files, so they fit the download, choose and delete flow of M4-12.
+- whisper.cpp is MIT licensed, and so are the Whisper weights. Its builds publish a prebuilt XCFramework (`whisper-b5130-xcframework.zip` came out with 1.9.4) that Swift Package Manager can use as a binary target. It is built for macOS 13.3 and later. Swift 6.4 from Xcode 27, in Swift 6 language mode, called its C API and transcribed a Japanese and an English clip, with the language auto-detected. Models are separate files, so they fit the download, choose and delete flow of M4-12.
 
 Not chosen:
 
@@ -65,6 +65,7 @@ Most Japanese errors are rare words: カタルーニャ, 口蓋, 歯列 and 磁�
 - **Whisper small isn't a good default for Japanese.** The Speech-model manager board marks it "recommended", but it was the least accurate in Japanese here. The board's "best for Japanese" label on Large v3 Turbo matches the results. Which model is the default is M4-12's call; this is the evidence for it.
 - **There are no partial results.** whisper.cpp transcribes after you let go of the hotkey, so text appears in one go, 0.3–0.4 s after letting go on this Mac. Apple's transcriber can stream partial text while you speak.
 - **Memory stays used while the model is loaded.** Large-v3-turbo holds about 1.9 GB until it is unloaded. Unloading after a while idle gives that back, at the cost of the 0.5 s load on the next use.
+- **Load the ggml backends first.** whisper.cpp built with dynamically loaded backends, like the Homebrew build, aborts in `whisper_init_from_file_with_params` unless `ggml_backend_load_all()` runs first. `whisper-cli` does this itself. The XCFramework build wasn't checked.
 - **Apple DictationTranscriber quirk.** With the `.shortDictation` preset it never marks a result final, even after `finalizeAndFinish(through:)`. The last result arrives with `isFinal == false` and then the stream ends. Code that keeps only final results gets an empty string.
 
 ## Researched, not measured
@@ -81,6 +82,21 @@ Most Japanese errors are rare words: カタルーニャ, 口蓋, 歯列 and 磁�
 - **Mixed Japanese and English in one sentence**, such as English product names inside Japanese speech.
 - **Live microphone input, noise and distance.** FLEURS clips are read speech recorded close to the microphone.
 - **More speakers.** All five Japanese clips are male voices, and the English clips are two male and three female. FLEURS doesn't say whether clips share a speaker.
+
+## Sources
+
+- [whisper.cpp README, "XCFramework"](https://github.com/ggml-org/whisper.cpp/tree/v1.9.4#xcframework): the prebuilt XCFramework is meant for Swift projects through a `binaryTarget`. Adopted as the way to ship it.
+- [whisper.cpp `build-xcframework.sh` at v1.9.4](https://github.com/ggml-org/whisper.cpp/blob/v1.9.4/build-xcframework.sh): `MACOS_MIN_OS_VERSION=13.3`, so the framework runs on Mado's macOS 26.
+- [whisper.cpp releases](https://github.com/ggml-org/whisper.cpp/releases): the 1.9.4 tag has no assets of its own. Build b5130, released the same day, carries `whisper-b5130-xcframework.zip`.
+- [whisper.cpp LICENSE](https://github.com/ggml-org/whisper.cpp/blob/v1.9.4/LICENSE) and [OpenAI Whisper README, "License"](https://github.com/openai/whisper#license): the library is MIT, and Whisper's code and model weights are MIT.
+- [`SpeechTranscriber`](https://developer.apple.com/documentation/speech/speechtranscriber) and [`isAvailable`](https://developer.apple.com/documentation/speech/speechtranscriber/isavailable): the general-purpose model. It depends on the device's hardware, and Apple suggests DictationTranscriber where it isn't available. It takes a locale up front, with no auto-detect option in the SDK's interface.
+- [`DictationTranscriber`](https://developer.apple.com/documentation/speech/dictationtranscriber): the same models as system dictation and on-device `SFSpeechRecognizer`. It is the transcriber Apple documents for custom vocabulary and contextual strings.
+- [`AnalysisContext.contextualStrings`](https://developer.apple.com/documentation/speech/analysiscontext/contextualstrings): documented for DictationTranscriber only, up to 100 short phrases. This is why Apple's custom-word support counted against SpeechTranscriber.
+- [`SpeechAnalyzer`](https://developer.apple.com/documentation/speech/speechanalyzer): `prepareToAnalyze(in:)` preloads the model, and `start(inputAudioFile:finishAfterFile:)` and the `finalize…` methods end a session. These are what the measurements used. Apple's interfaces were read from the Speech framework in the Xcode 27 macOS SDK.
+- [Qwen3-ASR-1.7B model card](https://huggingface.co/Qwen/Qwen3-ASR-1.7B): Apache-2.0.
+- [FLEURS dataset card](https://huggingface.co/datasets/google/fleurs): the clips and reference transcripts, CC BY 4.0.
+
+The Japanese and English accuracy ranking comes from this document's own measurements, not from published leaderboards. Published FLEURS results were only used to pick which models to measure.
 
 ## How it was measured
 
