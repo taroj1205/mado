@@ -132,13 +132,13 @@ enum LauncherResult {
     }
 
     static func result(for id: String, in sources: Sources) -> Self? {
-        if let file = sources.files.files.first(where: { $0.url.path == id }) {
+        if let file = sources.files.file(atPath: id) {
             return .file(file)
         }
         if let pane = SettingsPane.all.first(where: { $0.id == id }) {
             return .pane(pane)
         }
-        if let app = sources.apps.apps.first(where: { $0.url.path == id }) {
+        if let app = sources.apps.app(atPath: id) {
             return .app(app)
         }
         if let link = sources.quicklinks.first(where: { $0.id == id }) {

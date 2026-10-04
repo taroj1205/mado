@@ -23,10 +23,13 @@ public final class FileIndex {
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
     ]
 
-    public private(set) var files: [File] = []
+    public private(set) var files: [File] = [] {
+        didSet { byPath = Dictionary(files.map { ($0.url.path, $0) }) { first, _ in first } }
+    }
     public var onChange: (() -> Void)?
 
     private let logger = Log.logger("FileIndex")
+    private var byPath: [String: File] = [:]
     private let folders: [URL]
     private var watcher: FolderWatcher?
     private(set) var scan: Task<Void, Never>?
@@ -85,6 +88,10 @@ public final class FileIndex {
         let week = calendar.date(byAdding: .day, value: -daysShownAsWeekday, to: today) ?? today
         if edited >= week { return edited.formatted(style.weekday()) }
         return edited.formatted(style.day().month().year())
+    }
+
+    public func file(atPath path: String) -> File? {
+        byPath[path]
     }
 
     public func start() {
