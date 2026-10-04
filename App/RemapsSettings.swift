@@ -11,7 +11,7 @@ final class RemapsSettings: NSObject {
     ]
     private static let tapChoices: [(action: RemapSettings.TapAction, title: String)] = [
         (.nothing, "Nothing"), (.escape, "Escape"), (.capsLock, "Caps Lock"),
-        (.openMado, "Open Mado"), (.shortcut, "Shortcut…"),
+        (.openMado, "Open Mado"), (.toggleMado, "Toggle Mado"), (.shortcut, "Shortcut…"),
     ]
     private static let controlGap: CGFloat = 10
     private static let tileSize: CGFloat = 26

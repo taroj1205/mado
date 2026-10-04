@@ -98,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     descriptor.makeModule(
                         in: manager, hotKeys: registry, clipboardHistory: clipboardHistory,
                         snippets: library
-                    ) { [weak self] in self?.showLauncher() })
+                    ) { [weak self] in $0 ? self?.toggleLauncher() : self?.showLauncher() })
             }
             try manager.startEnabledModules()
             return manager

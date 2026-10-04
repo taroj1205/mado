@@ -18,6 +18,7 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         case escape = "escape"
         case capsLock = "caps_lock"
         case openMado = "open_mado"
+        case toggleMado = "toggle_mado"
         case shortcut = "shortcut"
     }
 
@@ -38,6 +39,7 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         case .escape: return .escape
         case .capsLock: return .capsLock
         case .openMado: return .openMado
+        case .toggleMado: return .toggleMado
         case .shortcut: return tapShortcut.map(CapsLockTap.shortcut)
         }
     }

@@ -10,6 +10,7 @@ public enum CapsLockTap: Equatable, Sendable {
     case escape
     case openMado
     case shortcut(Shortcut)
+    case toggleMado
 
     static let marker: Int64 = 0x4D61_646F
 
@@ -53,7 +54,9 @@ public enum CapsLockTap: Equatable, Sendable {
     }
 
     @MainActor
-    public func perform(holding flags: CGEventFlags, openMado: @MainActor () -> Void) {
+    public func perform(
+        holding flags: CGEventFlags, showMado: @MainActor (_ toggles: Bool) -> Void
+    ) {
         guard !IsSecureEventInputEnabled() else { return }
         switch self {
         case .escape:
@@ -64,7 +67,10 @@ public enum CapsLockTap: Equatable, Sendable {
             Self.toggleCapsLock()
 
         case .openMado:
-            openMado()
+            showMado(false)
+
+        case .toggleMado:
+            showMado(true)
 
         case .shortcut(let shortcut):
             Self.keyStrokes(

@@ -18,7 +18,7 @@ extension ModuleDescriptor {
     @MainActor
     func makeModule(
         in modules: ModuleManager, hotKeys: HotKeyRegistry?, clipboardHistory: ClipboardHistory,
-        snippets: Snippets, openLauncher: @escaping @MainActor () -> Void
+        snippets: Snippets, showLauncher: @escaping @MainActor (_ toggles: Bool) -> Void
     ) -> any Module {
         switch id {
         case ClipboardModule.id:
@@ -33,7 +33,7 @@ extension ModuleDescriptor {
                 descriptor: self,
                 inputSourceSettings: { [weak modules] in .load(from: modules) },
                 remapSettings: { [weak modules] in .load(from: modules) },
-                openLauncher: openLauncher)
+                showLauncher: showLauncher)
 
         case WindowsModule.id:
             WindowsModule(
