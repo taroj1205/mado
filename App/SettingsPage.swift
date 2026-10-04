@@ -15,6 +15,7 @@ struct SettingsPage {
         let clipboardHistory: ClipboardHistorySettings
         let ignoredApps: AppListSettings
         let withoutExpansion: AppListSettings
+        let inputKeys: InputSourceKeys
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
         let gallery: WidgetGalleryWindow
@@ -106,7 +107,7 @@ struct SettingsPage {
             module: module("keyboard", "Keyboard", enabled: true),
             tabs: [
                 Tab(title: "Modifier Keys", sections: nil),
-                Tab(title: "Input Sources") { [$0.inputDefaults.section] },
+                Tab(title: "Input Sources") { $0.inputKeys.sections + [$0.inputDefaults.section] },
                 Tab(title: "Enter Guard", sections: nil),
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),

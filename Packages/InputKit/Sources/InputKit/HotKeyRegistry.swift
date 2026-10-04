@@ -64,6 +64,15 @@ public final class HotKeyRegistry {
         return HotKeyRegistration(id: id)
     }
 
+    public func accepts(_ shortcut: Shortcut) -> Bool {
+        guard !entries.values.contains(where: { $0.shortcut == shortcut }) else { return false }
+        let status = backend.register(shortcut, id: nextID)
+        if status == 0 {
+            backend.unregister(id: nextID)
+        }
+        return status == 0
+    }
+
     public func unregister(_ registration: HotKeyRegistration) {
         if entries.removeValue(forKey: registration.id) != nil, !isSuspended {
             backend.unregister(id: registration.id)

@@ -78,7 +78,10 @@ import Testing
         let recorder = HotKeyRecorder()
         var saved: [HotKey] = []
         recorder.systemConflict = { $0 == Self.commandSpace ? "Spotlight" : nil }
-        recorder.onSave = { saved.append($0) }
+        recorder.onSave = { hotKey in
+            saved.append(hotKey)
+            return nil
+        }
         recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
         #expect(recorder.state == .conflict(Self.commandSpace, "Spotlight"))
         recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
@@ -90,7 +93,10 @@ import Testing
         var cancelled = 0
         var saved: [HotKey] = []
         recorder.onCancel = { cancelled += 1 }
-        recorder.onSave = { saved.append($0) }
+        recorder.onSave = { hotKey in
+            saved.append(hotKey)
+            return nil
+        }
         recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
         #expect(saved.isEmpty)
         recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
@@ -179,5 +185,47 @@ import Testing
             HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_Space), modifiers: [.option]))
                 == "Option Space")
         #expect(HotKeyLabel.spoken(Shortcut(keyCode: UInt32(kVK_F5), modifiers: [])) == "F5")
+    }
+
+    @Test func resetStartsOverAndClearShowsOnlyWhenAsked() throws {
+        let recorder = HotKeyRecorder()
+        recorder.keyDown(with: try event(.keyDown, kVK_F5, []))
+        recorder.reset()
+        #expect(recorder.state == .waiting)
+        #expect(descendant(NSButton.self, in: recorder) == nil)
+
+        var cleared = 0
+        recorder.onClear = { cleared += 1 }
+        let clear = try #require(descendant(NSButton.self, in: recorder))
+        #expect(clear.title == "Clear")
+        clear.performClick(nil)
+        #expect(cleared == 1)
+    }
+
+    @Test func aHotKeyButtonShowsAModifierTapWithItsSide() {
+        let button = HotKeyButton()
+        button.hotKey = .modifierTap(.rightCommand)
+        #expect(button.accessibilityValue() as? String == "Right ⌘ tap")
+        #expect(button.shortcut == nil)
+
+        button.shortcut = Shortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: .option)
+        #expect(
+            button.hotKey == .shortcut(Shortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: .option)))
+        #expect(button.accessibilityValue() as? String == "⌥ S")
+    }
+
+    @Test func aRefusedSaveKeepsTheRecorderOpenWithTheReason() throws {
+        let recorder = HotKeyRecorder()
+        let reason = "macOS wouldn’t register this hotkey. Try another."
+        var attempts = 0
+        recorder.onSave = { _ in
+            attempts += 1
+            return reason
+        }
+        recorder.keyDown(with: try event(.keyDown, kVK_Space, .command))
+        recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
+        #expect(recorder.state == .refused(Self.commandSpace, reason))
+        recorder.keyDown(with: try event(.keyDown, kVK_Return, []))
+        #expect(attempts == 1)
     }
 }

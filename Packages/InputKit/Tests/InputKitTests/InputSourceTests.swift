@@ -31,4 +31,28 @@ import Testing
 
         #expect(InputSource.currentTypesASCII == isCurrent)
     }
+
+    @Test func nextSourceWrapsAroundAndStartsAtTheFirstWhenTheCurrentIsUnknown() {
+        let ids = ["abc", "kana", "us"]
+        let later = ContinuousClock.now + .seconds(5)
+
+        for (current, expected) in [("abc", "kana"), ("us", "abc"), ("gone", "abc")] {
+            var cycle = InputCycle()
+            #expect(cycle.next(after: current, in: ids, at: later) == expected)
+        }
+        var cycle = InputCycle()
+        #expect(cycle.next(after: nil, in: ids, at: later) == "abc")
+        #expect(cycle.next(after: "abc", in: [], at: later) == nil)
+    }
+
+    @Test func aQuickSecondTapMovesOnWhileTheSystemStillReportsTheOldSource() {
+        let ids = ["abc", "kana", "us"]
+        let start = ContinuousClock.now
+        var cycle = InputCycle()
+
+        #expect(cycle.next(after: "abc", in: ids, at: start) == "kana")
+        #expect(cycle.next(after: "abc", in: ids, at: start + .milliseconds(300)) == "us")
+        #expect(cycle.next(after: "us", in: ids, at: start + .milliseconds(600)) == "abc")
+        #expect(cycle.next(after: "abc", in: ids, at: start + .seconds(3)) == "kana")
+    }
 }

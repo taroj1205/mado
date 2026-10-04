@@ -52,6 +52,21 @@ public struct ModifierTap {
             self.init(keys: [key], count: count)
         }
 
+        public init(_ key: HotKey.ModifierKey) {
+            let tapped: Key =
+                switch key {
+                case .leftCommand: .leftCommand
+                case .rightCommand: .rightCommand
+                case .leftShift: .leftShift
+                case .rightShift: .rightShift
+                case .leftOption: .leftOption
+                case .rightOption: .rightOption
+                case .leftControl: .leftControl
+                case .rightControl: .rightControl
+                }
+            self.init(tapped)
+        }
+
         public init(_ first: Key, _ second: Key) {
             self.init(keys: [first, second], count: 1)
         }

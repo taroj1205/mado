@@ -1,3 +1,4 @@
+import AppCore
 import Carbon.HIToolbox
 import CoreGraphics
 import Dispatch
@@ -208,5 +209,17 @@ import Testing
         recorder.up(.leftShift)
         #expect(recorder.taps == [ModifierTap.Tap(.leftShift)])
         #expect(recorder.tap.held == nil)
+    }
+
+    @Test func aRecordedModifierTapKeepsItsSide() {
+        let pairs: [(HotKey.ModifierKey, ModifierTap.Key)] = [
+            (.leftCommand, .leftCommand), (.rightCommand, .rightCommand),
+            (.leftOption, .leftOption), (.rightOption, .rightOption),
+            (.leftControl, .leftControl), (.rightControl, .rightControl),
+            (.leftShift, .leftShift), (.rightShift, .rightShift),
+        ]
+        for (recorded, key) in pairs {
+            #expect(ModifierTap.Tap(recorded) == ModifierTap.Tap(key, count: 1))
+        }
     }
 }

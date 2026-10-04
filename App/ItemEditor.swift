@@ -181,6 +181,10 @@ final class ItemEditor {
         settings.save(to: modules)
     }
 
+    func accepts(_ hotkey: Shortcut) -> Bool {
+        registry?.accepts(hotkey) ?? false
+    }
+
     func suspendHotKeys(_ suspended: Bool) {
         registry?.isSuspended = suspended
     }

@@ -1,6 +1,8 @@
 import Carbon.HIToolbox
 
 public struct InputSource: Sendable {
+    @MainActor private static var cycle = InputCycle()
+
     @MainActor
     public static var enabled: [Self] {
         sources(matching: [:], includeAllInstalled: false).compactMap(Self.init)
@@ -48,6 +50,13 @@ public struct InputSource: Sendable {
             ).first
         else { return }
         select(source)
+    }
+
+    @MainActor
+    public static func selectNext() {
+        if let nextID = cycle.next(after: currentID, in: enabled.map(\.id), at: .now) {
+            select(nextID)
+        }
     }
 
     @MainActor

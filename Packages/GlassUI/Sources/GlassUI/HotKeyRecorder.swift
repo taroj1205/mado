@@ -6,6 +6,7 @@ public final class HotKeyRecorder: NSView {
     enum State: Equatable {
         case captured(HotKey)
         case conflict(HotKey, String)
+        case refused(HotKey, String)
         case waiting
     }
 
@@ -23,8 +24,11 @@ public final class HotKeyRecorder: NSView {
         kVK_Shift: .leftShift, kVK_RightShift: .rightShift,
     ]
 
-    public var onSave: ((HotKey) -> Void)?
+    public var onSave: ((HotKey) -> String?)?
     public var onCancel: (() -> Void)?
+    public var onClear: (() -> Void)? {
+        didSet { render() }
+    }
     public var systemConflict: (HotKey) -> String? = { _ in nil }
 
     private(set) var state = State.waiting {
@@ -39,6 +43,7 @@ public final class HotKeyRecorder: NSView {
     private let controls = NSStackView()
     private let hint = NSTextField(labelWithString: "")
     private let save = NSButton(title: "Save", target: nil, action: nil)
+    private let clear = NSButton(title: "Clear", target: nil, action: nil)
     private let openSettings = NSButton(title: "Open Settings", target: nil, action: nil)
     private let useAnyway = NSButton(title: "Use Anyway", target: nil, action: nil)
 
@@ -51,6 +56,8 @@ public final class HotKeyRecorder: NSView {
             button.action = #selector(saveCaptured)
             button.keyEquivalent = "\r"
         }
+        clear.target = self
+        clear.action = #selector(clearHotKey)
         openSettings.target = self
         openSettings.action = #selector(openKeyboardSettings)
         field.onPress = { [weak self] in self?.focus() }
@@ -88,6 +95,11 @@ public final class HotKeyRecorder: NSView {
         if flags.contains(.option) { result.insert(.option) }
         if flags.contains(.shift) { result.insert(.shift) }
         return result
+    }
+
+    public func reset() {
+        tapCandidate = nil
+        state = .waiting
     }
 
     override public func mouseDown(with _: NSEvent) {
@@ -178,11 +190,18 @@ public final class HotKeyRecorder: NSView {
     private func saveCaptured() {
         switch state {
         case let .captured(hotKey), let .conflict(hotKey, _):
-            onSave?(hotKey)
+            if let problem = onSave?(hotKey) {
+                state = .refused(hotKey, problem)
+            }
 
-        case .waiting:
+        case .refused, .waiting:
             break
         }
+    }
+
+    @objc
+    private func clearHotKey() {
+        onClear?()
     }
 
     @objc
@@ -201,6 +220,7 @@ public final class HotKeyRecorder: NSView {
             field.showPrompt(Self.prompt)
             hint.stringValue = "esc cancels · ⌫ clears"
             controls.setViews([hint], in: .leading)
+            controls.setViews(onClear == nil ? [] : [clear], in: .trailing)
 
         case .captured(let hotKey):
             if case .modifierTap = hotKey {
@@ -221,6 +241,14 @@ public final class HotKeyRecorder: NSView {
             warningLabel.setAccessibilityValue(HotKeyLabel.spoken(text: warningLabel.stringValue))
             warning.isHidden = false
             controls.setViews([openSettings, useAnyway], in: .trailing)
+
+        case let .refused(hotKey, problem):
+            field.show(HotKeyLabel.keycaps(hotKey), suffix: nil, style: .conflict)
+            warningLabel.stringValue = problem
+            warningLabel.setAccessibilityValue(problem)
+            warning.isHidden = false
+            hint.stringValue = "esc cancels · ⌫ clears"
+            controls.setViews([hint], in: .leading)
         }
     }
 }

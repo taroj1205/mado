@@ -63,6 +63,10 @@ public struct RemapSettings: Codable, Equatable, Sendable {
             remapped: [KeyMappings.entry(KeyMappings.capsLock, to: usage)] + others, others: others)
     }
 
+    public var claimsRightControlTap: Bool {
+        capsLock == .control && tap != nil
+    }
+
     public var showsHyperGlyph: Bool {
         hyperAsGlyph && capsLock == .hyper
     }
