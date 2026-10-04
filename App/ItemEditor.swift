@@ -20,6 +20,7 @@ final class ItemEditor {
         let focus: NSView?
     }
 
+    static let createQuicklinkKeys = ["⌘", "⇧", "L"]
     private static let badLink = "Mado can’t open this link. Use a web address or a folder path."
 
     let sheet = ItemSheet()
@@ -86,7 +87,10 @@ final class ItemEditor {
     func action(for edit: Edit, on id: String) -> LauncherView.Action {
         switch edit {
         case .field(let field): LauncherView.Action(field.title(favourite: settings[id].favourite))
-        case .createQuicklink: LauncherView.Action(Quicklink.createTitle, keys: ["⌘", "⇧", "L"])
+
+        case .createQuicklink:
+            LauncherView.Action(Quicklink.createTitle, keys: Self.createQuicklinkKeys)
+
         case .editQuicklink: LauncherView.Action("Edit Quicklink")
         }
     }

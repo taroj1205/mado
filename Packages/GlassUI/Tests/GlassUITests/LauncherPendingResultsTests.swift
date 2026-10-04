@@ -15,9 +15,11 @@ import Testing
         panel.contentView = view
         view.results.reducesMotion = { true }
         view.show([results("Safari", "Notes")])
-        view.actions = { _ in
+        view.actions = { item in
             [.init("Open", keys: ["↵"]), .init("Show in Finder", keys: ["⌘", "↵"])]
+                + (item.id == "Notes" ? [.init("Show Info", keys: ["⌘", "I"])] : [])
         }
+        view.actionKeys = [["⌘", "I"]]
         panel.makeFirstResponder(view.field)
     }
 
@@ -45,6 +47,33 @@ import Testing
         press(kVK_ANSI_O, "o")
         view.show([results("Notes")])
         #expect(runs.isEmpty)
+    }
+
+    @Test func anActionKeyWaitsEvenWhenTheShownRowLacksIt() {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        press(kVK_ANSI_N, "n")
+        press(kVK_ANSI_I, "i", [.command])
+        #expect(runs.isEmpty)
+        view.show([results("Notes")])
+        #expect(runs == ["Notes 2"])
+    }
+
+    @Test func aWidgetPickedBeforeTheResultsArriveIsLetGo() {
+        var runs: [String] = []
+        view.onRun = { runs.append("\($0.id) \($1)") }
+        view.widgets = [
+            .init(
+                id: "clock", name: "Clock", value: "9:41", detail: "Wed 30 Sep",
+                action: "Open Clock", spoken: "Time: 9:41 AM, Wednesday 30 September")
+        ]
+        press(kVK_ANSI_N, "n")
+        press(kVK_UpArrow, "\u{F700}")
+        #expect(view.selectedWidget == 0)
+        view.show([results("Notes")])
+        #expect(view.selectedWidget == nil)
+        press(kVK_Return, "\r")
+        #expect(runs == ["Notes 0"])
     }
 
     private func results(_ titles: String...) -> ResultList.Section {

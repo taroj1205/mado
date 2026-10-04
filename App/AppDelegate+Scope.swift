@@ -59,6 +59,11 @@ extension AppDelegate {
         }
     }
 
+    func connectActions() {
+        launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
+        launcherView.actionKeys = LauncherMenu.shortcutKeys
+    }
+
     func show(_ sections: [ResultList.Section]) {
         launcherView.show(sections)
         (launcherView.context, launcherView.contextSymbol) =

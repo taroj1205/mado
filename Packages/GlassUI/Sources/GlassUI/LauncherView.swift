@@ -23,6 +23,7 @@ public final class LauncherView: NSView {
     public var onLeave: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
+    public var actionKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
@@ -63,7 +64,7 @@ public final class LauncherView: NSView {
     private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
     var rootQuery: String?
-    private(set) var shownQuery = (text: "", scoped: false)
+    var shownQuery = (text: "", scoped: false)
     var afterResults: (() -> Void)?
     let icon = NSImageView()
     lazy var fieldLeading = field.leadingAnchor.constraint(
@@ -209,19 +210,6 @@ public final class LauncherView: NSView {
         if previewing {
             showPreview()
         }
-    }
-
-    public func show(_ sections: [ResultList.Section]) {
-        let previewed = results.selectedItem?.file
-        let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
-        shownQuery = (field.stringValue, scoped)
-        results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
-        if results.selectedItem?.file != previewed {
-            closePreview()
-        }
-        let waiting = afterResults
-        afterResults = nil
-        waiting?()
     }
 
     public func endBrowsing() {

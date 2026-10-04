@@ -38,12 +38,16 @@ extension LauncherView {
             self.choices = choices
         }
 
-        func matches(_ event: NSEvent) -> Bool {
-            let held = Set(Self.modifiers.filter { event.modifierFlags.contains($0.0) }.map(\.1))
+        static func keys(_ keys: [String], match event: NSEvent) -> Bool {
+            let held = Set(modifiers.filter { event.modifierFlags.contains($0.0) }.map(\.1))
             guard let key = keys.last, !held.isEmpty, Set(keys.dropLast()) == held else {
                 return false
             }
             return event.charactersIgnoringModifiers?.uppercased() == key
+        }
+
+        func matches(_ event: NSEvent) -> Bool {
+            Self.keys(keys, match: event)
         }
     }
 
@@ -97,11 +101,15 @@ extension LauncherView {
     }
 
     func runActionShortcut(_ event: NSEvent) -> Bool {
-        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
-            let item = results.selectedItem,
-            let index = actions?(item).firstIndex(where: { $0.matches(event) })
+        guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false else {
+            return false
+        }
+        let item = results.selectedItem
+        let index = item.flatMap { actions?($0).firstIndex { $0.matches(event) } }
+        guard index != nil || actionKeys.contains(where: { Action.keys($0, match: event) })
         else { return false }
         if waitsForResults(then: { _ = $0.runActionShortcut(event) }) { return true }
+        guard let item, let index else { return false }
         onRun?(item, index)
         return true
     }
