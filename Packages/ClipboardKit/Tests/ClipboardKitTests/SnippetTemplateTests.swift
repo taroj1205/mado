@@ -72,6 +72,19 @@ import Testing
         #expect(expansion.text == values.clipboard)
     }
 
+    @Test func boundsRepeatedEmptyFillInsByTheLimit() {
+        let template = SnippetTemplate(String(repeating: "{fill-in}", count: 10_000) + "end")
+        let empty = SnippetTemplate.Values(fields: [:], date: "", time: "", clipboard: "")
+
+        let preview = template.expand(empty, scalars: 2_000)
+        let inserted = template.expand(empty)
+
+        #expect(preview.text.isEmpty)
+        #expect(preview.fieldRanges.count == 2_000)
+        #expect(inserted.text == "end")
+        #expect(inserted.fieldRanges.count == 10_000)
+    }
+
     @Test func namesAnUnnamedFieldFillIn() {
         let template = SnippetTemplate("A {fill-in} and {fill-in   } again")
 

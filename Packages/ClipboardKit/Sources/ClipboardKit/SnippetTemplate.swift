@@ -128,7 +128,7 @@ public struct SnippetTemplate: Sendable {
             text += kept
             return range
         }
-        for part in parts {
+        for part in parts.prefix(limit) {
             guard room > 0 else { break }
             switch part {
             case .text(let literal): add(literal)
