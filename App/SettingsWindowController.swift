@@ -119,7 +119,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = IgnoredAppsSettings(modules: modules)
         let inputDefaults = AppInputDefaults(modules: modules)
-        let remaps = RemapsSettings(modules: modules)
+        let remaps = RemapsSettings(modules: modules, recorder: recorder)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),

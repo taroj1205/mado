@@ -143,6 +143,7 @@ public final class HotKeyPrompt: NSView {
         guard let problem = taken ?? save(shortcut) else { return }
         field.show(keys, suffix: nil, style: .conflict)
         warning.stringValue = problem
+        warning.setAccessibilityValue(HotKeyLabel.spoken(text: problem))
         warning.isHidden = false
     }
 

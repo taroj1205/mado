@@ -259,6 +259,7 @@ public final class ItemSheet: NSView, NSTextFieldDelegate {
     private func showProblem() {
         hotkey.conflict = problem != nil
         hotkeyHintLabel.stringValue = problem ?? Self.hotkeyHint
+        hotkeyHintLabel.setAccessibilityValue(HotKeyLabel.spoken(text: hotkeyHintLabel.stringValue))
         hotkeyHintLabel.textColor = problem == nil ? .secondaryLabelColor : .systemOrange
         clear.isHidden = hotkey.shortcut == nil
     }

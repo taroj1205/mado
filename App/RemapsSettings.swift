@@ -9,6 +9,11 @@ final class RemapsSettings: NSObject {
     private static let choices: [(capsLock: RemapSettings.CapsLock, title: String)] = [
         (.capsLock, "Caps Lock"), (.control, "Control"), (.escape, "Escape"), (.hyper, "Hyper"),
     ]
+    private static let tapChoices: [(action: RemapSettings.TapAction, title: String)] = [
+        (.nothing, "Nothing"), (.escape, "Escape"), (.capsLock, "Caps Lock"),
+        (.openMado, "Open Mado"), (.shortcut, "Shortcut…"),
+    ]
+    private static let controlGap: CGFloat = 10
     private static let tileSize: CGFloat = 26
     private static let tileRadius: CGFloat = 7
     private static let symbolSize: CGFloat = 13
@@ -27,28 +32,30 @@ final class RemapsSettings: NSObject {
 
     private let logger = Log.logger("Settings")
     private let modules: ModuleManager?
+    private let recorder: HotKeyPopover
     private var watcher: KeyboardWatcher?
-    private weak var tapToggle: SettingsSwitch?
     var onChange: (() -> Void)?
 
     var sections: [SettingsSection] {
         let settings = RemapSettings.load(from: modules)
-        let tap = toggle(
-            read: { $0.tapSendsEscape },
-            write: { settings, isOn in settings.tapSendsEscape = isOn })
-        tap.isEnabled = modules != nil && settings.capsLock == .hyper
-        tapToggle = tap
+        let glyph = toggle(
+            read: { $0.hyperAsGlyph },
+            write: { settings, isOn in settings.hyperAsGlyph = isOn })
+        glyph.isEnabled = modules != nil && settings.capsLock == .hyper
         return [
             SettingsSection(
                 "Caps Lock",
                 [
                     .init("Caps Lock key becomes", capsLockPicker(settings)),
-                    .init("Tap alone sends Escape", tap, example: nil) {
-                        "Hold for Hyper, tap for Escape."
+                    .init("Tap alone", tapControls(settings), example: nil) {
+                        Self.tapDetail(settings.capsLock)
                     },
-                    .init("Hyper is", ModifierKeycaps(HyperKey.modifiers), example: nil) {
+                    .init("Hyper is", ModifierKeycaps(.hyper), example: nil) {
                         "Record Hyper+T, Hyper+N… anywhere a hotkey is recorded — they never "
                             + "clash with app shortcuts."
+                    },
+                    .init("Show Hyper as ✦", glyph, example: nil) {
+                        "Shortcuts show ✦ in place of ⌃⌥⇧⌘. They’re still saved as ⌃⌥⇧⌘."
                     },
                 ]),
             SettingsSection(
@@ -56,10 +63,19 @@ final class RemapsSettings: NSObject {
         ]
     }
 
-    init(modules: ModuleManager?) {
+    init(modules: ModuleManager?, recorder: HotKeyPopover) {
         self.modules = modules
+        self.recorder = recorder
         super.init()
         watcher = KeyboardWatcher { [weak self] in self?.onChange?() }
+    }
+
+    private static func tapDetail(_ capsLock: RemapSettings.CapsLock) -> String {
+        switch capsLock {
+        case .control: "Hold for Control. A quick tap on its own does this instead."
+        case .hyper: "Hold for Hyper. A quick tap on its own does this instead."
+        case .capsLock, .escape: "Works when Caps Lock becomes Control or Hyper."
+        }
     }
 
     private static func detail(_ parts: String?...) -> String {
@@ -93,6 +109,53 @@ final class RemapsSettings: NSObject {
         picker.selectedSegment = Self.choices.firstIndex { $0.capsLock == settings.capsLock } ?? 0
         picker.isEnabled = modules != nil
         return picker
+    }
+
+    private func tapControls(_ settings: RemapSettings) -> NSView {
+        let shortcut = HotKeyButton()
+        shortcut.shortcut = settings.tapShortcut
+        shortcut.isHidden = settings.tapAction != .shortcut
+        shortcut.setAccessibilityLabel("Tap alone shortcut")
+        shortcut.onPress = { [weak self, weak shortcut] in
+            guard let shortcut else { return }
+            self?.recordTapShortcut(from: shortcut)
+        }
+        let controls = NSStackView()
+        let popUp = SettingsPopUp { [weak self, weak anchor = controls, modules] in
+            let current = RemapSettings.load(from: modules).tapAction
+            let entries = Self.tapChoices.map { choice in
+                SettingsPopUp.Choice(title: choice.title, isSelected: choice.action == current) {
+                    if choice.action != .shortcut {
+                        try self?.update { $0.tapAction = choice.action }
+                    } else if let anchor {
+                        self?.recordTapShortcut(from: anchor)
+                    }
+                }
+            }
+            return [SettingsPopUp.Section(title: nil, choices: entries)]
+        }
+        popUp.setAccessibilityLabel("Tap alone")
+        popUp.isEnabled = modules != nil && settings.capsLock.isModifier
+        controls.setViews([popUp, shortcut], in: .leading)
+        controls.spacing = Self.controlGap
+        controls.setHuggingPriority(.defaultHigh, for: .horizontal)
+        return controls
+    }
+
+    private func recordTapShortcut(from anchor: NSView) {
+        recorder.record(
+            named: "Caps Lock tap", clearable: false, from: anchor, conflict: { _ in nil },
+            assign: { [weak self] shortcut in
+                do {
+                    try self?.update { settings in
+                        settings.tapAction = .shortcut
+                        settings.tapShortcut = shortcut
+                    }
+                    return nil
+                } catch {
+                    return error.localizedDescription
+                }
+            })
     }
 
     private func keyboardRows(_ settings: RemapSettings) -> [SettingsSection.Row] {
@@ -136,15 +199,23 @@ final class RemapsSettings: NSObject {
             logger.error("Caps Lock remap failed to save: \(error, privacy: .public)")
             NSApp.presentError(error)
         }
-        let saved = RemapSettings.load(from: modules).capsLock
-        picker.selectedSegment = Self.choices.firstIndex { $0.capsLock == saved } ?? 0
-        tapToggle?.isEnabled = modules != nil && saved == .hyper
+        onChange?()
     }
 
     private func update(_ change: (inout RemapSettings) -> Void) throws {
-        var settings = RemapSettings.load(from: modules)
+        let saved = RemapSettings.load(from: modules)
+        var settings = saved
         change(&settings)
         try modules?.setValue(settings, for: RemapSettings.key)
+        HyperGlyph.isShown = settings.showsHyperGlyph
+        let changesRows =
+            (settings.tapAction, settings.tapShortcut, settings.hyperAsGlyph)
+            != (saved.tapAction, saved.tapShortcut, saved.hyperAsGlyph)
+        defer {
+            if changesRows {
+                onChange?()
+            }
+        }
         try modules?.restart(KeyboardModule.id)
     }
 }

@@ -1,16 +1,14 @@
 public import AppCore
 import Carbon.HIToolbox
-import CoreGraphics
+public import CoreGraphics
 
 public struct HyperKey {
     enum Action: Equatable {
         case pass
         case addModifiers
         case swallow
-        case sendEscape
+        case tap
     }
-
-    public static let modifiers: Shortcut.Modifiers = [.control, .option, .shift, .command]
 
     static let types: [CGEventType] = [
         .keyDown, .keyUp, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown,
@@ -20,27 +18,30 @@ public struct HyperKey {
         .maskControl, .maskAlternate, .maskShift, .maskCommand,
     ]
 
-    private let tapSendsEscape: Bool
+    private let isTapped: Bool
     private let window: Duration
     private var pressedAt: CGEventTimestamp?
     private var isUsed = false
 
-    init(tapSendsEscape: Bool, window: Duration) {
-        self.tapSendsEscape = tapSendsEscape
+    init(isTapped: Bool, window: Duration) {
+        self.isTapped = isTapped
         self.window = window
     }
 
     @MainActor
     public static func install(
-        name: String, context: ModuleContext, tapSendsEscape: Bool
+        name: String, context: ModuleContext, onTap: (@MainActor (CGEventFlags) -> Void)?
     ) throws(ModuleError) {
-        try context.tapEvents(name, matching: types, swallow: swallow(tapSendsEscape))
+        try context.tapEvents(name, matching: types, swallow: swallow(onTap))
     }
 
     @MainActor
-    static func swallow(_ tapSendsEscape: Bool) -> @MainActor (CGEventType, CGEvent) -> Bool {
-        var key = Self(tapSendsEscape: tapSendsEscape, window: ModifierTap.defaultWindow)
+    static func swallow(
+        _ onTap: (@MainActor (CGEventFlags) -> Void)?
+    ) -> @MainActor (CGEventType, CGEvent) -> Bool {
+        var key = Self(isTapped: onTap != nil, window: ModifierTap.defaultWindow)
         return { type, event in
+            guard !CapsLockTap.isPosted(event) else { return false }
             let action = key.handle(
                 type, keyCode: event.getIntegerValueField(.keyboardEventKeycode),
                 isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
@@ -59,19 +60,10 @@ public struct HyperKey {
             case .swallow:
                 return true
 
-            case .sendEscape:
-                sendEscape(flags: event.flags.intersection(Self.flags))
+            case .tap:
+                onTap?(event.flags.intersection(Self.flags))
                 return true
             }
-        }
-    }
-
-    private static func sendEscape(flags: CGEventFlags) {
-        for isDown in [true, false] {
-            let event = CGEvent(
-                keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_Escape), keyDown: isDown)
-            event?.flags = flags
-            event?.post(tap: .cgSessionEventTap)
         }
     }
 
@@ -98,11 +90,11 @@ public struct HyperKey {
 
     private mutating func release(at timestamp: CGEventTimestamp) -> Action {
         defer { pressedAt = nil }
-        guard tapSendsEscape, !isUsed, let pressedAt, timestamp >= pressedAt,
+        guard isTapped, !isUsed, let pressedAt, timestamp >= pressedAt,
             .nanoseconds(timestamp - pressedAt) <= window
         else {
             return .swallow
         }
-        return .sendEscape
+        return .tap
     }
 }

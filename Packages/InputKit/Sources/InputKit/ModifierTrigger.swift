@@ -52,7 +52,7 @@ public struct ModifierTrigger {
         }
     }
 
-    private static func eventFlags(_ modifiers: Shortcut.Modifiers) -> CGEventFlags {
+    static func eventFlags(_ modifiers: Shortcut.Modifiers) -> CGEventFlags {
         var result: CGEventFlags = []
         if modifiers.contains(.command) { result.insert(.maskCommand) }
         if modifiers.contains(.control) { result.insert(.maskControl) }

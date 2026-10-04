@@ -25,7 +25,7 @@ import Testing
 
     @Test func usagesUseTheKeyboardPageAsTN2450Describes() {
         #expect(KeyMappings.capsLock == 0x7_0000_0039)
-        #expect(RemapSettings.CapsLock.control.usage == 0x7_0000_00E0)
+        #expect(RemapSettings.CapsLock.control.usage == 0x7_0000_00E4)
         #expect(RemapSettings.CapsLock.escape.usage == 0x7_0000_0029)
         #expect(RemapSettings.CapsLock.hyper.usage == 0x7_0000_006D)
         #expect(RemapSettings.CapsLock.capsLock.usage == nil)

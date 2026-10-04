@@ -9,6 +9,7 @@ struct KeyboardModule: Module {
     let descriptor: ModuleDescriptor
     let inputSourceSettings: @MainActor () -> InputSourceSettings
     let remapSettings: @MainActor () -> RemapSettings
+    let openLauncher: @MainActor () -> Void
 
     func start(context: ModuleContext) {
         context.installWhenTrusted("input mode taps") { installTap(context) }
@@ -40,19 +41,41 @@ struct KeyboardModule: Module {
         context.observe(
             NSApplication.willTerminateNotification, on: .default, reading: \.name
         ) { _ in remapper.stop() }
+        let onTap = settings.tap.map { tap in
+            { @MainActor (flags: CGEventFlags) in
+                tap.perform(holding: flags, openMado: openLauncher)
+            }
+        }
         guard settings.capsLock == .hyper else {
             remapper.start()
+            if settings.capsLock == .control, let onTap {
+                context.installWhenTrusted("caps lock tap") {
+                    installCapsLockTap(onTap, context: context)
+                }
+            }
             return
         }
         context.installWhenTrusted("hyper key") {
             do {
-                try HyperKey.install(
-                    name: "hyper key", context: context, tapSendsEscape: settings.tapSendsEscape)
+                try HyperKey.install(name: "hyper key", context: context, onTap: onTap)
                 remapper.start()
                 return true
             } catch {
                 return false
             }
+        }
+    }
+
+    private func installCapsLockTap(
+        _ onTap: @escaping @MainActor (CGEventFlags) -> Void, context: ModuleContext
+    ) -> Bool {
+        do {
+            try ModifierTap.install(
+                name: "caps lock tap", context: context,
+                bindings: [ModifierTap.Tap(.rightControl): { onTap([]) }])
+            return true
+        } catch {
+            return false
         }
     }
 }

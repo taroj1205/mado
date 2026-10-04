@@ -42,18 +42,28 @@ final class HotKeyPopover: NSObject, NSPopoverDelegate {
     }
 
     func record(_ id: String, named name: String, from anchor: NSView) {
-        prompt.conflict = { [weak items] in items?.conflict(for: $0, besides: id) }
-        prompt.onSave = { [weak self] in self?.assign($0, to: id) }
-        prompt.onClear = { [weak self] in _ = self?.assign(nil, to: id) }
-        prompt.show(for: name, clearable: items.settings[id].hotkey != nil)
+        record(
+            named: name, clearable: items.settings[id].hotkey != nil, from: anchor,
+            conflict: { [weak items] in items?.conflict(for: $0, besides: id) },
+            assign: { [weak items] in items?.assign($0, to: id) })
+    }
+
+    func record(
+        named name: String, clearable: Bool, from anchor: NSView,
+        conflict: @escaping (Shortcut) -> String?, assign: @escaping (Shortcut?) -> String?
+    ) {
+        prompt.conflict = conflict
+        prompt.onSave = { [weak self] in self?.save($0, with: assign) }
+        prompt.onClear = { [weak self] in _ = self?.save(nil, with: assign) }
+        prompt.show(for: name, clearable: clearable)
         self.anchor = anchor
         (anchor as? HotKeyButton)?.showsRecording = true
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         unsafe prompt.window?.makeFirstResponder(prompt)
     }
 
-    private func assign(_ hotkey: Shortcut?, to id: String) -> String? {
-        let problem = items.assign(hotkey, to: id)
+    private func save(_ hotkey: Shortcut?, with assign: (Shortcut?) -> String?) -> String? {
+        let problem = assign(hotkey)
         if problem == nil {
             popover.close()
         }
