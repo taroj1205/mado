@@ -200,11 +200,10 @@ public final class WidgetGrid: NSView {
         case .above:
             let cells = cells(of: widgets)
             let rows = cells.last.map { $0.row + 1 } ?? 0
-            let area = panel.insetBy(dx: inset, dy: 0)
-            let width = (area.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
+            let width = (panel.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
             return cells.map { cell in
                 CGRect(
-                    x: area.minX + CGFloat(cell.columns.lowerBound) * (width + floatingGap),
+                    x: panel.minX + CGFloat(cell.columns.lowerBound) * (width + floatingGap),
                     y: panel.maxY + lift + CGFloat(rows - 1 - cell.row) * step,
                     width: CGFloat(cell.columns.count) * (width + floatingGap) - floatingGap,
                     height: rowHeight)

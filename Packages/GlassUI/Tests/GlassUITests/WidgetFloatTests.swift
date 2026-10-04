@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite struct WidgetFloatTests {
     private static let frame = NSRect(x: 100, y: 100, width: 760, height: 476)
-    private static let width = (732 - 5 * 10) / 6.0
+    private static let width = (760 - 5 * 10) / 6.0
 
     private let panel = NSPanel(
         contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
@@ -21,16 +21,16 @@ import Testing
         panel.makeFirstResponder(view.field)
     }
 
-    @Test func aboveFloatsSixToARowSixteenPointsOverThePanel() throws {
+    @Test func aboveFloatsSixToARowFlushWithThePanelSixteenPointsOverIt() throws {
         view.widgetLayout = .above
         view.layoutSubtreeIfNeeded()
         let floats = view.widgetGrid.floats
         #expect(floats.count == 7)
         #expect(floats.allSatisfy { $0.parent === panel })
         #expect(view.widgetGrid.frame.height == 0)
-        expect(floats[0].frame, NSRect(x: 114, y: 680, width: Self.width, height: 78))
-        #expect(abs(floats[5].frame.maxX - 846) < 0.5)
-        expect(floats[6].frame, NSRect(x: 114, y: 592, width: Self.width, height: 78))
+        expect(floats[0].frame, NSRect(x: 100, y: 680, width: Self.width, height: 78))
+        #expect(abs(floats[5].frame.maxX - 860) < 0.5)
+        expect(floats[6].frame, NSRect(x: 100, y: 592, width: Self.width, height: 78))
         #expect(view.widgetOverhang == 182)
         #expect(try #require(floats.first).glass.contentView === view.widgetGrid.tiles.first)
     }
@@ -42,11 +42,11 @@ import Testing
             + (1...5).map(numbered)
         view.widgetLayout = .above
         let floats = view.widgetGrid.floats
-        expect(floats[0].frame, NSRect(x: 114, y: 680, width: 2 * Self.width + 10, height: 78))
+        expect(floats[0].frame, NSRect(x: 100, y: 680, width: 2 * Self.width + 10, height: 78))
         expect(
             floats[1].frame,
-            NSRect(x: 114 + 2 * (Self.width + 10), y: 680, width: Self.width, height: 78))
-        expect(floats[5].frame, NSRect(x: 114, y: 592, width: Self.width, height: 78))
+            NSRect(x: 100 + 2 * (Self.width + 10), y: 680, width: Self.width, height: 78))
+        expect(floats[5].frame, NSRect(x: 100, y: 592, width: Self.width, height: 78))
         #expect(view.widgetOverhang == 182)
     }
 
@@ -98,7 +98,7 @@ import Testing
         view.layoutSubtreeIfNeeded()
         expect(
             view.widgetGrid.floats[6].frame,
-            NSRect(x: 114, y: 612 + 16, width: Self.width, height: 78))
+            NSRect(x: 100, y: 612 + 16, width: Self.width, height: 78))
     }
 
     @Test func goingBackInlinePutsTheTilesInThePanel() {
