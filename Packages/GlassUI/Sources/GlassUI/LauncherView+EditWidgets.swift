@@ -19,6 +19,12 @@ extension LauncherView {
         editBar.onDone = { [weak self] in self?.finishEditingWidgets() }
         editBar.onRemove = { [weak self] in self?.removeSelectedWidget() }
         editBar.onStep = { [weak self] step in self?.stepWidget(by: step) }
+        widgetGrid.onDrag = { [weak self] id, point, source in
+            guard let self, let window = unsafe window else { return [] }
+            return dragWidget(id, at: window.convertPoint(fromScreen: point), from: source)
+        }
+        widgetGrid.onDrop = { [weak self] id in self?.dropWidget(id) ?? false }
+        widgetGrid.onDragEnd = { [weak self] in self?.endWidgetDrag() }
         registerForDraggedTypes([WidgetGrid.dragType])
     }
 
@@ -70,14 +76,19 @@ extension LauncherView {
     }
 
     func dragWidget(_ id: String?, at point: NSPoint, from source: Any?) -> NSDragOperation {
-        guard editingWidgets, let id else { return [] }
+        guard let id else { return [] }
         guard widgetGrid.widgets.contains(where: { $0.id == id }) else {
+            guard editingWidgets else { return [] }
             widgetGrid.incoming = (source as? WidgetGalleryCard)?.card.size.span ?? 1
             return .copy
         }
-        let local = widgetGrid.convert(point, from: nil)
-        changeWidgets { widgetGrid.preview(moving: id, to: local) }
-        return .move
+        var overTile = false
+        changeWidgets { overTile = widgetGrid.preview(moving: id, to: point) }
+        return overTile || editingWidgets ? .move : []
+    }
+
+    private func firstHidden(after widget: String?, shown: [String]) -> String? {
+        widgetGrid.widgets.map(\.id).drop { $0 != widget }.dropFirst().first { !shown.contains($0) }
     }
 
     func endWidgetDrag() {
@@ -85,13 +96,18 @@ extension LauncherView {
     }
 
     func dropWidget(_ id: String?) -> Bool {
-        guard editingWidgets, let id else { return false }
+        guard let id, editingWidgets || widgetGrid.widgets.contains(where: { $0.id == id })
+        else { return false }
         let order = widgetGrid.shown.map(\.id)
+        let all = widgetGrid.widgets.map(\.id)
         let edit: WidgetSettings.Edit? =
             if widgetGrid.incoming != nil {
                 .add(id)
-            } else if order != widgetGrid.widgets.map(\.id), let index = order.firstIndex(of: id) {
-                .move(id, before: order.dropFirst(index + 1).first)
+            } else if order != all.filter(order.contains), let index = order.firstIndex(of: id) {
+                .move(
+                    id,
+                    before: order.dropFirst(index + 1).first
+                        ?? firstHidden(after: order.dropLast().last, shown: order))
             } else {
                 nil
             }

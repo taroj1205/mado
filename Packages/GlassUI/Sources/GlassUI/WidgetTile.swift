@@ -70,6 +70,9 @@ final class WidgetTile: NSView {
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onRemove: (() -> Void)?
+    var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
+    var onDrop: ((String?) -> Bool)?
+    var onDragEnd: (() -> Void)?
 
     var selected = false {
         didSet { paint() }
@@ -225,6 +228,10 @@ final class WidgetTile: NSView {
             pressWhileEditing(event)
             return
         }
+        if event.modifierFlags.contains(.command) {
+            dragStart = event
+            return
+        }
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
@@ -234,13 +241,28 @@ final class WidgetTile: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard editing, dragStart != nil, unsafe window != nil else { return }
+        guard dragStart != nil, unsafe window != nil else { return }
         dragStart = nil
         beginDrag(with: event)
     }
 
     override func mouseUp(with _: NSEvent) {
         dragStart = nil
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        draggingUpdated(sender)
+    }
+
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard let window = unsafe window else { return [] }
+        return onDrag?(
+            sender.draggingPasteboard.string(forType: WidgetGrid.dragType),
+            window.convertPoint(toScreen: sender.draggingLocation), sender.draggingSource) ?? []
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        onDrop?(sender.draggingPasteboard.string(forType: WidgetGrid.dragType)) ?? false
     }
 
     override func accessibilityPerformPress() -> Bool {
