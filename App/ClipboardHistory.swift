@@ -154,6 +154,8 @@ final class ClipboardHistory: NSObject {
         let counts = counted[entry.id] ?? entry.quickCounts
         if counts == nil {
             count(entry)
+        } else {
+            stopCounting()
         }
         return LauncherView.Preview(
             text: entry.preview, image: entry.image.map(NSImage.init(byReferencing:)),
@@ -188,19 +190,22 @@ final class ClipboardHistory: NSObject {
         counting = nil
     }
 
-    private func reset() {
-        selected = nil
+    func close() {
+        entries = [:]
         counted = [:]
         stopCounting()
+    }
+
+    private func reset() {
+        selected = nil
+        close()
         rebuild(sources: [])
         Task { [weak self] in await self?.loadSources() }
     }
 
     private func stop() {
         store = nil
-        entries = [:]
-        counted = [:]
-        stopCounting()
+        close()
         onRunningChange?()
     }
 
