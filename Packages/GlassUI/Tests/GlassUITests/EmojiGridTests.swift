@@ -89,6 +89,15 @@ import Testing
         #expect(runs.map(\.0) == ["thumbs"] && runs.map(\.1) == [0])
     }
 
+    @Test func aRefreshKeepsTheEmojiTheArrowsMovedTo() {
+        view.show(Self.sections(), gridHome: "")
+        press(kVK_RightArrow, "\u{F703}")
+
+        view.show(Self.sections(), gridHome: "")
+
+        #expect(view.selectedItem?.title == "purple")
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

@@ -11,6 +11,8 @@ struct ClipboardModule: Module {
     }
 
     static let id = "clipboard"
+    static let commandIDs =
+        [ClipboardHistory.commandID, EmojiPicker.commandID] + TextTools.commandIDs
     private static let pruneInterval: TimeInterval = 3_600
 
     let descriptor: ModuleDescriptor

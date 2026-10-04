@@ -45,7 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         },
         isAvailable: { [weak self] id in
             self?.modules?.keysPaused != true
-                && (id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true)
+                && (!ClipboardModule.commandIDs.contains(id)
+                    || self?.clipboardHistory.isRunning == true)
         })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?

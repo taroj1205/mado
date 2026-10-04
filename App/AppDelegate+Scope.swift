@@ -13,6 +13,8 @@ extension AppDelegate {
         case emoji
     }
 
+    private static let clipboardScopes: Set<Scope> = [.clipboard, .textTools, .emoji]
+
     var scope: Scope {
         launcherView.scoped ? enteredScope : .root
     }
@@ -22,7 +24,7 @@ extension AppDelegate {
         case .emoji:
             ""
 
-        case .root where EmojiPicker.query(in: launcherView.field.stringValue) != nil:
+        case .root where emojiPicker.query(in: launcherView.field.stringValue) != nil:
             EmojiPicker.prefix
 
         default:
@@ -63,7 +65,7 @@ extension AppDelegate {
             return history.sections(for: query)
 
         case .root:
-            if let emoji = EmojiPicker.query(in: query) {
+            if let emoji = emojiPicker.query(in: query) {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
             let state = signposter.beginInterval("search")
@@ -142,13 +144,14 @@ extension AppDelegate {
             if scope == .clipboard {
                 searchAgain()
             }
-        } else if scope == .clipboard {
+        } else if Self.clipboardScopes.contains(scope) {
             DispatchQueue.main.async { [weak self] in
-                guard let self, !clipboardHistory.isRunning, scope == .clipboard else { return }
+                guard let self, !clipboardHistory.isRunning, Self.clipboardScopes.contains(scope)
+                else { return }
                 launcherView.leave()
             }
         }
-        editor.refreshHotKey(for: ClipboardHistory.commandID)
+        ClipboardModule.commandIDs.forEach(editor.refreshHotKey)
     }
 
     func openCalculatorHistory() {

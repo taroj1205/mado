@@ -18,6 +18,7 @@ extension LauncherView {
             emojiGrid.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         emojiGrid.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
+        emojiGrid.onMove = { [weak self] in self?.selectionMoved() }
         emojiGrid.onPick = { [weak self] _ in self?.run(0) }
         emojiGrid.onTab = { [weak self] tab in self?.pressTab(tab) }
     }

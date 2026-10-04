@@ -41,6 +41,7 @@ final class TextTools {
         .primary, .keyed(LauncherView.Action.secondaryKeys),
     ]
     private static let toolPrefix = "text.tools."
+    static let commandIDs = [commandID] + TextTool.allCases.map { toolPrefix + $0.rawValue }
     private static let replaceTitle = "Replace Selection"
     private static let logger = Log.logger("TextTools")
 
@@ -52,6 +53,10 @@ final class TextTools {
 
     private static func tool(for id: String) -> TextTool? {
         id.hasPrefix(toolPrefix) ? TextTool(rawValue: String(id.dropFirst(toolPrefix.count))) : nil
+    }
+
+    private static func selection(in target: PasteTarget) async -> String? {
+        await FocusedText.selection(in: target.app.processIdentifier)
     }
 
     func start(with store: ClipboardStore, context: ModuleContext) {
@@ -95,9 +100,11 @@ final class TextTools {
     }
 
     private func read(from target: PasteTarget?) async -> Source? {
-        if let target, let text = await FocusedText.selection(in: target.app.processIdentifier) {
+        if let target, let text = await Self.selection(in: target) {
             let name = target.app.localizedName ?? "the previous app"
-            return Source(text: text, origin: ("Selected in", name), isSelection: true)
+            return await Task.detached {
+                Source(text: text, origin: ("Selected in", name), isSelection: true)
+            }.value
         }
         let latest: ClipboardStore.Entry?
         do {
@@ -107,10 +114,12 @@ final class TextTools {
             return nil
         }
         guard let latest, let text = latest.plainText, !text.isEmpty else { return nil }
-        let origin = latest.source.map { ("Copied from", ClipboardHistory.app($0).name) }
-        return Source(
-            text: text, origin: origin ?? ("Latest copy in", ClipboardHistory.title),
-            isSelection: false)
+        let origin =
+            latest.source.map { ("Copied from", ClipboardHistory.app($0).name) }
+            ?? ("Latest copy in", ClipboardHistory.title)
+        return await Task.detached {
+            Source(text: text, origin: origin, isSelection: false)
+        }.value
     }
 
     private func open() async {
@@ -121,8 +130,8 @@ final class TextTools {
     }
 
     private func run(_ tool: TextTool) async throws {
-        guard let target = findTarget?(), let selection = await read(from: target),
-            case .changed(let output) = tool.apply(to: selection.text)
+        guard let target = findTarget?(), let selection = await Self.selection(in: target),
+            let output = await Task.detached(operation: { tool.apply(to: selection).output }).value
         else {
             NSSound.beep()
             return

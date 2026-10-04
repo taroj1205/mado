@@ -14,7 +14,7 @@ final class EmojiPicker: NSObject {
         .keyed(LauncherView.Action.secondaryKeys), .primary, .actions,
     ]
     private static let symbol = "face.smiling"
-    private static let idPrefix = "emoji."
+    private static let idPrefix = "emoji.grid."
     private static let recentTitle = "Recently used"
     private static let pasteTitle = "Paste"
     private static let groupSymbols = [
@@ -32,10 +32,6 @@ final class EmojiPicker: NSObject {
     private(set) lazy var toneAccessory = makeToneAccessory()
     private let tonePicker = NSPopUpButton(frame: .zero, pullsDown: false)
     private var catalog: EmojiCatalog?
-
-    static func query(in text: String) -> String? {
-        text.hasPrefix(prefix) ? String(text.dropFirst(prefix.count)) : nil
-    }
 
     static func owns(_ id: String) -> Bool {
         id.hasPrefix(idPrefix)
@@ -55,7 +51,13 @@ final class EmojiPicker: NSObject {
             }
     }
 
+    func query(in text: String) -> String? {
+        guard catalog != nil, text.hasPrefix(Self.prefix) else { return nil }
+        return String(text.dropFirst(Self.prefix.count))
+    }
+
     func start(context: ModuleContext) {
+        context.own(.other, "emoji catalog") { [weak self] in self?.catalog = nil }
         let open = CommandAction(id: "open", title: "Open \(Self.title)") { [weak self] in
             self?.onOpen?()
         }

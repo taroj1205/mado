@@ -42,6 +42,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
     }
 
     var onSelect: ((ResultList.Item?) -> Void)?
+    var onMove: (() -> Void)?
     var onPick: ((ResultList.Item) -> Void)?
     var onTab: ((Tab) -> Void)?
     private(set) var sections: [ResultList.Section] = []
@@ -239,6 +240,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
             from: selected, direction, counts: sections.map(\.items.count), columns: Self.columns)
         guard let next else { return false }
         select(next)
+        onMove?()
         return true
     }
 
@@ -274,5 +276,6 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
     ) {
         guard let indexPath = indexPaths.first, indexPath != selected else { return }
         select(indexPath)
+        onMove?()
     }
 }
