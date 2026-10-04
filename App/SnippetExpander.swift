@@ -35,7 +35,6 @@ final class SnippetExpander {
     }
 
     func install(in context: ModuleContext) {
-        listening = true
         context.own(.other, "snippet fill-in") { [weak self] in
             self?.listening = false
             self?.forget()
@@ -45,6 +44,7 @@ final class SnippetExpander {
     }
 
     private func watchKeys(in context: ModuleContext) {
+        listening = true
         context.installWhenTrusted(Self.route) { [weak self, weak context] in
             guard let context else { return true }
             do {
