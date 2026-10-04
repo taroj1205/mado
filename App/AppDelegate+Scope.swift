@@ -187,4 +187,9 @@ extension AppDelegate {
             placeholder: TextTools.placeholder, chip: TextTools.chip,
             detail: .comparison { [textTools] in textTools.comparison(for: $0) })
     }
+
+    func queryChanged() {
+        textTools.cancelOpening()
+        searchAgain()
+    }
 }

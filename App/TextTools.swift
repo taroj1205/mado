@@ -96,6 +96,7 @@ final class TextTools {
     }
 
     func close() {
+        cancelOpening()
         source = nil
         pasteTarget = nil
     }

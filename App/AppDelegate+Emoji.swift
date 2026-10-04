@@ -19,6 +19,11 @@ extension AppDelegate {
             self?.launcherView.emojiGrid.tabs = tabs
             self?.searchAgain()
         }
+        emojiPicker.onUnload = { [weak self] in
+            if self?.launcherView.showsGrid == true {
+                self?.searchAgain()
+            }
+        }
         launcherView.emojiGrid.accessory = emojiPicker.toneAccessory
         launcherView.onGridChange = { [weak self] _ in self?.fitLauncher() }
     }

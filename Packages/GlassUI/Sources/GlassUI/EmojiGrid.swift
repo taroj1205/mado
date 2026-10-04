@@ -67,6 +67,7 @@ public final class EmojiGrid: NSView, NSCollectionViewDataSource, NSCollectionVi
         collection.collectionViewLayout = flow
         collection.backgroundColors = [.clear]
         collection.isSelectable = true
+        collection.allowsEmptySelection = false
         collection.dataSource = self
         collection.delegate = self
         collection.register(EmojiCell.self, forItemWithIdentifier: EmojiCell.id)

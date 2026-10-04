@@ -121,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             kind: .panel,
             contentRect: NSRect(origin: .zero, size: launcherSize),
             shape: .rounded(Self.launcherRadius))
-        launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
+        launcherView.onQuery = { [weak self] _ in self?.queryChanged() }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         connectActions()

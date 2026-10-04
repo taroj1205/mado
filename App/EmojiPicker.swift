@@ -25,6 +25,7 @@ final class EmojiPicker: NSObject {
 
     var onOpen: (() -> Void)?
     var onLoad: (([EmojiGrid.Tab]) -> Void)?
+    var onUnload: (() -> Void)?
     var onChange: ((EmojiSettings) -> Void)?
     var settings = EmojiSettings() {
         didSet { tonePicker.selectItem(at: Emoji.Tone.allCases.firstIndex(of: settings.tone) ?? 0) }
@@ -57,7 +58,10 @@ final class EmojiPicker: NSObject {
     }
 
     func start(context: ModuleContext) {
-        context.own(.other, "emoji catalog") { [weak self] in self?.catalog = nil }
+        context.own(.other, "emoji catalog") { [weak self] in
+            self?.catalog = nil
+            self?.onUnload?()
+        }
         let open = CommandAction(id: "open", title: "Open \(Self.title)") { [weak self] in
             self?.onOpen?()
         }
@@ -157,8 +161,8 @@ final class EmojiPicker: NSObject {
         }
         guard let target else { return [(copy, LauncherView.Action.secondaryKeys)] }
         let paste = CommandAction(id: "paste", title: Self.pasteTitle) { [weak self] in
-            self?.use(character)
             try await target.action(pasting: glyph).perform()
+            self?.use(character)
         }
         return [
             (paste, LauncherView.Action.primaryKeys), (copy, LauncherView.Action.secondaryKeys),
