@@ -8,16 +8,19 @@ struct DictationModule: Module {
     let descriptor: ModuleDescriptor
 
     func start(context: ModuleContext) {
-        let dictation = Dictation(logger: context.logger)
-        context.own(.other, "dictation") { dictation.stop() }
-        context.installWhenTrusted("dictation key") {
-            do {
-                try PushToTalk.install(
-                    Dictation.key, name: "dictation key", context: context,
-                    isActive: { dictation.isActive }, onEvent: dictation.handle)
-                return true
-            } catch {
-                return false
+        context.startKeyFeatures {
+            let dictation = Dictation(logger: context.logger)
+            context.own(.other, "dictation") { dictation.stop() }
+            context.installWhenTrusted("dictation key") {
+                do {
+                    try PushToTalk.install(
+                        Dictation.key, name: "dictation key", context: context,
+                        isActive: { dictation.isActive },
+                        onEvent: context.untilStopped(dictation.handle))
+                    return true
+                } catch {
+                    return false
+                }
             }
         }
     }

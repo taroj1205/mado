@@ -35,6 +35,15 @@ final class SnippetExpander {
     }
 
     func install(in context: ModuleContext) {
+        context.own(.other, "snippet fill-in") { [weak self] in
+            self?.listening = false
+            self?.forget()
+            self?.fillIn.close()
+        }
+        context.startKeyFeatures { watchKeys(in: context) }
+    }
+
+    private func watchKeys(in context: ModuleContext) {
         listening = true
         context.installWhenTrusted(Self.route) { [weak self, weak context] in
             guard let context else { return true }
@@ -55,11 +64,6 @@ final class SnippetExpander {
             Notification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
             on: DistributedNotificationCenter.default(), reading: \.name
         ) { [weak self] _ in self?.forget() }
-        context.own(.other, "snippet fill-in") { [weak self] in
-            self?.listening = false
-            self?.forget()
-            self?.fillIn.close()
-        }
     }
 
     func insert(_ snippet: Snippet, into target: PasteTarget) async {

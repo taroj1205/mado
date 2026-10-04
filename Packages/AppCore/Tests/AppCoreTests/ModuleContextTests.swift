@@ -28,4 +28,19 @@ import Testing
         #expect(received == ["Terminal"])
         #expect(context.active.isEmpty)
     }
+
+    @Test func aHandlerKeptUntilStoppedDropsWhatArrivesAfterTheRelease() {
+        let context = ModuleContext(
+            moduleID: "windows", commands: CommandRegistry(), eventTap: EventTap())
+        var received: [String] = []
+        let beforePause = context.untilStopped { (event: String) in received.append(event) }
+
+        beforePause("pressed")
+        context.releaseAll()
+        let afterResume = context.untilStopped { (event: String) in received.append(event) }
+        beforePause("queued before the pause")
+        afterResume("pressed again")
+
+        #expect(received == ["pressed", "pressed again"])
+    }
 }

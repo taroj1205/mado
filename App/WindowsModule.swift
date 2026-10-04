@@ -7,6 +7,10 @@ import WindowKit
 
 struct WindowsModule: Module {
     static let id = "windows"
+    static let switcherShortcuts = [
+        Shortcut(keyCode: UInt32(kVK_Tab), modifiers: .option),
+        Shortcut(keyCode: UInt32(kVK_Tab), modifiers: [.option, .shift]),
+    ]
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
     let layoutSettings: @MainActor () -> LayoutSettings
@@ -18,12 +22,14 @@ struct WindowsModule: Module {
 
     func start(context: ModuleContext) {
         registerLayouts(context: context)
-        let radial = radialSettings()
-        if radial.isEnabled {
-            startRadialMenu(trigger: radial.trigger, context: context)
+        context.startKeyFeatures {
+            let radial = radialSettings()
+            if radial.isEnabled {
+                startRadialMenu(trigger: radial.trigger, context: context)
+            }
+            startGestures(gestureSettings(), context: context)
+            startSwitcher(context: context)
         }
-        startGestures(gestureSettings(), context: context)
-        startSwitcher(context: context)
         context.logger.debug("Started")
     }
 
@@ -52,7 +58,7 @@ struct WindowsModule: Module {
             do {
                 try ModifierTrigger.install(
                     trigger, name: "radial trigger", context: context,
-                    onEvent: radialMenu.handle)
+                    onEvent: context.untilStopped(radialMenu.handle))
                 return true
             } catch {
                 return false
@@ -70,9 +76,11 @@ struct WindowsModule: Module {
             let name = "\(mode) gesture trigger"
             context.installWhenTrusted(name) {
                 do {
-                    try ModifierTrigger.install(held, name: name, context: context) { event in
-                        gesture.handle(event, mode: mode, held: held)
-                    }
+                    try ModifierTrigger.install(
+                        held, name: name, context: context,
+                        onEvent: context.untilStopped { event in
+                            gesture.handle(event, mode: mode, held: held)
+                        })
                     return true
                 } catch {
                     return false
@@ -86,11 +94,9 @@ struct WindowsModule: Module {
         let switcher = WindowSwitcher(logger: context.logger) { switcherSettings().order }
         context.own(.other, "window switcher") { switcher.stop() }
         do {
-            for backward in [false, true] {
-                let modifiers: Shortcut.Modifiers = backward ? [.option, .shift] : .option
+            for (shortcut, backward) in zip(Self.switcherShortcuts, [false, true]) {
                 try hotKeys.register(
-                    Shortcut(keyCode: UInt32(kVK_Tab), modifiers: modifiers),
-                    name: "window switcher hotkey", context: context
+                    shortcut, name: "window switcher hotkey", context: context
                 ) { switcher.step(backward: backward) }
             }
         } catch {
@@ -102,7 +108,7 @@ struct WindowsModule: Module {
             do {
                 try SwitcherKeys.install(
                     name: "window switcher keys", context: context,
-                    isOpen: { switcher.isOpen }, onEvent: switcher.handle)
+                    isOpen: { switcher.isOpen }, onEvent: context.untilStopped(switcher.handle))
                 return true
             } catch {
                 return false

@@ -3,32 +3,64 @@ import AppKit
 
 @MainActor
 public final class AppInputSwitch {
+    @MainActor
+    public final class Memory {
+        var lastUsed: [String: String]
+        var stoppedIn: String?
+
+        public init() {
+            lastUsed = [:]
+        }
+
+        func activatedWhileStopped(_ app: String?) {
+            if app != stoppedIn {
+                stoppedIn = nil
+            }
+        }
+    }
+
     private static let settleMilliseconds = 150
 
     private let current: () -> String?
     private let select: (String) -> Void
     private let settle: Duration
+    private let memory: Memory
     private var front: String?
-    private var lastUsed: [String: String] = [:]
     private(set) var pending: Task<Void, Never>?
 
     init(
         front: String?, current: @escaping () -> String?, select: @escaping (String) -> Void,
-        settle: Duration
+        settle: Duration, memory: Memory
     ) {
         self.front = front
         self.current = current
         self.select = select
         self.settle = settle
+        self.memory = memory
     }
 
     public static func install(
-        context: ModuleContext, settings: @escaping @MainActor () -> InputSourceSettings
+        context: ModuleContext, settings: @escaping @MainActor () -> InputSourceSettings,
+        memory: Memory
     ) {
+        let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let switcher = Self(
-            front: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-            current: { InputSource.currentID }, select: InputSource.select,
-            settle: .milliseconds(settleMilliseconds))
+            front: nil, current: { InputSource.currentID }, select: InputSource.select,
+            settle: .milliseconds(settleMilliseconds), memory: memory)
+        observeActivations(in: context) { app in switcher.activated(app, apps: settings().apps) }
+        context.own(.task, "input source switch") {
+            switcher.stop(apps: settings().apps)
+        }
+        switcher.start(in: frontmost, apps: settings().apps)
+    }
+
+    public static func trackActivationsWhileStopped(context: ModuleContext, memory: Memory) {
+        observeActivations(in: context) { app in memory.activatedWhileStopped(app) }
+    }
+
+    private static func observeActivations(
+        in context: ModuleContext, handler: @escaping @MainActor (String?) -> Void
+    ) {
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
             on: NSWorkspace.shared.notificationCenter,
@@ -36,28 +68,43 @@ public final class AppInputSwitch {
                 let key = NSWorkspace.applicationUserInfoKey
                 return (notification.userInfo?[key] as? NSRunningApplication)?.bundleIdentifier
             },
-            handler: { app in switcher.activated(app, apps: settings().apps) })
-        context.own(.task, "input source switch") { switcher.pending?.cancel() }
+            handler: handler)
+    }
+
+    func start(in app: String?, apps: [String: AppInput]) {
+        guard let app, app == memory.stoppedIn, apps[app] == .lastUsed else {
+            activated(app, apps: apps)
+            return
+        }
+        front = app
+    }
+
+    func stop(apps: [String: AppInput]) {
+        memory.stoppedIn = pending == nil ? front : nil
+        activated(nil, apps: apps)
     }
 
     func activated(_ app: String?, apps: [String: AppInput]) {
+        let settled = pending == nil
         pending?.cancel()
-        if let front, apps[front] == .lastUsed, let source = current() {
-            lastUsed[front] = source
+        pending = nil
+        if settled, let front, apps[front] == .lastUsed, let source = current() {
+            memory.lastUsed[front] = source
         }
         front = app
         guard let source = app.flatMap({ source(for: $0, in: apps) }) else { return }
-        pending = Task { [settle, select] in
+        pending = Task { [weak self, settle, select] in
             try? await Task.sleep(for: settle)
             guard !Task.isCancelled else { return }
             select(source)
+            self?.pending = nil
         }
     }
 
     private func source(for app: String, in apps: [String: AppInput]) -> String? {
         switch apps[app] {
         case .source(let id): id
-        case .lastUsed: lastUsed[app]
+        case .lastUsed: memory.lastUsed[app]
         case nil: nil
         }
     }

@@ -62,6 +62,12 @@ final class ItemEditor {
         }
     }
 
+    func refreshHotKeys() {
+        for id in settings.hotkeys.keys {
+            refreshHotKey(for: id)
+        }
+    }
+
     func refreshHotKey(for id: String) {
         if let registration = registrations.removeValue(forKey: id) {
             registry?.unregister(registration)
@@ -178,6 +184,10 @@ final class ItemEditor {
     func conflict(for hotkey: Shortcut, besides id: String) -> String? {
         if LauncherHotKeys.Key.allCases.contains(where: { $0.shortcut == hotkey }) {
             return "Mado"
+        }
+        let switcherOn = modules?.isEnabled(WindowsModule.id) == true
+        if switcherOn, WindowsModule.switcherShortcuts.contains(hotkey) {
+            return "Window switcher"
         }
         if let owner = settings.owner(of: hotkey), owner != id {
             return name(owner) ?? "Another item"

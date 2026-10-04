@@ -1,7 +1,6 @@
 public import AppCore
 import Carbon.HIToolbox
 public import CoreGraphics
-import Dispatch
 import IOKit
 import IOKit.hidsystem
 import os
@@ -54,7 +53,7 @@ public enum CapsLockTap: Equatable, Sendable {
     }
 
     @MainActor
-    public func perform(holding flags: CGEventFlags, openMado: @escaping @MainActor () -> Void) {
+    public func perform(holding flags: CGEventFlags, openMado: @MainActor () -> Void) {
         guard !IsSecureEventInputEnabled() else { return }
         switch self {
         case .escape:
@@ -65,7 +64,7 @@ public enum CapsLockTap: Equatable, Sendable {
             Self.toggleCapsLock()
 
         case .openMado:
-            DispatchQueue.main.async { openMado() }
+            openMado()
 
         case .shortcut(let shortcut):
             Self.keyStrokes(

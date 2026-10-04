@@ -42,7 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             (self?.sources).flatMap { LauncherResult.result(for: id, in: $0)?.name }
         },
         isAvailable: { [weak self] id in
-            id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true
+            self?.modules?.keysPaused != true
+                && (id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true)
         })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -59,9 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
-        statusItem = StatusMenu.makeItem(
-            target: self, open: #selector(showLauncher), settings: #selector(showSettings),
-            hide: #selector(hideStatusItem))
+        statusItem = makeStatusItem(settings: #selector(showSettings))
         launcher = makeLauncher()
         search = makeSearch()
         searchAgain()
