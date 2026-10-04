@@ -18,12 +18,13 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     }
 
     func ask(
-        _ snippet: Snippet, _ template: SnippetTemplate, clipboard: String, under caret: CGRect?
+        _ snippet: Snippet, _ template: SnippetTemplate, values: SnippetTemplate.Values,
+        under caret: CGRect?
     ) async throws(CancellationError) -> [String: String] {
         close()
         return try await withCheckedContinuation { continuation in
             finish = { continuation.resume(returning: $0) }
-            show(snippet, template, clipboard: clipboard, under: caret)
+            show(snippet, template, values: values, under: caret)
         }.get()
     }
 
@@ -36,14 +37,16 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     }
 
     private func show(
-        _ snippet: Snippet, _ template: SnippetTemplate, clipboard: String, under caret: CGRect?
+        _ snippet: Snippet, _ template: SnippetTemplate, values: SnippetTemplate.Values,
+        under caret: CGRect?
     ) {
         form.preview = { fields in
-            let expansion = template.expand(
-                .now(fields: fields, clipboard: clipboard), scalars: FillInForm.previewScalars)
+            var shown = values
+            shown.fields = fields
+            let expansion = template.expand(shown, scalars: FillInForm.previewScalars)
             return FillInForm.Preview(text: expansion.text, values: expansion.fieldRanges)
         }
-        form.onInsert = { [weak self] values in self?.done(.success(values)) }
+        form.onInsert = { [weak self] fields in self?.done(.success(fields)) }
         form.onCancel = { [weak self] in self?.close() }
         form.show(
             name: snippet.name, keyword: snippet.keyword,

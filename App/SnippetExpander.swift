@@ -110,17 +110,17 @@ final class SnippetExpander {
         let focused = await FocusedText.current(readingBack: typed.utf16.count)
         guard await canReplace(typed, focused) else { return }
         let template = SnippetTemplate(snippet.text)
-        let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
-        var fields: [String: String] = [:]
+        var values = SnippetTemplate.Values.now(
+            fields: [:], clipboard: NSPasteboard.general.string(forType: .string) ?? "")
         do {
             if !template.fields.isEmpty {
-                fields = try await fillIn.ask(
-                    snippet, template, clipboard: clipboard, under: focused?.caret)
+                values.fields = try await fillIn.ask(
+                    snippet, template, values: values, under: focused?.caret)
                 try await target.activate()
                 let after = await FocusedText.current(readingBack: typed.utf16.count)
                 guard await canReplace(typed, after) else { return }
             }
-            let expansion = template.expand(.now(fields: fields, clipboard: clipboard))
+            let expansion = template.expand(values)
             guard !stopped else { return }
             guard target.app.isActive, typed.isEmpty || !typing.inputAfterMatch else {
                 logger.notice("Focus or input moved on, so the snippet wasn’t inserted")
