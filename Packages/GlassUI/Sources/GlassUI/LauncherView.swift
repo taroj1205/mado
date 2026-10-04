@@ -63,7 +63,8 @@ public final class LauncherView: NSView {
     private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }
     var rootQuery: String?
-    private(set) var homeShown = true
+    private(set) var shownQuery = (text: "", scoped: false)
+    var afterResults: (() -> Void)?
     let icon = NSImageView()
     lazy var fieldLeading = field.leadingAnchor.constraint(
         equalTo: icon.trailingAnchor, constant: Self.searchIconGap)
@@ -213,14 +214,18 @@ public final class LauncherView: NSView {
     public func show(_ sections: [ResultList.Section]) {
         let previewed = results.selectedItem?.file
         let keep = browsing || choosingAction || selectedPill != nil || selectedWidget != nil
-        homeShown = onEmptyRootQuery
+        shownQuery = (field.stringValue, scoped)
         results.update(sections, keepingSelectionOf: keep ? results.selectedItem?.id : nil)
         if results.selectedItem?.file != previewed {
             closePreview()
         }
+        let waiting = afterResults
+        afterResults = nil
+        waiting?()
     }
 
     public func endBrowsing() {
+        afterResults = nil
         finishEditingWidgets()
         browsing = false
         leavePillsAndWidgets()

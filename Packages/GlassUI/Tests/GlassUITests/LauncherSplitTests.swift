@@ -55,9 +55,7 @@ import Testing
 
     private func enter() {
         view.enter(placeholder: "Type to filter entries…", filter: filter, preview: Self.preview)
-        view.results.sections = [
-            .init(title: "Today", items: [Self.item("first"), Self.item("second")])
-        ]
+        view.show([.init(title: "Today", items: [Self.item("first"), Self.item("second")])])
         view.layoutSubtreeIfNeeded()
     }
 
@@ -194,7 +192,7 @@ import Testing
         #expect(stack?.edgeInsets.left == 5)
         press(kVK_Return, "\r")
         #expect(runs.isEmpty)
-        view.results.sections = [.init(title: "Today", items: [Self.item("x", action: "Paste")])]
+        view.show([.init(title: "Today", items: [Self.item("x", action: "Paste")])])
         #expect(stack?.arrangedSubviews.allSatisfy { !$0.isHidden } == true)
         #expect(stack?.edgeInsets.left == 17)
         press(kVK_Return, "\r")

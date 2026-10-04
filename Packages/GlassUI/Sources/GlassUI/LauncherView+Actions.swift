@@ -74,12 +74,22 @@ extension LauncherView {
         }
     }
 
+    func waitsForResults(then retry: @escaping (LauncherView) -> Void) -> Bool {
+        guard shownQuery != (field.stringValue, scoped) else { return false }
+        afterResults = { [weak self] in
+            if let self { retry(self) }
+        }
+        return true
+    }
+
     func run(_ action: Int) {
+        if waitsForResults(then: { $0.run(action) }) { return }
         guard let item = results.selectedItem, action != 0 || !item.action.isEmpty else { return }
         onRun?(item, action)
     }
 
     func run(keyed keys: [String]) {
+        if waitsForResults(then: { $0.run(keyed: keys) }) { return }
         guard let item = results.selectedItem,
             let index = actions?(item).firstIndex(where: { $0.keys == keys })
         else { return }
@@ -91,6 +101,7 @@ extension LauncherView {
             let item = results.selectedItem,
             let index = actions?(item).firstIndex(where: { $0.matches(event) })
         else { return false }
+        if waitsForResults(then: { _ = $0.runActionShortcut(event) }) { return true }
         onRun?(item, index)
         return true
     }
@@ -100,6 +111,7 @@ extension LauncherView {
             if case .item(let item) = row { item } else { nil }
         }
         guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
+        if waitsForResults(then: { _ = $0.runShortcut(key) }) { return true }
         onRun?(item, 0)
         return true
     }
@@ -117,6 +129,7 @@ extension LauncherView {
             }
             return
         }
+        if waitsForResults(then: { $0.showActions() }) { return }
         guard let item = results.selectedItem else { return }
         selectPill(nil)
         present(actions?(item) ?? [], for: item.title) { [weak self] index in

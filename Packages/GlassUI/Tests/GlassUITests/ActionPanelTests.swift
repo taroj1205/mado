@@ -142,6 +142,7 @@ import Testing
         var cancels = 0
         view.onCancel = { cancels += 1 }
         view.field.stringValue = "term"
+        view.show(view.results.sections)
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
         press(kVK_Escape, "\u{1B}", in: panel)
@@ -228,6 +229,7 @@ import Testing
 
     @Test func typingInTheLauncherFiltersThePanelAndLeavesTheQuery() throws {
         view.field.stringValue = "term"
+        view.show(view.results.sections)
         press(kVK_ANSI_K, "k", in: panel, [.command])
         let menu = try #require(view.actionPanel)
         press(kVK_ANSI_P, "p", in: panel)
