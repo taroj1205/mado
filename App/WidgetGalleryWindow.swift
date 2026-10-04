@@ -38,6 +38,7 @@ final class WidgetGalleryWindow: NSObject, NSToolbarDelegate, NSWindowDelegate {
         refresh()
         gallery.hintsDrag = true
         window.level = NSWindow.Level(launcher.level.rawValue + 1)
+        window.collectionBehavior = launcher.collectionBehavior
         if !window.isVisible, let screen = launcher.screen {
             let size = window.frameRect(forContentRect: Self.contentRect).size
             let frame = ScreenGeometry.bottomFrame(
