@@ -81,7 +81,8 @@ extension AppDelegate {
     }
 
     func showGlances() {
-        widgets.shown = widgetPlacement == nil ? [] : Widgets.added(in: modules)
+        let enabled = modules?.isEnabled(Widgets.moduleID) != false
+        widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
