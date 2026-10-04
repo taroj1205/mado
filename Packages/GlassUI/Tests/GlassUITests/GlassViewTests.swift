@@ -89,6 +89,18 @@ import Testing
         #expect(border.layer?.cornerRadius == 14)
     }
 
+    @Test func aBorderShorterThanItsRadiusStaysRound() {
+        let border = GlassBorder(radius: 22)
+        border.frame = NSRect(x: 0, y: 0, width: 30, height: 16)
+        border.layout()
+        #expect(border.layer?.cornerRadius == 8)
+        #expect(border.rim.cornerRadius == 7.5)
+        border.frame = NSRect(x: 0, y: 0, width: 200, height: 44)
+        border.layout()
+        #expect(border.layer?.cornerRadius == 22)
+        #expect(border.rim.cornerRadius == 21.5)
+    }
+
     @Test func onlyThePanelTakesTheMouseAndKeyboard() {
         let rect = NSRect(x: 0, y: 0, width: 200, height: 80)
         let hud = GlassPanel(kind: .hud, contentRect: rect, shape: .rounded(16))
