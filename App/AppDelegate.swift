@@ -90,8 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let library = Snippets(modules: manager)
             snippets = library
             let openHistory = CalculatorHistory.command { [weak self] in
-                self?.clipboardScoped = false
-                self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
+                self?.openCalculatorHistory()
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
             try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)

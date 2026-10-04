@@ -85,6 +85,11 @@ extension AppDelegate {
         editor.refreshHotKey(for: ClipboardHistory.commandID)
     }
 
+    func openCalculatorHistory() {
+        clipboardScoped = false
+        launcherView.enter(placeholder: CalculatorHistory.placeholder)
+    }
+
     private func openClipboardHistory() {
         let visible = launcher?.isVisible == true
         if visible, scope == .clipboard {
