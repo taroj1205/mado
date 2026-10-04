@@ -15,6 +15,7 @@ struct SettingsPage {
         let clipboardHistory: ClipboardHistorySettings
         let ignoredApps: IgnoredAppsSettings
         let inputDefaults: AppInputDefaults
+        let remaps: RemapsSettings
         let gallery: WidgetGalleryWindow
     }
 
@@ -98,7 +99,7 @@ struct SettingsPage {
                 Tab(title: "Modifier Keys", sections: nil),
                 Tab(title: "Input Sources") { [$0.inputDefaults.section] },
                 Tab(title: "Enter Guard", sections: nil),
-                Tab(title: "Remaps", sections: nil),
+                Tab(title: "Remaps") { $0.remaps.sections },
             ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),

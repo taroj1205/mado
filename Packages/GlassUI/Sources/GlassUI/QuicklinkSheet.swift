@@ -225,6 +225,7 @@ public final class QuicklinkSheet: NSView, NSTextFieldDelegate {
     private func showProblem() {
         hotkey.conflict = problem != nil
         problemLabel.stringValue = problem ?? ""
+        problemLabel.setAccessibilityValue(HotKeyLabel.spoken(text: problemLabel.stringValue))
         problemLabel.isHidden = problem == nil
     }
 }

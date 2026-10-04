@@ -120,7 +120,9 @@ final class HotKeyField: NSView {
         self.style = style
         let suffixLabel = suffix.map { Self.label($0, size: Self.suffixSize) }
         content.setViews(keycaps.map(Self.keycap) + [suffixLabel].compactMap(\.self), in: .center)
-        setAccessibilityValue((keycaps + [suffix].compactMap(\.self)).joined(separator: " "))
+        setAccessibilityValue(
+            HotKeyLabel.spoken(text: (keycaps + [suffix].compactMap(\.self)).joined(separator: " "))
+        )
     }
 
     override func accessibilityPerformPress() -> Bool {

@@ -115,7 +115,8 @@ public final class GestureOverlay {
             icon.image = NSImage(systemSymbolName: text.symbol, accessibilityDescription: nil)
             title.stringValue = text.title
             detail.stringValue = text.detail
-            hud.contentView?.setAccessibilityLabel("\(text.title), \(text.detail)")
+            hud.contentView?.setAccessibilityLabel(
+                HotKeyLabel.spoken(text: "\(text.title), \(text.detail)"))
         }
         placeHUD(below: frame)
         if !outline.isVisible {

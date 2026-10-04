@@ -119,12 +119,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = IgnoredAppsSettings(modules: modules)
         let inputDefaults = AppInputDefaults(modules: modules)
+        let remaps = RemapsSettings(modules: modules, recorder: recorder)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
-            inputDefaults: inputDefaults, gallery: WidgetGalleryWindow(modules: modules))
+            inputDefaults: inputDefaults, remaps: remaps,
+            gallery: WidgetGalleryWindow(modules: modules))
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
@@ -139,6 +141,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         glass.autoresizingMask = [.width, .height]
         split.splitView.addSubview(glass, positioned: .below, relativeTo: nil)
 
+        let window = Self.window(showing: split)
+        tabs = pages
+        super.init(window: window)
+        window.delegate = self
+        ignoredApps.onChange = { [weak self] in self?.reload() }
+        inputDefaults.onChange = { [weak self] in self?.reload() }
+        remaps.onChange = { [weak self] in self?.reload() }
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        nil
+    }
+
+    private static func window(showing split: NSSplitViewController) -> NSWindow {
         let window = NSWindow(contentViewController: split)
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -149,18 +166,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.toolbar = NSToolbar()
         window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: Self.width, height: Self.height))
+        window.setContentSize(NSSize(width: width, height: height))
         window.center()
-        tabs = pages
-        super.init(window: window)
-        window.delegate = self
-        ignoredApps.onChange = { [weak self] in self?.reload() }
-        inputDefaults.onChange = { [weak self] in self?.reload() }
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        nil
+        return window
     }
 
     private static func pages(_ context: SettingsPage.Context) -> NSTabViewController {
