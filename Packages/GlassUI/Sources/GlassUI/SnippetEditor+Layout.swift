@@ -188,6 +188,7 @@ extension SnippetEditor {
             "Keyword", SheetForm.field(keywordField, label: "Keyword", width: nil, font: mono))
         keyword.widthAnchor.constraint(equalToConstant: Self.keywordWidth).isActive = true
         let fields = NSStackView(views: [name, keyword])
+        fields.distribution = .fill
         fields.spacing = Self.columnGap
         fields.alignment = .top
         problemLabel.textColor = .systemOrange
