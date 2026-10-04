@@ -35,7 +35,8 @@ final class ClipboardHistory: NSObject {
     private var selected: Filter?
     private var entries: [String: ClipboardStore.Entry] = [:]
     private var counted: [Int64: ClipboardStore.Entry.Counts] = [:]
-    private var counting: Set<Int64> = []
+    private var counting: Int64?
+    private var counter: Task<Void, Never>?
     private lazy var filterWidth = filter.widthAnchor.constraint(equalToConstant: 0)
 
     var isRunning: Bool {
@@ -169,19 +170,28 @@ final class ClipboardHistory: NSObject {
     }
 
     private func count(_ entry: ClipboardStore.Entry) {
-        guard counting.insert(entry.id).inserted else { return }
-        Task { [weak self] in
-            let counts = await Task.detached(priority: .userInitiated) { entry.counts }.value
-            guard let self, counting.remove(entry.id) != nil else { return }
+        guard counting != entry.id else { return }
+        stopCounting()
+        counting = entry.id
+        counter = Task { [weak self] in
+            let counts = await entry.backgroundCounts()
+            guard let self, let counts, counting == entry.id else { return }
+            counting = nil
             counted[entry.id] = counts
             onCount?()
         }
     }
 
+    private func stopCounting() {
+        counter?.cancel()
+        counter = nil
+        counting = nil
+    }
+
     private func reset() {
         selected = nil
         counted = [:]
-        counting = []
+        stopCounting()
         rebuild(sources: [])
         Task { [weak self] in await self?.loadSources() }
     }
@@ -190,7 +200,7 @@ final class ClipboardHistory: NSObject {
         store = nil
         entries = [:]
         counted = [:]
-        counting = []
+        stopCounting()
         onRunningChange?()
     }
 

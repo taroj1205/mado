@@ -66,11 +66,7 @@ extension ClipboardStore.Entry {
     }
 
     public var counts: Counts {
-        var words = 0
-        text.enumerateSubstrings(
-            in: text.startIndex..., options: [.byWords, .substringNotRequired]
-        ) { _, _, _, _ in words += 1 }
-        return Counts(characters: text.count, words: words)
+        count { false }
     }
 
     public var quickCounts: Counts? {
@@ -112,6 +108,23 @@ extension ClipboardStore.Entry {
             }
         }
         return days
+    }
+
+    @concurrent
+    public func backgroundCounts() async -> Counts? {
+        let counted = count { Task.isCancelled }
+        return Task.isCancelled ? nil : counted
+    }
+
+    func count(until stopping: @escaping () -> Bool) -> Counts {
+        var words = 0
+        text.enumerateSubstrings(
+            in: text.startIndex..., options: [.byWords, .substringNotRequired]
+        ) { _, _, _, stop in
+            words += 1
+            stop = stopping()
+        }
+        return Counts(characters: text.count, words: words)
     }
 
     private func kindDetails(_ counts: Counts?) -> [Detail] {

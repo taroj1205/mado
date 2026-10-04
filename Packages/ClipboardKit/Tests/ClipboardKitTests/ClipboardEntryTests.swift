@@ -120,6 +120,16 @@ import Testing
         #expect(details(of: link, from: "Safari", counted: false)[2].value == "…")
     }
 
+    @Test func countsInTheBackgroundUnlessCancelled() async {
+        let long = Self.entry(.text, String(repeating: "word ", count: 20_001))
+
+        #expect(await long.backgroundCounts() == long.counts)
+        #expect(long.count { true }.words == 1)
+        let cancelled = Task { await long.backgroundCounts() }
+        cancelled.cancel()
+        #expect(await cancelled.value == nil)
+    }
+
     @Test func groupsEntriesByDayNewestFirst() {
         let entries = [now, now - Self.hour, now - 30 * Self.hour].map { date in
             Self.entry(.text, "x", at: date)
