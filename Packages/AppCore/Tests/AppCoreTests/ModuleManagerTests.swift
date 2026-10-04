@@ -12,6 +12,7 @@ import Testing
         var failOnStart = false
         var ticks = 0
         var released: [String] = []
+        var onStart: (() throws -> Void)?
 
         init(id: String, enabledByDefault: Bool) {
             descriptor = ModuleDescriptor(
@@ -34,6 +35,7 @@ import Testing
             if failOnStart {
                 throw StartFailure()
             }
+            try onStart?()
         }
 
         func stop() {
@@ -112,6 +114,26 @@ import Testing
         #expect(try second.value(String.self, for: "launcher") == "activeWindow")
         #expect(try second.value(String.self, for: "notes") == nil)
         #expect(second.isEnabled("clipboard"))
+    }
+
+    @Test func aModuleTurnedOnIsEnabledAndKeepsWhatItSavesWhileStarting() throws {
+        let store = makeStore()
+        let manager = try ModuleManager(store: store)
+        let module = FakeModule(id: "clipboard", enabledByDefault: false)
+        var enabledWhileStarting = false
+        module.onStart = { [weak manager] in
+            enabledWhileStarting = manager?.isEnabled("clipboard") == true
+            try manager?.setValue(true, for: "clipboard")
+        }
+        try manager.register(module)
+
+        try manager.setEnabled("clipboard", true)
+
+        let reopened = try ModuleManager(store: store)
+        #expect(enabledWhileStarting)
+        #expect(try manager.value(Bool.self, for: "clipboard") == true)
+        #expect(try reopened.value(Bool.self, for: "clipboard") == true)
+        #expect(reopened.isEnabled("clipboard"))
     }
 
     @Test func failedValueSaveKeepsThePreviousValue() throws {

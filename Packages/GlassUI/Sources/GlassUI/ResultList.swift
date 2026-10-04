@@ -11,6 +11,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let action: String
         public let icon: NSImage?
         public let file: URL?
+        public let thumbnail: URL?
         public let answer: Answer?
         public let tint: NSColor?
         public let shortcut: [String]
@@ -18,8 +19,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
-            action: String, icon: NSImage? = nil, file: URL? = nil, answer: Answer? = nil,
-            tint: NSColor? = nil, shortcut: [String] = []
+            action: String, icon: NSImage? = nil, file: URL? = nil, thumbnail: URL? = nil,
+            answer: Answer? = nil, tint: NSColor? = nil, shortcut: [String] = []
         ) {
             self.id = id
             self.title = title
@@ -29,6 +30,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.action = action
             self.icon = icon
             self.file = file
+            self.thumbnail = thumbnail
             self.answer = answer
             self.tint = tint
             self.shortcut = shortcut
@@ -72,6 +74,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     }
 
     static let rowHeight: CGFloat = 42
+    static let compactRowHeight: CGFloat = 36
+    static let compactRadius: CGFloat = 8
     static let answerHeight: CGFloat = 116
     static let headerHeight: CGFloat = 32
     static let noticeHeight: CGFloat = 80
@@ -96,6 +100,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             reloading = false
             onSelect?(selectedItem)
         }
+    }
+
+    public var compact = false {
+        didSet { table.reloadData() }
     }
 
     public var onSelect: ((Item?) -> Void)?
@@ -184,7 +192,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         case .card(let card): DefinitionCell.height(for: card, width: contentSize.width)
         case .colour: Self.colourHeight
         case .header: Self.headerHeight
-        case .item(let item): item.answer == nil ? Self.rowHeight : Self.answerHeight
+        case .item(let item) where item.answer != nil: Self.answerHeight
+        case .item: compact ? Self.compactRowHeight : Self.rowHeight
         }
     }
 
@@ -202,7 +211,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
         let answer = if case .item(let item) = rows[row] { item.answer != nil } else { false }
-        view.radius = answer ? AnswerCell.radius : ResultRowView.radius
+        view.radius = answer ? AnswerCell.radius : rowRadius
         return view
     }
 
@@ -239,19 +248,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             unsafe cell.textField?.stringValue = title
             return cell
 
-        case .item(let item) where item.answer != nil:
-            let cell =
-                tableView.makeView(withIdentifier: AnswerCell.id, owner: nil)
-                as? AnswerCell ?? AnswerCell()
-            cell.show(item)
-            return cell
-
         case .item(let item):
-            let cell =
-                tableView.makeView(withIdentifier: ResultCell.id, owner: nil)
-                as? ResultCell ?? ResultCell()
-            cell.show(item)
-            return cell
+            return cell(for: item, in: tableView)
         }
     }
 

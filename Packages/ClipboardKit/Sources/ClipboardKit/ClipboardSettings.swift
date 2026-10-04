@@ -8,6 +8,7 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
     ]
 
     public var retention: ClipboardStore.Retention
+    public var assignedDefaultHotKey: Bool
     private var addedApps: [String]
     private var removedApps: [String]
 
@@ -17,6 +18,7 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
 
     public init() {
         retention = ClipboardStore.Retention()
+        assignedDefaultHotKey = false
         addedApps = []
         removedApps = []
     }
@@ -27,6 +29,9 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
         retention =
             try values.decodeIfPresent(ClipboardStore.Retention.self, forKey: .retention)
             ?? retention
+        assignedDefaultHotKey =
+            try values.decodeIfPresent(Bool.self, forKey: .assignedDefaultHotKey)
+            ?? assignedDefaultHotKey
         addedApps = try values.decodeIfPresent([String].self, forKey: .addedApps) ?? addedApps
         removedApps =
             try values.decodeIfPresent([String].self, forKey: .removedApps) ?? removedApps

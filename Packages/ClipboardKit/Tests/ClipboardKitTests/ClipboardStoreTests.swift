@@ -41,11 +41,11 @@ import Testing
 
         #expect(entries.map(\.kind) == [.image, .richText])
         #expect(entries[1].text == "bold")
-        #expect(entries[1].data == rtf)
+        #expect(try await store.data(for: entries[1].id) == rtf)
         #expect(entries[1].type == NSPasteboard.PasteboardType.rtf.rawValue)
         #expect(entries[1].source == "com.apple.TextEdit")
         #expect(entries[1].date == date)
-        #expect(entries[0].data == nil)
+        #expect(try await store.data(for: entries[0].id) == nil)
         let image = try #require(entries[0].image)
         #expect(image.pathExtension == "png")
         #expect(try Data(contentsOf: image) == png)
@@ -236,6 +236,37 @@ import Testing
         #expect(try await store.search(#"\t"#, limit: 10).map(\.text) == [#"C:\temp"#])
         #expect(try await store.search("OFF", limit: 10).map(\.text) == ["500 off", "50% off"])
         #expect(try await store.search("nul", limit: 10).map(\.text) == ["nul\0inside"])
+    }
+
+    @Test func filtersByKindAndSourceApp() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+        let clips = [
+            Clip(.text, text: "notes", type: nil, data: nil, source: "com.apple.Notes", date: .now),
+            Clip(
+                .url, text: "https://apple.com", type: nil, data: nil, source: "com.apple.Safari",
+                date: .now + 1),
+            Clip(
+                .text, text: "safari", type: nil, data: nil, source: "com.apple.Safari",
+                date: .now + 2),
+            Clip(.text, text: "unknown", type: nil, data: nil, source: nil, date: .now + 3),
+        ]
+        for clip in clips {
+            try await store.add(clip, keeping: Self.roomy)
+        }
+
+        #expect(
+            try await store.search("", limit: 10, kind: .text).map(\.text) == [
+                "unknown", "safari", "notes",
+            ])
+        #expect(
+            try await store.search("", limit: 10, source: "com.apple.Safari").map(\.text)
+                == ["safari", "https://apple.com"])
+        #expect(
+            try await store.search("a", limit: 10, kind: .text, source: "com.apple.Safari")
+                .map(\.text) == ["safari"])
+        #expect(try await store.search("", limit: 10, kind: .image).isEmpty)
+        #expect(try await store.sources() == ["com.apple.Safari", "com.apple.Notes"])
     }
 
     @Test func searchesTenThousandItemsWithinOneFrame() async throws {

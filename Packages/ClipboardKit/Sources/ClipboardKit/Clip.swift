@@ -1,13 +1,24 @@
 public import AppKit
 
 public struct Clip: Equatable, Sendable {
-    public enum Kind: String, Sendable {
+    public enum Kind: String, CaseIterable, Sendable {
         case text = "text"
         case richText = "rich_text"
         case image = "image"
         case file = "file"
         case url = "url"
         case color = "color"
+
+        public var title: String {
+            switch self {
+            case .text: "Text"
+            case .richText: "Rich Text"
+            case .image: "Image"
+            case .file: "File"
+            case .url: "Link"
+            case .color: "Color"
+            }
+        }
     }
 
     private struct Content {
@@ -16,6 +27,8 @@ public struct Clip: Equatable, Sendable {
         let type: NSPasteboard.PasteboardType?
         let data: Data?
     }
+
+    static let pathSeparator: Character = "\0"
 
     private static let imageTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
     private static let richTextTypes: [NSPasteboard.PasteboardType] = [.rtf, .html]
@@ -71,7 +84,9 @@ public struct Clip: Equatable, Sendable {
             item.string(forType: .fileURL).flatMap(URL.init(string:))?.path(percentEncoded: false)
         }
         guard !paths.isEmpty else { return nil }
-        return Content(kind: .file, text: paths.joined(separator: "\n"), type: nil, data: nil)
+        return Content(
+            kind: .file, text: paths.joined(separator: "\n"), type: nil,
+            data: Data(paths.joined(separator: String(pathSeparator)).utf8))
     }
 
     private static func colorContent(on pasteboard: NSPasteboard) -> Content? {

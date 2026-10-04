@@ -19,6 +19,11 @@ struct LauncherMenu {
         self.init(groups: [Self.entries(for: actions)], recordsUse: false)
     }
 
+    init(unkeyed actions: [CommandAction]) {
+        let entries = actions.map { Entry.run($0, keys: [], isDestructive: false) }
+        self.init(groups: [entries], recordsUse: false)
+    }
+
     init(
         for id: String, query: String, in sources: LauncherResult.Sources, editor: ItemEditor,
         pastingInto target: PasteTarget?

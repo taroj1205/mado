@@ -61,10 +61,11 @@ struct SettingsPage {
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)
         ) { context in
-            [
-                context.clipboardHistory.section, context.ignoredApps.section,
-                context.clipboardHistory.clearSection,
-            ]
+            let hotkey = context.recorder.button(
+                for: ClipboardHistory.commandID, named: "Open history")
+            var history = context.clipboardHistory.section
+            history.rows.insert(.init("Open history", hotkey), at: 0)
+            return [history, context.ignoredApps.section, context.clipboardHistory.clearSection]
         },
         Self(
             "Windows", "rectangle.split.2x1",
