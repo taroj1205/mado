@@ -11,15 +11,6 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         public var isModifier: Bool {
             [.control, .hyper].contains(self)
         }
-
-        var usage: UInt64? {
-            switch self {
-            case .capsLock: nil
-            case .control: KeyMappings.usage(kHIDUsage_KeyboardRightControl)
-            case .escape: KeyMappings.usage(kHIDUsage_KeyboardEscape)
-            case .hyper: KeyMappings.usage(kHIDUsage_KeyboardF18)
-            }
-        }
     }
 
     public enum TapAction: String, Codable, CaseIterable, Sendable {
@@ -48,6 +39,16 @@ public struct RemapSettings: Codable, Equatable, Sendable {
         case .capsLock: return .capsLock
         case .openMado: return .openMado
         case .shortcut: return tapShortcut.map(CapsLockTap.shortcut)
+        }
+    }
+
+    var usage: UInt64? {
+        let control = tap == nil ? kHIDUsage_KeyboardLeftControl : kHIDUsage_KeyboardRightControl
+        switch capsLock {
+        case .capsLock: return nil
+        case .control: return KeyMappings.usage(control)
+        case .escape: return KeyMappings.usage(kHIDUsage_KeyboardEscape)
+        case .hyper: return KeyMappings.usage(kHIDUsage_KeyboardF18)
         }
     }
 

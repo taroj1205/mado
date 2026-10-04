@@ -1,3 +1,4 @@
+import AppCore
 import Foundation
 import IOKit.hid
 import Testing
@@ -25,10 +26,21 @@ import Testing
 
     @Test func usagesUseTheKeyboardPageAsTN2450Describes() {
         #expect(KeyMappings.capsLock == 0x7_0000_0039)
-        #expect(RemapSettings.CapsLock.control.usage == 0x7_0000_00E4)
-        #expect(RemapSettings.CapsLock.escape.usage == 0x7_0000_0029)
-        #expect(RemapSettings.CapsLock.hyper.usage == 0x7_0000_006D)
-        #expect(RemapSettings.CapsLock.capsLock.usage == nil)
+        let usages = RemapSettings.CapsLock.allCases.map { capsLock in
+            var settings = RemapSettings()
+            settings.capsLock = capsLock
+            return settings.usage
+        }
+        #expect(usages == [nil, 0x7_0000_00E0, 0x7_0000_0029, 0x7_0000_006D])
+    }
+
+    @Test(arguments: RemapSettings.TapAction.allCases)
+    func controlIsRightControlOnlyWhileATapDoesSomething(_ action: RemapSettings.TapAction) {
+        var settings = RemapSettings()
+        settings.capsLock = .control
+        settings.tapAction = action
+        settings.tapShortcut = Shortcut(keyCode: 17, modifiers: .hyper)
+        #expect(settings.usage == (action == .nothing ? 0x7_0000_00E0 : 0x7_0000_00E4))
     }
 
     @Test func replacingKeepsOtherKeysAndSwapsTheCapsLockEntry() {

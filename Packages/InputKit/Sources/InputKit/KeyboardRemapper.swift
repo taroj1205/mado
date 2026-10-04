@@ -70,7 +70,7 @@ public final class KeyboardRemapper {
     private var watchdog: Watchdog?
 
     public init?(settings: RemapSettings) {
-        guard let destination = settings.capsLock.usage else { return nil }
+        guard let destination = settings.usage else { return nil }
         guard let opened = RemapLock(url: Self.lockURL) else {
             logger.error("Caps Lock remap lock can't be opened")
             return nil
