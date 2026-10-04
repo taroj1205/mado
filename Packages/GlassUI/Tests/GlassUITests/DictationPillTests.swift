@@ -11,6 +11,14 @@ import Testing
         pill.stack.arrangedSubviews.filter { !$0.isHidden }
     }
 
+    private var glassOnScreen: CGRect {
+        pill.panel.convertToScreen(pill.glass.frame)
+    }
+
+    init() {
+        pill.reducesMotion = { false }
+    }
+
     @Test func readySaysWhichKeyToHold() {
         pill.show(.ready(hint: "hold right ⌥ to talk"), on: nil)
         defer { pill.hide() }
@@ -63,8 +71,10 @@ import Testing
         #expect(pill.fix.acceptsFirstMouse(for: nil))
         pill.fix.performClick(nil)
         #expect(fixed == 1)
-        #expect(!pill.panel.isVisible)
         #expect(pill.state == nil)
+        #expect(pill.panel.ignoresMouseEvents)
+        pill.advance(by: 2)
+        #expect(!pill.panel.isVisible)
     }
 
     @Test func aFailureWithoutAFixShowsNoButton() {
@@ -79,10 +89,10 @@ import Testing
         quick.failureDuration = .milliseconds(20)
         quick.show(.failed("Microphone not allowed", fix: "Open Settings"), on: nil)
         #expect(quick.panel.isVisible)
-        for _ in 0..<100 where quick.panel.isVisible {
+        for _ in 0..<100 where quick.state != nil {
             try await Task.sleep(for: .milliseconds(10))
         }
-        #expect(!quick.panel.isVisible)
+        #expect(quick.state == nil)
     }
 
     @Test func showingAnotherStateKeepsAFailureFromHidingIt() async throws {
@@ -100,7 +110,8 @@ import Testing
         let screen = try #require(NSScreen.screens.first)
         pill.show(.listening(since: .now), on: screen)
         defer { pill.hide() }
-        let frame = pill.panel.frame
+        pill.advance(by: 2)
+        let frame = glassOnScreen
         #expect(pill.panel.isVisible)
         #expect(frame.height == 44)
         #expect(abs(frame.midX - screen.visibleFrame.midX) <= 1)
@@ -113,11 +124,13 @@ import Testing
         let start = ContinuousClock.now
         pill.show(.listening(since: start), on: screen)
         defer { pill.hide() }
-        let narrow = pill.panel.frame
+        pill.advance(by: 2)
+        let narrow = glassOnScreen
         pill.hear(0, at: start + .seconds(600))
+        pill.advance(by: 2)
         #expect(pill.clock.stringValue == "10:00")
-        #expect(pill.panel.frame.width > narrow.width)
-        #expect(abs(pill.panel.frame.midX - narrow.midX) <= 1)
+        #expect(glassOnScreen.width > narrow.width)
+        #expect(abs(glassOnScreen.midX - narrow.midX) <= 1)
     }
 
     @Test(.enabled(if: !NSScreen.screens.isEmpty, "Placing the pill needs a screen"))
@@ -125,11 +138,68 @@ import Testing
         let screen = try #require(NSScreen.screens.first)
         pill.show(.ready(hint: "hold right ⌥ to talk"), on: screen)
         defer { pill.hide() }
-        let ready = pill.panel.frame
+        pill.advance(by: 2)
+        let ready = glassOnScreen
+        let canvas = pill.panel.frame
         pill.show(.listening(since: .now), on: nil)
-        #expect(pill.panel.frame.width < ready.width)
-        #expect(abs(pill.panel.frame.midX - ready.midX) <= 1)
-        #expect(pill.panel.frame.minY == ready.minY)
+        #expect(pill.panel.frame == canvas)
+        pill.advance(by: 2)
+        #expect(glassOnScreen.width < ready.width)
+        #expect(abs(glassOnScreen.midX - ready.midX) <= 1)
+        #expect(glassOnScreen.minY == ready.minY)
+    }
+
+    @Test(.enabled(if: !NSScreen.screens.isEmpty, "Placing the pill needs a screen"))
+    func bloomsFromADropletAndCollapsesBeforeLeaving() throws {
+        let screen = try #require(NSScreen.screens.first)
+        pill.show(.ready(hint: "hold right ⌥ to talk"), on: screen)
+        #expect(pill.panel.isVisible)
+        #expect(pill.glass.frame.size == CGSize(width: 16, height: 16))
+        #expect(pill.panel.alphaValue == 0)
+        pill.advance(by: 2)
+        #expect(
+            pill.glass.frame.size
+                == CGSize(width: pill.stack.fittingSize.width.rounded(.up), height: 44))
+        #expect(pill.panel.alphaValue == 1)
+        pill.hide()
+        #expect(pill.state == nil)
+        #expect(pill.panel.isVisible)
+        pill.advance(by: 2)
+        #expect(!pill.panel.isVisible)
+        #expect(pill.glass.frame.size == CGSize(width: 16, height: 16))
+    }
+
+    @Test(.enabled(if: !NSScreen.screens.isEmpty, "Placing the pill needs a screen"))
+    func reducedMotionShowsTheRestingShapeAndFades() throws {
+        let screen = try #require(NSScreen.screens.first)
+        pill.reducesMotion = { true }
+        pill.show(.listening(since: .now), on: screen)
+        defer { pill.hide() }
+        #expect(pill.glass.frame.height == 44)
+        #expect(pill.panel.alphaValue == 0)
+        pill.advance(by: 0.05)
+        #expect(pill.panel.alphaValue > 0)
+        pill.advance(by: 2)
+        #expect(pill.panel.alphaValue == 1)
+        let listening = pill.glass.frame.width
+        pill.show(.ready(hint: "hold right ⌥ to talk"), on: nil)
+        #expect(pill.glass.frame.width > listening)
+        #expect(pill.stack.layer?.animation(forKey: kCATransition) != nil)
+    }
+
+    @Test(.enabled(if: !NSScreen.screens.isEmpty, "Placing the pill needs a screen"))
+    func aWiderStateWidensTheCanvasAroundTheSameCentre() throws {
+        let screen = try #require(NSScreen.screens.first)
+        pill.show(.listening(since: .now), on: screen)
+        defer { pill.hide() }
+        let canvas = pill.panel.frame
+        pill.show(.failed("Microphone not allowed", fix: "Open Settings"), on: nil)
+        #expect(pill.panel.frame.width > canvas.width)
+        #expect(abs(pill.panel.frame.midX - canvas.midX) <= 1)
+        let transition = pill.stack.layer?.animation(forKey: kCATransition) as? CATransition
+        #expect(transition?.type == .fade)
+        pill.advance(by: 2)
+        #expect(pill.panel.frame.contains(glassOnScreen))
     }
 
     @Test func theClockCountsMinutesAndSeconds() {
