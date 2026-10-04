@@ -61,21 +61,27 @@ import Testing
         #expect(view.widgetOverhang == 0)
     }
 
-    @Test func theKeysMoveThroughFloatingTilesLikeInlineOnes() {
+    @Test func theArrowsGoToTheNearestTileThatWayAcrossThePanel() {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
         arrange(.around)
         press(kVK_UpArrow, "\u{F700}")
         #expect(view.selectedWidget == 0)
         #expect(view.widgetGrid.tiles.map(\.selected) == [true] + Array(repeating: false, count: 6))
-        for _ in 1...7 {
-            press(kVK_RightArrow, "\u{F703}")
-        }
+        press(kVK_RightArrow, "\u{F703}")
+        #expect(view.selectedWidget == 4)
+        press(kVK_RightArrow, "\u{F703}")
+        #expect(view.selectedWidget == 4)
+        press(kVK_DownArrow, "\u{F701}")
+        press(kVK_DownArrow, "\u{F701}")
         #expect(view.selectedWidget == 6)
         #expect(view.actionLabel.stringValue == "Open 7")
         press(kVK_LeftArrow, "\u{F702}")
+        #expect(view.selectedWidget == 2)
         press(kVK_Return, "\r")
-        #expect(ran == ["6"])
+        #expect(ran == ["3"])
+        press(kVK_DownArrow, "\u{F701}")
+        #expect(view.selectedWidget == 3)
         press(kVK_DownArrow, "\u{F701}")
         #expect(view.selectedWidget == nil)
         #expect(view.results.selectedItem?.id == "Safari")

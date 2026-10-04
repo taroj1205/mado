@@ -18,7 +18,8 @@ extension LauncherView {
         editBar.onAdd = { [weak self] in self?.onAddWidgets?() }
         editBar.onDone = { [weak self] in self?.finishEditingWidgets() }
         editBar.onRemove = { [weak self] in self?.removeSelectedWidget() }
-        editBar.onStep = { [weak self] step in self?.stepWidget(by: step) }
+        editBar.onStep = { [weak self] heading in self?.stepWidget(heading) }
+        editBar.onSend = { [weak self] heading in self?.sendWidget(heading) }
         widgetGrid.onDrag = { [weak self] id, point, source in
             guard let self, let window = unsafe window else { return [] }
             return dragWidget(id, at: window.convertPoint(fromScreen: point), from: source)
@@ -58,10 +59,23 @@ extension LauncherView {
         }
     }
 
-    private func stepWidget(by step: Int) {
-        let count = widgetGrid.shown.count
-        guard count > 0 else { return }
-        selectWidget(selectedWidget.map { min(max($0 + step, 0), count - 1) } ?? 0)
+    func stepWidget(_ heading: WidgetGrid.Heading) {
+        guard !widgetGrid.shown.isEmpty else { return }
+        guard let selectedWidget else {
+            selectWidget(0)
+            return
+        }
+        selectWidget(widgetGrid.neighbour(of: selectedWidget, toward: heading) ?? selectedWidget)
+    }
+
+    func sendWidget(_ heading: WidgetGrid.Heading) {
+        guard let selectedWidget else { return }
+        let id = widgetGrid.shown[selectedWidget].id
+        guard let spot = widgetGrid.home(of: id).neighbour(toward: heading) else {
+            NSSound.beep()
+            return
+        }
+        place(id, at: spot)
     }
 
     private func showEditing() {

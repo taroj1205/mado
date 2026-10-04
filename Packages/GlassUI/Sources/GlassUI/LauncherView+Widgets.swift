@@ -117,16 +117,18 @@ extension LauncherView {
 
     func widgetCommand(_ selector: Selector, from widget: Int, in textView: NSTextView) -> Bool {
         switch selector {
-        case #selector(NSResponder.moveLeft): selectWidget(max(widget - 1, 0))
-
-        case #selector(NSResponder.moveRight):
-            selectWidget(min(widget + 1, widgetGrid.shown.count - 1))
+        case #selector(NSResponder.moveLeft): stepWidget(.left)
+        case #selector(NSResponder.moveRight): stepWidget(.right)
+        case #selector(NSResponder.moveUp): stepWidget(.top)
 
         case #selector(NSResponder.moveDown):
-            results.selectFirst()
-            selectWidget(nil)
+            if let below = widgetGrid.neighbour(of: widget, toward: .bottom) {
+                selectWidget(below)
+            } else {
+                results.selectFirst()
+                selectWidget(nil)
+            }
 
-        case #selector(NSResponder.moveUp): break
         case #selector(NSResponder.cancelOperation): selectWidget(nil)
 
         case #selector(NSResponder.insertNewline) where !textView.hasMarkedText():

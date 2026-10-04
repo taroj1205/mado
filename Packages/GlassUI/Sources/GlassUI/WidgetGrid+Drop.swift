@@ -9,6 +9,7 @@ extension WidgetGrid {
     private static let shelfRoom = 3
     private static let captionRoom: CGFloat = 30
     private static let refusedWidth: CGFloat = 120
+    private static let crossWeight: CGFloat = 2
 
     static func nearestSpot(to point: CGPoint, beside panel: CGRect) -> Spot? {
         if panel.contains(point) { return .panel }
@@ -45,12 +46,67 @@ extension WidgetGrid {
         }
     }
 
+    static func fits(
+        _ target: Spot, inPanel: [Widget], placed: [Placed], layout: Layout?, beside panel: CGRect
+    ) -> Bool {
+        if target == .panel {
+            let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
+            return layout != .grid || rows <= maxPanelRows
+        }
+        let side = target.side
+        let frames = zip(placed, floatingFrames(of: placed, beside: panel))
+            .filter { $0.0.spot.side == side }
+            .map(\.1)
+        let inside = frames.allSatisfy { frame in
+            side == .above
+                || (frame.minY >= panel.minY - slack && frame.maxY <= panel.maxY + slack)
+        }
+        let apart = frames.indices.allSatisfy { index in
+            frames[(index + 1)...].allSatisfy { other in
+                !frames[index].insetBy(dx: slack, dy: slack).intersects(other)
+            }
+        }
+        return inside && apart
+    }
+
     static func railsFrame(beside panel: CGRect) -> CGRect {
         let side = sideGap + sideWidth + railMargin
         let top = lift + CGFloat(shelfRoom) * (rowHeight + floatingGap) + captionRoom
         var frame = panel.insetBy(dx: -side, dy: -railMargin)
         frame.size.height += top - railMargin
         return frame
+    }
+
+    func accepts(_ id: String, at target: Spot) -> Bool {
+        guard let window = unsafe window else { return false }
+        let others = shown.filter { $0.id != id }
+        let all = others + shown.filter { $0.id == id }
+        let spot = { (widget: Widget) in widget.id == id ? target : self.spot(of: widget) }
+        let placed = Spot.allCases.dropFirst().flatMap { candidate in
+            all.filter { spot($0) == candidate }.map { ($0, candidate) }
+        }
+        return Self.fits(
+            target, inPanel: all.filter { spot($0) == .panel }, placed: placed,
+            layout: layoutInUse, beside: window.frame)
+    }
+
+    func neighbour(of index: Int, toward heading: Heading) -> Int? {
+        guard let window = unsafe window, shown.indices.contains(index) else { return nil }
+        let frames = tileFrames(in: window)
+        let from = CGPoint(x: frames[index].midX, y: frames[index].midY)
+        let scored = frames.indices.filter { $0 != index }.compactMap { other in
+            let gap = CGPoint(x: frames[other].midX - from.x, y: frames[other].midY - from.y)
+            let (along, across) =
+                switch heading {
+                case .right: (gap.x, gap.y)
+                case .left: (-gap.x, gap.y)
+                case .top: (gap.y, gap.x)
+                case .bottom: (-gap.y, gap.x)
+                }
+            return along > Self.slack && abs(across) <= along
+                ? (index: other, score: along + Self.crossWeight * abs(across)) : nil
+        }
+        return scored.min { $0.score < $1.score }?.index
     }
 
     func carry(_ tile: WidgetTile?) {
@@ -182,23 +238,6 @@ extension WidgetGrid {
     }
 
     private func fits(_ target: Spot, beside panel: CGRect) -> Bool {
-        if target == .panel {
-            let rows = Self.cells(spanning: inPanel.map(\.span)).last.map { $0.row + 1 } ?? 0
-            return layoutInUse != .grid || rows <= Self.maxPanelRows
-        }
-        let side = target.side
-        let frames = zip(placed, Self.floatingFrames(of: placed, beside: panel))
-            .filter { $0.0.spot.side == side }
-            .map(\.1)
-        let inside = frames.allSatisfy { frame in
-            side == .above
-                || (frame.minY >= panel.minY - Self.slack && frame.maxY <= panel.maxY + Self.slack)
-        }
-        let apart = frames.indices.allSatisfy { index in
-            frames[(index + 1)...].allSatisfy { other in
-                !frames[index].insetBy(dx: Self.slack, dy: Self.slack).intersects(other)
-            }
-        }
-        return inside && apart
+        Self.fits(target, inPanel: inPanel, placed: placed, layout: layoutInUse, beside: panel)
     }
 }

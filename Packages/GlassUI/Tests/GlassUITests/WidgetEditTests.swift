@@ -28,7 +28,7 @@ import Testing
         panel.makeFirstResponder(view.field)
     }
 
-    @Test func commandKOnAWidgetOffersItsActionAndEditWidgets() throws {
+    @Test func commandKOnAWidgetOffersItsActionMoveEditAndRemove() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
         press(kVK_UpArrow, "\u{F700}")
@@ -38,11 +38,14 @@ import Testing
         #expect(view.choosingAction)
         #expect(view.selectedWidget == 1)
         #expect(menu.header.stringValue == "Weather")
-        #expect(menu.rows.map(\.label.stringValue) == ["Open Weather", "Edit Widgets"])
+        #expect(
+            menu.rows.map(\.label.stringValue)
+                == ["Open Weather", "Move…", "Edit Widgets", "Remove Widget"])
+        #expect(menu.rows[1].detail.stringValue == "In the panel")
         #expect(try #require(menu.rows.first).accessibilityPerformPress())
         #expect(ran == ["weather"])
         press(kVK_ANSI_K, "k", [.command])
-        #expect(try #require(view.actionPanel?.rows.last).accessibilityPerformPress())
+        #expect(try #require(view.actionPanel?.rows[2]).accessibilityPerformPress())
         #expect(!view.choosingAction)
         #expect(view.editingWidgets)
         #expect(view.selectedWidget == 1)
