@@ -165,7 +165,10 @@ import Testing
     }
 
     @Test func goingBackRestoresTheFullWidthList() {
+        var leaves = 0
+        view.onLeave = { leaves += 1 }
         enter()
+        view.leave()
         view.leave()
         view.layoutSubtreeIfNeeded()
 
@@ -177,6 +180,7 @@ import Testing
             view.field.alignmentRect(forFrame: view.field.frame).maxX == view.bounds.maxX - 20)
         press(kVK_ANSI_P, "p", [.command])
         #expect(filter.clicks == 0)
+        #expect(leaves == 1)
     }
 
     @Test func aRowWithoutAPrimaryActionShowsOnlyActionsAndReturnDoesNothing() {

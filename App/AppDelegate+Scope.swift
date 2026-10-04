@@ -23,6 +23,7 @@ extension AppDelegate {
             if self?.scope == .clipboard { self?.launcherView.refreshDetail() }
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
+        launcherView.onLeave = { [clipboardHistory] in clipboardHistory.close() }
         clipboardRunningChanged()
     }
 

@@ -19,6 +19,7 @@ public final class LauncherView: NSView {
     public let results = ResultList()
     public var onQuery: ((String) -> Void)?
     public var onCancel: (() -> Void)?
+    public var onLeave: (() -> Void)?
     public var onRun: ((ResultList.Item, Int) -> Void)?
     public var actions: ((ResultList.Item) -> [Action])?
     public var onPill: ((StatusBar.Pill) -> Void)?
