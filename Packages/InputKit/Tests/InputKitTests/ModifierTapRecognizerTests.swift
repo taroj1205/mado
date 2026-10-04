@@ -49,12 +49,25 @@ import Testing
     @Test func aSingleWithoutADoubleArrivesWithoutWaiting() async throws {
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
-            window: ModifierTap.defaultWindow, bound: [ModifierTap.Tap(.rightShift)])
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
         try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
         #expect(inbox.taps.isEmpty)
-        #expect(inbox.waits.isEmpty)
-        await inbox.settle()
+        let settling = await ContinuousClock().measure { await inbox.settle() }
+        #expect(settling < .seconds(1))
         #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
+    }
+
+    @Test func aTapIsDroppedWhenAPauseCancelsItsDelivery() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: ModifierTap.defaultWindow, bound: [ModifierTap.Tap(.rightControl)])
+        try Self.tap(.rightControl, at: 1_000_000_000, into: recognizer)
+        #expect(inbox.waits.count == 1)
+        for wait in inbox.waits {
+            wait.cancel()
+        }
+        await inbox.settle()
+        #expect(inbox.taps.isEmpty)
     }
 
     @Test func aWaitingSingleArrivesWhenTheWindowRunsOut() async throws {

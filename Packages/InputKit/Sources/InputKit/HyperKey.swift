@@ -32,12 +32,16 @@ public struct HyperKey {
     public static func install(
         name: String, context: ModuleContext, onTap: (@MainActor (CGEventFlags) -> Void)?
     ) throws(ModuleError) {
-        try context.tapEvents(name, matching: types, swallow: swallow(onTap))
+        let swallow = swallow(onTap) { [weak context] tap in
+            context?.run("\(name) tap", operation: tap)
+        }
+        try context.tapEvents(name, matching: types, swallow: swallow)
     }
 
     @MainActor
     static func swallow(
-        _ onTap: (@MainActor (CGEventFlags) -> Void)?
+        _ onTap: (@MainActor (CGEventFlags) -> Void)?,
+        run: @escaping @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
     ) -> @MainActor (CGEventType, CGEvent) -> Bool {
         var key = Self(isTapped: onTap != nil, window: ModifierTap.defaultWindow)
         return { type, event in
@@ -61,7 +65,11 @@ public struct HyperKey {
                 return true
 
             case .tap:
-                onTap?(event.flags.intersection(Self.flags))
+                let held = event.flags.intersection(Self.flags)
+                run {
+                    guard !Task.isCancelled else { return }
+                    onTap?(held)
+                }
                 return true
             }
         }

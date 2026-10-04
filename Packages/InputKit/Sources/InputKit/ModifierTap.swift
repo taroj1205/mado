@@ -1,7 +1,6 @@
 public import AppCore
 import Carbon.HIToolbox
 import CoreGraphics
-import Dispatch
 import IOKit.hidsystem
 
 public struct ModifierTap {
@@ -87,8 +86,11 @@ public struct ModifierTap {
                 type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
                 timestamp: event.timestamp)
-            if let fired, let action = bindings[fired] {
-                DispatchQueue.main.async { action() }
+            if let fired, bindings[fired] != nil {
+                run { [weak self] in
+                    guard !Task.isCancelled else { return }
+                    self?.bindings[fired]?()
+                }
             }
             guard tap.held != nil, tap.held != previous else { return }
             waits += 1

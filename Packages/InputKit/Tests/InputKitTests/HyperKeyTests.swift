@@ -42,6 +42,29 @@ import Testing
         }
     }
 
+    @MainActor
+    final class Taps {
+        var fired = 0
+        var runs: [Task<Void, Never>] = []
+
+        func swallow() -> @MainActor (CGEventType, CGEvent) -> Bool {
+            HyperKey.swallow(
+                { [weak self] _ in self?.fired += 1 },
+                run: { [weak self] tap in self?.runs.append(Task { await tap() }) })
+        }
+
+        func settle() async {
+            for run in runs {
+                await run.value
+            }
+        }
+    }
+
+    private static func hyper(down isDown: Bool) throws -> CGEvent {
+        try #require(
+            CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_F18), keyDown: isDown))
+    }
+
     @Test func theHyperKeyItselfNeverReachesApps() {
         var recorder = Recorder(isTapped: false)
         #expect(recorder.press() == .swallow)
@@ -99,19 +122,31 @@ import Testing
     }
 
     @MainActor
-    @Test func keysMadoPostsForATapDoNotCountAsUsingTheHyperKey() throws {
-        var taps = 0
-        let swallow = HyperKey.swallow { _ in taps += 1 }
-        let hyperDown = try #require(
-            CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_F18), keyDown: true))
-        let hyperUp = try #require(
-            CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_F18), keyDown: false))
+    @Test func keysMadoPostsForATapDoNotCountAsUsingTheHyperKey() async throws {
+        let taps = Taps()
+        let swallow = taps.swallow()
         let posted = try #require(
             CapsLockTap.keyStrokes(CGKeyCode(kVK_ANSI_T), flags: .maskCommand).first)
-        #expect(swallow(.keyDown, hyperDown))
+        #expect(swallow(.keyDown, try Self.hyper(down: true)))
         #expect(!swallow(.keyDown, posted))
         #expect(posted.flags == .maskCommand)
-        #expect(swallow(.keyUp, hyperUp))
-        #expect(taps == 1)
+        #expect(swallow(.keyUp, try Self.hyper(down: false)))
+        #expect(taps.fired == 0)
+        await taps.settle()
+        #expect(taps.fired == 1)
+    }
+
+    @MainActor
+    @Test func aTapThatAPauseCancelsDoesNothing() async throws {
+        let taps = Taps()
+        let swallow = taps.swallow()
+        #expect(swallow(.keyDown, try Self.hyper(down: true)))
+        #expect(swallow(.keyUp, try Self.hyper(down: false)))
+        #expect(taps.runs.count == 1)
+        for run in taps.runs {
+            run.cancel()
+        }
+        await taps.settle()
+        #expect(taps.fired == 0)
     }
 }
