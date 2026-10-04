@@ -29,10 +29,13 @@ final class ClipboardHistory: NSObject {
     var onOpen: (() -> Void)?
     var onRunningChange: (() -> Void)?
     var onFilter: (() -> Void)?
+    var onCount: (() -> Void)?
     private var store: ClipboardStore?
     private var filters: [Filter?] = []
     private var selected: Filter?
     private var entries: [String: ClipboardStore.Entry] = [:]
+    private var counted: [Int64: ClipboardStore.Entry.Counts] = [:]
+    private var counting: Set<Int64> = []
     private lazy var filterWidth = filter.widthAnchor.constraint(equalToConstant: 0)
 
     var isRunning: Bool {
@@ -147,9 +150,13 @@ final class ClipboardHistory: NSObject {
     func preview(for item: ResultList.Item) -> LauncherView.Preview? {
         guard let entry = entries[item.id] else { return nil }
         let source = entry.source.map { Self.app($0).name } ?? "Unknown"
+        let counts = counted[entry.id] ?? entry.quickCounts
+        if counts == nil {
+            count(entry)
+        }
         return LauncherView.Preview(
             text: entry.preview, image: entry.image.map(NSImage.init(byReferencing:)),
-            details: entry.details(source: source, now: .now, calendar: .current))
+            details: entry.details(source: source, now: .now, calendar: .current, counts: counts))
     }
 
     func actions(for id: String) -> [CommandAction] {
@@ -161,8 +168,20 @@ final class ClipboardHistory: NSObject {
         return [copy]
     }
 
+    private func count(_ entry: ClipboardStore.Entry) {
+        guard counting.insert(entry.id).inserted else { return }
+        Task { [weak self] in
+            let counts = await Task.detached(priority: .userInitiated) { entry.counts }.value
+            guard let self, counting.remove(entry.id) != nil else { return }
+            counted[entry.id] = counts
+            onCount?()
+        }
+    }
+
     private func reset() {
         selected = nil
+        counted = [:]
+        counting = []
         rebuild(sources: [])
         Task { [weak self] in await self?.loadSources() }
     }
@@ -170,6 +189,8 @@ final class ClipboardHistory: NSObject {
     private func stop() {
         store = nil
         entries = [:]
+        counted = [:]
+        counting = []
         onRunningChange?()
     }
 

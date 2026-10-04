@@ -56,6 +56,10 @@ extension LauncherView {
         detail.show(item.flatMap { previewer?($0) })
     }
 
+    public func refreshDetail() {
+        showDetail(of: results.selectedItem)
+    }
+
     private func show(filter popUp: NSPopUpButton?) {
         filter?.removeFromSuperview()
         filter = popUp

@@ -30,6 +30,13 @@ import Testing
             image: image, source: nil, date: date, pinned: false)
     }
 
+    private func details(
+        of entry: ClipboardStore.Entry, from source: String, counted: Bool = true
+    ) -> [ClipboardStore.Entry.Detail] {
+        entry.details(
+            source: source, now: now, calendar: calendar, counts: counted ? entry.counts : nil)
+    }
+
     @Test func titlesARowByItsFirstLineOrItsFileNames() {
         #expect(Self.entry(.text, "\n  first line  \nsecond").title == "first line")
         #expect(Self.entry(.richText, "bold").title == "bold")
@@ -51,25 +58,25 @@ import Testing
         let time = copied.formatted(date: .omitted, time: .shortened)
         let text = Self.entry(.text, "Thanks! I’ll send the file tonight.", at: copied)
         #expect(
-            text.details(source: "Mail", now: now, calendar: calendar).map(\.value) == [
+            details(of: text, from: "Mail").map(\.value) == [
                 "Mail", "Text", "35", "6", "Today at \(time)",
             ])
         let link = Self.entry(.url, "https://developer.apple.com/documentation/appkit")
         #expect(
-            link.details(source: "Safari", now: now, calendar: calendar).map(\.name) == [
+            details(of: link, from: "Safari").map(\.name) == [
                 "Source", "Content type", "Characters", "Host", "Copied",
             ])
         #expect(
-            link.details(source: "Safari", now: now, calendar: calendar)[3].value
+            details(of: link, from: "Safari")[3].value
                 == "developer.apple.com")
         let colour = Self.entry(.color, "#0A84FF")
-        let values = colour.details(source: "Unknown", now: now, calendar: calendar).map(\.value)
+        let values = details(of: colour, from: "Unknown").map(\.value)
         #expect(values.dropLast() == ["Unknown", "Color", "#0A84FF", "10, 132, 255"])
         let files = Self.entry(.file, "/tmp/a\n/tmp/b")
-        #expect(files.details(source: "Finder", now: now, calendar: calendar)[2].value == "2")
+        #expect(details(of: files, from: "Finder")[2].value == "2")
         let yesterday = Self.entry(.text, "x", at: now - 24 * Self.hour)
         #expect(
-            yesterday.details(source: "Notes", now: now, calendar: calendar).last?.value
+            details(of: yesterday, from: "Notes").last?.value
                 .hasPrefix("Yesterday at ") == true)
     }
 
@@ -85,18 +92,32 @@ import Testing
         let png = try #require(bitmap.representation(using: .png, properties: [:]))
         try png.write(to: file)
 
-        let details = Self.entry(.image, "", image: file)
-            .details(source: "Screenshot", now: now, calendar: calendar)
+        let shown = details(of: Self.entry(.image, "", image: file), from: "Screenshot")
 
-        #expect(details.map(\.name) == ["Source", "Content type", "Dimensions", "Size", "Copied"])
-        #expect(details[2].value == "\(bitmap.pixelsWide) × \(bitmap.pixelsHigh)")
+        #expect(shown.map(\.name) == ["Source", "Content type", "Dimensions", "Size", "Copied"])
+        #expect(shown[2].value == "\(bitmap.pixelsWide) × \(bitmap.pixelsHigh)")
         #expect(
-            details[3].value
+            shown[3].value
                 == ByteCountFormatter.string(fromByteCount: Int64(png.count), countStyle: .file))
         #expect(
-            Self.entry(.image, "", image: file.appending(path: "missing")).details(
-                source: "Screenshot", now: now, calendar: calendar
-            ).count == 3)
+            details(
+                of: Self.entry(.image, "", image: file.appending(path: "missing")),
+                from: "Screenshot"
+            )
+            .count == 3)
+    }
+
+    @Test func countsShortTextRightAwayAndLeavesLongTextForLater() {
+        let short = Self.entry(.text, "Thanks! I’ll send the file tonight.")
+        let long = Self.entry(.text, String(repeating: "word ", count: 20_001))
+        let link = Self.entry(.url, "https://apple.com")
+
+        #expect(short.quickCounts == .init(characters: 35, words: 6))
+        #expect(long.quickCounts == nil)
+        #expect(long.counts == .init(characters: 100_005, words: 20_001))
+        let pending = details(of: long, from: "Notes", counted: false).map(\.value)
+        #expect(pending[2...3] == ["…", "…"])
+        #expect(details(of: link, from: "Safari", counted: false)[2].value == "…")
     }
 
     @Test func groupsEntriesByDayNewestFirst() {

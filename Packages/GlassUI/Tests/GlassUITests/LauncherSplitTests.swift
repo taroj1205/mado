@@ -136,6 +136,22 @@ import Testing
         #expect(Thumbnails.shared.cached(.init(url: file, side: side)) == nil)
     }
 
+    @Test func refreshingTheDetailAsksForTheSelectedRowAgain() {
+        var words = "…"
+        view.enter(placeholder: "Filter", filter: filter) { item in
+            .init(text: item.title, image: nil, details: [("Words", words)])
+        }
+        view.results.sections = [.init(title: "Today", items: [Self.item("first")])]
+        let row = { view.detail.info.arrangedSubviews.last?.accessibilityLabel() }
+        #expect(row() == "Words, …")
+
+        words = "6"
+        view.refreshDetail()
+
+        #expect(row() == "Words, 6")
+        #expect(view.detail.text.stringValue == "first")
+    }
+
     @Test func theFilterSitsAtTheEndOfTheBarAndCommandPOpensIt() {
         enter()
 

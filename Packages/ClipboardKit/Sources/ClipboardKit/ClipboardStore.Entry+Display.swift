@@ -15,7 +15,14 @@ extension ClipboardStore.Entry {
         }
     }
 
+    public struct Counts: Equatable, Sendable {
+        public let characters: Int
+        public let words: Int
+    }
+
     private static let titleLimit = 200
+    private static let quickCount = 100_000
+    private static let counting = "…"
     private static let hexDigits = 6
     private static let hexRadix = 16
     private static let byte = 0xFF
@@ -58,33 +65,16 @@ extension ClipboardStore.Entry {
             blue: value & Self.byte)
     }
 
-    private var words: Int {
-        var count = 0
+    public var counts: Counts {
+        var words = 0
         text.enumerateSubstrings(
             in: text.startIndex..., options: [.byWords, .substringNotRequired]
-        ) { _, _, _, _ in count += 1 }
-        return count
+        ) { _, _, _, _ in words += 1 }
+        return Counts(characters: text.count, words: words)
     }
 
-    private var kindDetails: [Detail] {
-        switch kind {
-        case .text, .richText:
-            return [("Characters", text.count.formatted()), ("Words", words.formatted())]
-
-        case .url:
-            let host = URL(string: text)?.host().map { [("Host", $0)] } ?? []
-            return [("Characters", text.count.formatted())] + host
-
-        case .color:
-            guard let rgb else { return [] }
-            return [("Hex", text), ("RGB", rgb.components)]
-
-        case .image:
-            return imageDetails
-
-        case .file:
-            return [("Files", files.count.formatted())]
-        }
+    public var quickCounts: Counts? {
+        text.utf16.count <= Self.quickCount ? counts : nil
     }
 
     private var imageDetails: [Detail] {
@@ -124,10 +114,34 @@ extension ClipboardStore.Entry {
         return days
     }
 
-    public func details(source: String, now: Date, calendar: Calendar) -> [Detail] {
+    private func kindDetails(_ counts: Counts?) -> [Detail] {
+        let characters = ("Characters", counts?.characters.formatted() ?? Self.counting)
+        switch kind {
+        case .text, .richText:
+            return [characters, ("Words", counts?.words.formatted() ?? Self.counting)]
+
+        case .url:
+            let host = URL(string: text)?.host().map { [("Host", $0)] } ?? []
+            return [characters] + host
+
+        case .color:
+            guard let rgb else { return [] }
+            return [("Hex", text), ("RGB", rgb.components)]
+
+        case .image:
+            return imageDetails
+
+        case .file:
+            return [("Files", files.count.formatted())]
+        }
+    }
+
+    public func details(
+        source: String, now: Date, calendar: Calendar, counts: Counts?
+    ) -> [Detail] {
         let day = RelativeDay.title(of: date, now: now, calendar: calendar)
         let copied = "\(day) at \(date.formatted(date: .omitted, time: .shortened))"
-        return [("Source", source), ("Content type", kind.title)] + kindDetails
+        return [("Source", source), ("Content type", kind.title)] + kindDetails(counts)
             + [("Copied", copied)]
     }
 
