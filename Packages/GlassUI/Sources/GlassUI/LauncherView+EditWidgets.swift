@@ -87,6 +87,10 @@ extension LauncherView {
         return overTile || editingWidgets ? .move : []
     }
 
+    private func firstHidden(after widget: String?, shown: [String]) -> String? {
+        widgetGrid.widgets.map(\.id).drop { $0 != widget }.dropFirst().first { !shown.contains($0) }
+    }
+
     func endWidgetDrag() {
         changeWidgets { widgetGrid.endDrag() }
     }
@@ -95,12 +99,15 @@ extension LauncherView {
         guard let id, editingWidgets || widgetGrid.widgets.contains(where: { $0.id == id })
         else { return false }
         let order = widgetGrid.shown.map(\.id)
-        let moved = order != widgetGrid.widgets.map(\.id).filter(order.contains)
+        let all = widgetGrid.widgets.map(\.id)
         let edit: WidgetSettings.Edit? =
             if widgetGrid.incoming != nil {
                 .add(id)
-            } else if moved, let index = order.firstIndex(of: id) {
-                .move(id, before: order.dropFirst(index + 1).first)
+            } else if order != all.filter(order.contains), let index = order.firstIndex(of: id) {
+                .move(
+                    id,
+                    before: order.dropFirst(index + 1).first
+                        ?? firstHidden(after: order.dropLast().last, shown: order))
             } else {
                 nil
             }

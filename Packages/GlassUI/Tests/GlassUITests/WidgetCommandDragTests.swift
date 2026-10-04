@@ -73,6 +73,24 @@ import Testing
         #expect(edits.isEmpty)
     }
 
+    @Test func droppingOnTheLastStripTileKeepsTheWidgetInTheStrip() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        let seven = (1...7).map { number in
+            WidgetGrid.Widget(
+                id: "\(number)", name: "\(number)", value: "\(number)", detail: "",
+                action: "Open \(number)", spoken: "\(number)")
+        }
+        view.widgets = seven
+        view.widgetLayout = .strip
+        view.layoutSubtreeIfNeeded()
+        #expect(ids == ["1", "2", "3", "4", "5", "6"])
+        #expect(view.dragWidget("1", at: centre(of: 5), from: nil) == .move)
+        #expect(ids == ["2", "3", "4", "5", "6", "1"])
+        #expect(view.dropWidget("1"))
+        #expect(edits == [.move("1", before: "7")])
+    }
+
     @Test func outsideEditModeOnlyShownWidgetsCanBeDropped() {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
