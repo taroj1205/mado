@@ -42,6 +42,9 @@ extension AppDelegate {
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
         textTools.onOpen = { [weak self] in self?.openTextTools() }
+        textTools.onRead = { [weak self] in
+            if self?.scope == .textTools { self?.searchAgain() }
+        }
         textTools.findTarget = { [weak self] in
             PasteTarget.frontmost() ?? (self?.launcher?.isVisible == true ? self?.pasteTarget : nil)
         }
@@ -186,10 +189,5 @@ extension AppDelegate {
         launcherView.enter(
             placeholder: TextTools.placeholder, chip: TextTools.chip,
             detail: .comparison { [textTools] in textTools.comparison(for: $0) })
-    }
-
-    func queryChanged() {
-        textTools.cancelOpening()
-        searchAgain()
     }
 }

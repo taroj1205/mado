@@ -98,6 +98,17 @@ import Testing
         #expect(view.selectedItem?.title == "purple")
     }
 
+    @Test func aRefreshKeepsTheEmojiATabJumpedTo() {
+        view.emojiGrid.tabs = [.init(title: "Recent", symbol: "clock", section: "Recently used")]
+        view.show(Self.sections(), gridHome: "")
+        view.emojiGrid.onTab?(view.emojiGrid.tabs[0])
+
+        view.show(Self.sections(), gridHome: "")
+
+        #expect(view.selectedItem?.title == "thumbs")
+        #expect(view.emojiGrid.tabBar.arrangedSubviews.count == 1)
+    }
+
     @Test func pickingATabOfAMissingSectionGoesBackToTheHomeQuery() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

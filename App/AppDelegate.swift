@@ -121,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             kind: .panel,
             contentRect: NSRect(origin: .zero, size: launcherSize),
             shape: .rounded(Self.launcherRadius))
-        launcherView.onQuery = { [weak self] _ in self?.queryChanged() }
+        launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         connectActions()
@@ -222,7 +222,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func hideLauncher() {
-        textTools.cancelOpening()
         editor.close()
         launcherView.leave()
         launcherView.endBrowsing()

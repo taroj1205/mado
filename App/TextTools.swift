@@ -46,11 +46,12 @@ final class TextTools {
     private static let logger = Log.logger("TextTools")
 
     var onOpen: (() -> Void)?
+    var onRead: (() -> Void)?
     var findTarget: (() -> PasteTarget?)?
     private var store: ClipboardStore?
     private var source: Source?
     private var pasteTarget: PasteTarget?
-    private var opening = 0
+    private var reading = 0
 
     private static func tool(for id: String) -> TextTool? {
         id.hasPrefix(toolPrefix) ? TextTool(rawValue: String(id.dropFirst(toolPrefix.count))) : nil
@@ -96,7 +97,7 @@ final class TextTools {
     }
 
     func close() {
-        cancelOpening()
+        reading += 1
         source = nil
         pasteTarget = nil
     }
@@ -125,18 +126,17 @@ final class TextTools {
     }
 
     private func open() async {
-        opening += 1
-        let request = opening
         let found = findTarget?()
-        let read = await read(from: found)
-        guard request == opening else { return }
-        source = read
+        source = nil
         pasteTarget = found
+        reading += 1
+        let request = reading
         onOpen?()
-    }
-
-    func cancelOpening() {
-        opening += 1
+        let read = await read(from: found)
+        guard request == reading else { return }
+        reading = 0
+        source = read
+        onRead?()
     }
 
     private func run(_ tool: TextTool) async throws {
@@ -151,9 +151,12 @@ final class TextTools {
 
     func sections(for query: String) -> [ResultList.Section] {
         guard let source else {
-            let notice = ResultList.Notice(
-                title: "No text to work on",
-                detail: "Select text in an app or copy some, then open Text Tools again.")
+            let notice =
+                reading > 0
+                ? ResultList.Notice(title: "Reading the text…", detail: "")
+                : ResultList.Notice(
+                    title: "No text to work on",
+                    detail: "Select text in an app or copy some, then open Text Tools again.")
             return [ResultList.Section(title: "", items: [], notice: notice)]
         }
         let needle = query.trimmingCharacters(in: .whitespaces)

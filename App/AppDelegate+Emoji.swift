@@ -11,21 +11,19 @@ extension AppDelegate {
         emojiPicker.onOpen = { [weak self] in self?.openEmoji() }
         emojiPicker.onChange = { [weak self] settings in
             settings.save(to: self?.modules)
-            if self?.launcherView.showsGrid == true {
-                self?.searchAgain()
-            }
+            self?.emojiChanged()
         }
-        emojiPicker.onLoad = { [weak self] tabs in
-            self?.launcherView.emojiGrid.tabs = tabs
-            self?.searchAgain()
-        }
-        emojiPicker.onUnload = { [weak self] in
-            if self?.launcherView.showsGrid == true {
-                self?.searchAgain()
-            }
-        }
+        emojiPicker.onLoad = { [weak self] in self?.emojiChanged() }
+        emojiPicker.onUnload = { [weak self] in self?.emojiChanged() }
         launcherView.emojiGrid.accessory = emojiPicker.toneAccessory
         launcherView.onGridChange = { [weak self] _ in self?.fitLauncher() }
+    }
+
+    private func emojiChanged() {
+        launcherView.emojiGrid.tabs = emojiPicker.tabs
+        if launcherView.showsGrid || emojiPicker.query(in: launcherView.field.stringValue) != nil {
+            searchAgain()
+        }
     }
 
     func gridHeight(otherwise height: CGFloat) -> CGFloat {

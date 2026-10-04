@@ -24,13 +24,25 @@ final class EmojiPicker: NSObject {
     ]
 
     var onOpen: (() -> Void)?
-    var onLoad: (([EmojiGrid.Tab]) -> Void)?
+    var onLoad: (() -> Void)?
     var onUnload: (() -> Void)?
     var onChange: ((EmojiSettings) -> Void)?
     var settings = EmojiSettings() {
         didSet { tonePicker.selectItem(at: Emoji.Tone.allCases.firstIndex(of: settings.tone) ?? 0) }
     }
     private(set) lazy var toneAccessory = makeToneAccessory()
+
+    var tabs: [EmojiGrid.Tab] {
+        let recent =
+            settings.recent.isEmpty
+            ? [] : [EmojiGrid.Tab(title: "Recent", symbol: "clock", section: Self.recentTitle)]
+        return recent
+            + (catalog?.groups ?? []).map { group in
+                EmojiGrid.Tab(
+                    title: group.name, symbol: Self.groupSymbols[group.name] ?? "circle",
+                    section: group.name)
+            }
+    }
     private let tonePicker = NSPopUpButton(frame: .zero, pullsDown: false)
     private var catalog: EmojiCatalog?
 
@@ -41,15 +53,6 @@ final class EmojiPicker: NSObject {
     private static func character(in id: String) -> String? {
         let rest = id.dropFirst(idPrefix.count)
         return rest.firstIndex(of: ".").map { dot in String(rest[rest.index(after: dot)...]) }
-    }
-
-    private static func tabs(for catalog: EmojiCatalog) -> [EmojiGrid.Tab] {
-        [EmojiGrid.Tab(title: "Recent", symbol: "clock", section: recentTitle)]
-            + catalog.groups.map { group in
-                EmojiGrid.Tab(
-                    title: group.name, symbol: groupSymbols[group.name] ?? "circle",
-                    section: group.name)
-            }
     }
 
     func query(in text: String) -> String? {
@@ -78,7 +81,7 @@ final class EmojiPicker: NSObject {
             let loaded = await Task.detached { EmojiCatalog.bundled() }.value
             guard let self, let loaded, !Task.isCancelled else { return }
             catalog = loaded
-            onLoad?(Self.tabs(for: loaded))
+            onLoad?()
         }
     }
 
