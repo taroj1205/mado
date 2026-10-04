@@ -13,9 +13,10 @@ public enum TypedKeyword: Equatable, Sendable {
             self = .unreadable
             return
         }
+        let prefixes = keyword.indices.dropFirst().map { keyword[..<$0] }
         if text.hasSuffix(keyword) {
             self = .inPlace
-        } else if text.hasSuffix(String(keyword.dropLast())) {
+        } else if keyword.count == 1 || prefixes.contains(where: { text.hasSuffix($0) }) {
             self = .arriving
         } else {
             self = .changed

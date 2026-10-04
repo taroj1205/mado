@@ -10,11 +10,19 @@ import Testing
 
     @Test func waitsWhileTheLastKeyHasNotReachedTheText() {
         #expect(TypedKeyword(";fu", before: "x;f", selecting: false) == .arriving)
+        #expect(TypedKeyword(";", before: "x", selecting: false) == .arriving)
+    }
+
+    @Test func waitsWhileSeveralKeysHaveNotReachedTheText() {
+        #expect(TypedKeyword(";fum", before: "x;f", selecting: false) == .arriving)
+        #expect(TypedKeyword(";fum", before: "x;", selecting: false) == .arriving)
+        #expect(TypedKeyword(";fum", before: "xyz", selecting: false) == .changed)
     }
 
     @Test func notesAKeywordTheAppRewroteAsItWasTyped() {
         #expect(TypedKeyword("--sig", before: "a—sig", selecting: false) == .changed)
         #expect(TypedKeyword("--", before: "a—", selecting: false) == .changed)
+        #expect(TypedKeyword("--sig", before: "a—s", selecting: false) == .changed)
     }
 
     @Test func leavesAKeywordFollowedBySelectedText() {
