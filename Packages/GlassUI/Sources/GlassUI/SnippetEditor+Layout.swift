@@ -217,10 +217,7 @@ extension SnippetEditor {
         textView.isRichText = false
         textView.allowsUndo = true
         textView.drawsBackground = false
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.turnOffSubstitutions()
         textView.textContainerInset = NSSize(width: Self.textSide, height: Self.textTop)
         textView.typingAttributes = Self.textAttributes
         textView.minSize = .zero

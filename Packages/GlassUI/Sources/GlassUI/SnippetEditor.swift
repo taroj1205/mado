@@ -42,7 +42,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     let list = SnippetList()
     let empty = NSTextField(labelWithString: "")
     let nameField = NSTextField()
-    let keywordField = NSTextField()
+    let keywordField = KeywordField()
     let problemLabel = SheetForm.hint()
     let textView = NSTextView()
     let chips = (placeholders + [fillIn]).map { _ in

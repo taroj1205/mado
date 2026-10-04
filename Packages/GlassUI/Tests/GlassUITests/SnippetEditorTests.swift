@@ -171,6 +171,23 @@ import Testing
         #expect(!editor.textView.isAutomaticQuoteSubstitutionEnabled)
     }
 
+    @Test func theKeywordFieldEditsWithoutSubstitutions() throws {
+        editor.show([], selecting: nil)
+        panel.makeFirstResponder(editor.nameField)
+        let shared = editor.nameField.currentEditor()
+
+        panel.makeFirstResponder(editor.keywordField)
+        let keyword = try #require(editor.keywordField.currentEditor() as? NSTextView)
+        keyword.insertText("--x", replacementRange: keyword.selectedRange())
+
+        #expect(keyword !== shared)
+        #expect(!keyword.isAutomaticQuoteSubstitutionEnabled)
+        #expect(!keyword.isAutomaticDashSubstitutionEnabled)
+        #expect(!keyword.isAutomaticTextReplacementEnabled)
+        #expect(!keyword.isAutomaticSpellingCorrectionEnabled)
+        #expect(editor.values.keyword == "--x")
+    }
+
     @Test func shortcutsPasteSaveDeleteAndClose() {
         var pasted: [SnippetEditor.Values] = []
         var deleted: [String] = []
