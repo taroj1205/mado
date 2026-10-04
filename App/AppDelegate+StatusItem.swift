@@ -15,9 +15,11 @@ extension AppDelegate: NSMenuItemValidation {
 
     func makeStatusItem(settings: Selector) -> NSStatusItem {
         modules?.onKeysPausedChange = { [weak self] in self?.keysPausedChanged() }
-        return StatusMenu.makeItem(
+        let item = StatusMenu.makeItem(
             target: self, open: #selector(showLauncher), settings: settings,
             pauseKeys: #selector(toggleKeysPaused), hide: #selector(hideStatusItem))
+        item.button?.image = StatusMenu.icon(keysPaused: modules?.keysPaused == true)
+        return item
     }
 
     @objc
