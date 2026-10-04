@@ -40,6 +40,7 @@ public struct Emoji: Equatable, Sendable {
     }
 
     private static let variation: Unicode.Scalar = "\u{FE0F}"
+    private static let signs: Set<Character> = ["+", "-"]
 
     public let character: String
     public let name: String
@@ -64,7 +65,15 @@ public struct Emoji: Equatable, Sendable {
     }
 
     static func words(of text: String) -> [Substring] {
-        text.lowercased().split { !$0.isLetter && !$0.isNumber }
+        let chunks = text.lowercased().split { character in
+            !character.isLetter && !character.isNumber && !signs.contains(character)
+        }
+        return chunks.flatMap { chunk in
+            let signed =
+                chunk.first.map(signs.contains) == true && chunk.count > 1
+                && chunk.dropFirst().allSatisfy(\.isNumber)
+            return signed ? [chunk] : chunk.split { !$0.isLetter && !$0.isNumber }
+        }
     }
 
     public func toned(_ tone: Tone) -> String {
