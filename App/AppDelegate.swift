@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let widgets = Widgets()
+    var launcherGallery: WidgetGalleryWindow?
     private(set) var usage = Usage()
     private(set) var history = CalculatorHistory()
     let clipboardHistory = ClipboardHistory()
@@ -206,20 +207,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_: Notification) {
-        guard !launcherView.sharing else { return }
+        guard !launcherView.sharing, launcherGallery?.isVisible != true else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }
         #endif
         hideLauncher()
     }
 
-    #if DEBUG
-        func applicationDidResignActive(_: Notification) {
-            if !KeepLauncherOpen.isEnabled, !launcherView.sharing, launcher?.isVisible == true {
-                hideLauncher()
-            }
-        }
-    #endif
+    func applicationDidResignActive(_: Notification) {
+        #if DEBUG
+            let hides = !KeepLauncherOpen.isEnabled
+        #else
+            let hides = launcherGallery?.isVisible == true
+        #endif
+        if hides, !launcherView.sharing, launcher?.isVisible == true { hideLauncher() }
+    }
 
     func hideLauncher() {
         editor.close()
