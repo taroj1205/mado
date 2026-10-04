@@ -51,6 +51,27 @@ import Testing
             ])
     }
 
+    @Test func stopsAtAScalarLimit() {
+        let template = SnippetTemplate(
+            #"Hi {fill-in name="Name"}, by {fill-in name="Day"}. {clipboard}"#)
+
+        let expansion = template.expand(Self.values, scalars: 5)
+
+        #expect(expansion.text == "Hi Ha")
+        #expect(expansion.fieldRanges == [NSRange(location: 3, length: 2)])
+    }
+
+    @Test func boundsRepeatedPlaceholdersByTheLimit() {
+        let template = SnippetTemplate(String(repeating: "{clipboard}", count: 1_000))
+        var values = Self.values
+        values.clipboard = String(repeating: "👋🏽", count: 1_000)
+
+        let expansion = template.expand(values, scalars: 2_000)
+
+        #expect(expansion.text.unicodeScalars.count == 2_000)
+        #expect(expansion.text == values.clipboard)
+    }
+
     @Test func namesAnUnnamedFieldFillIn() {
         let template = SnippetTemplate("A {fill-in} and {fill-in   } again")
 

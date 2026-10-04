@@ -115,24 +115,28 @@ public struct SnippetTemplate: Sendable {
         return Field(name: name.isEmpty ? unnamedField : name, options: options)
     }
 
-    public func expand(_ values: Values) -> Expansion {
+    public func expand(_ values: Values, scalars limit: Int = .max) -> Expansion {
         var text = ""
+        var room = limit
         var caret: String?
         var ranges: [NSRange] = []
+        @discardableResult
+        func add(_ piece: String) -> NSRange {
+            let kept = String(piece.unicodeScalars.prefix(room))
+            let range = NSRange(location: text.utf16.count, length: kept.utf16.count)
+            room -= kept.unicodeScalars.count
+            text += kept
+            return range
+        }
         for part in parts {
+            guard room > 0 else { break }
             switch part {
-            case .text(let literal): text += literal
-            case .date: text += values.date
-            case .time: text += values.time
-            case .clipboard: text += values.clipboard
-
-            case .cursor:
-                caret = caret ?? text
-
-            case .field(let name):
-                let value = values.fields[name] ?? ""
-                ranges.append(NSRange(location: text.utf16.count, length: value.utf16.count))
-                text += value
+            case .text(let literal): add(literal)
+            case .date: add(values.date)
+            case .time: add(values.time)
+            case .clipboard: add(values.clipboard)
+            case .cursor: caret = caret ?? text
+            case .field(let name): ranges.append(add(values.fields[name] ?? ""))
             }
         }
         return Expansion(

@@ -12,10 +12,6 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     private lazy var panel = makePanel()
     private var finish: ((Result<[String: String], CancellationError>) -> Void)?
 
-    private static func previewed(_ text: String) -> String {
-        String(text.unicodeScalars.prefix(FillInForm.previewScalars))
-    }
-
     private static func appKitRect(_ quartz: CGRect) -> NSRect {
         let primary = NSScreen.screens.first?.frame ?? .zero
         return ScreenGeometry.appKitRect(fromQuartz: quartz, primary: primary)
@@ -27,7 +23,7 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         close()
         return try await withCheckedContinuation { continuation in
             finish = { continuation.resume(returning: $0) }
-            show(snippet, template, clipboard: Self.previewed(clipboard), under: caret)
+            show(snippet, template, clipboard: clipboard, under: caret)
         }.get()
     }
 
@@ -43,8 +39,8 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         _ snippet: Snippet, _ template: SnippetTemplate, clipboard: String, under caret: CGRect?
     ) {
         form.preview = { fields in
-            let shown = fields.mapValues(Self.previewed)
-            let expansion = template.expand(.now(fields: shown, clipboard: clipboard))
+            let expansion = template.expand(
+                .now(fields: fields, clipboard: clipboard), scalars: FillInForm.previewScalars)
             return FillInForm.Preview(text: expansion.text, values: expansion.fieldRanges)
         }
         form.onInsert = { [weak self] values in self?.done(.success(values)) }
