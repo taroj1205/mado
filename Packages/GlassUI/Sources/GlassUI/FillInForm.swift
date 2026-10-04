@@ -31,6 +31,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     private static let previewSize: CGFloat = 12.5
     private static let previewLine: CGFloat = 1.55
     public static let previewScalars = 2_000
+    static let fieldLimit = 50
     private static let buttonSize: CGFloat = 13
     private static let buttonHeight: CGFloat = 26
 
@@ -82,7 +83,7 @@ public final class FillInForm: NSView, NSTextFieldDelegate {
     public func show(name: String, keyword: String, fields: [Field]) {
         title.stringValue = name
         subtitle.stringValue = "Snippet · keyword \(keyword)"
-        controls = fields.map { field in (field.name, control(for: field)) }
+        controls = fields.prefix(Self.fieldLimit).map { field in (field.name, control(for: field)) }
         rows.setViews(controls.map { row($0.name, $0.control) }, in: .top)
         for row in rows.views {
             row.widthAnchor.constraint(equalTo: rows.widthAnchor).isActive = true

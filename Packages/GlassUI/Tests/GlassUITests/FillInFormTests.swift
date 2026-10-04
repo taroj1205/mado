@@ -187,6 +187,15 @@ import Testing
         #expect(lastShownWhenFocused)
     }
 
+    @Test func asksForAtMostTheFieldLimit() {
+        let many = (1...1_000).map { FillInForm.Field(name: "Field \($0)", options: []) }
+
+        form.show(name: "Huge form", keyword: ";huge", fields: many)
+
+        #expect(form.controls.map(\.name) == many.prefix(FillInForm.fieldLimit).map(\.name))
+        #expect(form.rows.views.count == FillInForm.fieldLimit)
+    }
+
     @Test func aShortFormKeepsItsNaturalHeightUnderTheLimit() {
         form.show(name: "Meeting follow-up", keyword: ";fu", fields: Self.fields)
         let natural = form.fittingSize

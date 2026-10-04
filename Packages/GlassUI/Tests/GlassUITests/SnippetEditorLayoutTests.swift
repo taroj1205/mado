@@ -20,4 +20,23 @@ import Testing
         #expect(!editor.nameField.hasAmbiguousLayout)
         #expect(editor.nameField.frame.width > editor.keywordField.frame.width * 2)
     }
+
+    @Test func marksPlaceholdersOnlyNearTheStartOfAHugeText() {
+        let editor = SnippetEditor()
+        var scanned: [Int] = []
+        editor.tokens = { text in
+            scanned.append(text.utf16.count)
+            return [NSRange(location: 0, length: 6)]
+        }
+        let huge = String(repeating: "{date}", count: SnippetEditor.highlightedLength)
+        let entry = SnippetEditor.Entry(id: "huge", values: .init(name: "Huge", text: huge))
+
+        editor.show([entry], selecting: "huge")
+
+        let text = editor.textView.attributedString()
+        let token = unsafe text.attribute(.backgroundColor, at: 0, effectiveRange: nil)
+        #expect(token != nil)
+        #expect(!scanned.isEmpty)
+        #expect(scanned.allSatisfy { $0 == SnippetEditor.highlightedLength })
+    }
 }

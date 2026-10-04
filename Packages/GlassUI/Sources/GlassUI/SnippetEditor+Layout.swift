@@ -36,6 +36,7 @@ extension SnippetEditor {
     private static let buttonsInset: CGFloat = 5
     private static let buttonsGap: CGFloat = 6
     private static let tokenSize: CGFloat = 12
+    static let highlightedLength = 10_000
     private static let fillAlpha = (dark: 0.22, light: 0.04)
     private static let edgeAlpha = (dark: 0.08, light: 0.10)
     private static let tokenAlpha = (dark: 0.22, light: 0.12)
@@ -88,7 +89,7 @@ extension SnippetEditor {
         storage.beginEditing()
         storage.setAttributes(
             Self.textAttributes, range: NSRange(location: 0, length: storage.length))
-        for range in tokens(storage.string) {
+        for range in tokens(String(storage.string.prefix(Self.highlightedLength))) {
             storage.addAttributes(
                 [
                     .font: NSFont.monospacedSystemFont(ofSize: Self.tokenSize, weight: .regular),
