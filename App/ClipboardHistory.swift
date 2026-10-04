@@ -60,7 +60,7 @@ final class ClipboardHistory: NSObject {
         return true
     }
 
-    private static func app(_ id: String) -> (name: String, icon: NSImage?) {
+    static func app(_ id: String) -> (name: String, icon: NSImage?) {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
             return (id, nil)
         }

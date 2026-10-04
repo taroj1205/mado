@@ -17,7 +17,8 @@ let package = Package(
             dependencies: [
                 .product(name: "AppCore", package: "AppCore"),
                 .product(name: "InputKit", package: "InputKit"),
-            ]),
+            ],
+            resources: [.copy("Resources/emoji.tsv")]),
         .testTarget(name: "ClipboardKitTests", dependencies: ["ClipboardKit"]),
     ]
 )

@@ -28,6 +28,23 @@ public struct FocusedText: Sendable {
             selectsText: (selection?.length ?? 0) > 0)
     }
 
+    @AccessibilityActor
+    public static func selection(in app: pid_t) -> String? {
+        let application = AXUIElementCreateApplication(app)
+        AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)
+        guard let value = try? FocusedWindow.copy(kAXFocusedUIElementAttribute, of: application),
+            CFGetTypeID(value) == AXUIElementGetTypeID()
+        else { return nil }
+        let element = unsafe unsafeDowncast(value, to: AXUIElement.self)
+        AXUIElementSetMessagingTimeout(element, FocusedWindow.messagingTimeout)
+        let subrole = (try? FocusedWindow.copy(kAXSubroleAttribute, of: element)) as? String
+        guard subrole != kAXSecureTextFieldSubrole,
+            let text = (try? FocusedWindow.copy(kAXSelectedTextAttribute, of: element)) as? String,
+            !text.isEmpty
+        else { return nil }
+        return text
+    }
+
     static func readBack(_ length: Int, from location: Int) -> CFRange {
         CFRange(location: max(location - length, 0), length: min(length, max(location, 0)))
     }

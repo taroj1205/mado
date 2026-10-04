@@ -14,7 +14,7 @@ extension LauncherView {
             selectPill(nil)
         }
         statusBar.highlight(selectedPill)
-        showAction(of: results.selectedItem)
+        showAction(of: selectedItem)
         refreshCustomiser()
     }
 
@@ -29,7 +29,7 @@ extension LauncherView {
         if index != nil {
             closePreview()
         }
-        showAction(of: results.selectedItem)
+        showAction(of: selectedItem)
     }
 
     func pressPill(_ index: Int) {

@@ -17,7 +17,7 @@ extension AppDelegate {
         let grid = launcherView.widgetLayout == .grid
         return CGSize(
             width: Self.launcherWidth,
-            height: grid ? Self.gridLauncherHeight : Self.launcherHeight)
+            height: gridHeight(otherwise: grid ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
     func launcherFrame(in visible: CGRect) -> CGRect {

@@ -63,6 +63,10 @@ extension ClipboardSettings: StoredValue {
     static let key = "clipboard"
 }
 
+extension EmojiSettings: StoredValue {
+    static let key = "emoji"
+}
+
 extension SnippetSettings: StoredValue {
     static let key = "snippets"
 }

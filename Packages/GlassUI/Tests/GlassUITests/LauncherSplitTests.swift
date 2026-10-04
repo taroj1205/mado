@@ -54,7 +54,8 @@ import Testing
     }
 
     private func enter() {
-        view.enter(placeholder: "Type to filter entries…", filter: filter, preview: Self.preview)
+        view.enter(
+            placeholder: "Type to filter entries…", filter: filter, detail: .preview(Self.preview))
         view.show([.init(title: "Today", items: [Self.item("first"), Self.item("second")])])
         view.layoutSubtreeIfNeeded()
     }
@@ -103,7 +104,9 @@ import Testing
         let thumbnail = Thumbnails.Request(url: file, side: 48)
         #expect(await Thumbnails.shared.load(thumbnail) != nil)
         let image = NSImage(size: NSSize(width: 4, height: 4))
-        view.enter(placeholder: "Filter") { _ in .init(text: "", image: image, details: []) }
+        view.enter(
+            placeholder: "Filter",
+            detail: .preview { _ in .init(text: "", image: image, details: []) })
         view.results.sections = [.init(title: "Today", items: [Self.item("image")])]
         #expect(view.detail.image.image === image)
         #expect(!view.detail.image.isHidden)
@@ -136,9 +139,11 @@ import Testing
 
     @Test func refreshingTheDetailAsksForTheSelectedRowAgain() {
         var words = "…"
-        view.enter(placeholder: "Filter", filter: filter) { item in
-            .init(text: item.title, image: nil, details: [("Words", words)])
-        }
+        view.enter(
+            placeholder: "Filter", filter: filter,
+            detail: .preview { item in
+                .init(text: item.title, image: nil, details: [("Words", words)])
+            })
         view.results.sections = [.init(title: "Today", items: [Self.item("first")])]
         let row = { view.detail.info.arrangedSubviews.last?.accessibilityLabel() }
         #expect(row() == "Words, …")

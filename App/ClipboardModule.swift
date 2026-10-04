@@ -4,12 +4,18 @@ import ClipboardKit
 import os
 
 struct ClipboardModule: Module {
+    struct Screens {
+        let history: ClipboardHistory
+        let textTools: TextTools
+        let emoji: EmojiPicker
+    }
+
     static let id = "clipboard"
     private static let pruneInterval: TimeInterval = 3_600
 
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
-    let history: ClipboardHistory
+    let screens: Screens
     let snippets: Snippets
 
     private static func recognizeImages(
@@ -31,10 +37,12 @@ struct ClipboardModule: Module {
             logger.error("Clipboard history failed to open: \(error, privacy: .public)")
             return
         }
-        history.start(with: store, context: context)
+        screens.history.start(with: store, context: context)
+        screens.textTools.start(with: store, context: context)
+        screens.emoji.start(context: context)
         keepPruned(store, in: context)
         context.run("recognize image text") {
-            await Self.recognizeImages(in: store, for: history, logger: logger)
+            await Self.recognizeImages(in: store, for: screens.history, logger: logger)
         }
         snippets.checkCopies(with: watchCopies(into: store, context: context))
         context.own(.other, "snippet copy check") { [snippets] in snippets.checkCopies(with: nil) }
@@ -71,7 +79,7 @@ struct ClipboardModule: Module {
                     return
                 }
                 if clip.kind == .image {
-                    await Self.recognizeImages(in: store, for: history, logger: logger)
+                    await Self.recognizeImages(in: store, for: screens.history, logger: logger)
                 }
             }
         }

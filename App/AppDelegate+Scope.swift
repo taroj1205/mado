@@ -9,11 +9,25 @@ extension AppDelegate {
         case root
         case calculator
         case clipboard
+        case textTools
+        case emoji
     }
 
     var scope: Scope {
-        guard launcherView.scoped else { return .root }
-        return clipboardScoped ? .clipboard : .calculator
+        launcherView.scoped ? enteredScope : .root
+    }
+
+    private var emojiGridHome: String? {
+        switch scope {
+        case .emoji:
+            ""
+
+        case .root where EmojiPicker.query(in: launcherView.field.stringValue) != nil:
+            EmojiPicker.prefix
+
+        default:
+            nil
+        }
     }
 
     func connectClipboardHistory() {
@@ -25,7 +39,12 @@ extension AppDelegate {
             if self?.scope == .clipboard { self?.launcherView.refreshDetail() }
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
-        launcherView.onLeave = { [clipboardHistory] in clipboardHistory.close() }
+        textTools.onOpen = { [weak self] in self?.openTextTools() }
+        textTools.findTarget = { [weak self] in PasteTarget.frontmost() ?? self?.pasteTarget }
+        launcherView.onLeave = { [weak self] in
+            self?.clipboardHistory.close()
+            self?.textTools.close()
+        }
         clipboardRunningChanged()
     }
 
@@ -34,10 +53,19 @@ extension AppDelegate {
         case .clipboard:
             return await clipboardHistory.sections(for: query, pastingInto: pasteTarget)
 
+        case .textTools:
+            return textTools.sections(for: query)
+
+        case .emoji:
+            return emojiPicker.sections(for: query, pastingInto: pasteTarget)
+
         case .calculator:
             return history.sections(for: query)
 
         case .root:
+            if let emoji = EmojiPicker.query(in: query) {
+                return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
+            }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
             return await LauncherResult.sections(for: query, in: sources, usage: usage)
@@ -45,9 +73,18 @@ extension AppDelegate {
     }
 
     func menu(for item: ResultList.Item) -> LauncherMenu {
-        switch scope {
+        if EmojiPicker.owns(item.id) {
+            return LauncherMenu(keyed: emojiPicker.actions(for: item.id, pastingInto: pasteTarget))
+        }
+        return switch scope {
         case .clipboard:
             LauncherMenu(keyed: clipboardHistory.actions(for: item.id, pastingInto: pasteTarget))
+
+        case .textTools:
+            LauncherMenu(keyed: textTools.actions(for: item.id))
+
+        case .emoji:
+            LauncherMenu(actions: [])
 
         case .calculator:
             LauncherMenu(actions: history.actions(for: item.id))
@@ -64,12 +101,30 @@ extension AppDelegate {
         launcherView.shortcutKeys = LauncherMenu.shortcutKeys + ColourAnswer.shortcutKeys
     }
 
+    private func capsuleSlots(showingGrid: Bool) -> [LauncherView.CapsuleSlot] {
+        if showingGrid {
+            EmojiPicker.capsule
+        } else if scope == .textTools {
+            TextTools.capsule
+        } else {
+            LauncherView.CapsuleSlot.standard
+        }
+    }
+
     func show(_ sections: [ResultList.Section]) {
-        launcherView.show(sections)
+        let home = emojiGridHome
+        launcherView.capsuleSlots = capsuleSlots(showingGrid: home != nil)
+        launcherView.show(sections, gridHome: home)
         (launcherView.context, launcherView.contextSymbol) =
             switch scope {
             case .clipboard:
                 (ClipboardHistory.title, ClipboardHistory.symbol)
+
+            case .textTools:
+                (TextTools.title, TextTools.symbol)
+
+            case .emoji:
+                (EmojiPicker.title, nil)
 
             case .calculator:
                 (CalculatorHistory.title, CalculatorHistory.symbol)
@@ -97,7 +152,7 @@ extension AppDelegate {
     }
 
     func openCalculatorHistory() {
-        clipboardScoped = false
+        enteredScope = .calculator
         launcherView.enter(placeholder: CalculatorHistory.placeholder)
     }
 
@@ -111,9 +166,20 @@ extension AppDelegate {
             showLauncher()
         }
         editor.close()
-        clipboardScoped = true
+        enteredScope = .clipboard
         launcherView.enter(
-            placeholder: ClipboardHistory.placeholder, filter: clipboardHistory.filter
-        ) { [clipboardHistory] in clipboardHistory.preview(for: $0) }
+            placeholder: ClipboardHistory.placeholder, filter: clipboardHistory.filter,
+            detail: .preview { [clipboardHistory] in clipboardHistory.preview(for: $0) })
+    }
+
+    private func openTextTools() {
+        if launcher?.isVisible != true {
+            showLauncher()
+        }
+        editor.close()
+        enteredScope = .textTools
+        launcherView.enter(
+            placeholder: TextTools.placeholder, chip: TextTools.chip,
+            detail: .comparison { [textTools] in textTools.comparison(for: $0) })
     }
 }

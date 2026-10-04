@@ -88,13 +88,13 @@ extension LauncherView {
 
     func run(_ action: Int) {
         if waitsForResults(then: { $0.run(action) }) { return }
-        guard let item = results.selectedItem, action != 0 || !item.action.isEmpty else { return }
+        guard let item = selectedItem, action != 0 || !item.action.isEmpty else { return }
         onRun?(item, action)
     }
 
     func run(keyed keys: [String]) {
         if waitsForResults(then: { $0.run(keyed: keys) }) { return }
-        guard let item = results.selectedItem,
+        guard let item = selectedItem,
             let index = actions?(item).firstIndex(where: { $0.keys == keys })
         else { return }
         onRun?(item, index)
@@ -113,7 +113,7 @@ extension LauncherView {
 
     func runActionShortcut(_ event: NSEvent) -> Bool {
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() == false,
-            let item = results.selectedItem,
+            let item = selectedItem,
             let index = actions?(item).firstIndex(where: { $0.matches(event) })
         else { return false }
         onRun?(item, index)
@@ -143,7 +143,7 @@ extension LauncherView {
             return
         }
         if waitsForResults(then: { $0.showActions() }) { return }
-        guard let item = results.selectedItem else { return }
+        guard let item = selectedItem else { return }
         selectPill(nil)
         present(actions?(item) ?? [], for: item.title) { [weak self] index in
             self?.onRun?(item, index)

@@ -72,7 +72,7 @@ extension LauncherView {
         editBar.isHidden = !editingWidgets
         results.alphaValue = editingWidgets ? Self.dimmed : 1
         results.hidesSelection = editingWidgets || selectedWidget != nil
-        showAction(of: results.selectedItem)
+        showAction(of: selectedItem)
     }
 
     func dragWidget(_ id: String?, at point: NSPoint, from source: Any?) -> NSDragOperation {

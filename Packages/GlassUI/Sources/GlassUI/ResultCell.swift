@@ -15,6 +15,7 @@ final class ResultCell: NSTableCellView {
     private static let subtitleSize: CGFloat = 13
     private static let kindSize: CGFloat = 12
     private static let keyGap: CGFloat = 3
+    private static let dimmedAlpha: CGFloat = 0.45
 
     let tile = NSBox()
     let symbol = NSImageView()
@@ -70,6 +71,7 @@ final class ResultCell: NSTableCellView {
         tile.borderWidth = item.icon == nil ? Self.tileBorder : 0
         title.stringValue = item.title
         subtitle.stringValue = item.subtitle
+        alphaValue = item.isDimmed ? Self.dimmedAlpha : 1
         kind.stringValue = item.kind
         kind.isHidden = item.kind.isEmpty || item.hotkey != nil
         let hotkeyKeys = item.hotkey.map { HotKeyLabel.keycaps(.shortcut($0)) } ?? []
