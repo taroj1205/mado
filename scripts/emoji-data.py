@@ -10,7 +10,8 @@ UNICODE = "17.0.0"
 CLDR = "release-48-2"
 TEST = f"https://www.unicode.org/Public/{UNICODE}/emoji/emoji-test.txt"
 DATA = f"https://www.unicode.org/Public/{UNICODE}/ucd/emoji/emoji-data.txt"
-ANNOTATIONS = f"https://raw.githubusercontent.com/unicode-org/cldr/{CLDR}/common/{{}}/en.xml"
+ANNOTATIONS = f"https://raw.githubusercontent.com/unicode-org/cldr/{CLDR}/common/{{}}/{{}}.xml"
+LANGUAGES = ("en", "ja")
 OUT = (
     Path(__file__).resolve().parent.parent
     / "Packages/ClipboardKit/Sources/ClipboardKit/Resources/emoji.tsv"
@@ -27,12 +28,12 @@ def fetch(url):
 
 def keywords():
     found = {}
-    for folder in ("annotations", "annotationsDerived"):
-        root = ElementTree.fromstring(fetch(ANNOTATIONS.format(folder)))
+    for language, folder in itertools.product(LANGUAGES, ("annotations", "annotationsDerived")):
+        root = ElementTree.fromstring(fetch(ANNOTATIONS.format(folder, language)))
         for annotation in root.iter("annotation"):
-            if annotation.get("type") != "tts":
-                words = [word.strip() for word in annotation.text.split("|")]
-                found.setdefault(annotation.get("cp").replace(VARIATION, ""), words)
+            words = found.setdefault(annotation.get("cp").replace(VARIATION, ""), [])
+            if language != "en" or annotation.get("type") != "tts":
+                words += [w.strip() for w in annotation.text.split("|") if w.strip() not in words]
     return found
 
 

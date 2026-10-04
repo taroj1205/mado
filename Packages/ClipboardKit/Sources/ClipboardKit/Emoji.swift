@@ -86,9 +86,13 @@ public struct Emoji: Equatable, Sendable {
         if query.allSatisfy({ word in nameWords.contains(word) || keywords.contains(word) }) {
             return .keywords
         }
-        let prefixed = query.allSatisfy { word in
-            nameWords.contains { $0.hasPrefix(word) } || keywords.contains { $0.hasPrefix(word) }
+        let found = query.allSatisfy { word in
+            let spaced = word.allSatisfy(\.isASCII)
+            let finds = { (candidate: Substring) in
+                spaced ? candidate.hasPrefix(word) : candidate.contains(word)
+            }
+            return nameWords.contains(where: finds) || keywords.contains(where: finds)
         }
-        return prefixed ? .prefixes : nil
+        return found ? .prefixes : nil
     }
 }

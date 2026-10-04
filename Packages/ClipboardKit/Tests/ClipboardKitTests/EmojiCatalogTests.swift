@@ -6,8 +6,8 @@ import Testing
     private static let data = """
         # comment
         @Smileys & Emotion
-        😄\tgrinning face with smiling eyes\thappy|laugh|smile\t
-        😍\tsmiling face with heart-eyes\tlove\t
+        😄\tgrinning face with smiling eyes\thappy|laugh|smile|笑顔\t
+        😍\tsmiling face with heart-eyes\tlove|目がハート\t
         @People & Body
         👍\tthumbs up\t+1|good|hand\t0
         ☝️\tindex pointing up\tfinger\t0
@@ -36,6 +36,9 @@ import Testing
         #expect(catalog.search("smiling").map(\.character) == ["😄", "😍"])
         #expect(catalog.search("red heart").map(\.character) == ["❤️"])
         #expect(catalog.search("HAND").map(\.character) == ["👍"])
+        #expect(catalog.search("笑顔").map(\.character) == ["😄"])
+        #expect(catalog.search("ハート").map(\.character) == ["😍"])
+        #expect(catalog.search("smile 笑").map(\.character) == ["😄"])
         #expect(catalog.search("  ").isEmpty)
     }
 
@@ -72,6 +75,7 @@ import Testing
         #expect(bundled.search("heart").prefix(24).allSatisfy { $0.name.contains("heart") })
         #expect(bundled.emoji("😄")?.name == "grinning face with smiling eyes")
         #expect(bundled.search("flag canada").first?.character == "🇨🇦")
+        #expect(bundled.search("笑う").prefix(8).map(\.character).contains("😂"))
         #expect(bundled.emoji("1️⃣")?.shortcode == ":keycap_1:")
         #expect(bundled.emoji("👨‍🦰")?.toned(.medium) == "👨🏽‍🦰")
         #expect(bundled.emoji("🧑‍🤝‍🧑")?.toned(.dark) == "🧑🏿‍🤝‍🧑🏿")
