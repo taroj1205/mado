@@ -141,7 +141,8 @@ final class TextTools {
 
     private func run(_ tool: TextTool) async throws {
         guard let target = findTarget?(), let selection = await Self.selection(in: target),
-            let output = await Task.detached(operation: { tool.apply(to: selection).output }).value
+            let output = await Task.detached(operation: { tool.apply(to: selection).output }).value,
+            await Self.selection(in: target) == selection
         else {
             NSSound.beep()
             return

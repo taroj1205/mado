@@ -71,6 +71,8 @@ import Testing
         #expect(bundled.search("smile").prefix(3).map(\.character).contains("😀"))
         #expect(bundled.search("heart").prefix(24).allSatisfy { $0.name.contains("heart") })
         #expect(bundled.emoji("😄")?.name == "grinning face with smiling eyes")
+        #expect(bundled.search("flag canada").first?.character == "🇨🇦")
+        #expect(bundled.emoji("1️⃣")?.shortcode == ":keycap_1:")
     }
 
     @Test func keepsTheNewestRecentEmojiFirst() {
