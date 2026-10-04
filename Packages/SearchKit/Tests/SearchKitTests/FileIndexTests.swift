@@ -28,6 +28,26 @@ import Testing
         #expect(files[2].key == Fuzzy.Key("Q3 Roadmap.pdf"))
     }
 
+    @Test func ranksFilesWithTheUseAndAliasesSavedForTheirPath() async {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = ["Report.pdf", "Recipe.pdf"].map { name in
+            FileIndex.File(
+                name: name, folder: "~", url: URL(filePath: "/tmp/\(name)"),
+                key: Fuzzy.Key(name), isFolder: false, modified: nil)
+        }
+        var usage = Usage()
+        usage.record("/tmp/Recipe.pdf", at: .now)
+        var items = ItemSettings()
+        items["/tmp/Report.pdf"] = .init(aliases: ["taxes"])
+        let rank = { (query: String) async in
+            await FileIndex.rank(files, by: query, items: items, usage: usage, at: .now)
+                .map(\.name)
+        }
+
+        #expect(await rank("re") == ["Recipe.pdf", "Report.pdf"])
+        #expect(await rank("taxes") == ["Report.pdf"])
+    }
+
     @Test func aCancelledScanStopsWalkingTheFolders() async {
         defer { try? FileManager.default.removeItem(at: root) }
         let scan = Task { await FileIndex.files(in: [root]) }

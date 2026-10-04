@@ -42,6 +42,13 @@ public final class FileIndex {
         walk(folders)
     }
 
+    @concurrent nonisolated public static func rank(
+        _ files: [File], by query: String, items: ItemSettings, usage: Usage, at now: Date
+    ) async -> [File] {
+        let bonus = { usage.bonus(for: $0, at: now) }
+        return items.rank(files, by: query, bonus: bonus, id: \.url.path) { [$0.key] }
+    }
+
     nonisolated private static func walk(_ folders: [URL]) -> [File] {
         var found: [File] = []
         for root in folders {

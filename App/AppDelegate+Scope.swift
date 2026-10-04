@@ -38,9 +38,9 @@ extension AppDelegate {
             return history.sections(for: query)
 
         case .root:
-            return signposter.withIntervalSignpost("search") {
-                LauncherResult.sections(for: query, in: sources, usage: usage)
-            }
+            let state = signposter.beginInterval("search")
+            defer { signposter.endInterval("search", state) }
+            return await LauncherResult.sections(for: query, in: sources, usage: usage)
         }
     }
 
