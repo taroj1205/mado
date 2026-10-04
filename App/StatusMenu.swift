@@ -10,7 +10,6 @@ enum StatusMenu {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.behavior = .removalAllowed
         item.isVisible = true
-        item.button?.image = icon(keysPaused: false)
 
         let menu = NSMenu()
         let openItem = menu.addItem(

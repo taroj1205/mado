@@ -10,7 +10,7 @@ Native macOS launcher (AppKit only, no SwiftUI). Plan: see the "Mado — AppKit 
 
 Debug builds are signed with a local certificate named `Mado Development`, so the Accessibility grant survives rebuilds. Create it once per Mac in Keychain Access: Certificate Assistant, Create a Certificate, name `Mado Development`, type Code Signing.
 
-To run a Debug build from a worktree next to another Mado, launch it without its hotkeys and open its launcher with a signal instead. The build writes `Mado.ready` next to `Mado.app` once it handles the signal; until then the signal quits it.
+To run a Debug build from a worktree next to another Mado, launch it without its hotkeys and open its launcher with a signal instead. The build writes `Mado.ready` next to `Mado.app` once it handles the signal; until then the signal quits it. It also starts with keyboard features paused, so right ⌥, Caps Lock, snippets and other keys reach only the other Mado. To try them in this build, uncheck Pause Keyboard Features in its menu bar icon.
 
     xcodebuild build -project Mado.xcodeproj -scheme Mado -derivedDataPath build
     rm -f build/Build/Products/Debug/Mado.ready
