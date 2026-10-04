@@ -13,7 +13,7 @@ Which engine Mado's dictation runs on, and the measurements behind the choice. M
 
 Not chosen:
 
-- **Apple SpeechTranscriber** is the runner-up. It needs no download, answers in about 0.15 s and uses under 100 MB. It lost on Japanese accuracy (8.8%) and on language handling: there is no auto-detect, and Apple documents custom words (`contextualStrings`) only for DictationTranscriber, which was the least accurate engine here.
+- **Apple SpeechTranscriber** is the runner-up. Mado wouldn't ship a model for it, it answers in about 0.15 s and uses under 100 MB. Its models still have to be on the Mac: macOS downloads them from Apple and shares them between apps, and an app that needs a missing language has to request it through `AssetInventory`. It lost on Japanese accuracy (8.8%) and on language handling: there is no auto-detect, and Apple documents custom words (`contextualStrings`) only for DictationTranscriber, which was the least accurate engine here.
 - **Qwen3-ASR 1.7B** was the most accurate in Japanese (5.2%), but its peak memory footprint was 5.5–6.4 GB, about three times Whisper's. It runs through MLX and a 0.0.x Swift package.
 - **Qwen3-ASR 0.6B** matched Whisper in English but was weaker in Japanese (10.0%), and still peaked at 3.3–4.1 GB.
 - **Whisper small** was the least accurate in Japanese (16.8%).
@@ -24,14 +24,14 @@ Not chosen:
 
 | Engine | Japanese CER | English WER | Time per clip (median, ja / en) | Model load | Peak memory | Download |
 | --- | --- | --- | --- | --- | --- | --- |
-| Apple SpeechTranscriber | 8.8% | 6.8% | 0.17 s / 0.15 s | 0.09 s | 74–86 MB RSS | None in the app. macOS installs it on demand: 341 MB ja, 380 MB en |
-| Apple DictationTranscriber | 15.2% | 13.6% | 0.34 s / 0.17 s | 0.10 s | 120–146 MB RSS | None in the app (macOS) |
+| Apple SpeechTranscriber | 8.8% | 6.8% | 0.17 s / 0.15 s | 0.09 s | 74–86 MB RSS | Not in the app. macOS downloads it per language through `AssetInventory`: 341 MB ja, 380 MB en (already installed here) |
+| Apple DictationTranscriber | 15.2% | 13.6% | 0.34 s / 0.17 s | 0.10 s | 120–146 MB RSS | Not in the app (macOS, through `AssetInventory`) |
 | Whisper small (whisper.cpp) | 16.8% | 6.8% | 0.27 s / 0.17 s | 0.13 s | 847 MB RSS, 867 MB footprint | 488 MB |
 | **Whisper large-v3-turbo (whisper.cpp)** | **6.4%** | **4.9%** | 0.39 s / 0.31 s | 0.48 s | 1.9 GB RSS, 1.9 GB footprint | 1.6 GB |
 | Qwen3-ASR 0.6B, 8-bit | 10.0% | 4.9% | 0.16 s / 0.11 s | 1.10 s | 1.1 GB RSS, 4.1 GB footprint | 1.0 GB |
 | Qwen3-ASR 1.7B, 8-bit | 5.2% | 5.8% | 0.34 s / 0.27 s | 1.33 s | 2.5 GB RSS, 6.4 GB footprint | 2.5 GB |
 
-Time per clip is from audio in to text out with the model already loaded, which is what you wait for after letting go of the hotkey. Every engine was well under real time: the slowest took 0.039 s per second of audio.
+Time per clip is from audio in to text out with the model already loaded, which is what you wait for after letting go of the hotkey. Every engine was well under real time. The slowest single clip was Whisper turbo on en5: 0.30 s for 4.3 s of audio, about 0.07 s per second. Whisper turbo took about 0.3 s even for the shortest clips, so its time per clip doesn't shrink much below that.
 
 Apple's model runs in the system's `localspeechrecognition` process and on the Neural Engine. Its row is that process's peak RSS. Neural Engine memory isn't counted against any process, so the Apple rows understate the true cost.
 
@@ -63,18 +63,18 @@ Most Japanese errors are rare words: カタルーニャ, 口蓋, 歯列 and 磁�
 ## Notes for M4-11 and M4-12
 
 - **Whisper small isn't a good default for Japanese.** The Speech-model manager board marks it "recommended", but it was the least accurate in Japanese here. The board's "best for Japanese" label on Large v3 Turbo matches the results. Which model is the default is M4-12's call; this is the evidence for it.
-- **There are no partial results.** whisper.cpp transcribes after you let go of the hotkey, so text appears in one go, 0.3–0.4 s after letting go on this Mac. Apple's transcriber can stream partial text while you speak.
+- **Partial results weren't measured.** Only the file path was measured: transcribe after you let go of the hotkey, so text appears in one go, 0.3–0.4 s after letting go on this Mac. whisper.cpp also has a [`whisper-stream` example](https://github.com/ggml-org/whisper.cpp/tree/v1.9.4#real-time-audio-input-example) that re-transcribes the microphone audio every half second. That would give live text at the cost of running the model repeatedly, and its accuracy and load weren't checked. Apple's transcriber streams partial text natively.
 - **Memory stays used while the model is loaded.** Large-v3-turbo holds about 1.9 GB until it is unloaded. Unloading after a while idle gives that back, at the cost of the 0.5 s load on the next use.
 - **Load the ggml backends first.** whisper.cpp built with dynamically loaded backends, like the Homebrew build, aborts in `whisper_init_from_file_with_params` unless `ggml_backend_load_all()` runs first. `whisper-cli` does this itself. The XCFramework build wasn't checked.
 - **Apple DictationTranscriber quirk.** With the `.shortDictation` preset it never marks a result final, even after `finalizeAndFinish(through:)`. The last result arrives with `isFinal == false` and then the stream ends. Code that keeps only final results gets an empty string.
 
 ## Researched, not measured
 
-- **Fun-ASR-MLT-Nano-2512** tops one FLEURS Japanese ranking at 2.32% CER ([Handy](https://models.handy.computer/languages/ja)), but it uses the FunASR model license, not an OSI one.
-- **SenseVoice Small** is very fast but scores 7.63% Japanese CER on the same ranking, and also uses the FunASR license.
-- **Parakeet TDT 0.6B v3** covers 25 European languages and no Japanese.
-- **kotoba-whisper v2.0** is Japanese-only.
-- **WhisperKit** runs the same Whisper models through Core ML. It would change the runtime, not the model.
+- **Fun-ASR-MLT-Nano-2512** is an 800M-parameter model covering 31 languages, Japanese and English among them, under Apache-2.0 ([model card](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512)). Its model card publishes no Japanese accuracy. The only figure found is a third-party FLEURS run at 2.32% CER ([Handy](https://models.handy.computer/languages/ja)), which hasn't been confirmed here. Upstream runs it through FunASR, a Python and PyTorch toolkit, with no Swift or Core ML runtime. It wasn't measured, and it is the first model to measure if Japanese accuracy needs to improve.
+- **SenseVoice Small** covers Japanese and English under the FunASR model license, not an OSI license ([model card](https://huggingface.co/FunAudioLLM/SenseVoiceSmall), [license](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)). The same third-party run puts it at 7.63% Japanese CER. Not measured.
+- **Parakeet TDT 0.6B v3** covers 25 European languages and no Japanese ([model card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)).
+- **kotoba-whisper v2.0** is Japanese only ([model card](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0)).
+- **[WhisperKit](https://github.com/argmaxinc/WhisperKit)** runs Whisper models through Core ML. It would change the runtime, not the model.
 
 ## Not measured
 
@@ -91,12 +91,13 @@ Most Japanese errors are rare words: カタルーニャ, 口蓋, 歯列 and 磁�
 - [whisper.cpp LICENSE](https://github.com/ggml-org/whisper.cpp/blob/v1.9.4/LICENSE) and [OpenAI Whisper README, "License"](https://github.com/openai/whisper#license): the library is MIT, and Whisper's code and model weights are MIT.
 - [`SpeechTranscriber`](https://developer.apple.com/documentation/speech/speechtranscriber) and [`isAvailable`](https://developer.apple.com/documentation/speech/speechtranscriber/isavailable): the general-purpose model. It depends on the device's hardware, and Apple suggests DictationTranscriber where it isn't available. It takes a locale up front, with no auto-detect option in the SDK's interface.
 - [`DictationTranscriber`](https://developer.apple.com/documentation/speech/dictationtranscriber): the same models as system dictation and on-device `SFSpeechRecognizer`. It is the transcriber Apple documents for custom vocabulary and contextual strings.
+- [`AssetInventory`](https://developer.apple.com/documentation/speech/assetinventory): SpeechAnalyzer's models are downloaded from Apple, managed by the system and shared between apps. An app installs them per locale before use and releases them when done.
 - [`AnalysisContext.contextualStrings`](https://developer.apple.com/documentation/speech/analysiscontext/contextualstrings): documented for DictationTranscriber only, up to 100 short phrases. This is why Apple's custom-word support counted against SpeechTranscriber.
 - [`SpeechAnalyzer`](https://developer.apple.com/documentation/speech/speechanalyzer): `prepareToAnalyze(in:)` preloads the model, and `start(inputAudioFile:finishAfterFile:)` and the `finalize…` methods end a session. These are what the measurements used. Apple's interfaces were read from the Speech framework in the Xcode 27 macOS SDK.
 - [Qwen3-ASR-1.7B model card](https://huggingface.co/Qwen/Qwen3-ASR-1.7B): Apache-2.0.
 - [FLEURS dataset card](https://huggingface.co/datasets/google/fleurs): the clips and reference transcripts, CC BY 4.0.
 
-The Japanese and English accuracy ranking comes from this document's own measurements, not from published leaderboards. Published FLEURS results were only used to pick which models to measure.
+The Japanese and English accuracy ranking comes from this document's own measurements, not from published leaderboards. Third-party FLEURS results ([Handy](https://models.handy.computer/languages/ja)) were only used to pick which models to measure. Its figures for models that weren't measured have no first-party source and are marked that way above.
 
 ## How it was measured
 
