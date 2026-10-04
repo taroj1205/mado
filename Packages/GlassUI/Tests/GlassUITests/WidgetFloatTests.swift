@@ -23,7 +23,7 @@ import Testing
     }
 
     @Test func aboveFloatsSixToARowFlushWithThePanelSixteenPointsOverIt() throws {
-        view.widgetLayout = .above
+        arrange(.above)
         view.layoutSubtreeIfNeeded()
         let floats = view.widgetGrid.floats
         #expect(floats.count == 7)
@@ -41,7 +41,7 @@ import Testing
         view.widgets =
             [.init(id: "music", name: "Now Playing", track: track, action: "Play", spoken: "Song")]
             + (1...5).map(numbered)
-        view.widgetLayout = .above
+        arrange(.above)
         let floats = view.widgetGrid.floats
         expect(floats[0].frame, NSRect(x: 100, y: 680, width: 2 * Self.width + 10, height: 78))
         expect(
@@ -52,7 +52,7 @@ import Testing
     }
 
     @Test func aroundStacksAColumnOnEachSideFromThePanelTop() {
-        view.widgetLayout = .around
+        arrange(.around)
         let floats = view.widgetGrid.floats
         expect(floats[0].frame, NSRect(x: -140, y: 498, width: 220, height: 78))
         expect(floats[3].frame, NSRect(x: -140, y: 234, width: 220, height: 78))
@@ -64,7 +64,7 @@ import Testing
     @Test func theKeysMoveThroughFloatingTilesLikeInlineOnes() {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
-        view.widgetLayout = .around
+        arrange(.around)
         press(kVK_UpArrow, "\u{F700}")
         #expect(view.selectedWidget == 0)
         #expect(view.widgetGrid.tiles.map(\.selected) == [true] + Array(repeating: false, count: 6))
@@ -86,7 +86,7 @@ import Testing
     }
 
     @Test func typingTakesTheFloatsAwayAndClearingBringsThemBack() {
-        view.widgetLayout = .above
+        arrange(.above)
         press(kVK_ANSI_A, "a")
         #expect(view.widgetGrid.floats.allSatisfy { $0.parent == nil })
         view.replaceQuery(with: "")
@@ -94,7 +94,7 @@ import Testing
     }
 
     @Test func resizingThePanelKeepsTheFloatsOnItsTop() {
-        view.widgetLayout = .above
+        arrange(.above)
         panel.setFrame(NSRect(x: 100, y: 64, width: 760, height: 548), display: false)
         view.layoutSubtreeIfNeeded()
         expect(
@@ -103,9 +103,9 @@ import Testing
     }
 
     @Test func goingBackInlinePutsTheTilesInThePanel() {
-        view.widgetLayout = .above
+        arrange(.above)
         let floats = view.widgetGrid.floats
-        view.widgetLayout = .grid
+        arrange(.inPanel)
         #expect(view.widgetGrid.floats.isEmpty)
         #expect(floats.allSatisfy { $0.parent == nil })
         #expect(view.widgetGrid.tiles.allSatisfy { unsafe $0.superview === view.widgetGrid })
@@ -115,7 +115,7 @@ import Testing
     @Test func clickingAFloatingTileSelectsAndRunsIt() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
-        view.widgetLayout = .above
+        arrange(.above)
         #expect(try #require(view.widgetGrid.tiles.last).accessibilityPerformPress())
         #expect(view.selectedWidget == 6)
         #expect(view.widgetGrid.tiles.last?.selected == true)
@@ -157,5 +157,9 @@ import Testing
         .init(
             id: title, title: title, subtitle: "", kind: "Command", symbol: "star",
             action: "Run Command")
+    }
+
+    private func arrange(_ arrangement: WidgetSettings.Arrangement) {
+        view.widgetSpots = WidgetSettings().spots(arrangement, from: view.widgets.map(\.id))
     }
 }

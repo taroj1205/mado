@@ -60,7 +60,10 @@ struct SettingsPage {
             [
                 SettingsSection(
                     "Layout",
-                    [.init("Placement", popUp(WidgetPlacement.self, context.modules))]),
+                    [
+                        .init("Placement", popUp(WidgetPlacement.self, context.modules)),
+                        .init("Inside the panel", popUp(WidgetInlineStyle.self, context.modules)),
+                    ]),
                 SettingsSection(
                     "Gallery",
                     [.init("Widgets on the empty query", galleryButton(context))]),
