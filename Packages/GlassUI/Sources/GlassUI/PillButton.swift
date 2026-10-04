@@ -38,7 +38,7 @@ final class PillButton: NSButton {
         let label = NSMutableAttributedString(
             string: title, attributes: [.font: font, .foregroundColor: text])
         if let symbol {
-            label.insert(Self.icon(symbol, colour: text, font: font), at: 0)
+            label.insert(Self.icon(symbol, colour: .secondaryLabelColor, font: font), at: 0)
             setAccessibilityLabel(title)
         }
         attributedTitle = label

@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
     private(set) var settings: SettingsWindowController?
+    private(set) var snippets: Snippets?
     private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
     private(set) var pasteTarget: PasteTarget?
@@ -86,16 +87,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
+            let library = try Snippets.registered(in: manager)
+            snippets = library
             let openHistory = CalculatorHistory.command { [weak self] in
-                self?.clipboardScoped = false
-                self?.launcherView.enter(placeholder: CalculatorHistory.placeholder)
+                self?.openCalculatorHistory()
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
             try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
-                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory
+                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory,
+                        snippets: library
                     ) { [weak self] in self?.showLauncher() })
             }
             try manager.startEnabledModules()
@@ -272,7 +275,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let controller =
             settings
             ?? SettingsWindowController(
-                modules: modules, hotKeys: hotKeys, rates: rates, items: editor)
+                modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
+                snippets: snippets)
         settings = controller
         controller.showWindow(nil)
     }

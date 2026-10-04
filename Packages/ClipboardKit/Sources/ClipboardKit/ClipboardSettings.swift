@@ -1,4 +1,11 @@
 public struct ClipboardSettings: Codable, Equatable, Sendable {
+    private enum CodingKeys: CodingKey {
+        case retention
+        case assignedDefaultHotKey
+        case addedApps
+        case removedApps
+    }
+
     public static let defaultIgnoredApps: KeyValuePairs<String, String> = [
         "com.1password.1password": "Password manager",
         "com.bitwarden.desktop": "Password manager",
@@ -9,18 +16,16 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
 
     public var retention: ClipboardStore.Retention
     public var assignedDefaultHotKey: Bool
-    private var addedApps: [String]
-    private var removedApps: [String]
+    private var ignored: AppList
 
     public var ignoredApps: [String] {
-        (Self.defaultIgnoredApps.map(\.key) + addedApps).filter { !removedApps.contains($0) }
+        ignored.apps
     }
 
     public init() {
         retention = ClipboardStore.Retention()
         assignedDefaultHotKey = false
-        addedApps = []
-        removedApps = []
+        ignored = AppList(defaults: Self.defaultIgnoredApps.map(\.key))
     }
 
     public init(from decoder: any Decoder) throws {
@@ -32,26 +37,27 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
         assignedDefaultHotKey =
             try values.decodeIfPresent(Bool.self, forKey: .assignedDefaultHotKey)
             ?? assignedDefaultHotKey
-        addedApps = try values.decodeIfPresent([String].self, forKey: .addedApps) ?? addedApps
-        removedApps =
-            try values.decodeIfPresent([String].self, forKey: .removedApps) ?? removedApps
+        ignored = try AppList(
+            defaults: Self.defaultIgnoredApps.map(\.key), from: values, added: .addedApps,
+            removed: .removedApps)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(retention, forKey: .retention)
+        try values.encode(assignedDefaultHotKey, forKey: .assignedDefaultHotKey)
+        try ignored.encode(to: &values, added: .addedApps, removed: .removedApps)
     }
 
     public func ignores(any apps: [String]) -> Bool {
-        apps.contains(where: ignoredApps.contains)
+        apps.contains(where: ignored.contains)
     }
 
     public mutating func ignore(_ app: String) {
-        removedApps.removeAll { $0 == app }
-        if !ignoredApps.contains(app) {
-            addedApps.append(app)
-        }
+        ignored.add(app)
     }
 
     public mutating func stopIgnoring(_ app: String) {
-        addedApps.removeAll { $0 == app }
-        if ignoredApps.contains(app) {
-            removedApps.append(app)
-        }
+        ignored.remove(app)
     }
 }

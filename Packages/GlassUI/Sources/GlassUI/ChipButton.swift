@@ -1,9 +1,10 @@
 import AppKit
 
 final class ChipButton: NSButton {
-    private static let height: CGFloat = 24
+    static let fontSize: CGFloat = 12
+    static let height: CGFloat = 24
     private static let side: CGFloat = 10
-    private static let fontSize: CGFloat = 12
+    private static let symbolGap: CGFloat = 6
     private static let half: CGFloat = 0.5
     private static let fillAlpha = (dark: 0.14, light: 0.08)
     private static let fill = NSColor(name: nil) { appearance in
@@ -13,29 +14,40 @@ final class ChipButton: NSButton {
     }
 
     var onPress: (() -> Void)?
+    private let titleFont: NSFont
+    private let height: CGFloat
 
     override var title: String {
         didSet {
             attributedTitle = NSAttributedString(
-                string: title,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: Self.fontSize),
-                    .foregroundColor: NSColor.labelColor,
-                ])
+                string: title, attributes: [.font: titleFont, .foregroundColor: NSColor.labelColor])
         }
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(
-            width: attributedTitle.size().width.rounded(.up) + Self.side + Self.side,
-            height: Self.height)
+        let symbol = image.map { $0.size.width + Self.symbolGap } ?? 0
+        return NSSize(
+            width: attributedTitle.size().width.rounded(.up) + symbol + Self.side + Self.side,
+            height: height)
     }
 
-    init() {
+    convenience init() {
+        self.init(font: .systemFont(ofSize: Self.fontSize), height: Self.height, symbol: nil)
+    }
+
+    init(font: NSFont, height: CGFloat, symbol: String?) {
+        titleFont = font
+        self.height = height
         super.init(frame: .zero)
         isBordered = false
         target = self
         action = #selector(press)
+        if let symbol {
+            image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+            symbolConfiguration = .init(pointSize: titleFont.pointSize, weight: .semibold)
+            imagePosition = .imageLeading
+            contentTintColor = .labelColor
+        }
         setContentHuggingPriority(.required, for: .horizontal)
     }
 

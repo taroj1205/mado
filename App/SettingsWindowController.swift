@@ -114,10 +114,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     init(
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
-        items: ItemEditor
+        items: ItemEditor, snippets: Snippets?
     ) {
         let recorder = HotKeyPopover(items: items)
-        let ignoredApps = IgnoredAppsSettings(modules: modules)
+        let ignoredApps = AppListSettings.ignoredApps(modules: modules)
+        let withoutExpansion = AppListSettings.withoutExpansion(modules: modules)
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
         let context = SettingsPage.Context(
@@ -125,7 +126,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             apps: AppHotKeys(items: items, recorder: recorder),
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
-            inputDefaults: inputDefaults, remaps: remaps,
+            withoutExpansion: withoutExpansion, inputDefaults: inputDefaults, remaps: remaps,
             gallery: WidgetGalleryWindow(modules: modules))
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
@@ -146,6 +147,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         window.delegate = self
         ignoredApps.onChange = { [weak self] in self?.reload() }
+        withoutExpansion.onChange = { [weak self] in
+            snippets?.reload()
+            self?.reload()
+        }
         inputDefaults.onChange = { [weak self] in self?.reload() }
         remaps.onChange = { [weak self] in self?.reload() }
     }

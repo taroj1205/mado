@@ -13,7 +13,8 @@ struct SettingsPage {
         let apps: AppHotKeys
         let radial: RadialMenuSettings
         let clipboardHistory: ClipboardHistorySettings
-        let ignoredApps: IgnoredAppsSettings
+        let ignoredApps: AppListSettings
+        let withoutExpansion: AppListSettings
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
         let gallery: WidgetGalleryWindow
@@ -67,7 +68,10 @@ struct SettingsPage {
                 for: ClipboardHistory.commandID, named: "Open history")
             var history = context.clipboardHistory.section
             history.rows.insert(.init("Open history", hotkey), at: 0)
-            return [history, context.ignoredApps.section, context.clipboardHistory.clearSection]
+            return [
+                history, context.ignoredApps.section, context.clipboardHistory.clearSection,
+                context.withoutExpansion.section,
+            ]
         },
         Self(
             "Windows", "rectangle.split.2x1",
