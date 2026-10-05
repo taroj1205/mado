@@ -1,4 +1,3 @@
-public import AppCore
 public import AppKit
 
 public final class WidgetGrid: NSView {
@@ -6,7 +5,7 @@ public final class WidgetGrid: NSView {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
-        case month(AgendaMonth)
+        case month(Month)
         case event(title: String, Event)
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)
@@ -163,6 +162,8 @@ public final class WidgetGrid: NSView {
     var onPress: ((Int) -> Void)?
     var onExtend: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
+    var onDay: ((String) -> Void)?
+    var onPage: ((Int, Page) -> Void)?
     var onRemove: ((Int) -> Void)?
     var onResize: ((Int, WidgetTile.Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?

@@ -56,8 +56,7 @@ final class Widgets {
     var shown: [String] = []
     var city = ""
     let weatherFeed = WeatherFeed()
-    var schedule = Schedule.loading
-    var scheduling: Task<Void, Never>?
+    var calendars = Calendars()
     private(set) var stats: SystemStats?
     var searched: [WidgetQuery.Kind] = []
     var delivered: [ResultList.Item] = []
@@ -101,7 +100,6 @@ final class Widgets {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
-            month(at: date),
             widget(for: schedule, at: date),
             widget(for: weather),
             .init(
@@ -178,7 +176,7 @@ final class Widgets {
             refresh(view)
         }
         refreshWeather()
-        refreshSchedule(in: view)
+        refreshCalendars(in: view)
         refresh(view)
         ticking = Task { [weak self, weak view] in
             while !Task.isCancelled {
@@ -187,7 +185,7 @@ final class Widgets {
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled, let self, let view else { return }
                 refreshWeather()
-                refreshSchedule(in: view)
+                refreshCalendars(in: view)
                 refresh(view)
             }
         }
@@ -205,7 +203,7 @@ final class Widgets {
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
         refreshWeather()
-        refreshSchedule(in: view)
+        refreshCalendars(in: view)
         refresh(view)
     }
 
@@ -232,17 +230,21 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
-        scheduling?.cancel()
-        scheduling = nil
+        calendars.stop()
         weatherFeed.cancel()
         searched = []
         delivered = []
     }
 
     func current() -> [WidgetGrid.Widget] {
-        Self.current(
-            at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
-            schedule: schedule)
+        [
+            Self.month(
+                at: .now, shift: calendars.monthShift, events: calendars.monthEvents,
+                opensDays: calendars.isOn)
+        ]
+            + Self.current(
+                at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
+                schedule: calendars.schedule)
     }
 
     func refresh(_ view: LauncherView) {

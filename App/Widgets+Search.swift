@@ -47,7 +47,7 @@ extension Widgets {
 
     func action(forCard item: ResultList.Item) -> CommandAction {
         let id = String(item.id.dropFirst(Self.cardPrefix.count))
-        if id == Self.calendarWidget, case .blocked = schedule {
+        if id == Self.calendarWidget, case .blocked = calendars.schedule {
             return CalendarAgenda.allow(titled: item.action)
         }
         return action(forWidget: id, titled: item.action)
@@ -89,7 +89,7 @@ extension Widgets {
             return (batteryCard(spoken: widget?.spoken), widget?.action ?? Self.batteryAction)
 
         case (.calendar, _, _):
-            return (Self.today(in: schedule, at: .now), "Open Calendar")
+            return (Self.today(in: calendars.schedule, at: .now), "Open Calendar")
 
         default:
             return (Self.message(of: widget), action)
