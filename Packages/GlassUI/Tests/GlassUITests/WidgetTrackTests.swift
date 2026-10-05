@@ -103,7 +103,7 @@ import Testing
             let next = track.convert(track.next.bounds, from: track.next)
             #expect(next.maxX <= host.bounds.maxX)
             let previous = track.convert(track.previous.bounds, from: track.previous)
-            #expect(track.title.frame.maxX < previous.minX)
+            #expect(track.convert(track.title.bounds, from: track.title).maxX < previous.minX)
             edges.append(track.convert(track.disc.bounds, from: track.disc).minX)
         }
         #expect(abs(edges[0] - edges[1]) < 0.01)
