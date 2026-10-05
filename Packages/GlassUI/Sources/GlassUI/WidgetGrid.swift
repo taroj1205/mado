@@ -5,6 +5,7 @@ public final class WidgetGrid: NSView {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
+        case verse(Verse)
         case month(Month)
         case event(title: String, Event)
         case loading(title: String)
@@ -33,20 +34,6 @@ public final class WidgetGrid: NSView {
     public enum Skip: Sendable {
         case previous
         case next
-    }
-
-    public struct Track: Sendable, Equatable {
-        public let title: String
-        public let artist: String
-        public let artwork: Data?
-        public let isPlaying: Bool
-
-        public init(title: String, artist: String, artwork: Data?, isPlaying: Bool) {
-            self.title = title
-            self.artist = artist
-            self.artwork = artwork
-            self.isPlaying = isPlaying
-        }
     }
 
     nonisolated static let columns = 6
@@ -167,6 +154,7 @@ public final class WidgetGrid: NSView {
     var onSkip: ((Int, Skip) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((Int, Page) -> Void)?
+    var onSeek: ((Int, Int) -> Void)?
     var onRemove: ((Int) -> Void)?
     var onResize: ((Int, WidgetTile.Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?

@@ -29,13 +29,14 @@ final class WidgetTrack: NSView {
     private static let stackedArt: CGFloat = 64
     private static let shortestLines: CGFloat = 70
     private static let half: CGFloat = 0.5
-    private static let short = (title: 14.0, artist: 12.0, skip: 11.0, space: 3.0)
+    static let short = (title: 14.0, artist: 12.0, skip: 11.0, space: 3.0)
     private static let tall = (title: 16.0, artist: 13.0, skip: 15.0, space: 10.0)
 
     let cover = WidgetCover()
     let title = NSTextField(labelWithString: "")
     let artist = NSTextField(labelWithString: "")
     let paused = NSTextField(labelWithString: "")
+    let lyric = LyricLine()
     let equalizer = WidgetEqualizer()
     let disc = WidgetDisc()
     let previous = WidgetTrack.symbol("backward.fill")
@@ -48,11 +49,16 @@ final class WidgetTrack: NSView {
         didSet {
             guard form != oldValue else { return }
             restyle()
+            showLines()
             needsLayout = true
         }
     }
 
     override var isFlipped: Bool { true }
+
+    private var showsLyric: Bool {
+        shown?.lyric != nil && !form.tall && form.reach == .wide
+    }
 
     init() {
         eyebrow = NSStackView(views: [equalizer, paused])
@@ -71,10 +77,11 @@ final class WidgetTrack: NSView {
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
-        for view in [cover, disc] {
+        for view in [cover, disc, lyric] {
             view.translatesAutoresizingMaskIntoConstraints = true
         }
-        [cover, eyebrow, title, artist, previous, disc, next].forEach(addSubview)
+        lyric.isHidden = true
+        [cover, eyebrow, title, artist, lyric, previous, disc, next].forEach(addSubview)
         restyle()
     }
 
@@ -96,8 +103,10 @@ final class WidgetTrack: NSView {
         let style = form.tall ? Self.tall : Self.short
         let controls = Controls(skip: style.skip * Self.boxScale, space: style.space)
         let lines =
-            Self.eyebrowHeight + title.intrinsicContentSize.height
-            + artist.intrinsicContentSize.height + Self.lineGap + Self.lineGap
+            showsLyric
+            ? title.intrinsicContentSize.height + Self.lineGap + lyric.intrinsicContentSize.height
+            : Self.eyebrowHeight + title.intrinsicContentSize.height
+                + artist.intrinsicContentSize.height + Self.lineGap + Self.lineGap
         if !form.tall {
             layOutShort(controls: controls, lines: lines)
         } else if form.reach != .wide {
@@ -147,6 +156,23 @@ final class WidgetTrack: NSView {
             cover.show(image, tint: tint, animated: !first)
         }
         shown = track
+        if let line = track.lyric { lyric.show(line, playing: track.isPlaying) }
+        showLines()
+    }
+
+    private func showLines() {
+        let visible = showsLyric
+        eyebrow.isHidden = visible
+        artist.isHidden = visible
+        lyric.isHidden = !visible
+        guard let shown else { return }
+        if visible {
+            title.attributedStringValue = Self.heading(shown)
+        } else {
+            restyle()
+            title.stringValue = shown.title
+        }
+        needsLayout = true
     }
 
     private func restyle() {
@@ -201,6 +227,14 @@ final class WidgetTrack: NSView {
 
     private func placeLines(_ frame: NSRect) {
         let titleHeight = title.intrinsicContentSize.height
+        if showsLyric {
+            title.frame = NSRect(
+                x: frame.minX, y: frame.minY, width: frame.width, height: titleHeight)
+            lyric.frame = NSRect(
+                x: frame.minX, y: frame.minY + titleHeight + Self.lineGap, width: frame.width,
+                height: lyric.intrinsicContentSize.height)
+            return
+        }
         let eyebrowWidth = min(eyebrow.fittingSize.width, frame.width)
         eyebrow.frame = NSRect(
             x: frame.minX, y: frame.minY, width: eyebrowWidth, height: Self.eyebrowHeight)

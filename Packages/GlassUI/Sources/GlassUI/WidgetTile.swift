@@ -23,11 +23,13 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let verse = WidgetLyrics()
     let face = WidgetFace()
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
     private lazy var trackPlacement = trackConstraints()
+    lazy var versePlacement = verseConstraints()
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
@@ -50,6 +52,7 @@ final class WidgetTile: NSView {
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onSeek: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
     var onRemove: (() -> Void)?
@@ -110,7 +113,7 @@ final class WidgetTile: NSView {
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        [meters, track].forEach(addSubview)
+        [meters, track, verse].forEach(addSubview)
         NSLayoutConstraint.activate([
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -151,9 +154,10 @@ final class WidgetTile: NSView {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
+        case let .verse(lyrics): verse.show(lyrics)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
-        wash.tint = widget.track == nil ? nil : track.tint
+        wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
@@ -163,6 +167,7 @@ final class WidgetTile: NSView {
         }
         showMeters(readings)
         showTrack(widget.track != nil)
+        showVerse(widget.verse != nil)
         month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
@@ -208,6 +213,8 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if let line = lyricLine(at: event) {
+            onSeek?(line)
         } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
             month.press(hit)
         } else {
