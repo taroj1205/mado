@@ -96,7 +96,7 @@ final class WidgetSpotPicker: NSView {
     }
 
     private func arrange() {
-        marks = WidgetGrid.Spot.allCases.map(WidgetSpotMark.init)
+        marks = WidgetGrid.Spot.presets.map(WidgetSpotMark.init)
         for mark in marks {
             let centre = Self.centre(of: mark.spot)
             let extent =
@@ -143,7 +143,7 @@ final class WidgetSpotPicker: NSView {
     private func show() {
         let shown = hover ?? value
         for mark in marks {
-            mark.isOn = mark.spot == value
+            mark.isOn = mark.spot == value.preset
             mark.isHot = mark.spot == hover
         }
         label.stringValue = shown.title

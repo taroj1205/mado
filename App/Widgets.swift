@@ -38,6 +38,10 @@ final class Widgets {
         gallery.map(\.id)
     }
 
+    static var wide: Set<String> {
+        Set(gallery.filter(\.isWide).map(\.id))
+    }
+
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
     }
@@ -59,8 +63,9 @@ final class Widgets {
         let spot: WidgetGrid.Spot? =
             switch edit {
             case .add: .panel
-            case let .place(_, spot, _): spot
-            case .move, .remove: nil
+            case let .place(_, spot, _), let .group(_, spot, _): spot
+            case .spread(let spots): spots.values.first
+            case .move, .resize, .remove: nil
             }
         if let spot, spot != .panel || WidgetPlacement.load(from: modules) != .inPanel {
             do {

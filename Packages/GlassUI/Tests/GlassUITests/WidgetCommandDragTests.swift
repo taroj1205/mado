@@ -99,10 +99,12 @@ import Testing
         #expect(edits.isEmpty)
     }
 
-    @Test func floatingTilesTakeTheDragAndReorderWithinTheirSpot() throws {
+    @Test func floatingTilesTakeTheDragAndReorderWithinTheirGroup() throws {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
-        arrange(.around)
+        view.widgetSpots = [
+            "clock": .leftTop, "weather": .leftTop, "battery": .rightTop, "system": .rightTop,
+        ]
         let accepting = view.widgetGrid.tiles.map(\.registeredDraggedTypes)
         #expect(accepting.allSatisfy { $0 == [WidgetGrid.dragType] })
         let target = view.widgetGrid.floats[3].frame
@@ -116,22 +118,22 @@ import Testing
         #expect(edits == [.move("battery", before: nil)])
     }
 
-    @Test func aTileDraggedOntoAnotherSpotMovesThereBeforeTheTileUnderIt() throws {
+    @Test func aTileDroppedOnAnotherTakesTheNearestFreeSlotInsteadOfJoiningIt() throws {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
         arrange(.around)
-        let other = view.widgetGrid.floats[2].frame
+        let other = view.widgetGrid.floats[3].frame
         let tile = view.widgetGrid.tiles[0]
         tile.onDragStart?()
         #expect(view.widgetGrid.rails.parent === panel)
         let over = try #require(tile.onDrag)
         #expect(over("clock", NSPoint(x: other.midX, y: other.midY), nil) == .move)
-        #expect(ids == ["weather", "clock", "battery", "system"])
-        #expect(view.widgetGrid.spot(of: widgets[0]) == .rightTop)
-        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .rightTop)
-        #expect(view.widgetGrid.rails.board.label.title == "Right · Top")
+        #expect(ids == ["weather", "battery", "system", "clock"])
+        #expect(view.widgetGrid.spot(of: widgets[0]) == .rightMiddle)
+        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .rightMiddle)
+        #expect(view.widgetGrid.rails.board.label.title == "Right · Middle")
         #expect(tile.onDrop?("clock") == true)
-        #expect(edits == [.place("clock", .rightTop, before: "battery")])
+        #expect(edits == [.place("clock", .rightMiddle, before: nil)])
         #expect(!view.widgetGrid.rails.isVisible)
     }
 
@@ -140,7 +142,8 @@ import Testing
         let target = view.widgetGrid.floats[3].frame
         let tile = view.widgetGrid.tiles[0]
         #expect(tile.onDrag?("clock", NSPoint(x: target.midX, y: target.midY), nil) == .move)
-        #expect(ids == ["weather", "battery", "system", "clock"])
+        #expect(view.widgetGrid.moving == .above(column: 3, row: 1))
+        #expect(ids == ["clock", "weather", "battery", "system"])
         tile.onDragEnd?()
         #expect(ids == widgets.map(\.id))
         #expect(view.widgetGrid.tiles.allSatisfy { !$0.lifted })
