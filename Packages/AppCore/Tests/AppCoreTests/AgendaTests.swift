@@ -37,7 +37,9 @@ import Testing
         let days = Agenda(events: [review, later, planning, standUp, holiday])
             .days(at: now, calendar: calendar)
 
-        let expected = now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+        style.timeZone = calendar.timeZone
+        let expected = now.formatted(style)
         #expect(days.map(\.title) == ["Today · \(expected)", "Tomorrow"])
         #expect(
             days.map { $0.events.map(\.id) } == [

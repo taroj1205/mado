@@ -81,7 +81,10 @@ public struct Agenda: Sendable, Equatable {
 
     public func days(at now: Date, calendar: Calendar) -> [Day] {
         let today = calendar.startOfDay(for: now)
-        let date = today.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+        style.calendar = calendar
+        style.timeZone = calendar.timeZone
+        let date = today.formatted(style)
         return zip(0..<Self.dayCount, ["Today · \(date)", "Tomorrow"]).compactMap { offset, title in
             guard let start = calendar.date(byAdding: .day, value: offset, to: today),
                 let end = calendar.date(byAdding: .day, value: 1, to: start)
