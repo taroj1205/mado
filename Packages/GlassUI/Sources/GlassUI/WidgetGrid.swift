@@ -113,6 +113,10 @@ public final class WidgetGrid: NSView {
     private static let bottom: CGFloat = 4
     private static let dockInset: CGFloat = 6
     private static let dockEdge: CGFloat = 1.5
+    private static let captionSize: CGFloat = 10.5
+    private static let captionKern: CGFloat = 0.9
+    private static let captionInset: CGFloat = 2
+    private static let half: CGFloat = 0.5
     static let floatingGap: CGFloat = 10
     static let lift: CGFloat = 16
     static let sideWidth: CGFloat = 220
@@ -153,7 +157,7 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    var incoming: Int? {
+    var incoming: Widget? {
         didSet {
             if incoming != oldValue { update() }
         }
@@ -184,13 +188,11 @@ public final class WidgetGrid: NSView {
     var onDragEnd: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
-    let dropFrame = WidgetDropFrame()
     let dock = DashedOutline(colour: WidgetRailsView.dock, width: dockEdge, fill: .clear)
-
-    var layoutInUse: Layout? { editing ? .grid : tileLayout }
+    let dockCaption = NSTextField(labelWithString: "IN THE PANEL · DROP OR CLICK A WIDGET BELOW")
 
     var rowHeight: CGFloat {
-        layoutInUse == .strip ? Self.stripHeight : Self.rowHeight
+        tileLayout == .strip ? Self.stripHeight : Self.rowHeight
     }
 
     override public var isFlipped: Bool { true }
@@ -219,10 +221,16 @@ public final class WidgetGrid: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
         setAccessibilityLabel("Widgets")
-        dropFrame.isHidden = true
         dock.isHidden = true
+        dockCaption.attributedStringValue = NSAttributedString(
+            string: dockCaption.stringValue,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: Self.captionSize, weight: .semibold),
+                .kern: Self.captionKern, .foregroundColor: NSColor.tertiaryLabelColor,
+            ])
+        dockCaption.isHidden = true
         addSubview(dock)
-        addSubview(dropFrame)
+        addSubview(dockCaption)
         rails.board.onDrag = { [weak self] id, point, source in
             self?.onDrag?(id, point, source) ?? []
         }
@@ -240,12 +248,13 @@ public final class WidgetGrid: NSView {
         for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
             place(tile, in: frame, tilt: tilt(at: index))
         }
-        if incoming != nil, let last = frames.last {
-            dropFrame.frame = last
-        }
         dock.frame = bounds.insetBy(dx: Self.dockInset, dy: 0)
         dock.frame.origin.y = Self.dockInset
         dock.frame.size.height = bounds.height - Self.dockInset - Self.bottom
+        let caption = dockCaption.fittingSize
+        dockCaption.frame = NSRect(
+            x: Self.inset + Self.captionInset, y: dock.frame.midY - caption.height * Self.half,
+            width: caption.width, height: caption.height)
     }
 
     private func update(rebuilding: Bool = false) {
@@ -259,12 +268,12 @@ public final class WidgetGrid: NSView {
             tiles.filter { !$0.floating }.forEach(addSubview)
         }
         for (tile, widget) in zip(tiles, visible) {
-            tile.compact = layoutInUse == .strip && !tile.floating
+            tile.compact = tileLayout == .strip && !tile.floating
             tile.show(widget)
             tile.lifted = widget.id == dragged
         }
-        dropFrame.isHidden = incoming == nil
         dock.isHidden = !editing
+        dockCaption.isHidden = !editing || !inPanel.isEmpty
         placeFloats()
         invalidateIntrinsicContentSize()
         needsLayout = true

@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let widgets = Widgets()
-    var launcherGallery: WidgetGalleryWindow?
+    var widgetUndo: WidgetSnapshot?
     private(set) var usage = Usage()
     private(set) var history = CalculatorHistory()
     let clipboardHistory = ClipboardHistory()
@@ -273,7 +273,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             settings
             ?? SettingsWindowController(
                 modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-                snippets: snippets)
+                snippets: snippets
+            ) { [weak self] in self?.editWidgetsInLauncher() }
         settings = controller
         controller.showWindow(nil)
     }

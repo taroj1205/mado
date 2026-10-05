@@ -10,22 +10,27 @@ import Testing
         contentRect: NSRect(x: 0, y: 0, width: 760, height: 548),
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
-    private let widgets = ["clock", "weather", "battery"].map { id in
-        WidgetGrid.Widget(
-            id: id, name: id.capitalized, value: id, detail: "", action: "Open \(id.capitalized)",
-            spoken: id.capitalized)
-    }
+    private let widgets = ["clock", "weather", "battery"].map(Self.widget)
 
     init() {
         panel.contentView = view
         view.results.sections = [.init(title: "Commands", items: [item("Safari"), item("Notes")])]
         view.widgets = widgets
+        view.widgetCatalogue = ["clock", "weather", "battery", "system"].map { id in
+            .init(id: id, name: id.capitalized, summary: "About \(id)", group: .today)
+        }
         view.pills = [
             .init(
                 id: "uptime", name: "Uptime", symbol: "clock", value: "17h",
                 action: "Show System Report")
         ]
         panel.makeFirstResponder(view.field)
+    }
+
+    nonisolated private static func widget(_ id: String) -> WidgetGrid.Widget {
+        .init(
+            id: id, name: id.capitalized, value: id, detail: "", action: "Open \(id.capitalized)",
+            spoken: id.capitalized)
     }
 
     @Test func commandKOnAWidgetOffersItsActionMoveEditAndRemove() throws {
@@ -52,37 +57,63 @@ import Testing
         #expect(ran == ["weather"])
     }
 
-    @Test func editModeSwapsTheSearchBarDimsTheListAndMarksTheTiles() {
+    @Test func editModeSearchesWidgetsAndShowsTheGalleryInPlaceOfTheList() {
+        var editing: [Bool] = []
+        view.onWidgetEditing = { editing.append($0) }
         edit()
         view.layoutSubtreeIfNeeded()
-        #expect(view.field.isHidden)
-        #expect(!view.editBar.isHidden)
-        #expect(view.editBar.title.stringValue == "Editing widgets")
-        #expect(view.editBar.add.accessibilityLabel() == "Add Widget")
-        #expect(view.editBar.done.title == "Done")
-        #expect(view.results.alphaValue == 0.45)
-        #expect(view.results.hidesSelection)
-        #expect(view.widgetGrid.tiles.map(\.editing) == [true, true, true])
-        #expect(view.widgetGrid.tiles.allSatisfy { !$0.remove.isHidden && !$0.grip.isHidden })
+        #expect(editing == [true])
+        #expect(!view.field.isHidden)
+        #expect(view.field.placeholderString == "Search widgets…")
+        #expect(panel.firstResponder === view.field.currentEditor())
+        #expect(!view.doneButton.isHidden)
+        #expect(view.doneButton.label.stringValue == "Done")
+        #expect(view.results.isHidden)
+        #expect(!view.gallery.isHidden)
+        #expect(view.actionCapsule.isHidden)
+        #expect(view.contextPill.isHidden)
         #expect(view.statusBar.isHidden)
-        #expect(view.contextPill.text == LauncherView.editHint)
-        #expect(view.contextPill.symbol == "square.grid.2x2")
-        #expect(view.actionLabel.stringValue == "Done")
-        #expect(
-            (view.actionCapsule.contentView as? NSStackView)?.arrangedSubviews
-                == [view.actionLabel, view.actionKeycap])
-        #expect(panel.firstResponder === view.editBar)
-        #expect(view.widgetsBottom == 393)
-        let iconWidth = view.icon.frame.width
-        #expect(iconWidth < 30)
-        #expect(abs(view.editBar.title.convert(.zero, to: view).x - view.field.frame.minX) < 3)
-        #expect(abs(view.editBar.done.convert(view.editBar.done.bounds, to: view).maxX - 746) < 1)
-        let tile = view.widgetGrid.tiles[0]
-        let badge = tile.convert(tile.remove.frame, to: view.widgetGrid)
-        let frame = tile.convert(tile.bounds, to: view.widgetGrid)
-        #expect(abs(badge.minX - (frame.minX - 8)) < 1)
-        #expect(abs(badge.minY - (frame.minY - 8)) < 1)
-        #expect(abs(badge.width - 22) < 0.5 && abs(badge.height - 22) < 0.5)
+        #expect(!view.editBar.isHidden)
+        #expect(view.widgetGrid.tiles.map(\.editing) == [true, true, true])
+        #expect(view.gallery.placed == ["clock": .panel, "weather": .panel, "battery": .panel])
+        let done = view.doneButton.convert(view.doneButton.bounds, to: view)
+        #expect(abs(done.maxX - 746) < 1)
+        #expect(done.height == 28)
+        #expect(view.field.frame.maxX < done.minX - 8)
+        let gallery = view.gallery.frame
+        #expect(abs(gallery.maxY - view.widgetGrid.frame.minY) < 0.5)
+        #expect(gallery.minY == 0)
+        let bar = view.editBar.frame
+        #expect(bar.minX == 10 && bar.minY == 10)
+    }
+
+    @Test func deleteRemovesTheSelectedWidgetAndArrowsMoveTheSelection() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.pressWidget(1)
+        edit()
+        press(kVK_Delete, "\u{7F}")
+        #expect(edits == [.remove("weather")])
+        #expect(view.editBar.hint.stringValue == "Weather removed")
+        view.layoutSubtreeIfNeeded()
+        #expect(view.editBar.hint.frame.width >= view.editBar.hint.intrinsicContentSize.width)
+        press(kVK_RightArrow, "\u{F703}")
+        press(kVK_RightArrow, "\u{F703}")
+        #expect(view.selectedWidget == 2)
+        press(kVK_ForwardDelete, "\u{F728}")
+        #expect(edits == [.remove("weather"), .remove("battery")])
+        press(kVK_LeftArrow, "\u{F702}")
+        press(kVK_LeftArrow, "\u{F702}")
+        press(kVK_LeftArrow, "\u{F702}")
+        #expect(view.selectedWidget == 0)
+        view.editBar.remove.performClick(nil)
+        #expect(edits.last == .remove("clock"))
+        view.widgets = [widgets[1], widgets[2]]
+        #expect(view.selectedWidget == nil)
+        press(kVK_Delete, "\u{7F}")
+        #expect(edits.count == 3)
+        press(kVK_RightArrow, "\u{F703}")
+        #expect(view.selectedWidget == 0)
     }
 
     @Test func tilesTiltBothWaysUnlessReduceMotionIsOn() {
@@ -90,10 +121,6 @@ import Testing
         edit()
         view.layoutSubtreeIfNeeded()
         #expect(view.widgetGrid.tiles.map(\.frameCenterRotation) == [-0.6, 0.6, -0.6])
-        let centre = view.widgetGrid.tiles[0].convert(
-            NSPoint(x: view.widgetGrid.tiles[0].bounds.midX, y: 39), to: view.widgetGrid)
-        #expect(abs(centre.x - (14 + (732 - 40) / 12)) < 0.5)
-        #expect(abs(centre.y - (12 + 39)) < 0.5)
         view.finishEditingWidgets()
         view.layoutSubtreeIfNeeded()
         #expect(view.widgetGrid.tiles.allSatisfy { $0.frameCenterRotation == 0 })
@@ -104,31 +131,16 @@ import Testing
         #expect(view.widgetGrid.tiles.map(\.editing) == [true, true, true])
     }
 
-    @Test func deleteRemovesTheSelectedWidgetAndArrowsMoveTheSelection() {
-        var edits: [WidgetSettings.Edit] = []
-        view.onWidgetEdit = { edits.append($0) }
-        view.pressWidget(1)
+    @Test func aStripKeepsItsLayoutInEditMode() {
+        view.widgetLayout = .strip
+        view.layoutSubtreeIfNeeded()
+        let height = view.widgetGrid.frame.height
         edit()
-        press(kVK_Delete, "\u{7F}")
-        #expect(edits == [.remove("weather")])
-        press(kVK_RightArrow, "\u{F703}")
-        press(kVK_RightArrow, "\u{F703}")
-        #expect(view.selectedWidget == 2)
-        press(kVK_ForwardDelete, "\u{F728}")
-        #expect(edits == [.remove("weather"), .remove("battery")])
-        press(kVK_LeftArrow, "\u{F702}")
-        press(kVK_LeftArrow, "\u{F702}")
-        press(kVK_LeftArrow, "\u{F702}")
-        #expect(view.selectedWidget == 0)
-        press(kVK_ANSI_A, "a")
-        #expect(view.field.stringValue.isEmpty)
-        #expect(view.editingWidgets)
-        view.widgets = [widgets[1], widgets[2]]
-        #expect(view.selectedWidget == nil)
-        press(kVK_Delete, "\u{7F}")
-        #expect(edits.count == 2)
-        press(kVK_RightArrow, "\u{F703}")
-        #expect(view.selectedWidget == 0)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.widgetGrid.frame.height == height)
+        let compact = view.widgetGrid.tiles.map(\.compact)
+        #expect(!compact.isEmpty && !compact.contains(false))
+        #expect(!view.widgetGrid.fillsPanel)
     }
 
     @Test func theRemoveButtonRemovesItsTileAndClicksOnlySelect() throws {
@@ -150,11 +162,9 @@ import Testing
         #expect(view.widgetGrid.tiles[0].accessibilityPerformPress())
         #expect(view.selectedWidget == 0)
         #expect(ran.isEmpty)
-        let click = try mouse(at: view.results.convert(NSPoint(x: 40, y: 40), to: nil))
-        #expect(view.handle(click))
     }
 
-    @Test func modifiedKeysLeaveTheDimmedResultsAlone() {
+    @Test func modifiedKeysLeaveTheHiddenResultsAlone() {
         var runs: [Int] = []
         view.actions = { _ in
             [
@@ -173,39 +183,46 @@ import Testing
         #expect(runs == [2])
     }
 
-    @Test func returnEscapeAndDoneLeaveEditModeAndTheLauncherClosingEndsItToo() {
-        var ends = 0
-        var adds = 0
-        view.onEndEditingWidgets = { ends += 1 }
-        view.onAddWidgets = { adds += 1 }
+    @Test func returnEscapeDoneAndTheLauncherClosingLeaveEditMode() {
+        var editing: [Bool] = []
+        view.onWidgetEditing = { editing.append($0) }
         for leave in [
             { press(kVK_Return, "\r") }, { press(kVK_Escape, "\u{1B}") },
-            { view.editBar.done.performClick(nil) }, { view.endBrowsing() },
+            { view.doneButton.onPress?() }, { view.endBrowsing() },
         ] {
             edit()
+            type("clo")
             leave()
             #expect(!view.editingWidgets)
-            #expect(!view.field.isHidden && view.editBar.isHidden)
-            #expect(view.results.alphaValue == 1)
+            #expect(view.field.stringValue.isEmpty)
+            #expect(view.field.placeholderString == "Search apps and commands…")
+            #expect(view.doneButton.isHidden && view.gallery.isHidden && view.editBar.isHidden)
+            #expect(!view.results.isHidden)
             #expect(!view.statusBar.isHidden)
             #expect(view.widgetGrid.tiles.allSatisfy { !$0.editing && $0.remove.isHidden })
             #expect(!view.actionsToggle.isHidden)
             #expect(panel.firstResponder === view.field.currentEditor())
         }
-        #expect(ends == 4)
+        #expect(editing == [true, false, true, false, true, false, true, false])
         view.finishEditingWidgets()
-        #expect(ends == 4)
-        edit()
-        view.editBar.add.performClick(nil)
-        #expect(adds == 1)
-        #expect(view.editingWidgets)
+        #expect(editing.count == 8)
     }
 
-    @Test func removingEveryWidgetKeepsTheGridForDrops() {
-        edit()
+    @Test func editModeWaitsForTheEmptyQueryAndOpensWithoutAnyWidget() {
         view.widgets = []
+        view.field.stringValue = "safari"
+        view.show(view.results.sections)
+        view.field.stringValue = ""
+        view.editWidgets()
+        #expect(!view.editingWidgets)
+        view.show(view.results.sections)
         #expect(view.editingWidgets)
         #expect(!view.widgetGrid.isHidden)
+        #expect(!view.widgetGrid.dock.isHidden)
+        #expect(!view.widgetGrid.dockCaption.isHidden)
+        view.widgets = widgets
+        #expect(view.widgetGrid.dockCaption.isHidden)
+        view.widgets = []
         view.finishEditingWidgets()
         #expect(view.widgetGrid.isHidden)
     }
@@ -217,6 +234,10 @@ import Testing
         view.editWidgets()
     }
 
+    private func type(_ text: String) {
+        view.field.currentEditor()?.insertText(text)
+    }
+
     private func mouse(at point: NSPoint) throws -> NSEvent {
         try #require(
             NSEvent.mouseEvent(
@@ -225,17 +246,21 @@ import Testing
                 pressure: 1))
     }
 
-    private func press(
+    private func key(
         _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
-    ) {
-        guard
-            let event = NSEvent.keyEvent(
+    ) throws -> NSEvent {
+        try #require(
+            NSEvent.keyEvent(
                 with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
                 windowNumber: panel.windowNumber, context: nil, characters: characters,
                 charactersIgnoringModifiers: characters, isARepeat: false,
-                keyCode: UInt16(keyCode))
-        else {
-            Issue.record("Could not make a key event for \(keyCode)")
+                keyCode: UInt16(keyCode)))
+    }
+
+    private func press(
+        _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
+    ) {
+        guard let event = try? key(keyCode, characters, modifiers), !view.handle(event) else {
             return
         }
         if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
@@ -246,9 +271,5 @@ import Testing
         .init(
             id: title, title: title, subtitle: "", kind: "Command", symbol: "star",
             action: "Run Command")
-    }
-
-    private func arrange(_ arrangement: WidgetSettings.Arrangement) {
-        view.widgetSpots = WidgetSettings().spots(arrangement, from: view.widgets.map(\.id))
     }
 }

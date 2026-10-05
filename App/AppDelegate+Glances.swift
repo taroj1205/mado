@@ -13,7 +13,7 @@ extension AppDelegate {
         CGSize(
             width: Self.launcherWidth,
             height: gridHeight(
-                otherwise: launcherView.widgetsFillPanel
+                otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
                     ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
@@ -51,30 +51,30 @@ extension AppDelegate {
     }
 
     private func connectWidgetEditing() {
+        launcherView.widgetCatalogue = Widgets.gallery
         launcherView.onWidgetEdit = { [weak self] edit in
             guard let self else { return }
+            widgetUndo = WidgetSnapshot(of: modules)
             Widgets.edit(edit, in: modules)
-            launcherGallery?.refresh()
             widgetsChanged()
         }
-        launcherView.onAddWidgets = { [weak self] in
-            guard let self, let window = unsafe launcherView.window else { return }
-            let gallery = launcherGallery ?? makeLauncherGallery()
-            launcherGallery = gallery
-            gallery.show(over: window, below: window.frame.minY + launcherView.widgetsBottom)
+        launcherView.onUndoWidgetEdit = { [weak self] in
+            guard let self, let undo = widgetUndo else { return }
+            widgetUndo = nil
+            undo.restore(to: modules)
+            widgetsChanged()
         }
-        launcherView.onEndEditingWidgets = { [weak self] in self?.launcherGallery?.close() }
+        launcherView.onWidgetEditing = { [weak self] _ in self?.fitLauncher() }
     }
 
-    private func makeLauncherGallery() -> WidgetGalleryWindow {
-        let gallery = WidgetGalleryWindow(modules: modules)
-        gallery.onChange = { [weak self] in self?.widgetsChanged() }
-        gallery.onClose = { [weak self] in
-            guard let self, launcherView.editingWidgets, let window = unsafe launcherView.window
-            else { return }
-            window.makeKey()
+    func editWidgetsInLauncher() {
+        guard modules?.isEnabled(Widgets.moduleID) != false else {
+            NSSound.beep()
+            return
         }
-        return gallery
+        hideLauncher()
+        showLauncher()
+        launcherView.editWidgets()
     }
 
     private func widgetsChanged() {

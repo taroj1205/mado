@@ -1,90 +1,123 @@
 public import AppKit
 
 public final class WidgetGallery: NSView {
-    static let columns = 4
-    private static let gap: CGFloat = 10
-    private static let top: CGFloat = 6
-    private static let side: CGFloat = 20
-    private static let footerY: CGFloat = 14
-    private static let countSize: CGFloat = 12.5
-    private static let doneHeight: CGFloat = 30
-    private static let emptySymbolSize: CGFloat = 26
-    private static let emptyTitleSize: CGFloat = 13
-    private static let emptyGap: CGFloat = 10
-    private static let fade: TimeInterval = 0.18
-
-    public let filter = NSSegmentedControl(
-        labels: ["All"] + Group.allCases.map(\.title), trackingMode: .selectOne, target: nil,
-        action: nil)
-    public var onAdd: ((String) -> Void)?
-    public var onDone: (() -> Void)?
-
-    public var added: [String] = [] {
-        didSet { update() }
+    final class Board: NSView {
+        override var isFlipped: Bool { true }
     }
 
-    public var hintsDrag = false {
-        didSet { update() }
-    }
+    private static let top: CGFloat = 14
+    private static let titleLeading: CGFloat = 2
+    private static let titleGap: CGFloat = 14
+    private static let chipGap: CGFloat = 6
+    private static let headerHeight: CGFloat = 24
+    private static let headerGap: CGFloat = 10
+    private static let gridTop: CGFloat = 8
+    private static let rowGap: CGFloat = 14
+    static let bottomRoom: CGFloat = 74
+    private static let titleSize: CGFloat = 13
+    private static let countSize: CGFloat = 12
+    private static let chipSize: CGFloat = 12
+    private static let emptyTop: CGFloat = 34
+    private static let emptySymbolSize: CGFloat = 20
+    private static let emptySize: CGFloat = 13
+    private static let emptyGap: CGFloat = 8
+    private static let cardHeight =
+        WidgetGrid.rowHeight + WidgetGalleryCard.labelGap + WidgetGalleryCard.labelHeight
 
-    let cards: [WidgetGalleryCard]
-    let grid = NSStackView()
+    let title = NSTextField(labelWithString: "Add widgets")
+    let chips = ([nil] + Group.allCases).map { group in
+        let chip = ChipButton(
+            font: .systemFont(ofSize: WidgetGallery.chipSize, weight: .medium),
+            height: WidgetGallery.headerHeight, symbol: nil)
+        chip.title = group?.title ?? "All"
+        return chip
+    }
     let count = NSTextField(labelWithString: "")
-    let done = PillButton("Done", height: doneHeight)
+    let scroll = NSScrollView()
+    let board = Board()
     let empty = NSStackView()
-    private let emptySymbol = NSImageView()
-    private let emptyTitle = NSTextField(labelWithString: "")
+    let emptySymbol = NSImageView()
+    let emptyText = NSTextField(labelWithString: "")
+    private(set) var cards: [WidgetGalleryCard] = []
+    var onPick: ((String) -> Void)?
+    var onDragEnd: (() -> Void)?
+
+    var catalogue: [Card] = [] {
+        didSet {
+            if catalogue != oldValue { makeCards() }
+        }
+    }
+
+    var previews: [WidgetGrid.Widget] = [] {
+        didSet {
+            for card in cards {
+                card.show(preview(of: card.card))
+            }
+            needsLayout = true
+        }
+    }
+
+    var placed: [String: WidgetGrid.Spot] = [:] {
+        didSet { showPlaced() }
+    }
+
+    var query = "" {
+        didSet { needsLayout = true }
+    }
+
+    private(set) var group: Group? {
+        didSet {
+            paintChips()
+            needsLayout = true
+        }
+    }
 
     var shown: [WidgetGalleryCard] {
-        cards.filter { group == nil || $0.card.group == group }
-    }
-
-    private var group: Group? {
-        filter.selectedSegment > 0 ? Group.allCases[filter.selectedSegment - 1] : nil
-    }
-
-    private var animates: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
-
-    public init(cards: [Card]) {
-        self.cards = cards.map(WidgetGalleryCard.init)
-        super.init(frame: .zero)
-        for card in self.cards {
-            let id = card.card.id
-            card.onAdd = { [weak self] in self?.onAdd?(id) }
+        let words = query.trimmingCharacters(in: .whitespaces)
+        return cards.filter { card in
+            (group == nil || card.card.group == group) && card.card.matches(words)
         }
-        filter.selectedSegment = 0
-        filter.target = self
-        filter.action = #selector(filterChanged)
-        filter.setAccessibilityLabel("Show")
-        grid.orientation = .vertical
-        grid.spacing = Self.gap
+    }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        title.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
+        count.font = .systemFont(ofSize: Self.countSize)
+        count.textColor = .secondaryLabelColor
+        for (chip, choice) in zip(chips, [nil] + Group.allCases) {
+            chip.onPress = { [weak self] in self?.group = choice }
+        }
+        let header = NSStackView(views: [title] + chips + [NSView(), count])
+        header.spacing = Self.chipGap
+        header.setCustomSpacing(Self.titleGap, after: title)
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.scrollerStyle = .overlay
+        scroll.documentView = board
         setUpEmpty()
-        let line = NSBox()
-        line.boxType = .separator
-        let footer = footerRow()
-        let body = NSLayoutGuide()
-        addLayoutGuide(body)
-        for view in [grid, empty, line, footer] {
+        for view in [header, scroll, empty] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
         NSLayoutConstraint.activate([
-            grid.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Self.top),
-            grid.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.side),
-            grid.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.side),
-            line.leadingAnchor.constraint(equalTo: leadingAnchor),
-            line.trailingAnchor.constraint(equalTo: trailingAnchor),
-            line.bottomAnchor.constraint(equalTo: footer.topAnchor),
-            footer.leadingAnchor.constraint(equalTo: leadingAnchor),
-            footer.trailingAnchor.constraint(equalTo: trailingAnchor),
-            footer.bottomAnchor.constraint(equalTo: bottomAnchor),
-            body.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            body.bottomAnchor.constraint(equalTo: line.topAnchor),
+            header.topAnchor.constraint(equalTo: topAnchor, constant: Self.top),
+            header.heightAnchor.constraint(equalToConstant: Self.headerHeight),
+            header.leadingAnchor.constraint(
+                equalTo: leadingAnchor, constant: WidgetGrid.inset + Self.titleLeading),
+            header.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -WidgetGrid.inset),
+            scroll.topAnchor.constraint(equalTo: header.bottomAnchor, constant: Self.headerGap),
+            scroll.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
+            empty.topAnchor.constraint(equalTo: scroll.topAnchor, constant: Self.emptyTop),
             empty.centerXAnchor.constraint(equalTo: centerXAnchor),
-            empty.centerYAnchor.constraint(equalTo: body.centerYAnchor),
         ])
-        layOutGrid()
-        update()
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel(title.stringValue)
+        paintChips()
+        showPlaced()
     }
 
     @available(*, unavailable)
@@ -92,84 +125,85 @@ public final class WidgetGallery: NSView {
         nil
     }
 
+    override public func layout() {
+        super.layout()
+        arrange()
+    }
+
     private func setUpEmpty() {
         emptySymbol.symbolConfiguration = .init(pointSize: Self.emptySymbolSize, weight: .light)
         emptySymbol.contentTintColor = .tertiaryLabelColor
-        emptyTitle.font = .systemFont(ofSize: Self.emptyTitleSize, weight: .medium)
-        emptyTitle.textColor = .secondaryLabelColor
-        empty.setViews([emptySymbol, emptyTitle], in: .center)
+        emptyText.font = .systemFont(ofSize: Self.emptySize)
+        emptyText.textColor = .secondaryLabelColor
+        empty.setViews([emptySymbol, emptyText], in: .center)
         empty.orientation = .vertical
         empty.spacing = Self.emptyGap
     }
 
-    private func footerRow() -> NSStackView {
-        count.font = .systemFont(ofSize: Self.countSize)
-        count.textColor = .secondaryLabelColor
-        done.keyEquivalent = "\r"
-        done.target = self
-        done.action = #selector(finish)
-        let footer = NSStackView(views: [count, NSView(), done])
-        footer.edgeInsets = NSEdgeInsets(
-            top: Self.footerY, left: Self.side, bottom: Self.footerY, right: Self.side)
-        footer.heightAnchor.constraint(
-            equalToConstant: Self.footerY + Self.doneHeight + Self.footerY
-        )
-        .isActive = true
-        return footer
+    private func preview(of card: Card) -> WidgetGrid.Widget {
+        previews.first { $0.id == card.id } ?? card.placeholder
     }
 
-    private func update() {
+    private func makeCards() {
+        cards.forEach { $0.removeFromSuperview() }
+        cards = catalogue.map { card in
+            let view = WidgetGalleryCard(card, showing: preview(of: card))
+            view.spot = placed[card.id]
+            view.onPick = { [weak self] in self?.onPick?(card.id) }
+            view.onDragEnd = { [weak self] in self?.onDragEnd?() }
+            board.addSubview(view)
+            return view
+        }
+        needsLayout = true
+    }
+
+    private func showPlaced() {
         for card in cards {
-            card.isAdded = added.contains(card.card.id)
+            card.spot = placed[card.card.id]
         }
-        let total = "\(added.count) \(added.count == 1 ? "widget" : "widgets") on the empty query"
-        count.stringValue =
-            hintsDrag ? "\(total) · drag a card onto the launcher to place it" : total
+        count.stringValue = "\(placed.count) \(placed.count == 1 ? "widget" : "widgets") added"
     }
 
-    private func fadeIn(_ views: [NSView]) {
-        guard animates, unsafe window != nil else { return }
-        for view in views {
-            view.alphaValue = 0
-        }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.fade
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            for view in views {
-                view.animator().alphaValue = 1
-            }
+    private func paintChips() {
+        for (chip, choice) in zip(chips, [nil] + Group.allCases) {
+            chip.isOn = choice == group
         }
     }
 
-    private func layOutGrid() {
-        grid.arrangedSubviews.forEach { $0.removeFromSuperview() }
+    private func arrange() {
         let visible = shown
+        let width = scroll.contentSize.width
+        let columns = CGFloat(WidgetGrid.columns)
+        let cell =
+            (width - WidgetGrid.inset - WidgetGrid.inset - (columns - 1) * WidgetGrid.gap)
+            / columns
+        let step = Self.cardHeight + Self.rowGap
+        let cells = WidgetGrid.cells(spanning: visible.map(\.span))
+        for card in cards {
+            card.isHidden = !visible.contains(card)
+        }
+        for (card, place) in zip(visible, cells) {
+            card.frame = NSRect(
+                x: WidgetGrid.inset + CGFloat(place.columns.lowerBound) * (cell + WidgetGrid.gap),
+                y: Self.gridTop + CGFloat(place.row) * step,
+                width: CGFloat(place.columns.count) * (cell + WidgetGrid.gap) - WidgetGrid.gap,
+                height: Self.cardHeight)
+        }
+        let rows = CGFloat(cells.last.map { $0.row + 1 } ?? 0)
+        board.frame.size = NSSize(
+            width: width, height: Self.gridTop + rows * step + Self.bottomRoom)
         empty.isHidden = !visible.isEmpty
-        if let group, visible.isEmpty {
-            emptySymbol.image = NSImage(
-                systemSymbolName: group.empty.symbol, accessibilityDescription: nil)
-            emptyTitle.stringValue = group.empty.title
-        }
-        for start in stride(from: 0, to: visible.count, by: Self.columns) {
-            let row = Array(visible[start..<min(start + Self.columns, visible.count)])
-            let fillers = (row.count..<Self.columns).map { _ in NSView() }
-            let stack = NSStackView(views: row + fillers)
-            stack.distribution = .fillEqually
-            stack.alignment = .top
-            stack.spacing = Self.gap
-            grid.addArrangedSubview(stack)
-            stack.widthAnchor.constraint(equalTo: grid.widthAnchor).isActive = true
-        }
-    }
-
-    @objc
-    private func filterChanged() {
-        layOutGrid()
-        fadeIn([grid, empty])
-    }
-
-    @objc
-    private func finish() {
-        onDone?()
+        let words = query.trimmingCharacters(in: .whitespaces)
+        emptyText.stringValue =
+            if !words.isEmpty {
+                "No widgets match “\(words)”"
+            } else if let group {
+                "No \(group.title.lowercased()) widgets yet"
+            } else {
+                "No widgets yet"
+            }
+        emptySymbol.image = NSImage(
+            systemSymbolName: words.isEmpty ? "square.grid.2x2" : "magnifyingglass",
+            accessibilityDescription: nil)
     }
 }

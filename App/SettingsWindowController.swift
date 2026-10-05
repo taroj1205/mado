@@ -114,7 +114,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     init(
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
-        items: ItemEditor, snippets: Snippets?
+        items: ItemEditor, snippets: Snippets?, addWidgets: @escaping @MainActor () -> Void
     ) {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = AppListSettings.ignoredApps(modules: modules)
@@ -130,7 +130,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
-            gallery: WidgetGalleryWindow(modules: modules))
+            addWidgets: addWidgets)
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false

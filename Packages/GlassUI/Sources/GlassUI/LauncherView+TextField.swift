@@ -2,6 +2,10 @@ public import AppKit
 
 extension LauncherView: NSTextFieldDelegate {
     public func controlTextDidChange(_: Notification) {
+        if editingWidgets {
+            gallery.query = field.stringValue
+            return
+        }
         endBrowsing()
         onQuery?(field.stringValue)
     }
@@ -13,6 +17,7 @@ extension LauncherView: NSTextFieldDelegate {
             closeCustomiser()
             return true
         }
+        if editingWidgets { return editCommand(selector, in: textView) }
         if let pill = selectedPill { return pillCommand(selector, from: pill, in: textView) }
         if let widget = selectedWidget {
             return widgetCommand(selector, from: widget, in: textView)

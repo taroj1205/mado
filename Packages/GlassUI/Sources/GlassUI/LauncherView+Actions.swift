@@ -58,8 +58,7 @@ extension LauncherView {
             closeCustomiser(unlessAt: event.locationInWindow)
         }
         if editingWidgets {
-            return event.type == .leftMouseDown
-                && results.convert(results.bounds, to: nil).contains(event.locationInWindow)
+            return handleWhileEditing(event)
         }
         switch event.type {
         case .leftMouseDown

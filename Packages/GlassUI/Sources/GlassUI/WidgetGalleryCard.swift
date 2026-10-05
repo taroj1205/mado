@@ -1,85 +1,120 @@
 import AppKit
-import Symbols
 
 final class WidgetGalleryCard: NSView, NSDraggingSource {
-    private static let radius: CGFloat = 16
-    private static let padding: CGFloat = 12
-    private static let gap: CGFloat = 8
-    private static let textGap: CGFloat = 2
-    private static let checkSize: CGFloat = 11
-    private static let badgeGap: CGFloat = 4
-    private static let nameSize: CGFloat = 13.5
-    private static let summarySize: CGFloat = 12
-    private static let badgeSize: CGFloat = 12
-    private static let sizeSize: CGFloat = 11
-    private static let sizeGap: CGFloat = 5
-    private static let addHeight: CGFloat = 24
-    private static let fade: TimeInterval = 0.2
-    private static let hover: TimeInterval = 0.12
+    final class Badge: NSView {
+        private static let symbolSize: CGFloat = 10
+        private static let shadowBlur: CGFloat = 6
+        private static let shadowDrop: CGFloat = 2
+        private static let shadowAlpha: CGFloat = 0.3
+        private static let half: CGFloat = 0.5
 
-    let card: WidgetGallery.Card
-    let add = PillButton("Add", height: addHeight)
-    let added = NSStackView()
-    private let check = NSImageView()
-    private let lift = WidgetGalleryCard.box(
-        fill: WidgetTile.selectedFill, edge: WidgetTile.selectedEdge)
-    private var dragStart: NSEvent?
-    var onAdd: (() -> Void)?
+        var isAdded = false {
+            didSet { needsDisplay = true }
+        }
 
-    var isAdded = false {
-        didSet {
-            add.isHidden = isAdded
-            added.isHidden = !isAdded
-            guard isAdded, !oldValue, unsafe window != nil else { return }
-            unsafe NSAccessibility.post(
-                element: self, notification: .announcementRequested,
-                userInfo: [.announcement: "\(card.name) added"])
-            guard animates else { return }
-            added.alphaValue = 0
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = Self.fade
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                added.animator().alphaValue = 1
-            }
-            check.addSymbolEffect(.bounce, options: .nonRepeating)
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            let shade = NSShadow()
+            shade.shadowBlurRadius = Self.shadowBlur
+            shade.shadowOffset = NSSize(width: 0, height: -Self.shadowDrop)
+            shade.shadowColor = .black.withAlphaComponent(Self.shadowAlpha)
+            shadow = shade
+            setAccessibilityElement(false)
+        }
+
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) {
+            nil
+        }
+
+        override func hitTest(_: NSPoint) -> NSView? {
+            nil
+        }
+
+        override func draw(_: NSRect) {
+            (isAdded ? NSColor.systemGreen : .controlAccentColor).setFill()
+            NSBezierPath(ovalIn: bounds).fill()
+            let configuration = NSImage.SymbolConfiguration(
+                pointSize: Self.symbolSize, weight: .heavy
+            )
+            .applying(.init(paletteColors: [.white]))
+            guard
+                let symbol = NSImage(
+                    systemSymbolName: isAdded ? "checkmark" : "plus", accessibilityDescription: nil
+                )?
+                .withSymbolConfiguration(configuration)
+            else { return }
+            symbol.draw(
+                in: NSRect(
+                    x: bounds.midX - symbol.size.width * Self.half,
+                    y: bounds.midY - symbol.size.height * Self.half, width: symbol.size.width,
+                    height: symbol.size.height))
         }
     }
 
-    private var animates: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    static let labelHeight: CGFloat = 15
+    static let labelGap: CGFloat = 6
+    private static let nameSize: CGFloat = 12
+    private static let noteSize: CGFloat = 11.5
+    private static let nameGap: CGFloat = 6
+    private static let labelInset: CGFloat = 4
+    private static let badgeSize: CGFloat = 22
+    private static let badgeOverhang: CGFloat = 7
+    private static let addedAlpha: CGFloat = 0.55
 
-    init(_ card: WidgetGallery.Card) {
+    let card: WidgetGallery.Card
+    let tile = WidgetTile(floating: false)
+    let badge = Badge()
+    let name = NSTextField(labelWithString: "")
+    let note = NSTextField(labelWithString: "")
+    private var dragStart: NSEvent?
+    var onPick: (() -> Void)?
+    var onDragEnd: (() -> Void)?
+
+    private(set) var widget: WidgetGrid.Widget
+
+    var spot: WidgetGrid.Spot? {
+        didSet { showSpot() }
+    }
+
+    var span: Int { widget.span }
+
+    init(_ card: WidgetGallery.Card, showing widget: WidgetGrid.Widget) {
         self.card = card
+        self.widget = widget
         super.init(frame: .zero)
-        addSubview(Self.box(fill: WidgetTile.fill, edge: WidgetTile.edge))
-        lift.alphaValue = 0
-        addSubview(lift)
-        let lines = NSStackView(views: [
-            Self.label(card.name, size: Self.nameSize, color: .labelColor, weight: .semibold),
-            Self.label(card.summary, size: Self.summarySize, color: .secondaryLabelColor),
-        ])
-        lines.orientation = .vertical
-        lines.alignment = .leading
-        lines.spacing = Self.textGap
-        let header = top()
-        let stack = NSStackView(views: [header, lines, size()])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = Self.gap
-        stack.edgeInsets = NSEdgeInsets(
-            top: Self.padding, left: Self.padding, bottom: Self.padding, right: Self.padding)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
+        tile.setAccessibilityElement(false)
+        name.stringValue = card.name
+        name.font = .systemFont(ofSize: Self.nameSize, weight: .semibold)
+        note.font = .systemFont(ofSize: Self.noteSize)
+        note.lineBreakMode = .byTruncatingTail
+        note.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let labels = NSStackView(views: [name, note])
+        labels.spacing = Self.nameGap
+        labels.alignment = .firstBaseline
+        labels.edgeInsets = NSEdgeInsets(
+            top: 0, left: Self.labelInset, bottom: 0, right: Self.labelInset)
+        labels.translatesAutoresizingMaskIntoConstraints = false
+        tile.translatesAutoresizingMaskIntoConstraints = false
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        [tile, labels, badge].forEach(addSubview)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.padding),
+            tile.topAnchor.constraint(equalTo: topAnchor),
+            tile.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tile.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tile.heightAnchor.constraint(equalToConstant: WidgetGrid.rowHeight),
+            labels.topAnchor.constraint(equalTo: tile.bottomAnchor, constant: Self.labelGap),
+            labels.leadingAnchor.constraint(equalTo: leadingAnchor),
+            labels.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            badge.widthAnchor.constraint(equalToConstant: Self.badgeSize),
+            badge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
+            badge.leadingAnchor.constraint(equalTo: leadingAnchor, constant: -Self.badgeOverhang),
+            badge.topAnchor.constraint(equalTo: topAnchor, constant: -Self.badgeOverhang),
         ])
         setAccessibilityElement(true)
-        setAccessibilityRole(.group)
-        setAccessibilityLabel(card.name)
-        isAdded = false
+        setAccessibilityRole(.button)
+        tile.show(widget)
+        showSpot()
     }
 
     @available(*, unavailable)
@@ -87,71 +122,54 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
         nil
     }
 
-    private static func box(fill: NSColor, edge: NSColor) -> NSBox {
-        let box = NSBox()
-        box.boxType = .custom
-        box.cornerRadius = radius
-        box.borderWidth = 1
-        box.fillColor = fill
-        box.borderColor = edge
-        box.autoresizingMask = [.width, .height]
-        return box
+    func show(_ widget: WidgetGrid.Widget) {
+        guard widget != self.widget else { return }
+        self.widget = widget
+        tile.show(widget)
     }
 
-    private static func label(
-        _ text: String, size: CGFloat, color: NSColor, weight: NSFont.Weight = .regular
-    ) -> NSTextField {
-        let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: size, weight: weight)
-        label.textColor = color
-        label.lineBreakMode = .byTruncatingTail
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return label
+    private func showSpot() {
+        tile.alphaValue = spot == nil ? 1 : Self.addedAlpha
+        badge.isAdded = spot != nil
+        note.stringValue = spot?.title ?? card.summary
+        note.textColor = spot == nil ? .secondaryLabelColor : .systemGreen
+        setAccessibilityLabel(
+            spot.map { "\(card.name), added, \($0.title). Show it" } ?? "Add \(card.name)")
     }
 
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(
-            NSTrackingArea(
-                rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow], owner: self))
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        frame.contains(point) ? self : nil
     }
 
-    override func mouseEntered(with _: NSEvent) {
-        hover(true)
-    }
-
-    override func mouseExited(with _: NSEvent) {
-        hover(false)
-    }
-
-    private func hover(_ isOver: Bool) {
-        guard animates else {
-            lift.alphaValue = isOver ? 1 : 0
-            return
-        }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.hover
-            lift.animator().alphaValue = isOver ? 1 : 0
-        }
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
     }
 
     override func mouseDown(with event: NSEvent) {
-        dragStart = isAdded ? nil : event
+        dragStart = event
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard dragStart != nil else { return }
         dragStart = nil
+        guard spot == nil else { return }
         let item = NSPasteboardItem()
         item.setString(card.id, forType: WidgetGrid.dragType)
         let dragging = NSDraggingItem(pasteboardWriter: item)
-        dragging.setDraggingFrame(bounds, contents: snapshot())
+        dragging.setDraggingFrame(tile.frame, contents: tile.snapshot())
         beginDraggingSession(with: [dragging], event: event, source: self)
     }
 
     override func mouseUp(with _: NSEvent) {
-        dragStart = nil
+        if dragStart != nil {
+            dragStart = nil
+            onPick?()
+        }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPick?()
+        return true
     }
 
     func draggingSession(
@@ -160,36 +178,7 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
         context == .withinApplication ? .copy : []
     }
 
-    private func top() -> NSView {
-        check.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
-        check.symbolConfiguration = .init(pointSize: Self.checkSize, weight: .bold)
-        check.contentTintColor = .systemGreen
-        let badge = Self.label(
-            "Added", size: Self.badgeSize, color: .systemGreen, weight: .semibold)
-        added.setViews([check, badge], in: .leading)
-        added.spacing = Self.badgeGap
-        add.target = self
-        add.action = #selector(pressed)
-        add.setAccessibilityLabel("Add \(card.name)")
-        let icon = WidgetGalleryIcon(symbol: card.symbol, colour: card.colour)
-        let row = NSStackView(views: [icon, NSView(), add, added])
-        row.distribution = .fill
-        return row
-    }
-
-    private func size() -> NSView {
-        let footprint = NSImageView(image: card.size.footprint)
-        footprint.contentTintColor = .tertiaryLabelColor
-        let row = NSStackView(views: [
-            footprint,
-            Self.label(card.size.title, size: Self.sizeSize, color: .tertiaryLabelColor),
-        ])
-        row.spacing = Self.sizeGap
-        return row
-    }
-
-    @objc
-    private func pressed() {
-        onAdd?()
+    func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation _: NSDragOperation) {
+        onDragEnd?()
     }
 }

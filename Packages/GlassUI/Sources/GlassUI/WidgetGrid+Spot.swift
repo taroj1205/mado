@@ -83,16 +83,20 @@ extension WidgetGrid {
         case end
     }
 
-    var listed: [Widget] { editing ? widgets : widgets.filter { !$0.isUnavailable } }
+    var listed: [Widget] {
+        let own = editing ? widgets : widgets.filter { !$0.isUnavailable }
+        guard let incoming, moving != nil else { return own }
+        return own + [incoming]
+    }
 
     var shown: [Widget] {
-        guard let layoutInUse else { return [] }
+        guard let tileLayout else { return [] }
         let available = listed
         let arranged =
             order.isEmpty ? available : order.compactMap { id in available.first { $0.id == id } }
         let panelWidgets = arranged.filter { spot(of: $0) == .panel }
         let rows =
-            layoutInUse == .strip ? Self.cells(of: panelWidgets).count { $0.row == 0 } : nil
+            tileLayout == .strip ? Self.cells(of: panelWidgets).count { $0.row == 0 } : nil
         let around = Spot.allCases.dropFirst().flatMap { spot in
             arranged.filter { self.spot(of: $0) == spot }
         }
@@ -109,10 +113,10 @@ extension WidgetGrid {
     }
 
     var fillsPanel: Bool {
-        layoutInUse == .grid && widgets.contains { spot(of: $0) == .panel }
+        tileLayout == .grid && widgets.contains { spot(of: $0) == .panel }
     }
 
-    var spans: [Int] { inPanel.map(\.span) + (incoming.map { [$0] } ?? []) }
+    var spans: [Int] { inPanel.map(\.span) }
 
     var overhang: CGFloat {
         let rows = CGFloat(Self.shelfRows(of: placed))

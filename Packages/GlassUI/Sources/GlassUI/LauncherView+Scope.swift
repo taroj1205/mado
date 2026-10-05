@@ -24,6 +24,7 @@ extension LauncherView {
     }
 
     public func show(_ sections: [ResultList.Section], gridHome: String? = nil) {
+        guard !editingWidgets else { return }
         shownQuery = (field.stringValue, scoped)
         if !homeShown {
             leavePillsAndWidgets()
