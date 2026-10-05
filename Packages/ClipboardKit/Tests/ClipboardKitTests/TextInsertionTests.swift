@@ -21,6 +21,13 @@ import Testing
         return String(decoding: units.prefix(length), as: UTF16.self)
     }
 
+    private static func settled(_ pasteboard: NSPasteboard, on expected: String) async throws {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while pasteboard.string(forType: .string) != expected, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
     @Test func deletesTheKeywordPastesAndPutsTheCaretBack() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -214,12 +221,29 @@ import Testing
             pastedText = pasteboard.string(forType: .string)
         }
 
-        let inserted = try insertion.paste("{date} {cursor}")
-        await insertion.restore(inserted)
+        try await insertion.paste("{date} {cursor}")
+        try await Self.settled(pasteboard, on: "old")
 
         let paste = Int64(try PasteTarget.commandV()[0].getIntegerValueField(.keyboardEventKeycode))
         #expect(Self.keys(posted) == [paste])
         #expect(pastedText == "{date} {cursor}")
+        #expect(pasteboard.string(forType: .string) == "old")
+    }
+
+    @Test func aSecondPasteKeepsTheOriginalCopyInsteadOfTheFirstPastedText() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        var pasted: [String] = []
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .milliseconds(50), pasteTimeout: .zero
+        ) { _ in pasted.append(pasteboard.string(forType: .string) ?? "") }
+
+        try await insertion.paste("first")
+        try await insertion.paste("second")
+        try await Self.settled(pasteboard, on: "old")
+
+        #expect(pasted == ["first", "second"])
         #expect(pasteboard.string(forType: .string) == "old")
     }
 

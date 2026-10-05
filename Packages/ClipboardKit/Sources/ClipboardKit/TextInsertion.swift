@@ -38,6 +38,8 @@ public struct TextInsertion {
         }
     }
 
+    private static var restoring = false
+
     nonisolated static let keyLimit = 1_000
     private static let restoreMilliseconds = 500
     private static let pasteSeconds = 5
@@ -76,10 +78,19 @@ public struct TextInsertion {
         return try put(expansion, replacing: typed, saved: saved, changeCount: changeCount)
     }
 
-    public func paste(_ text: String) throws -> Inserted {
+    public func paste(_ text: String) async throws {
+        while Self.restoring {
+            try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
+        }
         let plain = SnippetTemplate.Expansion(text: text, caretBack: 0, fieldRanges: [])
         let changeCount = pasteboard.changeCount
-        return try put(plain, replacing: "", saved: savedItems(), changeCount: changeCount)
+        let inserted = try put(
+            plain, replacing: "", saved: savedItems(), changeCount: changeCount)
+        Self.restoring = true
+        Task {
+            await restore(inserted)
+            Self.restoring = false
+        }
     }
 
     private func savedItems() -> [NSPasteboardItem] {
