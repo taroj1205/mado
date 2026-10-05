@@ -14,10 +14,18 @@ extension WidgetTile {
     private static let half: CGFloat = 0.5
     private static let doubleClick = 2
 
+    func pressForAccessibility() {
+        onPress?()
+        if widget?.isPlayer != true {
+            onOpen?()
+        }
+    }
+
     func openIfAsked(by event: NSEvent) {
         let point = allow.convert(event.locationInWindow, from: nil)
         let onAllow = !allow.isHiddenOrHasHiddenAncestor && allow.bounds.contains(point)
-        if opensOnSingleClick || event.clickCount == Self.doubleClick || onAllow {
+        let opensOnClick = opensOnSingleClick && widget?.isPlayer != true
+        if opensOnClick || event.clickCount == Self.doubleClick || onAllow {
             onOpen?()
         }
     }

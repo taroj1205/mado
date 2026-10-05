@@ -264,8 +264,7 @@ final class WidgetTile: NSView {
     }
 
     override func accessibilityPerformPress() -> Bool {
-        onPress?()
-        onOpen?()
+        pressForAccessibility()
         return true
     }
 }

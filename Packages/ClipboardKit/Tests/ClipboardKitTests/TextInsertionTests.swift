@@ -109,8 +109,10 @@ import Testing
             .init(fields: [:], date: "", time: "", clipboard: ""))
 
         let longInserted = try #require(await insertion.replace(";fu", with: long) { true })
+        await insertion.restore(longInserted)
         let longArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
         let shortInserted = try #require(await insertion.replace(";fu", with: short) { true })
+        await insertion.restore(shortInserted)
         let shortArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
 
         #expect(longArrows == 0)
@@ -212,6 +214,7 @@ import Testing
             .init(fields: [:], date: "", time: "", clipboard: ""))
 
         let inserted = try #require(await insertion.replace(";fu", with: short) { true })
+        await insertion.restore(inserted)
         try insertion.undo(inserted)
 
         let right = Int64(kVK_RightArrow)

@@ -41,7 +41,9 @@ import Testing
         }
         let expansion = SnippetTemplate("Hi").expand(
             .init(fields: [:], date: "", time: "", clipboard: ""))
-        return try #require(await insertion.replace(typed, with: expansion) { true })
+        let inserted = try #require(await insertion.replace(typed, with: expansion) { true })
+        await insertion.restore(inserted)
+        return inserted
     }
 
     private static func commandZ() throws -> CGEvent {

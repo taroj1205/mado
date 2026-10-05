@@ -75,10 +75,7 @@ extension LauncherView {
             widgetGrid.trailingAnchor.constraint(equalTo: trailingAnchor),
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
-        widgetGrid.onPress = { [weak self] index in
-            self?.closeWidgetMenu()
-            self?.selectWidget(index)
-        }
+        widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
         widgetGrid.onMenu = { [weak self] index, point in self?.openWidgetMenu(index, at: point) }
         widgetGrid.onHold = { [weak self] index, grab in self?.holdWidget(index, grabbedAt: grab) }
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
@@ -168,9 +165,22 @@ extension LauncherView {
         return false
     }
 
+    func pressWidget(_ index: Int) {
+        closeWidgetMenu()
+        selectWidget(index)
+        let widget = widgetGrid.shown[index]
+        if widget.isPlayer, !editingWidgets {
+            onWidget?(widget)
+        }
+    }
+
     func openWidget(_ index: Int) {
-        if !editingWidgets {
-            onWidget?(widgetGrid.shown[index])
+        guard !editingWidgets else { return }
+        let widget = widgetGrid.shown[index]
+        if widget.isPlayer {
+            onOpenPlayer?()
+        } else {
+            onWidget?(widget)
         }
     }
 
