@@ -32,8 +32,9 @@ final class WidgetTile: NSView {
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
-    let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
-    let slot = WidgetTile.makeSlot()
+    let dash = DashedOutline(
+        colour: WidgetTile.editEdge, width: 1, fill: .clear, radius: WidgetTile.radius)
+    let slot = DashedOutline.slot(radius: WidgetTile.radius)
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let resizer = WidgetResizeHandle()

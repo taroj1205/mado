@@ -167,7 +167,8 @@ public final class WidgetGrid: NSView {
     var onDragEnd: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
-    let dock = DashedOutline(colour: WidgetRailsView.dock, width: dockEdge, fill: .clear)
+    let dock = DashedOutline(
+        colour: WidgetRailsView.dock, width: dockEdge, fill: .clear, radius: WidgetTile.radius)
     let dockCaption = NSTextField(labelWithString: "IN THE PANEL · DROP OR CLICK A WIDGET BELOW")
 
     var rowHeight: CGFloat {
