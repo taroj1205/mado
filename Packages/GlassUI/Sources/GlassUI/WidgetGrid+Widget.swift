@@ -28,6 +28,10 @@ extension WidgetGrid {
             if case .track(let playing) = content { playing } else { nil }
         }
 
+        var isMonth: Bool {
+            if case .month = content { true } else { false }
+        }
+
         var isUnavailable: Bool {
             if case .unavailable = content { true } else { false }
         }

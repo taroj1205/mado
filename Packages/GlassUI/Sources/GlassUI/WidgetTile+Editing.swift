@@ -66,6 +66,7 @@ extension WidgetTile: NSDraggingSource {
             view.isHidden = !editing
         }
         showGrip()
+        month.isInteractive = onPage != nil && !editing
         setAccessibilityCustomActions(customActions())
     }
 

@@ -51,6 +51,10 @@ extension AppDelegate {
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
+        launcherView.onPage = { [weak self] page in
+            guard let self else { return }
+            widgets.page(page, in: launcherView)
+        }
         connectWidgetEditing()
     }
 

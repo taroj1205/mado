@@ -59,8 +59,7 @@ final class Widgets {
     var shown: [String] = []
     var city = ""
     let weatherFeed = WeatherFeed()
-    var schedule = Schedule.loading
-    var scheduling: Task<Void, Never>?
+    var calendars = Calendars()
     private var stats: SystemStats?
     private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
@@ -101,7 +100,6 @@ final class Widgets {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
-            month(at: date),
             widget(for: schedule, at: date),
             widget(for: weather),
             .init(
@@ -213,7 +211,7 @@ final class Widgets {
             refresh(view)
         }
         refreshWeather()
-        refreshSchedule(in: view)
+        refreshCalendars(in: view)
         refresh(view)
         ticking = Task { [weak self, weak view] in
             while !Task.isCancelled {
@@ -222,7 +220,7 @@ final class Widgets {
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled, let self, let view else { return }
                 refreshWeather()
-                refreshSchedule(in: view)
+                refreshCalendars(in: view)
                 refresh(view)
             }
         }
@@ -240,7 +238,7 @@ final class Widgets {
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
         refreshWeather()
-        refreshSchedule(in: view)
+        refreshCalendars(in: view)
         refresh(view)
     }
 
@@ -267,15 +265,16 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
-        scheduling?.cancel()
-        scheduling = nil
+        calendars.stop()
         weatherFeed.cancel()
     }
 
     func refresh(_ view: LauncherView) {
-        let all = Self.current(
-            at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
-            schedule: schedule)
+        let all =
+            [Self.month(at: .now, shift: calendars.monthShift, events: calendars.monthEvents)]
+            + Self.current(
+                at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
+                schedule: calendars.schedule)
         view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
         view.widgetPreviews = all
     }
