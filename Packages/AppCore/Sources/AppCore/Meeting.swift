@@ -38,7 +38,7 @@ public struct Meeting: Sendable, Equatable {
         if isUnder("zoom.us") || isUnder("zoomgov.com"), zoomPaths.contains(where: path.hasPrefix) {
             return .zoom
         }
-        if host == "meet.google.com", path.count > 1 {
+        if host == "meet.google.com", path.wholeMatch(of: /\/[a-z]{3}-[a-z]{4}-[a-z]{3}/) != nil {
             return .meet
         }
         if host == "teams.microsoft.com", teamsPaths.contains(where: path.hasPrefix) {

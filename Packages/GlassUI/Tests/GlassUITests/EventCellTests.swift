@@ -58,6 +58,21 @@ import Testing
         #expect(view.results.selectedItem == ended)
     }
 
+    @Test func aPreferredRowBelowTheFoldIsScrolledIntoView() {
+        var ended = (0..<12).map { event("Ended \($0)", "ended", at: "9:00 AM") }
+        for index in ended.indices {
+            ended[index].isDimmed = true
+        }
+        var next = event("Design review", "", at: "2:30 PM")
+        next.prefersSelection = true
+        view.show([.init(title: "Today", items: ended + [next])])
+        view.results.layoutSubtreeIfNeeded()
+
+        let table = view.results.table
+        #expect(view.results.selectedItem == next)
+        #expect(table.visibleRect.contains(table.rect(ofRow: table.selectedRow)))
+    }
+
     @Test func commandJRunsTheRowShowingItWhicheverRowIsSelected() {
         var runs: [String] = []
         view.onRun = { runs.append("\($0.id) \($1)") }

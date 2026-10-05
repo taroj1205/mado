@@ -29,6 +29,7 @@ import Testing
             Meeting options: https://teams.microsoft.com/meetingOptions/?organizerId=1
             Find your local number: https://zoom.us/u/abc
             Help: https://support.google.com/a/users/answer/9282720
+            Get Meet: https://meet.google.com/landing
             Join: https://teams.live.com/meet/9876543210
             """
         let meeting = try #require(Meeting(in: [invite]))

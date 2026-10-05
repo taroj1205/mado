@@ -75,7 +75,7 @@ extension AppDelegate {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
             if showsAgenda(for: query) {
-                return calendarAgenda.sections(at: .now)
+                return await calendarAgenda.sections(at: .now)
             }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }

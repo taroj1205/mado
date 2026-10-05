@@ -34,7 +34,9 @@ import Testing
         let planning = event("planning", at: 34)
         let later = event("later", at: 58)
         let holiday = event("holiday", at: 0, hours: 48, allDay: true)
-        let days = Agenda(events: [review, later, planning, standUp, holiday])
+        let overnight = event("overnight", at: 23, hours: 2)
+        let lastNight = event("last-night", at: -1, hours: 3)
+        let days = Agenda(events: [review, later, planning, standUp, holiday, overnight, lastNight])
             .days(at: now, calendar: calendar)
 
         var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
@@ -43,7 +45,8 @@ import Testing
         #expect(days.map(\.title) == ["Today · \(expected)", "Tomorrow"])
         #expect(
             days.map { $0.events.map(\.id) } == [
-                ["holiday", "stand-up", "review"], ["holiday", "planning"],
+                ["last-night", "holiday", "stand-up", "review", "overnight"],
+                ["holiday", "planning"],
             ])
         let span = try #require(Agenda.span(around: now, calendar: calendar))
         #expect(span == DateInterval(start: today, duration: 48 * Self.hour))
@@ -51,7 +54,8 @@ import Testing
 
     @Test func theNextEventCountsDownAndNamesWhoIsComing() {
         let zoom = meeting("https://zoom.us/j/1")
-        let standUp = event("stand-up", at: 9.5, meeting: meeting("https://meet.google.com/a-b-c"))
+        let standUp = event(
+            "stand-up", at: 9.5, meeting: meeting("https://meet.google.com/abc-defg-hij"))
         let review = event(
             "review", at: 14.5, attendees: ["Hana Kobayashi", "Mei Sato"], meeting: zoom)
         let oneOnOne = event("1:1", at: 16, location: "Room 4B", attendees: ["Mei Sato"])

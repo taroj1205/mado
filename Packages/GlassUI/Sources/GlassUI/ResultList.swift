@@ -107,7 +107,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             if let row = keptRow ?? preferred ?? rows.firstIndex(where: \.isItem) {
                 table.selectRowIndexes([row], byExtendingSelection: false)
             }
-            reveal(keptRow ?? 0, context: [], animated: false)
+            reveal(keptRow ?? preferred ?? 0, context: keptRow == nil ? [0] : [], animated: false)
             reloading = false
             onSelect?(selectedItem)
         }

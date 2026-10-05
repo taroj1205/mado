@@ -89,7 +89,13 @@ public struct Agenda: Sendable, Equatable {
             guard let start = calendar.date(byAdding: .day, value: offset, to: today),
                 let end = calendar.date(byAdding: .day, value: 1, to: start)
             else { return nil }
-            let shown = events.filter { $0.start < end && ($0.end > start || $0.start >= start) }
+            let shown = events.filter { event in
+                if event.isAllDay {
+                    return event.start < end && event.end > start
+                }
+                let listed = max(event.start, today)
+                return listed >= start && listed < end
+            }
             return Day(title: title, events: shown)
         }
     }

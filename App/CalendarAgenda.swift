@@ -5,9 +5,37 @@ import GlassUI
 
 @MainActor
 final class CalendarAgenda {
-    private struct Shown {
+    private struct Found: Sendable {
         let event: Agenda.Event
-        let source: EKEvent
+        let colour: NSColor?
+        let calendarID: String
+        let uid: String
+    }
+
+    private enum Failure: Error {
+        case joinFailed
+    }
+
+    private actor Events {
+        private lazy var store = EKEventStore()
+
+        func found(in span: DateInterval) -> [Found] {
+            let predicate = store.predicateForEvents(
+                withStart: span.start, end: span.end, calendars: nil)
+            let found = store.events(matching: predicate)
+                .filter { $0.status != .canceled }
+                .map { source in
+                    Found(
+                        event: CalendarAgenda.event(from: source), colour: source.calendar?.color,
+                        calendarID: source.calendar?.calendarIdentifier ?? "",
+                        uid: source.calendarItemExternalIdentifier ?? "")
+                }
+            return Array(Dictionary(found.map { ($0.event.id, $0) }) { first, _ in first }.values)
+        }
+
+        func requestAccess() async throws {
+            _ = try await store.requestFullAccessToEvents()
+        }
     }
 
     static let title = "Calendar"
@@ -19,8 +47,8 @@ final class CalendarAgenda {
     private static let joinTitle = "Join Meeting"
     private static let openTitle = "Open in Calendar"
 
-    private lazy var store = EKEventStore()
-    private var shown: [String: Shown] = [:]
+    private let events = Events()
+    private var shown: [String: Found] = [:]
 
     private var allow: CommandAction {
         CommandAction(id: "allow", title: "Allow") { [weak self] in
@@ -28,7 +56,7 @@ final class CalendarAgenda {
                 NSWorkspace.shared.open(PermissionManager.settingsURL(for: .calendars))
                 return
             }
-            _ = try await self?.store.requestFullAccessToEvents()
+            try await self?.events.requestAccess()
         }
     }
 
@@ -40,12 +68,12 @@ final class CalendarAgenda {
         modules?.isEnabled(moduleID) != false
     }
 
-    private static func id(of event: EKEvent) -> String {
+    nonisolated private static func id(of event: EKEvent) -> String {
         let id = event.eventIdentifier ?? event.calendarItemIdentifier
         return "\(id)@\(event.startDate.timeIntervalSince1970)"
     }
 
-    private static func event(from source: EKEvent) -> Agenda.Event {
+    nonisolated private static func event(from source: EKEvent) -> Agenda.Event {
         let attendees = (source.attendees ?? [])
             .filter { !$0.isCurrentUser }
             .map { $0.name ?? $0.url.absoluteString.replacingOccurrences(of: "mailto:", with: "") }
@@ -71,10 +99,10 @@ final class CalendarAgenda {
         return item
     }
 
-    private static func show(_ event: EKEvent) throws {
-        let day = Calendar.current.dateComponents([.year, .month, .day], from: event.startDate)
-        let quoted = { (text: String?) in
-            (text ?? "").replacingOccurrences(of: "\\", with: "\\\\")
+    private static func show(_ found: Found) throws {
+        let day = Calendar.current.dateComponents([.year, .month, .day], from: found.event.start)
+        let quoted = { (text: String) in
+            text.replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
         }
         try SystemCommands.runScript(
@@ -89,14 +117,14 @@ final class CalendarAgenda {
                 set day of shown to \(day.day ?? 1)
                 view calendar at shown
                 try
-                    show event id "\(quoted(event.calendarItemExternalIdentifier))" ¬
-                        of calendar id "\(quoted(event.calendar?.calendarIdentifier))"
+                    show event id "\(quoted(found.uid))" ¬
+                        of calendar id "\(quoted(found.calendarID))"
                 end try
             end tell
             """)
     }
 
-    func sections(at now: Date) -> [ResultList.Section] {
+    func sections(at now: Date) async -> [ResultList.Section] {
         shown = [:]
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
             let request = ResultList.Item(
@@ -106,13 +134,10 @@ final class CalendarAgenda {
             return [ResultList.Section(title: Self.title, items: [request])]
         }
         let calendar = Calendar.current
-        let sources = Agenda.span(around: now, calendar: calendar).map { span in
-            store.events(
-                matching: store.predicateForEvents(
-                    withStart: span.start, end: span.end, calendars: nil))
-        }
-        let found = Dictionary((sources ?? []).map { (Self.id(of: $0), $0) }) { first, _ in first }
-        let agenda = Agenda(events: found.values.map(Self.event(from:)))
+        guard let span = Agenda.span(around: now, calendar: calendar) else { return [] }
+        let fetched = await events.found(in: span)
+        let found = Dictionary(uniqueKeysWithValues: fetched.map { ($0.event.id, $0) })
+        let agenda = Agenda(events: found.values.map(\.event))
         let days = agenda.days(at: now, calendar: calendar)
         guard days.contains(where: { !$0.events.isEmpty }) else {
             let notice = ResultList.Notice(
@@ -126,10 +151,10 @@ final class CalendarAgenda {
             let items = day.events.compactMap { event -> ResultList.Item? in
                 guard let source = found[event.id] else { return nil }
                 let id = "\(Self.prefix)\(index).\(event.id)"
-                shown[id] = Shown(event: event, source: source)
+                shown[id] = source
                 var row = Self.item(
                     id: id, for: event, detail: agenda.detail(of: event, at: now),
-                    colour: source.calendar?.color, joins: event == meeting)
+                    colour: source.colour, joins: event == meeting)
                 row.isDimmed = event.hasEnded(at: now)
                 row.prefersSelection = !preferred && event == next
                 preferred = preferred || row.prefersSelection
@@ -145,13 +170,13 @@ final class CalendarAgenda {
         }
         guard let picked = shown[id] else { return [] }
         let open = CommandAction(id: "open", title: Self.openTitle) {
-            try Self.show(picked.source)
+            try Self.show(picked)
         }
         guard let meeting = picked.event.meeting else {
             return [(open, LauncherView.Action.primaryKeys)]
         }
         let join = CommandAction(id: "join", title: Self.joinTitle) {
-            NSWorkspace.shared.open(meeting.url)
+            guard NSWorkspace.shared.open(meeting.url) else { throw Failure.joinFailed }
         }
         return [(join, LauncherView.Action.primaryKeys), (open, LauncherView.Action.secondaryKeys)]
     }
