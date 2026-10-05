@@ -102,6 +102,7 @@ extension AppDelegate {
         widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
         widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
+        widgets.calendars.searchesDays = CalendarDayClick.searches(in: modules)
         widgets.lyricsEnabled = LyricsSettings.load(from: modules).lookup
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in

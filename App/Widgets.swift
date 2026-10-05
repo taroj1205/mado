@@ -232,7 +232,7 @@ final class Widgets {
         [
             Self.month(
                 at: .now, shift: calendars.monthShift, events: calendars.monthEvents,
-                opensDays: calendars.isOn)
+                calendars: calendars)
         ]
             + Self.current(
                 at: .now, stats: stats, media: mediaWidgets(), weather: weatherFeed.state,

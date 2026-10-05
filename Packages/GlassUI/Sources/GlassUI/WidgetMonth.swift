@@ -10,15 +10,17 @@ final class WidgetMonth: NSView {
     private static let controlGap: CGFloat = 4
     private static let reach: CGFloat = 2
     private static let swipe: CGFloat = 36
-    private static let travel: CGFloat = 14
-    private static let slide: CFTimeInterval = 0.26
+    static let travel: CGFloat = 14
+    static let slide: CFTimeInterval = 0.26
     private static let fade: CFTimeInterval = 0.16
-    private static let slideStart = (x: 0.2, y: 0.8)
-    private static let slideEnd = (x: 0.2, y: 1.0)
+    static let slideStart = (x: 0.2, y: 0.8)
+    static let slideEnd = (x: 0.2, y: 1.0)
 
     private(set) var month: AgendaMonth?
-    private var shown: WidgetGrid.Month?
-    private var page = WidgetMonthPage()
+    private(set) var shown: WidgetGrid.Month?
+    private(set) var page = WidgetMonthPage()
+    let dayPage = WidgetMonthDay()
+    var showsDay = false
     private let previous = WidgetMonthControl(.symbol("chevron.left"))
     private let next = WidgetMonthControl(.symbol("chevron.right"))
     private let today = WidgetMonthControl(.label("Today"))
@@ -40,7 +42,7 @@ final class WidgetMonth: NSView {
 
     override var isFlipped: Bool { true }
 
-    private var animates: Bool {
+    var animates: Bool {
         unsafe window?.isVisible == true
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
@@ -52,7 +54,8 @@ final class WidgetMonth: NSView {
     init() {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        for view in [page, previous, next, today] {
+        dayPage.isHidden = true
+        for view in [page, dayPage, previous, next, today] {
             addSubview(view)
         }
         addTrackingArea(
@@ -76,11 +79,14 @@ final class WidgetMonth: NSView {
             return
         }
         month = grid
-        if let before, before.shift != next.shift, animates {
+        let chosen = grid.days.first { $0.start == next.day }
+        if let before, before.shift != next.shift, chosen == nil, !showsDay, animates {
             turn(to: grid, colours: next.colours, towards: next.shift > before.shift ? 1 : -1)
         } else {
             page.show(grid, colours: next.colours)
         }
+        if let chosen { dayPage.show(chosen, colours: next.colours) }
+        reveal(day: chosen != nil)
         showControls()
         refreshHover()
     }
@@ -88,8 +94,11 @@ final class WidgetMonth: NSView {
     func accessibilityActions() -> [NSAccessibilityCustomAction] {
         guard isInteractive else { return [] }
         let actions =
-            [("Previous Month", WidgetGrid.Page.previous), ("Next Month", .next)]
-            + ((shown?.shift ?? 0) == 0 ? [] : [("Today", .today)])
+            (showsDay
+                ? [("Previous Day", WidgetGrid.Page.previous), ("Next Day", .next)]
+                    + [("Back to Month", .month)]
+                : [("Previous Month", WidgetGrid.Page.previous), ("Next Month", .next)])
+            + (isAwayFromToday ? [("Today", .today)] : [])
         return actions.map { name, target in
             NSAccessibilityCustomAction(name: name) { [weak self] in
                 self?.onPage?(target)
@@ -108,6 +117,7 @@ final class WidgetMonth: NSView {
             right -= control.width + Self.controlGap
         }
         page.reserved = isInteractive ? controlStrip : 0
+        dayPage.reserved = page.reserved
     }
 
     func hit(at point: NSPoint) -> Hit? {
@@ -117,6 +127,9 @@ final class WidgetMonth: NSView {
         for (control, target) in controls
         where control.isShown && control.frame.insetBy(dx: inset, dy: inset).contains(point) {
             return .page(target)
+        }
+        if showsDay {
+            return dayPage.backRect.contains(point) ? .page(.month) : nil
         }
         guard shown?.opensDays == true else { return nil }
         return page.index(at: convert(point, to: page)).map(Hit.day)
@@ -128,7 +141,12 @@ final class WidgetMonth: NSView {
             onPage?(target)
 
         case .day(let index):
-            if let day = month?.days[index] { onDay?(day.query) }
+            guard let day = month?.days[index] else { return }
+            if shown?.searchesDays == true {
+                onDay?(day.query)
+            } else {
+                onPage?(.day(day.start))
+            }
         }
     }
 
@@ -189,6 +207,7 @@ final class WidgetMonth: NSView {
         } else {
             page.hovered = nil
         }
+        dayPage.isBackHovered = hit == .page(.month)
         previous.isHovered = hit == .page(.previous)
         next.isHovered = hit == .page(.next)
         today.isHovered = hit == .page(.today)
@@ -196,7 +215,7 @@ final class WidgetMonth: NSView {
 
     private func showControls() {
         let arrows = isInteractive && pointerInside
-        let pill = isInteractive && (shown?.shift ?? 0) != 0
+        let pill = isInteractive && isAwayFromToday
         let wanted = [(previous, arrows), (next, arrows), (today, pill)]
         for (control, visible) in wanted where control.isShown != visible {
             control.isShown = visible

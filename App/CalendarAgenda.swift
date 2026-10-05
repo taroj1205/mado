@@ -50,7 +50,7 @@ final class CalendarAgenda {
 
     static let title = "Calendar"
     static let symbol = "calendar"
-    static let moduleID = "notes"
+    static let moduleID = NotesModule.id
     static let joinKeys = ["⌘", "J"]
     private static let prefix = "agenda."
     private static let allowID = "agenda.allow"

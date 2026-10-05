@@ -8,6 +8,7 @@ struct ClipboardModule: Module {
         let history: ClipboardHistory
         let textTools: TextTools
         let emoji: EmojiPicker
+        let snippets: Snippets
     }
 
     static let id = "clipboard"
@@ -19,7 +20,6 @@ struct ClipboardModule: Module {
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
     let screens: Screens
-    let snippets: Snippets
     let pasteStack = PasteStack()
 
     private static func recognizeImages(
@@ -56,8 +56,9 @@ struct ClipboardModule: Module {
         }
         let checkCopies = watchCopies(into: store, context: context)
         pasteStack.start(context: context, checkCopies: checkCopies)
-        snippets.checkCopies(with: checkCopies)
-        context.own(.other, "snippet copy check") { [snippets] in snippets.checkCopies(with: nil) }
+        let library = screens.snippets
+        library.checkCopies(with: checkCopies)
+        context.own(.other, "snippet copy check") { library.checkCopies(with: nil) }
         logger.debug("Started")
     }
 
