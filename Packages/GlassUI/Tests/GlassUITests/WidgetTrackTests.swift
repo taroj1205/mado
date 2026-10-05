@@ -55,7 +55,7 @@ import Testing
         #expect(tile.track.title.stringValue == "Low Tide")
         #expect(tile.track.artist.stringValue == "Harbour Lights")
         let pause = tile.track.toggle.image
-        let toggle = tile.track.toggle.alignmentRect(forFrame: tile.track.toggle.frame)
+        let toggle = tile.track.toggle.frame
         #expect(tile.track.art.image != nil)
         #expect(tile.accessibilityLabel() == "Now playing: Low Tide by Harbour Lights")
         #expect(abs(tile.track.art.frame.width - 48) < 0.01)
@@ -71,7 +71,7 @@ import Testing
         #expect(view.widgetGrid.tiles.last === tile)
         #expect(tile.track.toggle.image !== pause)
         view.layoutSubtreeIfNeeded()
-        #expect(tile.track.toggle.alignmentRect(forFrame: tile.track.toggle.frame) == toggle)
+        #expect(tile.track.toggle.frame == toggle)
         #expect(tile.track.art.image?.size == NSSize(width: 4, height: 4))
         #expect(tile.accessibilityLabel() == "Paused: Low Tide by Harbour Lights")
         #expect(view.actionLabel.stringValue == "Play / Pause")

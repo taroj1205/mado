@@ -72,10 +72,40 @@ extension Widgets {
             detail: look.condition, action: openWeather,
             spoken: "\(name(of: weather)): \(degrees(now.temperature, width: .wide)), "
                 + "\(look.condition.lowercased()), high \(high), low \(low)",
-            symbol: now.isDay ? look.symbol : nightSymbols[now.sky] ?? look.symbol,
+            symbol: symbol(of: now.sky, isDay: now.isDay),
             span: .init(
                 low: low, high: high, position: now.position, cold: colour(of: now.low),
-                warm: colour(of: now.high)))
+                warm: colour(of: now.high)),
+            hours: hours(of: now), facts: facts(of: now))
+    }
+
+    private static func symbol(of sky: Weather.Sky, isDay: Bool) -> String {
+        let look = looks[sky] ?? unknownSky
+        return isDay ? look.symbol : nightSymbols[sky] ?? look.symbol
+    }
+
+    private static func hours(of now: Weather) -> [WidgetGrid.Hour] {
+        let zone = TimeZone(secondsFromGMT: now.utcOffset) ?? .current
+        let style = Date.FormatStyle(timeZone: zone).hour(.defaultDigits(amPM: .abbreviated))
+        return now.hours.enumerated().map { index, hour in
+            .init(
+                label: index == 0 ? "Now" : hour.time.formatted(style),
+                symbol: symbol(of: hour.sky, isDay: hour.isDay),
+                value: degrees(hour.temperature))
+        }
+    }
+
+    private static func facts(of now: Weather) -> [WidgetGrid.Fact] {
+        let wind = Measurement<UnitSpeed>.FormatStyle.measurement(
+            width: .abbreviated, usage: .wind,
+            numberFormatStyle: .number.precision(.fractionLength(0)))
+        return [
+            now.feelsLike.map { .init(name: "Feels like", value: degrees($0)) },
+            now.humidity.map { .init(name: "Humidity", value: $0.formatted(StatusPills.percent)) },
+            now.wind.map { .init(name: "Wind", value: $0.formatted(wind)) },
+            now.rainChance.map { .init(name: "Rain", value: $0.formatted(StatusPills.percent)) },
+        ]
+        .compactMap(\.self)
     }
 
     private static func colour(of temperature: Measurement<UnitTemperature>) -> NSColor {

@@ -77,7 +77,7 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
         didSet { showSpot() }
     }
 
-    var span: Int { widget.span }
+    var size: WidgetGrid.Size { widget.size }
 
     init(_ card: WidgetGallery.Card, showing widget: WidgetGrid.Widget) {
         self.card = card

@@ -2,7 +2,9 @@ import AppKit
 
 extension WidgetGrid {
     private static let reach: CGFloat = 160
-    private static let maxPanelRows = 2
+    static let maxPanelRows = 2
+    private static let maxShelfRows = 2
+    private static let maxRailRows = 3
     private static let half: CGFloat = 0.5
     private static let slack: CGFloat = 0.5
     private static let railMargin: CGFloat = 40
@@ -14,12 +16,21 @@ extension WidgetGrid {
         Widget(id: "", name: "", content: .loading(title: ""), action: "", spoken: "")
     }
 
+    static func tallest(on side: Side) -> Int {
+        switch side {
+        case .panel: maxPanelRows
+        case .above, .below: maxShelfRows
+        case .left, .right: maxRailRows
+        }
+    }
+
     static func slots(for group: [Widget]) -> [Spot] {
         let block = Block(of: group, at: .aboveLeft)
-        let above = (0...max(Spot.rowsAbove - block.rows, 0)).flatMap { row in
-            (0...max(columns - block.width, 0)).map { Spot.above(column: $0, row: row) }
-        }
-        return above
+        let rows = 0...max(Spot.shelfRows - block.rows, 0)
+        let across = 0...max(columns - block.width, 0)
+        let above = rows.flatMap { row in across.map { Spot.above(column: $0, row: row) } }
+        let below = rows.flatMap { row in across.map { Spot.below(column: $0, row: row) } }
+        return above + below
             + Side.rails.flatMap { side in (0..<Spot.stops).map { Spot.beside(side, row: $0) } }
     }
 
@@ -30,38 +41,59 @@ extension WidgetGrid {
     }
 
     static func fits(
-        _ target: Spot, inPanel: [Widget], placed: [Placed], layout: Layout?, beside panel: CGRect
+        _ target: Spot, inPanel: [Placed], placed: [Placed], layout: Layout?, beside panel: CGRect
     ) -> Bool {
-        if target == .panel {
-            let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
-            return rows <= (layout == .strip ? 1 : maxPanelRows)
-        }
         let side = target.side
-        let top =
-            panel.maxY + lift + CGFloat(Spot.rowsAbove) * (rowHeight + floatingGap) - floatingGap
-        let frames = zip(placed, floatingFrames(of: placed, beside: panel))
+        guard
+            placed.allSatisfy({ $0.spot.side != side || $0.widget.size.rows <= tallest(on: side) })
+        else { return false }
+        return switch side {
+        case .panel: panelFits(inPanel, layout: layout)
+        case .above, .below: shelfFits(placed, on: side, beside: panel)
+        case .left, .right: railFits(placed, on: side, beside: panel)
+        }
+    }
+
+    static func railsFrame(beside panel: CGRect) -> CGRect {
+        let side = sideGap + sideWidth + railMargin
+        let shelf = lift + extent(of: Spot.shelfRows, unit: rowHeight, gap: gap) + captionRoom
+        return panel.insetBy(dx: -side, dy: -shelf)
+    }
+
+    private static func panelFits(_ inPanel: [Placed], layout: Layout?) -> Bool {
+        let placements = inPanel.map { item in
+            Placement(size: item.widget.size(in: layout), pin: item.spot.pin(in: layout))
+        }
+        let laid = cells(spanning: placements)
+        let held = zip(placements, laid).allSatisfy { placement, cell in
+            placement.pin.map { pin in cell.columns.lowerBound == pin.column && cell.row == pin.row
+            }
+                ?? true
+        }
+        return held && rowCount(of: laid) <= (layout == .strip ? 1 : maxPanelRows)
+    }
+
+    private static func shelfFits(_ placed: [Placed], on side: Side, beside panel: CGRect) -> Bool {
+        let shelf = lift + extent(of: Spot.shelfRows, unit: rowHeight, gap: gap)
+        let found = zip(placed, floatingFrames(of: placed, beside: panel))
             .filter { $0.0.spot.side == side }
             .map(\.1)
-        let inside = frames.allSatisfy { frame in
+        let inside = found.allSatisfy { frame in
             side == .above
-                ? frame.maxY <= top + slack
-                : frame.minY >= panel.minY - slack && frame.maxY <= panel.maxY + slack
+                ? frame.maxY <= panel.maxY + shelf + slack
+                : frame.minY >= panel.minY - reach - slack
         }
-        let apart = frames.indices.allSatisfy { index in
-            frames[(index + 1)...].allSatisfy { other in
-                !frames[index].insetBy(dx: slack, dy: slack).intersects(other)
+        let apart = found.indices.allSatisfy { index in
+            found[(index + 1)...].allSatisfy { other in
+                !found[index].insetBy(dx: slack, dy: slack).intersects(other)
             }
         }
         return inside && apart
     }
 
-    static func railsFrame(beside panel: CGRect) -> CGRect {
-        let side = sideGap + sideWidth + railMargin
-        let top =
-            lift + CGFloat(Spot.rowsAbove) * (rowHeight + floatingGap) + captionRoom
-        var frame = panel.insetBy(dx: -side, dy: -railMargin)
-        frame.size.height += top - railMargin
-        return frame
+    private static func railFits(_ placed: [Placed], on side: Side, beside panel: CGRect) -> Bool {
+        let units = Dictionary(grouping: placed.filter { $0.spot.side == side }, by: \.spot)
+        return units.values.reduce(0) { $0 + rows(of: $1.map(\.widget)) } <= railRows(of: panel)
     }
 
     func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
@@ -82,11 +114,9 @@ extension WidgetGrid {
 
     func fits(_ all: [Widget], checking targets: [Spot], at spot: (Widget) -> Spot) -> Bool {
         guard let window = unsafe window else { return false }
-        let placed = all.compactMap { widget -> Placed? in
-            let found = spot(widget)
-            return found == .panel ? nil : (widget, found)
-        }
-        let inPanel = all.filter { spot($0) == .panel }
+        let spotted = all.map { ($0, spot($0)) }
+        let placed = spotted.filter { $0.1.side != .panel }
+        let inPanel = spotted.filter { $0.1.side == .panel }
         return targets.allSatisfy { target in
             Self.fits(
                 target, inPanel: inPanel, placed: placed, layout: tileLayout,
@@ -158,7 +188,7 @@ extension WidgetGrid {
     }
 
     func tileFrames(in window: NSWindow) -> [NSRect] {
-        frames(spanning: inPanel.map(\.span)).map { convert($0, to: nil) }
+        frames(of: panelCells).map { convert($0, to: nil) }
             + Self.floatingFrames(of: placed, beside: window.frame).map(window.convertFromScreen)
     }
 
@@ -184,11 +214,14 @@ extension WidgetGrid {
             window.addChildWindow(rails, ordered: .below)
         }
         let local = { (rect: CGRect) in rect.offsetBy(dx: -frame.minX, dy: -frame.minY) }
-        let rows = CGFloat(max(1, Self.shelfRows(of: placed)))
+        let rows = Dictionary(
+            uniqueKeysWithValues: Side.shelves.map { side in
+                (side, max(1, Self.shelfRows(of: placed, on: side)))
+            })
         var model = WidgetRailsView.Model()
         model.panel = local(panel)
-        model.shelf = rows * Self.rowHeight + (rows - 1) * Self.floatingGap
-        model.pucks = pucks(beside: panel, rows: Int(rows)).map { point in
+        model.shelves = rows.mapValues { Self.extent(of: $0, unit: Self.rowHeight, gap: Self.gap) }
+        model.pucks = pucks(beside: panel, rows: rows).map { point in
             CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
         }
         model.hot = moving?.side
@@ -206,12 +239,12 @@ extension WidgetGrid {
         rails.board.model = model
     }
 
-    private func pucks(beside panel: CGRect, rows: Int) -> [CGPoint] {
+    private func pucks(beside panel: CGRect, rows: [Side: Int]) -> [CGPoint] {
         let taken = Self.floatingFrames(of: placed, beside: panel).map { frame in
-            frame.insetBy(dx: -Self.floatingGap * Self.half, dy: -Self.floatingGap * Self.half)
+            frame.insetBy(dx: -Self.gap * Self.half, dy: -Self.gap * Self.half)
         }
         return Self.slots(for: [Self.cellSized])
-            .filter { $0.side != .above || $0.row < rows }
+            .filter { $0.row < (rows[$0.side] ?? Self.railRows(of: panel)) }
             .map { Self.anchorPoint(of: $0, beside: panel) }
             .filter { point in !taken.contains { $0.contains(point) } }
     }
@@ -219,20 +252,41 @@ extension WidgetGrid {
     private func target(
         for id: String, over hit: Widget?, at screen: CGPoint, beside panel: CGRect
     ) -> Spot? {
-        if let hit, spot(of: hit) == .panel || unit(of: id).contains(hit.id) {
-            return spot(of: hit)
+        if let hit {
+            if unit(of: id).contains(hit.id) { return spot(of: hit) }
+            if spot(of: hit).side == .panel { return .panel }
         }
-        return panel.contains(screen) ? .panel : landing(of: id, near: screen, beside: panel)
+        guard panel.contains(screen) else { return landing(of: id, near: screen, beside: panel) }
+        return cell(for: id, at: screen) ?? .panel
+    }
+
+    private func cell(for id: String, at screen: CGPoint) -> Spot? {
+        guard let window = unsafe window, tileLayout == .grid, let widget = members([id]).first,
+            let slot = slot(
+                at: convert(
+                    window.convertFromScreen(CGRect(origin: screen, size: .zero)).origin, from: nil)
+            )
+        else { return nil }
+        let size = widget.size(in: tileLayout)
+        let column = min(slot.column, Self.columns - size.columns)
+        let row = min(slot.row, Self.maxPanelRows - size.rows)
+        let taken = Self.cells(spanning: panelPlacements(of: inPanel.filter { $0.id != id }))
+        let free = !taken.contains { other in
+            other.columns.overlaps(column..<column + size.columns)
+                && other.rows.overlaps(row..<row + size.rows)
+        }
+        let spot = Spot.cell(column: column, row: row)
+        return free && accepts(unit(of: id), at: spot, before: nil) ? spot : nil
     }
 
     private func ghost(in window: NSWindow) -> (spot: Spot, frame: CGRect)? {
         guard let dragged else { return nil }
         let spot = moving ?? home(of: dragged)
-        if spot == .panel {
+        if spot.side == .panel {
             guard moving != nil, let index = inPanel.firstIndex(where: { $0.id == dragged }) else {
                 return nil
             }
-            let frames = frames(spanning: inPanel.map(\.span))
+            let frames = frames(of: panelCells)
             return (spot, window.convertToScreen(convert(frames[index], to: nil)))
         }
         let frames = Self.floatingFrames(of: placed, beside: window.frame)

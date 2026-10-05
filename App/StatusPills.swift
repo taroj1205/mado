@@ -79,6 +79,23 @@ enum StatusPills {
         .compactMap(\.self)
     }
 
+    static func diskFree(_ bytes: Int64?) -> String {
+        bytes.map { "\((Double($0) / gigabyte).formatted(whole)) GB" } ?? unknown
+    }
+
+    static func downloadSpeed(_ bytesPerSecond: Double?) -> String {
+        guard let bytes = bytesPerSecond.map({ Int64($0) }) else { return unknown }
+        return "\(speed.string(fromByteCount: bytes)) \(speedUnit.string(fromByteCount: bytes))/s"
+    }
+
+    static func uptime() -> String {
+        Duration.seconds(ProcessInfo.processInfo.systemUptime).formatted(uptimeStyle)
+    }
+
+    static func thermal() -> String {
+        name(of: ProcessInfo.processInfo.thermalState)
+    }
+
     static func symbol(for battery: SystemStats.Battery) -> String {
         guard battery.power != .charging else { return charging }
         return batteries[Int((battery.level * Double(batteries.count - 1)).rounded())]

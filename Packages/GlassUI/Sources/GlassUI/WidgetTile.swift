@@ -3,7 +3,7 @@ import AppKit
 final class WidgetTile: NSView {
     static let radius: CGFloat = 16
     static let horizontal: CGFloat = 12
-    private static let trackLeading: CGFloat = 10
+    static let trackLeading: CGFloat = 10
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
     private static let iconSize: CGFloat = 13
@@ -24,11 +24,8 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
-    private lazy var trackPlacement = [
-        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
-        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-        track.centerYAnchor.constraint(equalTo: centerYAnchor),
-    ]
+    let face = WidgetFace()
+    private lazy var trackPlacement = trackConstraints()
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
@@ -40,9 +37,11 @@ final class WidgetTile: NSView {
     let floating: Bool
     private let looks: (resting: Look, picked: Look)
     private(set) var widgetID = ""
+    private(set) var widget: WidgetGrid.Widget?
+    var form = WidgetForm(size: .zero)
     private var hasTrack = false
     var dragStart: NSEvent?
-    var resizeStart: CGFloat?
+    var resizeStart: NSPoint?
     var compact = false
     var onPress: (() -> Void)?
     var onExtend: (() -> Void)?
@@ -72,7 +71,7 @@ final class WidgetTile: NSView {
         didSet { showLifted() }
     }
 
-    var resizable = false {
+    var resizes: Set<Axis> = [] {
         didSet { showEditing() }
     }
 
@@ -86,6 +85,9 @@ final class WidgetTile: NSView {
         paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
+        face.autoresizingMask = [.width, .height]
+        face.isHidden = true
+        addSubview(face)
         arrangeLines()
         arrangeEditing()
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
@@ -136,6 +138,8 @@ final class WidgetTile: NSView {
     }
 
     func show(_ widget: WidgetGrid.Widget) {
+        self.widget = widget
+        form = WidgetForm(size: bounds.size)
         widgetID = widget.id
         hasTrack = widget.track != nil
         var readings: [WidgetGrid.Meter] = []
@@ -157,6 +161,16 @@ final class WidgetTile: NSView {
         showTrack(widget.track != nil)
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
+        showFace()
+    }
+
+    override func layout() {
+        super.layout()
+        let next = WidgetForm(size: bounds.size)
+        if next != form {
+            form = next
+            showFace()
+        }
     }
 
     func customActions() -> [NSAccessibilityCustomAction] {
@@ -222,7 +236,9 @@ final class WidgetTile: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         if let resizeStart {
-            onResize?(.drag(screenX(of: event) - resizeStart))
+            let point = screenPoint(of: event)
+            onResize?(
+                .drag(CGSize(width: point.x - resizeStart.x, height: resizeStart.y - point.y)))
             return
         }
         guard let start = dragStart, unsafe window != nil else { return }

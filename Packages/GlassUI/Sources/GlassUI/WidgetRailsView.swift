@@ -8,7 +8,7 @@ final class WidgetRailsView: NSView {
 
     struct Model {
         var panel = CGRect.zero
-        var shelf: CGFloat = 0
+        var shelves: [WidgetGrid.Side: CGFloat] = [:]
         var pucks: [CGPoint] = []
         var hot: WidgetGrid.Side?
         var ghost: Mark?
@@ -21,6 +21,7 @@ final class WidgetRailsView: NSView {
     private static let captionGap: CGFloat = 6
     private static let captionInset: CGFloat = 4
     private static let captionSize: CGFloat = 10.5
+    private static let captionHeight: CGFloat = 13
     private static let captionKern: CGFloat = 0.9
     private static let puckWidth: CGFloat = 30
     private static let puckHeight: CGFloat = 5
@@ -61,6 +62,7 @@ final class WidgetRailsView: NSView {
         case .left: "NO ROOM ON THE LEFT"
         case .right: "NO ROOM ON THE RIGHT"
         case .above, .panel: "NO ROOM ABOVE"
+        case .below: "NO ROOM BELOW"
         }
     }
 
@@ -69,6 +71,7 @@ final class WidgetRailsView: NSView {
         case .left: "LEFT"
         case .right: "RIGHT"
         case .above, .panel: "ABOVE THE PANEL"
+        case .below: "BELOW THE PANEL"
         }
     }
 
@@ -139,10 +142,12 @@ final class WidgetRailsView: NSView {
         onDrop?(sender.draggingPasteboard.string(forType: WidgetGrid.dragType)) ?? false
     }
 
-    private func drawRails() {
+    private func docks() -> [(WidgetGrid.Side, CGRect)] {
         let panel = model.panel
         let outward = WidgetGrid.sideGap + WidgetGrid.sideWidth
-        let rails: [(WidgetGrid.Side, CGRect)] = [
+        let above = model.shelves[.above] ?? 0
+        let below = model.shelves[.below] ?? 0
+        return [
             (
                 .left,
                 CGRect(
@@ -159,17 +164,30 @@ final class WidgetRailsView: NSView {
                 .above,
                 CGRect(
                     x: panel.minX, y: panel.maxY + WidgetGrid.lift, width: panel.width,
-                    height: model.shelf)
+                    height: above)
+            ),
+            (
+                .below,
+                CGRect(
+                    x: panel.minX, y: panel.minY - WidgetGrid.lift - below, width: panel.width,
+                    height: below)
             ),
         ]
-        for (side, rect) in rails {
+    }
+
+    private func drawRails() {
+        for (side, rect) in docks() {
             let refused = model.refused?.spot.side == side
             let colour: NSColor =
                 refused ? .systemOrange : model.hot == side ? .controlAccentColor : Self.dock
             Self.outline(rect, radius: Self.radius, stroke: colour, fill: Self.dockFill)
             Self.write(
                 refused ? Self.noRoom(side) : Self.caption(side),
-                at: CGPoint(x: rect.minX + Self.captionInset, y: rect.maxY + Self.captionGap),
+                at: CGPoint(
+                    x: rect.minX + Self.captionInset,
+                    y: side == .below
+                        ? rect.minY - Self.captionGap - Self.captionHeight
+                        : rect.maxY + Self.captionGap),
                 colour: refused ? .systemOrange : .tertiaryLabelColor)
         }
     }

@@ -84,9 +84,11 @@ import Testing
         view.selectWidget(0)
         view.editWidgets()
         press(kVK_DownArrow, "\u{F701}", [.option])
-        #expect(edits.isEmpty)
         press(kVK_RightArrow, "\u{F703}", [.option])
-        #expect(edits == [.place("1", .rightMiddle, before: nil)])
+        #expect(
+            edits == [
+                .place("1", .belowCentre, before: nil), .place("1", .rightMiddle, before: nil),
+            ])
         press(kVK_RightArrow, "\u{F703}")
         #expect(view.selectedWidget == 1)
     }

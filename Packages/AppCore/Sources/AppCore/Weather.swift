@@ -44,15 +44,29 @@ public struct Weather: Decodable, Equatable, Sendable {
         }
     }
 
+    public struct Hour: Equatable, Sendable {
+        public let time: Date
+        public let temperature: Measurement<UnitTemperature>
+        public let sky: Sky
+        public let isDay: Bool
+    }
+
     private enum Keys: String, CodingKey {
         case current = "current"
         case daily = "daily"
+        case hourly = "hourly"
         case temperature = "temperature_2m"
         case code = "weather_code"
         case isDay = "is_day"
         case highs = "temperature_2m_max"
         case lows = "temperature_2m_min"
         case results = "results"
+        case times = "time"
+        case apparent = "apparent_temperature"
+        case humidity = "relative_humidity_2m"
+        case wind = "wind_speed_10m"
+        case rain = "precipitation_probability_max"
+        case offset = "utc_offset_seconds"
     }
 
     private static let forecastAPI = "https://api.open-meteo.com/v1/forecast"
@@ -60,12 +74,20 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let coordinateScale = 100.0
     private static let success = 200
     private static let middle = 0.5
+    private static let percent = 100.0
+    private static let hoursAhead = "8"
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
     public let low: Measurement<UnitTemperature>
     public let sky: Sky
     public let isDay: Bool
+    public let feelsLike: Measurement<UnitTemperature>?
+    public let humidity: Double?
+    public let wind: Measurement<UnitSpeed>?
+    public let rainChance: Double?
+    public let hours: [Hour]
+    public let utcOffset: Int
 
     public var position: Double {
         let range = high.value - low.value
@@ -93,6 +115,36 @@ public struct Weather: Decodable, Equatable, Sendable {
         low = Measurement(value: lowest, unit: .celsius)
         sky = found
         isDay = try now.decode(Int.self, forKey: .isDay) != 0
+        feelsLike = try now.decodeIfPresent(Double.self, forKey: .apparent).map { degrees in
+            Measurement(value: degrees, unit: .celsius)
+        }
+        humidity = try now.decodeIfPresent(Double.self, forKey: .humidity).map { share in
+            share / Self.percent
+        }
+        wind = try now.decodeIfPresent(Double.self, forKey: .wind).map { speed in
+            Measurement(value: speed, unit: .kilometersPerHour)
+        }
+        let chances = try today.decodeIfPresent([Double?].self, forKey: .rain)
+        rainChance = chances?.first?.map { chance in chance / Self.percent }
+        utcOffset = try root.decodeIfPresent(Int.self, forKey: .offset) ?? 0
+        hours = Self.hours(in: try? root.nestedContainer(keyedBy: Keys.self, forKey: .hourly))
+    }
+
+    private static func hours(in container: KeyedDecodingContainer<Keys>?) -> [Hour] {
+        guard let container,
+            let times = try? container.decode([TimeInterval].self, forKey: .times),
+            let temperatures = try? container.decode([Double].self, forKey: .temperature),
+            let codes = try? container.decode([Int].self, forKey: .code),
+            let days = try? container.decode([Int].self, forKey: .isDay)
+        else { return [] }
+        return zip(zip(times, temperatures), zip(codes, days)).compactMap { first, second in
+            Sky(code: second.0).map { sky in
+                Hour(
+                    time: Date(timeIntervalSince1970: first.0),
+                    temperature: Measurement(value: first.1, unit: .celsius), sky: sky,
+                    isDay: second.1 != 0)
+            }
+        }
     }
 
     public static func forecast(at place: Place) async throws -> Self {
@@ -108,9 +160,12 @@ public struct Weather: Decodable, Equatable, Sendable {
             forecastAPI,
             [
                 "latitude": rounded(place.latitude), "longitude": rounded(place.longitude),
-                "current": "temperature_2m,weather_code,is_day",
-                "daily": "temperature_2m_max,temperature_2m_min", "timezone": "auto",
-                "forecast_days": "1",
+                "current":
+                    "temperature_2m,weather_code,is_day,apparent_temperature,"
+                    + "relative_humidity_2m,wind_speed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                "hourly": "temperature_2m,weather_code,is_day", "timezone": "auto",
+                "forecast_days": "1", "forecast_hours": hoursAhead, "timeformat": "unixtime",
             ])
     }
 

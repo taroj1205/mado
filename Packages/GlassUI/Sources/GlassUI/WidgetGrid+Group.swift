@@ -14,14 +14,20 @@ extension WidgetGrid {
     }
 
     private static func spot(at frame: CGRect, on side: Side, beside panel: CGRect) -> Spot {
-        let step = rowHeight + floatingGap
-        guard side != .above else {
-            let column = (frame.minX - panel.minX) / (cellWidth(of: panel) + floatingGap)
-            let row = (frame.minY - panel.maxY - lift) / step
-            return .above(column: Int(column.rounded()), row: Int(row.rounded()))
+        let step = rowHeight + gap
+        let column = Int(((frame.minX - panel.minX) / (cellWidth(of: panel) + gap)).rounded())
+        switch side {
+        case .above:
+            return .above(
+                column: column, row: Int(((frame.minY - panel.maxY - lift) / step).rounded()))
+
+        case .below:
+            return .below(
+                column: column, row: Int(((panel.minY - lift - frame.maxY) / step).rounded()))
+
+        case .left, .right, .panel:
+            return .beside(side, row: Int(((panel.maxY - frame.maxY) / step).rounded()))
         }
-        let stop = (panel.maxY - frame.maxY) / (panel.height - rowHeight)
-        return .beside(side, row: Int((stop * CGFloat(Spot.stops - 1)).rounded()))
     }
 
     func next(from id: String, toward heading: Heading) -> Spot? {
@@ -47,14 +53,14 @@ extension WidgetGrid {
     func spread(_ id: String) -> [String: Spot] {
         let home = home(of: id)
         let group = widgets.filter { self.home(of: $0.id) == home }
-        guard let window = unsafe window, home != .panel, group.count > 1 else { return [:] }
+        guard let window = unsafe window, home.side != .panel, group.count > 1 else { return [:] }
         let panel = window.frame
-        var last = -1
+        var end = 0
         let spots = zip(group, Self.frames(of: group, at: home, beside: panel)).map { item in
             var spot = Self.spot(at: item.1, on: home.side, beside: panel)
-            if home.side != .above {
-                spot = .beside(home.side, row: max(spot.row, last + 1))
-                last = spot.row
+            if home.side.isRail {
+                spot = .beside(home.side, row: max(spot.row, end))
+                end = spot.row + item.0.railSize.rows
             }
             return (item.0.id, spot)
         }
@@ -66,8 +72,10 @@ extension WidgetGrid {
     }
 
     private func settled(_ spot: Spot, for id: String) -> Spot {
-        guard spot.side == .above else { return spot }
+        guard spot.side.isShelf else { return spot }
         let block = Block(of: members(unit(of: id)), at: spot)
-        return .above(column: block.column, row: block.row)
+        return spot.side == .above
+            ? .above(column: block.column, row: block.row)
+            : .below(column: block.column, row: block.row)
     }
 }

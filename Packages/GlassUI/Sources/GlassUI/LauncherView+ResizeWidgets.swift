@@ -12,18 +12,18 @@ extension LauncherView {
             changeWidgets { widgetGrid.stretch(id, by: distance) }
 
         case .drop:
-            var columns: Int?
-            changeWidgets { columns = widgetGrid.finishStretch(id) }
-            if let columns {
-                report(.resize(id, columns: columns))
+            var size: WidgetGrid.Size?
+            changeWidgets { size = widgetGrid.finishStretch(id) }
+            if let size {
+                report(.resize(id, size))
             }
 
-        case .step(let change):
-            guard let columns = widgetGrid.fitted(id, adding: change) else {
+        case let .step(columns, rows):
+            guard let size = widgetGrid.fitted(id, adding: (columns, rows)) else {
                 NSSound.beep()
                 return
             }
-            report(.resize(id, columns: columns))
+            report(.resize(id, size))
         }
     }
 }

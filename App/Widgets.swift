@@ -7,7 +7,7 @@ import os
 final class Widgets {
     static let moduleID = "widgets"
     private static let clockApp = "com.apple.clock"
-    private static let minute: TimeInterval = 60
+    static let minute: TimeInterval = 60
     private static let time = Date.FormatStyle().hour(.defaultDigits(amPM: .omitted)).minute()
     private static let spokenTime = Date.FormatStyle().hour().minute()
     private static let day = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
@@ -23,7 +23,7 @@ final class Widgets {
     private static let batteryAction = "Battery Settings"
     private static let macName = "Mac"
     private static let owner = #/^\S+['’]s /#
-    private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
+    static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
     static let gallery: [WidgetGallery.Card] = [
         .init(id: weather, name: "Weather", summary: "Now, high and low", group: .today),
         .init(id: clockWidget, name: "Clock", summary: "Time and date", group: .today),
@@ -94,7 +94,8 @@ final class Widgets {
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
                 detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
-                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
+                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))",
+                facts: clockFacts(at: date)),
             playing.map(widget(for:)),
             stats == nil
                 ? .init(
@@ -109,7 +110,8 @@ final class Widgets {
                     id: system, name: name(of: system),
                     meters: [meter("CPU", cpu), meter("RAM", memory)],
                     action: "Open Activity Monitor",
-                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
+                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))",
+                    facts: systemFacts(of: stats)),
         ]
         .compactMap(\.self)
     }
@@ -134,7 +136,7 @@ final class Widgets {
                 id: battery, name: name(of: battery), value: percent(mac.level),
                 detail: status(of: mac),
                 action: batteryAction, spoken: "Battery: \(macStatus)",
-                symbol: StatusPills.symbol(for: mac))
+                symbol: StatusPills.symbol(for: mac), facts: batteryFacts(of: mac))
         }
         let spoken = [
             macStatus.map { "\(macName) \($0)" },
@@ -148,7 +150,8 @@ final class Widgets {
             ]
             .compactMap(\.self),
             action: batteryAction,
-            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; "))")
+            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; "))",
+            facts: mac.map(batteryFacts) ?? [])
     }
 
     private static func status(of battery: SystemStats.Battery) -> String {

@@ -145,7 +145,9 @@ import Testing
         let editing = view.widgetGrid.tiles.map(\.editing)
         #expect(!editing.contains(false))
         #expect(view.widgetGrid.rails.parent === panel)
-        #expect(view.widgetGrid.rails.board.model.pucks.count == 5 + 2 * WidgetGrid.Spot.stops)
+        #expect(
+            view.widgetGrid.rails.board.model.pucks.count == 11 + 2
+                * WidgetGrid.railRows(of: Self.frame))
         #expect(!view.widgetGrid.dock.isHidden)
         #expect(view.widgetGrid.frame.height > 0)
         let float = view.widgetGrid.floats[0]

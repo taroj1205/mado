@@ -178,7 +178,7 @@ public final class WidgetGallery: NSView {
             (width - WidgetGrid.inset - WidgetGrid.inset - (columns - 1) * WidgetGrid.gap)
             / columns
         let step = Self.cardHeight + Self.rowGap
-        let cells = WidgetGrid.cells(spanning: visible.map(\.span))
+        let cells = WidgetGrid.cells(spanning: visible.map(\.size))
         for card in cards {
             card.isHidden = !visible.contains(card)
         }
