@@ -18,6 +18,7 @@ struct SettingsPage {
         let inputKeys: InputSourceKeys
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
+        let enterGuard: EnterGuardPage
         let gallery: WidgetGalleryWindow
     }
 
@@ -112,7 +113,7 @@ struct SettingsPage {
             tabs: [
                 Tab(title: "Modifier Keys", sections: nil),
                 Tab(title: "Input Sources") { $0.inputKeys.sections + [$0.inputDefaults.section] },
-                Tab(title: "Enter Guard", sections: nil),
+                Tab(title: "Enter Guard") { $0.enterGuard.sections },
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
