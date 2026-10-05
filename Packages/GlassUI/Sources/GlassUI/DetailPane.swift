@@ -33,6 +33,7 @@ final class DetailPane: NSView {
     private let header = DetailPane.makeHeader()
     private var imageRequest: Thumbnails.Request?
     private(set) var loading: Task<Void, Never>?
+    private var imageFailed = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -150,8 +151,6 @@ final class DetailPane: NSView {
                 .font: NSFont.monospacedSystemFont(ofSize: Self.textSize, weight: .regular),
                 .foregroundColor: NSColor.labelColor, .paragraphStyle: style,
             ])
-        text.isHidden = preview.image != nil
-        image.isHidden = preview.image == nil
         let rows = preview.details.map { Self.row($0.name, $0.value) }
         info.setViews([header] + rows, in: .top)
         info.setCustomSpacing(Self.headerBottom, after: header)
@@ -162,17 +161,33 @@ final class DetailPane: NSView {
 
     private func showImage(_ url: URL?) {
         let next = url.map { Thumbnails.Request(url: $0, side: Self.imageSide) }
-        guard next != imageRequest else { return }
-        imageRequest = next
-        loading?.cancel()
-        loading = nil
-        image.image = nil
-        guard let next else { return }
-        loading = Task { [weak self] in
-            let decoded = await Thumbnails.decode(next)
-            guard let self, imageRequest == next, let decoded else { return }
-            image.image = NSImage(cgImage: decoded, size: .zero)
+        if next != imageRequest {
+            imageRequest = next
+            imageFailed = false
+            loading?.cancel()
+            loading = nil
+            image.image = nil
+            if let next {
+                load(next)
+            }
         }
+        showImageOrText()
+    }
+
+    private func load(_ request: Thumbnails.Request) {
+        loading = Task { [weak self] in
+            let decoded = await Thumbnails.decode(request)
+            guard let self, imageRequest == request else { return }
+            image.image = decoded.map { NSImage(cgImage: $0, size: .zero) }
+            imageFailed = decoded == nil
+            showImageOrText()
+        }
+    }
+
+    private func showImageOrText() {
+        let showsImage = imageRequest != nil && !imageFailed
+        image.isHidden = !showsImage
+        text.isHidden = showsImage
     }
 
     private func layout(_ divider: NSView) {

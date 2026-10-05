@@ -73,8 +73,7 @@ extension ClipboardStore.Entry {
         }
         guard files.count == 1, let file = files.first,
             let type = UTType(filenameExtension: file.pathExtension),
-            type.conforms(to: .image) || type.conforms(to: .movie),
-            (try? file.checkResourceIsReachable()) == true
+            type.conforms(to: .image) || type.conforms(to: .movie)
         else { return nil }
         return file
     }

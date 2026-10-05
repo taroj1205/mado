@@ -146,6 +146,27 @@ import Testing
         #expect(view.detail.text.stringValue == "text")
     }
 
+    @Test func showsTheTextWhenTheImageCantBeDecoded() async throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).mov")
+        try Data("not a movie".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        view.enter(
+            placeholder: "Filter",
+            detail: .preview { _ in .init(text: file.path(), image: file, details: []) })
+        view.results.sections = [.init(title: "Today", items: [Self.item("video")])]
+        #expect(view.detail.text.isHidden)
+        await view.detail.loading?.value
+
+        #expect(view.detail.image.isHidden)
+        #expect(!view.detail.text.isHidden)
+        #expect(view.detail.text.stringValue == file.path())
+
+        view.refreshDetail()
+
+        #expect(view.detail.image.isHidden)
+        #expect(!view.detail.text.isHidden)
+    }
+
     @Test func leavingWhileAThumbnailLoadsKeepsItOutOfTheCache() async throws {
         let file = try Self.png()
         defer { try? FileManager.default.removeItem(at: file) }

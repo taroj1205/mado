@@ -107,25 +107,18 @@ import Testing
             .count == 3)
     }
 
-    @Test func showsACopiedImageOrVideoFileAsAThumbnail() throws {
-        let folder = FileManager.default.temporaryDirectory.appending(path: "\(UUID())")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let png = folder.appending(path: "Screenshot.png")
-        let video = folder.appending(path: "Recording.mp4")
-        let notes = folder.appending(path: "Notes.txt")
-        for file in [png, video, notes] {
-            try Data().write(to: file)
-        }
-        let path = png.path(percentEncoded: false)
+    @Test func showsACopiedImageOrVideoFileAsAThumbnail() {
+        let png = "/tmp/Screenshot.png"
+        let video = "/tmp/Recording.mp4"
+        let notes = "/tmp/Notes.txt"
 
-        #expect(Self.entry(.file, path).thumbnail == png)
-        #expect(Self.entry(.file, video.path(percentEncoded: false)).thumbnail == video)
-        #expect(Self.entry(.file, notes.path(percentEncoded: false)).thumbnail == nil)
-        #expect(Self.entry(.file, "\(path)\n\(path)").thumbnail == nil)
-        #expect(Self.entry(.file, folder.appending(path: "gone.png").path()).thumbnail == nil)
-        #expect(Self.entry(.image, "", image: notes).thumbnail == notes)
-        #expect(Self.entry(.text, path).thumbnail == nil)
+        #expect(Self.entry(.file, png).thumbnail == URL(filePath: png))
+        #expect(Self.entry(.file, video).thumbnail == URL(filePath: video))
+        #expect(Self.entry(.file, notes).thumbnail == nil)
+        #expect(Self.entry(.file, "\(png)\n\(png)").thumbnail == nil)
+        let saved = URL(filePath: "/tmp/Images/1.png")
+        #expect(Self.entry(.image, "", image: saved).thumbnail == saved)
+        #expect(Self.entry(.text, png).thumbnail == nil)
     }
 
     @Test func countsShortTextRightAwayAndLeavesLongTextForLater() {
