@@ -34,7 +34,9 @@ enum StatusMenu {
         let hideItem = menu.addItem(
             withTitle: "Hide Menu Bar Icon", action: hide, keyEquivalent: "")
         hideItem.target = target
-        hideItem.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
+        if #available(macOS 26, *) {
+            hideItem.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
+        }
         hideItem.toolTip = "Open Mado again to show the icon."
         menu.addItem(
             withTitle: "Quit Mado", action: #selector(NSApplication.terminate), keyEquivalent: "q")
