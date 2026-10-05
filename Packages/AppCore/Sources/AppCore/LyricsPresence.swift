@@ -8,6 +8,10 @@ public struct LyricsPresence: Equatable, Sendable {
         self.hideAfter = hideAfter
     }
 
+    public mutating func reset() {
+        pausedAt = nil
+    }
+
     public mutating func shows(timed: Bool, playing: Bool, at now: TimeInterval) -> Bool {
         guard timed else {
             pausedAt = playing ? nil : pausedAt ?? now

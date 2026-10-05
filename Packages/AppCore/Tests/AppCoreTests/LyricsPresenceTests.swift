@@ -11,6 +11,10 @@ import Testing
             presence = LyricsPresence(hideAfter: hideAfter)
         }
 
+        func reset() {
+            presence.reset()
+        }
+
         func shows(timed: Bool, playing: Bool, at now: TimeInterval) -> Bool {
             presence.shows(timed: timed, playing: playing, at: now)
         }
@@ -50,6 +54,14 @@ import Testing
         let presence = Screen(hideAfter: 0)
         #expect(presence.shows(timed: true, playing: true, at: 0))
         #expect(!presence.shows(timed: true, playing: false, at: 1))
+    }
+
+    @Test func resettingForgetsAnEarlierPause() {
+        let presence = Screen(hideAfter: 10)
+        _ = presence.shows(timed: true, playing: false, at: 0)
+        presence.reset()
+        #expect(presence.shows(timed: true, playing: false, at: 50))
+        #expect(!presence.shows(timed: true, playing: false, at: 60))
     }
 
     @Test func neverHidingKeepsAPausedSongOnScreen() {
