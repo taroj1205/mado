@@ -141,7 +141,7 @@ import Testing
         #expect(abs(tile.convert(last.bounds, from: last).minY - 10) < 0.5)
     }
 
-    @Test func thePermissionStateAsksWithOneAllowButtonThatRunsTheWidgetAction() {
+    @Test func thePermissionStateAsksWithOneAllowButtonThatRunsTheWidgetAction() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
         view.layoutSubtreeIfNeeded()
@@ -152,8 +152,11 @@ import Testing
         #expect(tile.allow.label.stringValue == "Allow")
         let allow = tile.convert(tile.allow.bounds, from: tile.allow)
         #expect(tile.hitTest(NSPoint(x: tile.frame.minX + allow.midX, y: tile.frame.midY)) === tile)
-        view.pressWidget(1)
+        view.selectWidget(1)
         #expect(view.actionLabel.stringValue == "Allow Calendar Access")
+        #expect(ran.isEmpty)
+        let button = NSPoint(x: allow.midX, y: allow.midY)
+        tile.mouseDown(with: try click(tile.convert(button, to: nil)))
         #expect(ran == ["calendar"])
     }
 
@@ -215,6 +218,14 @@ import Testing
         #expect(view.selectedWidget == nil)
         view.widgets = [music]
         #expect(view.widgetGrid.isHidden)
+    }
+
+    private func click(_ point: NSPoint) throws -> NSEvent {
+        try #require(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown, location: point, modifierFlags: [], timestamp: 0,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                pressure: 1))
     }
 
     private func visible(in tile: WidgetTile) -> [NSView] {

@@ -103,7 +103,8 @@ import Testing
         tile.mouseUp(with: try mouse(.leftMouseUp, at: plain))
         tile.mouseDown(with: try mouse(.leftMouseDown, at: plain))
         #expect(tile.resizeStart == nil)
-        #expect(ran == ["2"])
+        #expect(ran.isEmpty)
+        #expect(view.selectedWidget != nil)
     }
 
     @Test func savedSizesStayBetweenTheWidgetsNarrowestAndHalfTheRow() {

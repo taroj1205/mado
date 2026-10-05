@@ -47,12 +47,12 @@ import Testing
         throw MissingDay()
     }
 
-    private func click(_ point: NSPoint) throws {
+    private func click(_ point: NSPoint, count: Int = 1) throws {
         let location = tile.month.convert(point, to: nil)
         let event = try #require(
             NSEvent.mouseEvent(
                 with: .leftMouseDown, location: location, modifierFlags: [], timestamp: 0,
-                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: count,
                 pressure: 1))
         tile.mouseDown(with: event)
     }
@@ -85,10 +85,12 @@ import Testing
         #expect(queries == ["15 sep 2026"])
     }
 
-    @Test func clickingTheTitleStillOpensTheCalendar() throws {
+    @Test func doubleClickingTheTitleOpensTheCalendar() throws {
         var opened: [String] = []
         view.onWidget = { opened.append($0.id) }
         try click(NSPoint(x: 1, y: 1))
+        #expect(opened.isEmpty)
+        try click(NSPoint(x: 1, y: 1), count: 2)
         #expect(opened == ["calendar"])
         #expect(view.field.stringValue.isEmpty)
     }
@@ -144,7 +146,7 @@ import Testing
         view.layoutSubtreeIfNeeded()
         var opened: [String] = []
         view.onWidget = { opened.append($0.id) }
-        try click(inside)
+        try click(inside, count: 2)
         #expect(tile.month.hit(at: inside) == nil)
         #expect(view.field.stringValue.isEmpty)
         #expect(opened == ["calendar"])

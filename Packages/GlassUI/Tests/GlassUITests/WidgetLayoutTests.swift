@@ -22,7 +22,7 @@ import Testing
         view.layoutSubtreeIfNeeded()
         #expect(view.widgetGrid.tiles.count == 7)
         #expect(abs(view.widgetGrid.frame.height - (12 + 78 + 8 + 78 + 4)) < 0.01)
-        view.pressWidget(6)
+        view.selectWidget(6)
         view.widgetLayout = .strip
         view.layoutSubtreeIfNeeded()
         #expect(view.selectedWidget == nil)
@@ -42,7 +42,7 @@ import Testing
     }
 
     @Test func withoutALayoutTheWidgetsAreHiddenAndUpStaysInTheList() {
-        view.pressWidget(1)
+        view.selectWidget(1)
         view.widgetLayout = nil
         view.layoutSubtreeIfNeeded()
         #expect(view.selectedWidget == nil)

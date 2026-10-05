@@ -11,6 +11,11 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.tileLayout = newValue } }
     }
 
+    public var opensWidgetsOnSingleClick: Bool {
+        get { widgetGrid.opensOnSingleClick }
+        set { widgetGrid.opensOnSingleClick = newValue }
+    }
+
     public var widgetSpots: [String: WidgetGrid.Spot] {
         get { widgetGrid.spots }
         set { changeWidgets { widgetGrid.spots = newValue } }
@@ -70,7 +75,8 @@ extension LauncherView {
             widgetGrid.trailingAnchor.constraint(equalTo: trailingAnchor),
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
-        widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
+        widgetGrid.onPress = { [weak self] index in self?.selectWidget(index) }
+        widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
         widgetGrid.onDay = { [weak self] query in self?.replaceQuery(with: query) }
@@ -153,8 +159,7 @@ extension LauncherView {
         return false
     }
 
-    func pressWidget(_ index: Int) {
-        selectWidget(index)
+    func openWidget(_ index: Int) {
         if !editingWidgets {
             onWidget?(widgetGrid.shown[index])
         }

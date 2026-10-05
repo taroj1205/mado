@@ -143,25 +143,25 @@ import Testing
         press(kVK_UpArrow, "\u{F700}")
         press(kVK_ANSI_J, "j", [.command])
         #expect(view.selectedWidget == nil)
-        view.pressWidget(0)
+        view.selectWidget(0)
         press(kVK_ANSI_A, "a")
         #expect(view.selectedWidget == nil)
         #expect(view.widgetGrid.isHidden)
     }
 
     @Test func aWidgetAndAPillAreNeverSelectedTogether() {
-        view.pressWidget(1)
+        view.selectWidget(1)
         view.pressPill(0)
         #expect(view.selectedWidget == nil)
         #expect(view.widgetGrid.tiles.allSatisfy { !$0.selected })
         #expect(view.results.hidesSelection)
-        view.pressWidget(1)
+        view.selectWidget(1)
         #expect(view.selectedPill == nil)
         #expect(view.results.hidesSelection)
         #expect(view.actionLabel.stringValue == "Open Weather")
     }
 
-    @Test func clickingAWidgetSelectsAndRunsIt() throws {
+    @Test func pressingAWidgetThroughAccessibilitySelectsAndRunsIt() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
         #expect(try #require(view.widgetGrid.tiles.last).accessibilityPerformPress())
@@ -171,7 +171,7 @@ import Testing
     }
 
     @Test func refreshedValuesKeepTheSelectedTile() throws {
-        view.pressWidget(1)
+        view.selectWidget(1)
         let tile = try #require(view.widgetGrid.tiles.first)
         view.widgets = [
             .init(
@@ -194,7 +194,7 @@ import Testing
             id: "battery", name: "Battery", value: "80%", detail: "Charging",
             action: "Battery Settings",
             spoken: "Battery: 80%, charging")
-        view.pressWidget(1)
+        view.selectWidget(1)
         view.widgets = [widgets[0], battery, widgets[1]]
         #expect(view.selectedWidget == 2)
         #expect(view.widgetGrid.tiles.map(\.selected) == [false, false, true])
@@ -202,7 +202,7 @@ import Testing
         view.widgets = [widgets[0], widgets[1]]
         #expect(view.selectedWidget == 1)
         #expect(view.widgetGrid.tiles.map(\.selected) == [false, true])
-        view.pressWidget(0)
+        view.selectWidget(0)
         view.widgets = [battery, widgets[1]]
         #expect(view.selectedWidget == nil)
         #expect(!view.results.hidesSelection)
@@ -228,7 +228,7 @@ import Testing
         let first = try #require(meters.first)
         #expect(abs(first.frame.width - (tile.bounds.width - 24)) < 1)
         #expect(abs(tile.meters.frame.midY - tile.bounds.midY) < 0.5)
-        view.pressWidget(1)
+        view.selectWidget(1)
         view.widgets = [
             widgets[0],
             .init(

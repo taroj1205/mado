@@ -61,7 +61,7 @@ import Testing
         #expect(view.chosenWidgets == ["3"])
         #expect(view.selectedWidget == 2)
         view.extendWidgetSelection(4)
-        view.pressWidget(4)
+        view.selectWidget(4)
         #expect(view.chosenWidgets == ["5"])
         #expect(view.widgetGrid.tiles.filter(\.selected).count == 1)
     }

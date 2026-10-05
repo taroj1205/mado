@@ -45,6 +45,9 @@ struct SettingsPage {
                         .init("Inside the panel", popUp(WidgetInlineStyle.self, context.modules)),
                     ]),
                 SettingsSection(
+                    "Mouse",
+                    [.init("Open a widget with", popUp(WidgetOpenGesture.self, context.modules))]),
+                SettingsSection(
                     "Gallery",
                     [.init("Widgets on the empty query", galleryButton(context))]),
                 WeatherSettings.section(context.modules),

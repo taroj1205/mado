@@ -160,6 +160,10 @@ public final class WidgetGrid: NSView {
     let rails = WidgetRails()
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     var onPress: ((Int) -> Void)?
+    var onOpen: ((Int) -> Void)?
+    var opensOnSingleClick = false {
+        didSet { tiles.forEach { $0.opensOnSingleClick = opensOnSingleClick } }
+    }
     var onExtend: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
     var onDay: ((String) -> Void)?

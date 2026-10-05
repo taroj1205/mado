@@ -22,7 +22,9 @@ extension WidgetGrid {
     func makeTile(at index: Int, floating: Bool) -> WidgetTile {
         let tile = WidgetTile(floating: floating)
         tile.editing = editing
+        tile.opensOnSingleClick = opensOnSingleClick
         tile.onPress = { [weak self] in self?.onPress?(index) }
+        tile.onOpen = { [weak self] in self?.onOpen?(index) }
         tile.onExtend = { [weak self] in self?.onExtend?(index) }
         tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
         tile.onDay = { [weak self] query in self?.onDay?(query) }

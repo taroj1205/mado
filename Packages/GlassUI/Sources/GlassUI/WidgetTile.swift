@@ -48,6 +48,8 @@ final class WidgetTile: NSView {
     var resizeStart: CGFloat?
     var compact = false
     var onPress: (() -> Void)?
+    var onOpen: (() -> Void)?
+    var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onDay: ((String) -> Void)?
@@ -220,6 +222,7 @@ final class WidgetTile: NSView {
             month.press(hit)
         } else {
             onPress?()
+            openIfAsked(by: event)
         }
     }
 
@@ -266,6 +269,7 @@ final class WidgetTile: NSView {
 
     override func accessibilityPerformPress() -> Bool {
         onPress?()
+        onOpen?()
         return true
     }
 }
