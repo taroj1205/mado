@@ -24,6 +24,7 @@ extension WidgetGrid {
         tile.editing = editing
         tile.opensOnSingleClick = opensOnSingleClick
         tile.onPress = { [weak self] in self?.onPress?(index) }
+        tile.onTap = { [weak self] in self?.onTap?(index) }
         tile.onOpen = { [weak self] in self?.onOpen?(index) }
         tile.onExtend = { [weak self] in self?.onExtend?(index) }
         tile.onMenu = { [weak self] point in self?.onMenu?(index, point) }

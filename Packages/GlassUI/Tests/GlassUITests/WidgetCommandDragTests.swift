@@ -86,7 +86,10 @@ import Testing
         ]
         view.layoutSubtreeIfNeeded()
         let tile = view.widgetGrid.tiles[1]
-        tile.mouseDown(with: try click(tile, []))
+        let press = try click(tile, [])
+        tile.mouseDown(with: press)
+        #expect(ran.isEmpty)
+        tile.mouseUp(with: press)
         #expect(ran == ["music"])
         #expect(opens == 0)
         tile.mouseDown(with: try click(tile, [], count: 2))
