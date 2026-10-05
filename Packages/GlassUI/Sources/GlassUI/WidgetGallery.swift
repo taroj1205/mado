@@ -178,18 +178,19 @@ public final class WidgetGallery: NSView {
             (width - WidgetGrid.inset - WidgetGrid.inset - (columns - 1) * WidgetGrid.gap)
             / columns
         let step = Self.cardHeight + Self.rowGap
-        let cells = WidgetGrid.cells(spanning: visible.map(\.span))
+        let cells = WidgetGrid.cells(of: visible.map(\.widget))
         for card in cards {
             card.isHidden = !visible.contains(card)
         }
         for (card, place) in zip(visible, cells) {
             card.frame = NSRect(
                 x: WidgetGrid.inset + CGFloat(place.columns.lowerBound) * (cell + WidgetGrid.gap),
-                y: Self.gridTop + CGFloat(place.row) * step,
+                y: Self.gridTop + CGFloat(place.rows.lowerBound) * step,
                 width: CGFloat(place.columns.count) * (cell + WidgetGrid.gap) - WidgetGrid.gap,
-                height: Self.cardHeight)
+                height: WidgetGrid.extent(
+                    of: place.rows.count, size: Self.cardHeight, gap: Self.rowGap))
         }
-        let rows = CGFloat(cells.last.map { $0.row + 1 } ?? 0)
+        let rows = CGFloat(cells.map(\.rows.upperBound).max() ?? 0)
         board.frame.size = NSSize(
             width: width, height: Self.gridTop + rows * step + Self.bottomRoom)
         empty.isHidden = !visible.isEmpty

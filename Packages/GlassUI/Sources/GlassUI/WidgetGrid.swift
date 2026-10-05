@@ -1,3 +1,4 @@
+public import AppCore
 public import AppKit
 
 public final class WidgetGrid: NSView {
@@ -5,6 +6,8 @@ public final class WidgetGrid: NSView {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
+        case month(AgendaMonth)
+        case event(title: String, Event)
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)
         case permission(title: String, request: String, reason: String)
@@ -184,7 +187,7 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = max(Self.cells(spanning: spans).last.map { $0.row + 1 } ?? 0, editing ? 1 : 0)
+        let rows = max(Self.rowCount(of: inPanel), editing ? 1 : 0)
         guard !isHidden, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
@@ -223,7 +226,7 @@ public final class WidgetGrid: NSView {
 
     override public func layout() {
         super.layout()
-        let frames = frames(spanning: spans)
+        let frames = frames(of: inPanel)
         for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
             place(tile, in: frame, tilt: tilt(at: index))
         }

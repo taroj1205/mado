@@ -68,13 +68,22 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     }
 
     public func spots(
-        _ arrangement: Arrangement, from available: [String], wide: Set<String> = []
+        _ arrangement: Arrangement, from available: [String], wide: Set<String> = [],
+        tall: Set<String> = []
     ) -> [String: WidgetGrid.Spot] {
         let ids = added(from: available)
         let left = (ids.count + WidgetGrid.sides - 1) / WidgetGrid.sides
-        let cells = WidgetGrid.cells(
-            spanning: ids.map { wide.contains($0) ? WidgetGrid.Widget.wideSpan : 1 })
-        let rows = (cells.last?.row ?? 0) + 1
+        let footprints = ids.map { id in
+            (
+                columns: wide.contains(id) ? WidgetGrid.Widget.wideSpan : 1,
+                rows: tall.contains(id) ? WidgetGrid.Widget.tallRows : 1
+            )
+        }
+        let cells = WidgetGrid.cells(sized: footprints)
+        let rows = cells.map(\.rows.upperBound).max() ?? 1
+        let stops = footprints.indices.map { index in
+            footprints[(index < left ? 0 : left)..<index].map(\.rows).reduce(0, +)
+        }
         return Dictionary(
             uniqueKeysWithValues: zip(ids, cells).enumerated().map { index, item in
                 let (id, cell) = item
@@ -82,13 +91,12 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
                 case .inPanel: (id, .panel)
 
                 case .above:
-                    (id, .above(column: cell.columns.lowerBound, row: rows - 1 - cell.row))
+                    (id, .above(column: cell.columns.lowerBound, row: rows - cell.rows.upperBound))
 
                 case .around:
                     (
                         id,
-                        index < left
-                            ? .beside(.left, row: index) : .beside(.right, row: index - left)
+                        .beside(index < left ? .left : .right, row: stops[index])
                     )
 
                 case .custom: (id, spots[id] ?? .panel)

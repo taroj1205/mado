@@ -131,6 +131,21 @@ import Testing
         #expect(spots["8"] == .aboveCentre)
     }
 
+    @Test func aTallWidgetTakesTwoRowsAboveAndTwoStopsBeside() {
+        let ids = ["calendar", "next", "weather", "clock", "battery", "system"]
+        let widgets = WidgetSettings()
+        let above = widgets.spots(
+            .above, from: ids, wide: ["calendar", "next"], tall: ["calendar"])
+        #expect(above["calendar"] == .aboveLeft)
+        #expect(above["next"] == .above(column: 2, row: 1))
+        #expect(above["battery"] == .above(column: 2, row: 0))
+        let around = widgets.spots(.around, from: ids, tall: ["calendar"])
+        #expect(around["calendar"] == .leftTop)
+        #expect(around["next"] == .beside(.left, row: 2))
+        #expect(around["weather"] == .beside(.left, row: 3))
+        #expect(around["clock"] == .rightTop)
+    }
+
     @Test func groupingPutsTheWidgetsTogetherAndSplittingGivesEachItsOwnSpot() throws {
         var widgets = try settings(#"{"custom": true, "added": ["clock", "system", "battery"]}"#)
         widgets.apply(.group(["battery", "clock"], .rightTop, before: nil), from: Self.available)

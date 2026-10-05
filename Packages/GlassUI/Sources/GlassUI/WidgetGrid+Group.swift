@@ -20,7 +20,7 @@ extension WidgetGrid {
             let row = (frame.minY - panel.maxY - lift) / step
             return .above(column: Int(column.rounded()), row: Int(row.rounded()))
         }
-        let stop = (panel.maxY - frame.maxY) / (panel.height - rowHeight)
+        let stop = (panel.maxY - frame.maxY) / (panel.height - frame.height)
         return .beside(side, row: Int((stop * CGFloat(Spot.stops - 1)).rounded()))
     }
 

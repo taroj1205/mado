@@ -33,8 +33,8 @@ extension WidgetGrid {
         _ target: Spot, inPanel: [Widget], placed: [Placed], layout: Layout?, beside panel: CGRect
     ) -> Bool {
         if target == .panel {
-            let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
-            return rows <= (layout == .strip ? 1 : maxPanelRows)
+            let tiles = layout == .strip ? inPanel.filter { !$0.isTall } : inPanel
+            return rowCount(of: tiles) <= (layout == .strip ? 1 : maxPanelRows)
         }
         let side = target.side
         let top =
@@ -73,7 +73,11 @@ extension WidgetGrid {
         let movers = members(unit)
         var all = widgets.filter { !unit.contains($0.id) }
         let taken = target != .panel && all.contains { spot(of: $0) == target }
-        guard movers.count == unit.count, !movers.isEmpty, !taken else { return false }
+        let tallInStrip =
+            target == .panel && tileLayout == .strip && movers.contains(where: \.isTall)
+        guard movers.count == unit.count, !movers.isEmpty, !taken, !tallInStrip else {
+            return false
+        }
         all.insert(
             contentsOf: movers,
             at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
@@ -158,7 +162,7 @@ extension WidgetGrid {
     }
 
     func tileFrames(in window: NSWindow) -> [NSRect] {
-        frames(spanning: inPanel.map(\.span)).map { convert($0, to: nil) }
+        frames(of: inPanel).map { convert($0, to: nil) }
             + Self.floatingFrames(of: placed, beside: window.frame).map(window.convertFromScreen)
     }
 
@@ -232,7 +236,7 @@ extension WidgetGrid {
             guard moving != nil, let index = inPanel.firstIndex(where: { $0.id == dragged }) else {
                 return nil
             }
-            let frames = frames(spanning: inPanel.map(\.span))
+            let frames = frames(of: inPanel)
             return (spot, window.convertToScreen(convert(frames[index], to: nil)))
         }
         let frames = Self.floatingFrames(of: placed, beside: window.frame)

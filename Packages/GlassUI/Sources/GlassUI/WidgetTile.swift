@@ -24,6 +24,8 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let month = WidgetMonth()
+    let countdown = NSTextField(labelWithString: "")
     private lazy var trackPlacement = [
         track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
         track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -87,6 +89,7 @@ final class WidgetTile: NSView {
         box.autoresizingMask = [.width, .height]
         addSubview(box)
         arrangeLines()
+        arrangeCalendar()
         arrangeEditing()
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
@@ -144,7 +147,7 @@ final class WidgetTile: NSView {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
-        case .loading, .notice, .permission, .unavailable: break
+        case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
@@ -177,20 +180,6 @@ final class WidgetTile: NSView {
         NSAccessibilityCustomAction(name: name) { [weak self] in
             self?.onSkip?(skip)
             return true
-        }
-    }
-
-    private func showMeters(_ readings: [WidgetGrid.Meter]) {
-        if meters.arrangedSubviews.count != readings.count {
-            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for _ in readings {
-                let meter = WidgetMeter()
-                meters.addArrangedSubview(meter)
-                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
-            }
-        }
-        for (view, meter) in zip(meters.arrangedSubviews, readings) {
-            (view as? WidgetMeter)?.show(meter)
         }
     }
 

@@ -23,19 +23,25 @@ extension WidgetGallery {
         public let summary: String
         public let group: Group
         public let isWide: Bool
+        public let isTall: Bool
 
         public var placeholder: WidgetGrid.Widget {
             .init(
                 id: id, name: name, content: .unavailable(title: name, summary: summary),
-                action: "", spoken: "\(name): \(summary)", isWide: isWide)
+                action: "", spoken: "\(name): \(summary)", isWide: isWide,
+                isTall: isTall)
         }
 
-        public init(id: String, name: String, summary: String, group: Group, isWide: Bool = false) {
+        public init(
+            id: String, name: String, summary: String, group: Group, isWide: Bool = false,
+            isTall: Bool = false
+        ) {
             self.id = id
             self.name = name
             self.summary = summary
             self.group = group
             self.isWide = isWide
+            self.isTall = isTall
         }
 
         func matches(_ words: String) -> Bool {

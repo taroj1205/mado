@@ -24,7 +24,7 @@ extension AppDelegate {
         let settings = WidgetSettings.load(from: modules)
         launcherView.widgetSpots = settings.spots(
             WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids,
-            wide: Widgets.wide)
+            wide: Widgets.wide, tall: Widgets.tall)
         launcherView.widgetSizes = settings.sizes(from: Widgets.ids)
     }
 

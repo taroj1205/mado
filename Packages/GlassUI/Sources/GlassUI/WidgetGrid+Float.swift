@@ -4,7 +4,7 @@ extension WidgetGrid {
     typealias Placed = (widget: Widget, spot: Spot)
 
     struct Block {
-        let cells: [(row: Int, columns: Range<Int>)]
+        let cells: [Cell]
         let width: Int
         let rows: Int
         let column: Int
@@ -13,7 +13,7 @@ extension WidgetGrid {
         init(of group: [Widget], at spot: Spot) {
             cells = WidgetGrid.cells(of: group)
             width = cells.map(\.columns.upperBound).max() ?? 1
-            rows = (cells.last?.row ?? 0) + 1
+            rows = max(WidgetGrid.rowCount(of: group), 1)
             column = min(spot.column, max(WidgetGrid.columns - width, 0))
             row = min(spot.row, max(Spot.rowsAbove - rows, 0))
         }
@@ -44,7 +44,7 @@ extension WidgetGrid {
         switch spot.side {
         case .panel: []
         case .above: shelf(group, at: spot, over: panel)
-        case .left, .right: rail(of: group.count, at: spot, beside: panel)
+        case .left, .right: rail(group, at: spot, beside: panel)
         }
     }
 
@@ -58,23 +58,24 @@ extension WidgetGrid {
         let block = Block(of: group, at: spot)
         return block.cells.map { cell in
             let column = CGFloat(block.column + cell.columns.lowerBound)
-            let row = CGFloat(block.row + block.rows - 1 - cell.row)
+            let row = CGFloat(block.row + block.rows - cell.rows.upperBound)
             return CGRect(
                 x: panel.minX + column * (width + floatingGap), y: panel.maxY + lift + row * step,
-                width: CGFloat(cell.columns.count) * (width + floatingGap) - floatingGap,
-                height: rowHeight)
+                width: extent(of: cell.columns.count, size: width, gap: floatingGap),
+                height: extent(of: cell.rows.count, size: rowHeight, gap: floatingGap))
         }
     }
 
-    private static func rail(of count: Int, at spot: Spot, beside panel: CGRect) -> [CGRect] {
-        let step = rowHeight + floatingGap
+    private static func rail(_ group: [Widget], at spot: Spot, beside panel: CGRect) -> [CGRect] {
         let left = spot.side == .left ? panel.minX - sideGap - sideWidth : panel.maxX + sideGap
-        let travel = max(panel.height - (CGFloat(count) * step - floatingGap), 0)
-        let top = panel.maxY - travel * CGFloat(spot.row) / CGFloat(Spot.stops - 1)
-        return (0..<count).map { position in
-            CGRect(
-                x: left, y: top - rowHeight - CGFloat(position) * step, width: sideWidth,
-                height: rowHeight)
+        let heights = group.map { extent(of: $0.rows, size: rowHeight, gap: floatingGap) }
+        let height = heights.reduce(0, +) + CGFloat(max(group.count - 1, 0)) * floatingGap
+        let travel = max(panel.height - height, 0)
+        var bottom = panel.maxY - travel * CGFloat(spot.row) / CGFloat(Spot.stops - 1)
+        return heights.map { height in
+            bottom -= height
+            defer { bottom -= floatingGap }
+            return CGRect(x: left, y: bottom, width: sideWidth, height: height)
         }
     }
 
