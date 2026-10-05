@@ -46,10 +46,16 @@ public struct PasteTarget {
 
     public func action(pasting text: String) -> CommandAction {
         CommandAction(id: "paste", title: title) {
-            let item = NSPasteboardItem()
-            item.setString(text, forType: .string)
-            try await paste([item])
+            try await insert(text)
         }
+    }
+
+    public func insert(_ text: String) async throws {
+        try await activate()
+        guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
+        let insertion = TextInsertion.standard
+        let inserted = try insertion.paste(text)
+        Task { await insertion.restore(inserted) }
     }
 
     public func paste(_ items: [any NSPasteboardWriting]) async throws {

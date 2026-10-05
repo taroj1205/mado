@@ -201,6 +201,28 @@ import Testing
         #expect(pasteboard.string(forType: .string) == "copied meanwhile")
     }
 
+    @Test func pastesPlainTextAndPutsTheOldCopyBack() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        var posted: [CGEvent] = []
+        var pastedText: String?
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
+        ) { events in
+            posted = events
+            pastedText = pasteboard.string(forType: .string)
+        }
+
+        let inserted = try insertion.paste("{date} {cursor}")
+        await insertion.restore(inserted)
+
+        let paste = Int64(try PasteTarget.commandV()[0].getIntegerValueField(.keyboardEventKeycode))
+        #expect(Self.keys(posted) == [paste])
+        #expect(pastedText == "{date} {cursor}")
+        #expect(pasteboard.string(forType: .string) == "old")
+    }
+
     @Test func undoRemovesTheTextAndTypesTheKeywordAgain() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }

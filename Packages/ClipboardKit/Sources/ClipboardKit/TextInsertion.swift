@@ -71,8 +71,25 @@ public struct TextInsertion {
         if isCurrent: @MainActor () async -> Bool
     ) async throws -> Inserted? {
         let changeCount = pasteboard.changeCount
-        let saved = pasteboard.pasteboardItems?.map(Self.copy) ?? []
+        let saved = savedItems()
         guard await isCurrent() else { return nil }
+        return try put(expansion, replacing: typed, saved: saved, changeCount: changeCount)
+    }
+
+    public func paste(_ text: String) throws -> Inserted {
+        let plain = SnippetTemplate.Expansion(text: text, caretBack: 0, fieldRanges: [])
+        let changeCount = pasteboard.changeCount
+        return try put(plain, replacing: "", saved: savedItems(), changeCount: changeCount)
+    }
+
+    private func savedItems() -> [NSPasteboardItem] {
+        pasteboard.pasteboardItems?.map(Self.copy) ?? []
+    }
+
+    private func put(
+        _ expansion: SnippetTemplate.Expansion, replacing typed: String,
+        saved: [NSPasteboardItem], changeCount: Int
+    ) throws -> Inserted {
         let delete = try Keystrokes.press(CGKeyCode(kVK_Delete), flags: [], times: typed.count)
         let caretBack = expansion.caretBack <= Self.keyLimit ? expansion.caretBack : 0
         let back = try Keystrokes.press(
