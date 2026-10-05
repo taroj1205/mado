@@ -23,6 +23,7 @@ final class SettingsPageController: NSViewController {
     var details: [(label: NSTextField, text: () -> String)] = []
     private var moduleToggle: NSView?
     let spotlight = SettingsSpotlight()
+    private(set) var shown: SettingsFinder.Shown?
 
     var tabTitle: String? {
         page.tabs.count > 1 ? page.tabs[tab].title : nil
@@ -101,7 +102,9 @@ final class SettingsPageController: NSViewController {
     }
 
     func reload() {
-        var sections = page.tabs[tab].sections?(context) ?? []
+        let built = page.tabs[tab].sections?(context) ?? []
+        shown = .init(page: page.title, tab: page.tabs[tab].title, sections: built)
+        var sections = built
         spotlight.reset(moduleRow: moduleRowID, moduleOff: isModuleOff)
         if let module = page.module {
             let toggle = moduleRow(module)

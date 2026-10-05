@@ -42,9 +42,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: addWidgets, speechModels: speechModels)
-        tabs = Self.pages(context)
-        sidebar = SettingsSidebar(finder: SettingsFinder(context: context))
-        let window = Self.window(showing: Self.split(sidebar, tabs))
+        let pages = Self.pages(context)
+        tabs = pages
+        let finder = SettingsFinder(context: context) {
+            pages.tabViewItems.compactMap { ($0.viewController as? SettingsPageController)?.shown }
+        }
+        sidebar = SettingsSidebar(finder: finder)
+        let window = Self.window(showing: Self.split(sidebar, pages))
         super.init(window: window)
         sidebar.delegate = self
         window.delegate = self

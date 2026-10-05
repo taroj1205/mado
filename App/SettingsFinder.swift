@@ -5,6 +5,12 @@ import SearchKit
 
 @MainActor
 final class SettingsFinder {
+    struct Shown {
+        let page: String
+        let tab: String
+        let sections: [SettingsSection]
+    }
+
     private static let otherWords: [String: [String]] = [
         "Launcher hotkey": ["shortcut"],
         "Launch at login": ["startup", "login item"],
@@ -25,6 +31,7 @@ final class SettingsFinder {
     private static let separator = "\u{1F}"
 
     private let context: SettingsPage.Context
+    private let shown: () -> [Shown]
     private var history: SettingsSearch
     private var entries: [SettingsSearch.Entry] = []
     private var places: [SettingsSearch.Place] = []
@@ -36,8 +43,9 @@ final class SettingsFinder {
         return history.recentSuggestions(in: entries)
     }
 
-    init(context: SettingsPage.Context) {
+    init(context: SettingsPage.Context, shown: @escaping () -> [Shown]) {
         self.context = context
+        self.shown = shown
         history = SettingsSearch.load(from: context.modules)
     }
 
@@ -83,6 +91,7 @@ final class SettingsFinder {
         entries = []
         places = []
         keys = [:]
+        let live = shown()
         for page in SettingsPage.all {
             let place = SettingsSearch.Place(page: page.title, tab: nil)
             places.append(place)
@@ -91,13 +100,14 @@ final class SettingsFinder {
                 entries.append(.init(id: id, place: place, section: nil, label: module.name))
             }
             for tab in page.tabs {
-                index(tab, of: page)
+                index(tab, of: page, live: live)
             }
         }
     }
 
-    private func index(_ tab: SettingsPage.Tab, of page: SettingsPage) {
-        guard let sections = tab.sections?(context) else { return }
+    private func index(_ tab: SettingsPage.Tab, of page: SettingsPage, live: [Shown]) {
+        let built = live.first { $0.page == page.title && $0.tab == tab.title }?.sections
+        guard let sections = built ?? tab.sections?(context) else { return }
         let tabTitle = page.tabs.count > 1 ? tab.title : nil
         let place = SettingsSearch.Place(page: page.title, tab: tabTitle)
         if tabTitle != nil {

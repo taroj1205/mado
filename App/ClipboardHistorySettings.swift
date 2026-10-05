@@ -28,7 +28,7 @@ final class ClipboardHistorySettings: NSObject {
 
     private let logger = Log.logger("Settings")
     private let modules: ModuleManager?
-    private let sizes = NSHashTable<NSTextField>.weakObjects()
+    private weak var size: NSTextField?
 
     var section: SettingsSection {
         SettingsSection(
@@ -46,7 +46,7 @@ final class ClipboardHistorySettings: NSObject {
     var clearSection: SettingsSection {
         let label = NSTextField(labelWithString: "")
         label.textColor = .secondaryLabelColor
-        sizes.add(label)
+        size = label
         Task { await showSize() }
         let clear = NSButton(
             title: "Clear History…", target: self, action: #selector(confirmClear))
@@ -161,9 +161,7 @@ final class ClipboardHistorySettings: NSObject {
     private func showSize() async {
         do {
             let usage = try await ClipboardStore.standard().usage()
-            for label in sizes.allObjects {
-                label.stringValue = Self.title(usage)
-            }
+            size?.stringValue = Self.title(usage)
         } catch {
             logger.error("Reading the clipboard history size failed: \(error, privacy: .public)")
         }
