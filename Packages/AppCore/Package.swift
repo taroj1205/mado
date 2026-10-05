@@ -9,7 +9,7 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .target(name: "AppCore", dependencies: []),
+        .target(name: "AppCore", dependencies: [], resources: [.process("SpeechModels.json")]),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
     ]
 )

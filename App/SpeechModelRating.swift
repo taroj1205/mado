@@ -10,6 +10,9 @@ final class SpeechModelRating: NSView {
     private static let radius: CGFloat = 2
     private static let half: CGFloat = 0.5
 
+    private static let measured = "Measured on 10 test recordings"
+    private static let estimated = "Estimated from the model’s size"
+
     private let value: Int
 
     override var intrinsicContentSize: NSSize {
@@ -18,9 +21,11 @@ final class SpeechModelRating: NSView {
             height: Self.segment.height)
     }
 
-    init(_ level: SpeechModel.Level, named name: String) {
+    init(_ level: SpeechModel.Level, named name: String, measured: Bool) {
         value = level.rawValue
         super.init(frame: .zero)
+        toolTip = measured ? Self.measured : Self.estimated
+        setAccessibilityHelp(toolTip)
         setAccessibilityElement(true)
         setAccessibilityRole(.levelIndicator)
         setAccessibilityLabel(name)

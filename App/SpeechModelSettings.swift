@@ -1,11 +1,10 @@
 import AppCore
 import AppKit
-import GlassUI
 import os
 
 @MainActor
 final class SpeechModelSettings: NSObject {
-    private final class Download {
+    final class Download {
         let task: Task<Void, Never>
         var fraction = 0.0
         weak var bar: NSProgressIndicator?
@@ -16,161 +15,51 @@ final class SpeechModelSettings: NSObject {
         }
     }
 
-    private static let title = "Speech models — all run on this Mac"
-    private static let spacing: CGFloat = 8
-    private static let padding: CGFloat = 12
-    private static let speedWidth: CGFloat = 48
-    private static let accuracyWidth: CGFloat = 56
-    private static let languagesWidth: CGFloat = 76
-    private static let actionWidth: CGFloat = 104
-    private static let percentWidth: CGFloat = 32
-    private static let textSize: CGFloat = 12
-    private static let buttonHeight: CGFloat = 26
-    private static let deleteSize: CGFloat = 12
-    private static let cancelSize: CGFloat = 10
-    private static let named = ["EN", "JA"]
+    private static let title = "Speech models"
 
     private let logger = Log.logger("Settings")
-    private let modules: ModuleManager?
-    private let store = SpeechModelStore.standard
-    private var downloads: [String: Download] = [:]
-    var onChange: (() -> Void)?
+    let modules: ModuleManager?
+    let store = SpeechModelStore.standard
+    var downloads: [String: Download] = [:]
+    var filter = SpeechModelFilter()
+    weak var searchField: NSSearchField?
+    weak var summary: NSStackView?
+    weak var list: NSStackView?
+    weak var countLabel: NSTextField?
+    weak var filterButton: NSPopUpButton?
 
     var section: SettingsSection {
-        let current = store.model(preferring: DictationSettings.load(from: modules).model)
-        return SettingsSection(
-            Self.title, above: header(),
-            SpeechModel.all.map { row(for: $0, inUse: $0 == current) })
+        let content = makeContent()
+        refreshList()
+        return SettingsSection(Self.title, content: content)
     }
 
     init(modules: ModuleManager?) {
         self.modules = modules
     }
 
-    private static func text(
-        _ string: String, weight: NSFont.Weight = .regular, color: NSColor = .secondaryLabelColor
-    ) -> NSTextField {
-        let label = NSTextField(labelWithString: string)
-        label.font = .systemFont(ofSize: textSize, weight: weight)
-        label.textColor = color
-        return label
-    }
-
-    private static func sized(_ view: NSView, _ width: CGFloat) -> NSView {
-        view.widthAnchor.constraint(equalToConstant: width).isActive = true
-        return view
-    }
-
-    private static func percentText(_ fraction: Double) -> String {
-        fraction.formatted(.percent.precision(.fractionLength(0)))
-    }
-
-    private func header() -> NSView {
-        let model = Self.text("Model", weight: .semibold)
-        model.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let header = NSStackView(views: [
-            model,
-            Self.sized(Self.text("Speed", weight: .semibold), Self.speedWidth),
-            Self.sized(Self.text("Accuracy", weight: .semibold), Self.accuracyWidth),
-            Self.sized(Self.text("Languages", weight: .semibold), Self.languagesWidth),
-            Self.sized(NSView(), Self.actionWidth),
-        ])
-        header.spacing = Self.spacing
-        header.distribution = .fill
-        header.edgeInsets = NSEdgeInsets(
-            top: 0, left: Self.padding, bottom: 0, right: Self.padding)
-        return header
-    }
-
-    private func row(for model: SpeechModel, inUse: Bool) -> SettingsSection.Row {
-        let languages = (Self.named + ["+\(model.languages - Self.named.count)"])
-            .joined(separator: " · ")
-        let control = NSStackView(views: [
-            Self.sized(SpeechModelRating(model.speed, named: "Speed"), Self.speedWidth),
-            Self.sized(SpeechModelRating(model.accuracy, named: "Accuracy"), Self.accuracyWidth),
-            Self.sized(Self.text(languages), Self.languagesWidth),
-            Self.sized(action(for: model, inUse: inUse), Self.actionWidth),
-        ])
-        control.spacing = Self.spacing
-        control.setHuggingPriority(.defaultHigh, for: .horizontal)
-        let size = ByteCountFormatter()
-        size.countStyle = .file
-        size.isAdaptive = false
-        let detail = ([size.string(fromByteCount: model.size)] + [model.note].compactMap(\.self))
-            .joined(separator: " · ")
-        return SettingsSection.Row(model.name, control, example: nil) { detail }
-    }
-
-    private func action(for model: SpeechModel, inUse: Bool) -> NSView {
-        let views: [NSView]
-        if let download = downloads[model.id] {
-            views = progress(of: download, for: model)
-        } else if !store.isInstalled(model) {
-            views = [pill("Download", symbol: "arrow.down.to.line", for: model, #selector(fetch))]
-        } else if inUse {
-            views = [Self.text("In use", weight: .semibold, color: .systemGreen), delete(model)]
-        } else {
-            let use = pill("Use", symbol: nil, for: model, #selector(use))
-            use.isEnabled = modules != nil
-            views = [use, delete(model)]
+    func refreshList() {
+        guard let list else { return }
+        let inUse = store.model(preferring: DictationSettings.load(from: modules).model)
+        let shown = SpeechModel.all.filter { model in
+            filter.matches(model, isInstalled: store.isInstalled(model))
         }
-        let stack = NSStackView()
-        stack.setViews(views, in: .trailing)
-        stack.spacing = Self.spacing
-        return stack
-    }
-
-    private func progress(of download: Download, for model: SpeechModel) -> [NSView] {
-        let bar = NSProgressIndicator()
-        bar.style = .bar
-        bar.controlSize = .small
-        bar.isIndeterminate = false
-        bar.maxValue = 1
-        bar.doubleValue = download.fraction
-        bar.setAccessibilityLabel("Downloading \(model.name)")
-        let percent = Self.text(Self.percentText(download.fraction))
-        percent.font = .monospacedDigitSystemFont(ofSize: Self.textSize, weight: .regular)
-        percent.alignment = .right
-        download.bar = bar
-        download.percent = percent
-        let cancel = symbolButton(
-            "xmark", size: Self.cancelSize, label: "Cancel download of \(model.name)",
-            for: model, #selector(cancel))
-        return [bar, Self.sized(percent, Self.percentWidth), cancel]
-    }
-
-    private func pill(
-        _ title: String, symbol: String?, for model: SpeechModel, _ action: Selector
-    ) -> PillButton {
-        let button = PillButton(
-            title, height: Self.buttonHeight, symbol: symbol, fill: .tertiarySystemFill,
-            text: .labelColor)
-        button.setAccessibilityLabel("\(title) \(model.name)")
-        button.identifier = NSUserInterfaceItemIdentifier(model.id)
-        button.target = self
-        button.action = action
-        return button
-    }
-
-    private func delete(_ model: SpeechModel) -> NSButton {
-        symbolButton(
-            "trash", size: Self.deleteSize, label: "Delete \(model.name)", for: model,
-            #selector(remove))
-    }
-
-    private func symbolButton(
-        _ symbol: String, size: CGFloat, label: String, for model: SpeechModel,
-        _ action: Selector
-    ) -> NSButton {
-        let button = NSButton(
-            image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage(),
-            target: self, action: action)
-        button.isBordered = false
-        button.contentTintColor = .secondaryLabelColor
-        button.symbolConfiguration = .init(pointSize: size, weight: .medium)
-        button.identifier = NSUserInterfaceItemIdentifier(model.id)
-        button.setAccessibilityLabel(label)
-        return button
+        let box =
+            shown.isEmpty
+            ? emptyState()
+            : SettingsPageController.box(
+                shown.map { model in rowView(for: model, inUse: model == inUse) })
+        list.setViews([box], in: .top)
+        box.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
+        if let summary {
+            let card = summaryCard(inUse: inUse)
+            summary.setViews([card], in: .top)
+            card.widthAnchor.constraint(equalTo: summary.widthAnchor).isActive = true
+        }
+        let total = SpeechModel.all.count
+        countLabel?.stringValue =
+            shown.count == total ? "\(total) models" : "\(shown.count) of \(total)"
+        refreshFilterButton()
     }
 
     private func model(for sender: NSButton) -> SpeechModel? {
@@ -191,7 +80,28 @@ final class SpeechModelSettings: NSObject {
     }
 
     @objc
-    private func fetch(_ sender: NSButton) {
+    func searched(_ field: NSSearchField) {
+        filter.query = field.stringValue
+        refreshList()
+    }
+
+    @objc
+    func showAll() {
+        filter = SpeechModelFilter()
+        searchField?.stringValue = ""
+        refreshList()
+    }
+
+    @objc
+    func clearFilters() {
+        let query = filter.query
+        filter = SpeechModelFilter()
+        filter.query = query
+        refreshList()
+    }
+
+    @objc
+    func fetch(_ sender: NSButton) {
         guard let model = model(for: sender), downloads[model.id] == nil else { return }
         let task = Task { [weak self, store] in
             do {
@@ -207,29 +117,29 @@ final class SpeechModelSettings: NSObject {
                 self?.logger.debug("Downloading \(model.id, privacy: .public) was cancelled")
             }
             self?.downloads[model.id] = nil
-            self?.onChange?()
+            self?.refreshList()
         }
         downloads[model.id] = Download(task: task)
-        onChange?()
+        refreshList()
     }
 
     @objc
-    private func cancel(_ sender: NSButton) {
+    func cancel(_ sender: NSButton) {
         guard let model = model(for: sender) else { return }
         downloads[model.id]?.task.cancel()
     }
 
     @objc
-    private func use(_ sender: NSButton) {
+    func use(_ sender: NSButton) {
         guard let model = model(for: sender) else { return }
         var settings = DictationSettings.load(from: modules)
         settings.model = model.id
         settings.save(to: modules)
-        onChange?()
+        refreshList()
     }
 
     @objc
-    private func remove(_ sender: NSButton) {
+    func remove(_ sender: NSButton) {
         guard let model = model(for: sender) else { return }
         do {
             try store.delete(model)
@@ -239,6 +149,6 @@ final class SpeechModelSettings: NSObject {
                 "Deleting \(model.id, privacy: .public) failed: \(error, privacy: .public)")
             sender.presentError(error)
         }
-        onChange?()
+        refreshList()
     }
 }

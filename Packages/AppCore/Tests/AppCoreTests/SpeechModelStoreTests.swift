@@ -20,10 +20,8 @@ import Testing
         return file
     }
 
-    private func model(sha256: String) -> SpeechModel {
-        SpeechModel(
-            id: "test", name: "Test", file: "ggml-test.bin", size: Int64(contents.count),
-            sha256: sha256, speed: .low, accuracy: .low, languages: 1, note: nil)
+    private func model(sha256: String) throws -> SpeechModel {
+        try SpeechModel(file: "ggml-tiny.bin", size: Int64(contents.count), sha256: sha256)
     }
 
     private func install(_ model: SpeechModel) throws {
@@ -39,7 +37,7 @@ import Testing
     }
 
     @Test func aDownloadMatchingItsHashIsInstalled() async throws {
-        let model = model(
+        let model = try model(
             sha256: "29a6a9f19463c8e9c592d2f06fa009fe46e351b618667e95eac63df77c56f404")
         #expect(try await download(model, from: source()) == [1])
         #expect(store.isInstalled(model))
@@ -53,7 +51,7 @@ import Testing
     }
 
     @Test func aDownloadWithAnotherHashIsNotInstalled() async throws {
-        let model = model(sha256: String(repeating: "0", count: 64))
+        let model = try model(sha256: String(repeating: "0", count: 64))
         await #expect(throws: SpeechModelStore.Failure.corrupt) {
             try await download(model, from: source())
         }
@@ -61,7 +59,7 @@ import Testing
     }
 
     @Test func aMissingSourceIsNotInstalled() async throws {
-        let model = model(sha256: "")
+        let model = try model(sha256: "")
         await #expect(throws: (any Error).self) {
             try await download(model, from: root.appending(path: "missing.bin"))
         }
@@ -69,8 +67,8 @@ import Testing
     }
 
     @Test func thePreferredModelIsUsedWhileInstalled() throws {
-        let small = SpeechModel.all[0]
-        let turbo = SpeechModel.all[2]
+        let small = try #require(SpeechModel.all.first { $0.id == "small" })
+        let turbo = try #require(SpeechModel.all.first { $0.id == "large-v3-turbo" })
         #expect(store.model(preferring: turbo.id) == nil)
         try install(small)
         #expect(store.model(preferring: turbo.id) == small)
@@ -79,6 +77,40 @@ import Testing
         #expect(store.model(preferring: turbo.id) == turbo)
         try store.delete(turbo)
         #expect(store.model(preferring: turbo.id) == small)
+    }
+
+    @Test func theCatalogListsEveryWhisperFile() {
+        let all = SpeechModel.all
+        #expect(all.count == 33)
+        #expect(Set(all.map(\.name)).count == all.count)
+        #expect(all.allSatisfy { $0.sha256.count == 64 && $0.size > 0 })
+        #expect(all.filter(\.isRecommended).map(\.id) == ["large-v3-turbo"])
+        #expect(all.filter(\.isMeasured).map(\.id) == ["large-v3-turbo", "small"])
+        #expect(all.first?.isRecommended == true)
+    }
+
+    @Test func aFileNameGivesTheModelItsNameAndRatings() throws {
+        let english = try SpeechModel(file: "ggml-small.en-q5_1.bin", size: 1, sha256: "")
+        #expect(english.id == "small.en-q5_1")
+        #expect(english.name == "Whisper Small English Q5")
+        #expect(english.isEnglishOnly && english.isCompressed && !english.isMeasured)
+        #expect(english.languages == 1)
+        #expect(english.accuracy == .low)
+        #expect(english.memory == nil)
+        #expect(english.isFiveBit)
+        #expect(
+            english.summary
+                == "Fast. Good for English, weaker in Japanese. English only. "
+                + "A third of the size, slightly less accurate.")
+        let turbo = try SpeechModel(file: "ggml-large-v3-turbo-q8_0.bin", size: 1, sha256: "")
+        #expect(turbo.name == "Whisper Large v3 Turbo Q8")
+        #expect(turbo.accuracy == .highest && turbo.languages == 100 && !turbo.isRecommended)
+        #expect(!turbo.isFiveBit && turbo.summary.hasSuffix("much faster. Half the size."))
+        let full = try SpeechModel(file: "ggml-large-v3-turbo.bin", size: 1, sha256: "")
+        #expect(full.memory == 1_900_000_000 && full.speed == .medium)
+        #expect(throws: (any Error).self) {
+            try SpeechModel(file: "ggml-huge.bin", size: 1, sha256: "")
+        }
     }
 
     @Test func everyModelIsPinnedToARevision() throws {

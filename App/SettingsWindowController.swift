@@ -146,7 +146,6 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         inputDefaults.onChange = { [weak self] in self?.reload() }
         remaps.onChange = { [weak self] in self?.reload() }
         enterGuard.onChange = { [weak self] in self?.reload() }
-        speechModels.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
