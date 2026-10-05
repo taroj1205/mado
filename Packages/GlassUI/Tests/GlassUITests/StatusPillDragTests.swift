@@ -81,7 +81,9 @@ import Testing
         let disk = try #require(view.statusBar.views.first)
         _ = try drag(disk)
         view.statusBar.holdsMouse = { false }
-        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        view.pills = pills(["disk", "thermal"], value: "2")
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal"])
+        view.pills = pills(["disk", "thermal", "vpn"], value: "2")
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal", "vpn"])
     }
 

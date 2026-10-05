@@ -51,7 +51,7 @@ public final class StatusBar: NSScrollView {
             if !holdsMouse() {
                 dragStart = []
             }
-            if dragStart.isEmpty, pills.map(\.id) != oldValue.map(\.id) {
+            if dragStart.isEmpty, shownIDs != pills.map(\.id) {
                 rebuild()
                 return
             }
@@ -213,10 +213,15 @@ public final class StatusBar: NSScrollView {
         }
     }
 
-    private func makeView(for pill: Pill, at index: Int) -> StatusPill {
+    private func makeView(for pill: Pill) -> StatusPill {
         let view = StatusPill()
         view.identifier = NSUserInterfaceItemIdentifier(pill.id)
-        view.onPress = { [weak self] in self?.onPress?(index) }
+        view.onPress = { [weak self] in
+            guard let self, let index = pills.firstIndex(where: { $0.id == pill.id }) else {
+                return
+            }
+            onPress?(index)
+        }
         view.onDrag = { [weak self, weak view] point in
             if let view { self?.drag(view, to: point) }
         }
@@ -229,8 +234,8 @@ public final class StatusBar: NSScrollView {
 
     private func rebuild() {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for (index, pill) in pills.enumerated() {
-            stack.addArrangedSubview(makeView(for: pill, at: index))
+        for pill in pills {
+            stack.addArrangedSubview(makeView(for: pill))
         }
         stack.addArrangedSubview(customise)
     }
