@@ -99,7 +99,6 @@ public final class LoupeKeysEditor: NSView {
     private func render() {
         for (direction, cap) in caps {
             cap.letter = keys.label(of: direction)
-            cap.isDimmed = !keys.isEnabled
         }
         note.stringValue = problem ?? Self.prompt
         note.textColor = problem == nil ? .secondaryLabelColor : .systemOrange

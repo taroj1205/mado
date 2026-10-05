@@ -57,6 +57,7 @@ import Testing
 
     @Test func keysNudgePickAndCancel() throws {
         let panel = LoupePanel(frame: Self.screen)
+        panel.keys.choose(.vim)
         let expected: [(Int, ColourLoupe.Input?)] = [
             (kVK_LeftArrow, .nudged(across: -1, down: 0)),
             (kVK_RightArrow, .nudged(across: 1, down: 0)),
@@ -89,6 +90,7 @@ import Testing
     @Test func showsTheReadingAroundTheSampledPixel() throws {
         let display = try #require(NSScreen.screens.first)
         let loupe = ColourLoupe()
+        loupe.keys.choose(.vim)
         loupe.pointer = { CGPoint(x: display.frame.midX, y: display.frame.midY) }
         var inputs: [ColourLoupe.Input] = []
         loupe.onInput = { inputs.append($0) }
