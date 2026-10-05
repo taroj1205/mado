@@ -3,14 +3,16 @@ import Foundation
 import ScreenCaptureKit
 
 public enum ScreenSnapshot {
-    public static func capture() async throws -> [CGDirectDisplayID: CGImage] {
+    public static func capture(
+        displays wanted: Set<CGDirectDisplayID>
+    ) async throws -> [CGDirectDisplayID: CGImage] {
         let content = try await SCShareableContent.excludingDesktopWindows(
             false, onScreenWindowsOnly: true)
         let own = content.applications.filter { application in
             application.processID == ProcessInfo.processInfo.processIdentifier
         }
         var images: [CGDirectDisplayID: CGImage] = [:]
-        for display in content.displays {
+        for display in content.displays where wanted.contains(display.displayID) {
             let filter = SCContentFilter(
                 display: display, excludingApplications: own, exceptingWindows: [])
             let scale = CGFloat(filter.pointPixelScale)

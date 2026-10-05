@@ -15,6 +15,15 @@ public struct PixelLoupe {
             self.frame = frame
         }
 
+        public func crop(_ area: CGRect) -> CGImage? {
+            guard area.width > 0, area.height > 0, frame.contains(area) else { return nil }
+            return image.cropping(
+                to: CGRect(
+                    x: (area.minX - frame.minX) * scale, y: (frame.maxY - area.maxY) * scale,
+                    width: area.width * scale, height: area.height * scale
+                ).integral)
+        }
+
         func holds(_ point: CGPoint) -> Bool {
             point.x >= frame.minX && point.x < frame.maxX && point.y > frame.minY
                 && point.y <= frame.maxY

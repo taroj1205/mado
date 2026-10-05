@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
     let colourPicker = ColourPicker()
+    let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
     let menuBar = MenuBarItems()
     var enteredScope = Scope.calculator
@@ -98,11 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             LauncherHotKeys.pauseKeysIfOff(in: manager)
             let library = try Snippets.registered(in: manager)
             snippets = library
-            let openHistory = CalculatorHistory.command { [weak self] in
-                self?.openCalculatorHistory()
-            }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
-            try (SystemCommands.all + appCommands + [openHistory, newLink, colourPicker.command])
+            try (SystemCommands.all + appCommands + [newLink, colourPicker.command])
                 .forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
