@@ -1,66 +1,13 @@
+public import AppCore
 public import AppKit
 
 public final class WidgetGrid: NSView {
-    public struct Widget: Sendable, Equatable {
-        static let wideSpan = 2
-
-        public let id: String
-        public let name: String
-        public let content: Content
-        public let action: String
-        public let spoken: String
-        public let isWide: Bool
-
-        var span: Int {
-            isWide ? Self.wideSpan : 1
-        }
-
-        var track: Track? {
-            if case .track(let playing) = content { playing } else { nil }
-        }
-
-        var isUnavailable: Bool {
-            if case .unavailable = content { true } else { false }
-        }
-
-        public init(
-            id: String, name: String, content: Content, action: String, spoken: String,
-            isWide: Bool = false
-        ) {
-            self.id = id
-            self.name = name
-            self.content = content
-            self.action = action
-            self.spoken = spoken
-            self.isWide = isWide
-        }
-
-        public init(
-            id: String, name: String, value: String, detail: String, action: String,
-            spoken: String, symbol: String? = nil, span: Span? = nil
-        ) {
-            self.init(
-                id: id, name: name,
-                content: .value(value, detail: detail, symbol: symbol, span: span),
-                action: action, spoken: spoken)
-        }
-
-        public init(id: String, name: String, meters: [Meter], action: String, spoken: String) {
-            self.init(
-                id: id, name: name, content: .meters(meters), action: action, spoken: spoken)
-        }
-
-        public init(id: String, name: String, track: Track, action: String, spoken: String) {
-            self.init(
-                id: id, name: name, content: .track(track), action: action, spoken: spoken,
-                isWide: true)
-        }
-    }
-
     public enum Content: Sendable, Equatable {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
+        case month(CalendarMonth)
+        case event(title: String, Event)
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)
         case permission(title: String, request: String, reason: String)
@@ -210,7 +157,7 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = max(Self.cells(spanning: spans).last.map { $0.row + 1 } ?? 0, editing ? 1 : 0)
+        let rows = max(Self.rowCount(of: inPanel), editing ? 1 : 0)
         guard !isHidden, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
@@ -249,7 +196,7 @@ public final class WidgetGrid: NSView {
 
     override public func layout() {
         super.layout()
-        let frames = frames(spanning: spans)
+        let frames = frames(of: inPanel)
         for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
             place(tile, in: frame, tilt: tilt(at: index))
         }

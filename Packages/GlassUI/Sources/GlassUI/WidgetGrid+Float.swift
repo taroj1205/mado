@@ -8,7 +8,8 @@ extension WidgetGrid {
     private static let half: CGFloat = 0.5
 
     static func shelfRows(of placed: [Placed]) -> Int {
-        shelf.map { spot in rows(of: placed.filter { $0.spot == spot }) }.max() ?? 0
+        shelf.map { spot in rowCount(of: placed.filter { $0.spot == spot }.map(\.widget)) }.max()
+            ?? 0
     }
 
     static func floatingFrames(of placed: [Placed], beside panel: CGRect) -> [CGRect] {
@@ -22,11 +23,12 @@ extension WidgetGrid {
 
     private static func shelfFrames(of placed: [Placed], over panel: CGRect) -> [(Int, CGRect)] {
         let step = rowHeight + floatingGap
-        let rows = shelfRows(of: placed)
         let width = (panel.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
         return shelf.flatMap { spot in
             let indices = placed.indices.filter { placed[$0].spot == spot }
-            let cells = cells(of: indices.map { placed[$0].widget })
+            let widgets = indices.map { placed[$0].widget }
+            let cells = cells(of: widgets)
+            let rows = rowCount(of: widgets)
             let free = CGFloat(columns - (cells.map(\.columns.upperBound).max() ?? 0))
             let offset: CGFloat =
                 switch spot.anchor {
@@ -34,47 +36,43 @@ extension WidgetGrid {
                 case .middle: free * half
                 case .end: free
                 }
-            let drop = rows - (cells.last.map { $0.row + 1 } ?? 0)
             return zip(indices, cells).map { index, cell in
                 let column = offset + CGFloat(cell.columns.lowerBound)
-                let row = CGFloat(rows - 1 - drop - cell.row)
                 let frame = CGRect(
                     x: panel.minX + column * (width + floatingGap),
-                    y: panel.maxY + lift + row * step,
-                    width: CGFloat(cell.columns.count) * (width + floatingGap) - floatingGap,
-                    height: rowHeight)
+                    y: panel.maxY + lift + CGFloat(rows - cell.rows.upperBound) * step,
+                    width: extent(of: cell.columns.count, size: width, gap: floatingGap),
+                    height: extent(of: cell.rows.count, size: rowHeight, gap: floatingGap))
                 return (index, frame)
             }
         }
     }
 
     private static func railFrames(of placed: [Placed], beside panel: CGRect) -> [(Int, CGRect)] {
-        let step = rowHeight + floatingGap
-        return [Side.left, .right].flatMap { side in
+        [Side.left, .right].flatMap { side in
             let left = side == .left ? panel.minX - sideGap - sideWidth : panel.maxX + sideGap
             return anchors.flatMap { anchor in
                 let indices = placed.indices.filter { index in
                     placed[index].spot.side == side && placed[index].spot.anchor == anchor
                 }
-                let height = CGFloat(indices.count) * step - floatingGap
-                let top =
+                let heights = indices.map { index in
+                    extent(of: placed[index].widget.rows, size: rowHeight, gap: floatingGap)
+                }
+                let gaps = CGFloat(max(indices.count - 1, 0)) * floatingGap
+                let height = heights.reduce(0, +) + gaps
+                var bottom: CGFloat =
                     switch anchor {
                     case .start: panel.maxY
                     case .middle: panel.midY + height * half
                     case .end: panel.minY + height
                     }
-                return indices.enumerated().map { position, index in
-                    let frame = CGRect(
-                        x: left, y: top - rowHeight - CGFloat(position) * step, width: sideWidth,
-                        height: rowHeight)
-                    return (index, frame)
+                return zip(indices, heights).map { index, height in
+                    bottom -= height
+                    defer { bottom -= floatingGap }
+                    return (index, CGRect(x: left, y: bottom, width: sideWidth, height: height))
                 }
             }
         }
-    }
-
-    private static func rows(of placed: [Placed]) -> Int {
-        cells(of: placed.map(\.widget)).last.map { $0.row + 1 } ?? 0
     }
 
     static func makeFloat(for tile: WidgetTile) -> GlassPanel {

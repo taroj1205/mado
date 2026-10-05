@@ -5,7 +5,7 @@ import GlassUI
 
 @MainActor
 final class CalendarAgenda {
-    private struct Found: Sendable {
+    struct Found: Sendable {
         let event: Agenda.Event
         let colour: NSColor?
         let calendarID: String
@@ -44,21 +44,15 @@ final class CalendarAgenda {
     static let joinKeys = ["⌘", "J"]
     private static let prefix = "agenda."
     private static let allowID = "agenda.allow"
-    private static let joinTitle = "Join Meeting"
-    private static let openTitle = "Open in Calendar"
+    static let joinTitle = "Join Meeting"
+    static let openTitle = "Open in Calendar"
+    private static let events = Events()
 
-    private let events = Events()
-    private var shown: [String: Found] = [:]
-
-    private var allow: CommandAction {
-        CommandAction(id: "allow", title: "Allow") { [weak self] in
-            guard EKEventStore.authorizationStatus(for: .event) == .notDetermined else {
-                NSWorkspace.shared.open(PermissionManager.settingsURL(for: .calendars))
-                return
-            }
-            try await self?.events.requestAccess()
-        }
+    static var hasAccess: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .fullAccess
     }
+
+    private var shown: [String: Found] = [:]
 
     static func owns(_ id: String) -> Bool {
         id.hasPrefix(prefix)
@@ -99,6 +93,33 @@ final class CalendarAgenda {
         return item
     }
 
+    static func allow(titled title: String) -> CommandAction {
+        CommandAction(id: "allow", title: title) {
+            guard EKEventStore.authorizationStatus(for: .event) == .notDetermined else {
+                NSWorkspace.shared.open(PermissionManager.settingsURL(for: .calendars))
+                return
+            }
+            try await events.requestAccess()
+        }
+    }
+
+    static func found(around now: Date) async -> [Found] {
+        guard let span = Agenda.span(around: now, calendar: .current) else { return [] }
+        return await events.found(in: span)
+    }
+
+    static func open(_ found: Found) -> CommandAction {
+        CommandAction(id: "open", title: openTitle) {
+            try show(found)
+        }
+    }
+
+    static func join(_ meeting: Meeting) -> CommandAction {
+        CommandAction(id: "join", title: joinTitle) {
+            guard NSWorkspace.shared.open(meeting.url) else { throw Failure.joinFailed }
+        }
+    }
+
     private static func show(_ found: Found) throws {
         let day = Calendar.current.dateComponents([.year, .month, .day], from: found.event.start)
         let quoted = { (text: String) in
@@ -125,7 +146,7 @@ final class CalendarAgenda {
     }
 
     func sections(at now: Date) async -> [ResultList.Section] {
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
+        guard Self.hasAccess else {
             let request = ResultList.Item(
                 id: Self.allowID, title: "Allow Calendar Access",
                 subtitle: "Mado lists today’s and tomorrow’s events here.", kind: "",
@@ -133,8 +154,7 @@ final class CalendarAgenda {
             return [ResultList.Section(title: Self.title, items: [request])]
         }
         let calendar = Calendar.current
-        guard let span = Agenda.span(around: now, calendar: calendar) else { return [] }
-        let fetched = await events.found(in: span)
+        let fetched = await Self.found(around: now)
         guard !Task.isCancelled else { return [] }
         let found = Dictionary(uniqueKeysWithValues: fetched.map { ($0.event.id, $0) })
         let agenda = Agenda(events: found.values.map(\.event))
@@ -169,18 +189,16 @@ final class CalendarAgenda {
 
     func actions(for id: String) -> [(action: CommandAction, keys: [String])] {
         if id == Self.allowID {
-            return [(allow, LauncherView.Action.primaryKeys)]
+            return [(Self.allow(titled: "Allow"), LauncherView.Action.primaryKeys)]
         }
         guard let picked = shown[id] else { return [] }
-        let open = CommandAction(id: "open", title: Self.openTitle) {
-            try Self.show(picked)
-        }
+        let open = Self.open(picked)
         guard let meeting = picked.event.meeting else {
             return [(open, LauncherView.Action.primaryKeys)]
         }
-        let join = CommandAction(id: "join", title: Self.joinTitle) {
-            guard NSWorkspace.shared.open(meeting.url) else { throw Failure.joinFailed }
-        }
-        return [(join, LauncherView.Action.primaryKeys), (open, LauncherView.Action.secondaryKeys)]
+        return [
+            (Self.join(meeting), LauncherView.Action.primaryKeys),
+            (open, LauncherView.Action.secondaryKeys),
+        ]
     }
 }

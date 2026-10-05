@@ -94,9 +94,12 @@ extension WidgetGrid {
         let available = listed
         let arranged =
             order.isEmpty ? available : order.compactMap { id in available.first { $0.id == id } }
-        let panelWidgets = arranged.filter { spot(of: $0) == .panel }
+        let panelWidgets = arranged.filter { widget in
+            spot(of: widget) == .panel && !(tileLayout == .strip && widget.isTall)
+        }
         let rows =
-            tileLayout == .strip ? Self.cells(of: panelWidgets).count { $0.row == 0 } : nil
+            tileLayout == .strip
+            ? Self.cells(of: panelWidgets).count { $0.rows.lowerBound == 0 } : nil
         let around = Spot.allCases.dropFirst().flatMap { spot in
             arranged.filter { self.spot(of: $0) == spot }
         }
@@ -115,8 +118,6 @@ extension WidgetGrid {
     var fillsPanel: Bool {
         tileLayout == .grid && widgets.contains { spot(of: $0) == .panel }
     }
-
-    var spans: [Int] { inPanel.map(\.span) }
 
     var overhang: CGFloat {
         let rows = CGFloat(Self.shelfRows(of: placed))

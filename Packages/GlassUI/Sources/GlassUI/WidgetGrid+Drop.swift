@@ -50,8 +50,8 @@ extension WidgetGrid {
         _ target: Spot, inPanel: [Widget], placed: [Placed], layout: Layout?, beside panel: CGRect
     ) -> Bool {
         if target == .panel {
-            let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
-            return rows <= (layout == .strip ? 1 : maxPanelRows)
+            let tiles = layout == .strip ? inPanel.filter { !$0.isTall } : inPanel
+            return rowCount(of: tiles) <= (layout == .strip ? 1 : maxPanelRows)
         }
         let side = target.side
         let frames = zip(placed, floatingFrames(of: placed, beside: panel))
@@ -79,7 +79,9 @@ extension WidgetGrid {
 
     func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
         let mover = listed.first { $0.id == id } ?? incoming.flatMap { $0.id == id ? $0 : nil }
-        guard let window = unsafe window, let mover else { return false }
+        guard let window = unsafe window, let mover,
+            !(target == .panel && tileLayout == .strip && mover.isTall)
+        else { return false }
         var all = widgets.filter { $0.id != id }
         all.insert(
             mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
@@ -147,7 +149,7 @@ extension WidgetGrid {
     }
 
     func tileFrames(in window: NSWindow) -> [NSRect] {
-        frames(spanning: inPanel.map(\.span)).map { convert($0, to: nil) }
+        frames(of: inPanel).map { convert($0, to: nil) }
             + Self.floatingFrames(of: placed, beside: window.frame).map(window.convertFromScreen)
     }
 
@@ -204,7 +206,7 @@ extension WidgetGrid {
             guard moving != nil, let index = inPanel.firstIndex(where: { $0.id == dragged }) else {
                 return nil
             }
-            let frames = frames(spanning: inPanel.map(\.span))
+            let frames = frames(of: inPanel)
             return (spot, window.convertToScreen(convert(frames[index], to: nil)))
         }
         let frames = Self.floatingFrames(of: placed, beside: window.frame)

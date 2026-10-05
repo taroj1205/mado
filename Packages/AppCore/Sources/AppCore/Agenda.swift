@@ -11,6 +11,10 @@ public struct Agenda: Sendable, Equatable {
         public let attendees: [String]
         public let meeting: Meeting?
 
+        public var place: String {
+            meeting?.service.rawValue ?? location
+        }
+
         public init(
             id: String, title: String, start: Date, end: Date, isAllDay: Bool = false,
             location: String = "", attendees: [String] = [], meeting: Meeting? = nil
@@ -28,6 +32,11 @@ public struct Agenda: Sendable, Equatable {
         public func hasEnded(at now: Date) -> Bool {
             end <= now
         }
+    }
+
+    public enum Upcoming: Sendable, Equatable {
+        case today(Event)
+        case tomorrow(Event?)
     }
 
     public struct Day: Sendable, Equatable {
@@ -62,7 +71,7 @@ public struct Agenda: Sendable, Equatable {
         (try? PersonNameComponents(name))?.formatted(.name(style: .short)) ?? name
     }
 
-    static func countdown(to start: Date, at now: Date) -> String {
+    public static func countdown(to start: Date, at now: Date) -> String {
         guard start > now else { return "now" }
         let minutes = Int((start.timeIntervalSince(now) / minute).rounded(.up))
         let (hours, rest) = minutes.quotientAndRemainder(dividingBy: minutesPerHour)
@@ -117,12 +126,21 @@ public struct Agenda: Sendable, Equatable {
         events.first { !$0.isAllDay && !$0.hasEnded(at: now) }
     }
 
+    public func upcoming(at now: Date, calendar: Calendar) -> Upcoming {
+        let today = calendar.startOfDay(for: now)
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
+            let after = calendar.date(byAdding: .day, value: 1, to: tomorrow)
+        else { return .tomorrow(nil) }
+        let timed = events.filter { !$0.isAllDay && !$0.hasEnded(at: now) }
+        if let next = timed.first(where: { $0.start < tomorrow }) { return .today(next) }
+        return .tomorrow(timed.first { $0.start >= tomorrow && $0.start < after })
+    }
+
     public func nextMeeting(at now: Date) -> Event? {
         events.first { !$0.isAllDay && !$0.hasEnded(at: now) && $0.meeting != nil }
     }
 
     public func detail(of event: Event, at now: Date) -> String {
-        let place = event.meeting?.service.rawValue ?? event.location
         let more: [String] =
             if event.hasEnded(at: now) {
                 ["ended"]
@@ -131,6 +149,6 @@ public struct Agenda: Sendable, Equatable {
             } else {
                 []
             }
-        return ([place] + more).filter { !$0.isEmpty }.joined(separator: " · ")
+        return ([event.place] + more).filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

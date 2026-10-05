@@ -119,6 +119,25 @@ import Testing
         #expect(Agenda(events: [ended, lunch]).nextMeeting(at: now) == nil)
     }
 
+    @Test func upNextIsTheNextTimedEventTodayOrElseTomorrowsFirst() {
+        let ended = event("ended", at: 9.5)
+        let holiday = event("holiday", at: 0, hours: 48, allDay: true)
+        let review = event("review", at: 14.5, meeting: meeting("https://zoom.us/j/1"))
+        let standUp = event("stand-up", at: 34)
+        let later = event("later", at: 58)
+
+        #expect(
+            Agenda(events: [ended, holiday, review, standUp]).upcoming(at: now, calendar: calendar)
+                == .today(review))
+        #expect(
+            Agenda(events: [ended, holiday, standUp]).upcoming(at: now, calendar: calendar)
+                == .tomorrow(standUp))
+        #expect(
+            Agenda(events: [ended, later]).upcoming(at: now, calendar: calendar) == .tomorrow(nil))
+        #expect(review.place == "Zoom")
+        #expect(event("1:1", at: 16, location: "Room 4B").place == "Room 4B")
+    }
+
     private func meeting(_ link: String) -> Meeting? {
         Meeting(in: [link])
     }

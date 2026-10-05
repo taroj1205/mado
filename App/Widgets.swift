@@ -16,6 +16,8 @@ final class Widgets {
     private static let system = "system"
     static let music = "music"
     static let weather = "weather"
+    static let calendarWidget = "calendar"
+    static let upNext = "up_next"
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
     private static let logger = Log.logger("Widgets")
@@ -25,6 +27,12 @@ final class Widgets {
     private static let owner = #/^\S+['’]s /#
     private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
     static let gallery: [WidgetGallery.Card] = [
+        .init(
+            id: calendarWidget, name: "Calendar", summary: "Month and today", group: .today,
+            isWide: true, isTall: true),
+        .init(
+            id: upNext, name: "Up Next", summary: "Next event, ↵ joins", group: .today,
+            isWide: true),
         .init(id: weather, name: "Weather", summary: "Now, high and low", group: .today),
         .init(id: clockWidget, name: "Clock", summary: "Time and date", group: .today),
         .init(
@@ -45,6 +53,8 @@ final class Widgets {
     var shown: [String] = []
     var city = ""
     let weatherFeed = WeatherFeed()
+    var schedule = Schedule.loading
+    var scheduling: Task<Void, Never>?
     private var stats: SystemStats?
     private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
@@ -79,11 +89,13 @@ final class Widgets {
 
     private static func current(
         at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?,
-        weather: WeatherFeed.State
+        weather: WeatherFeed.State, schedule: Schedule
     ) -> [WidgetGrid.Widget] {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
+            month(at: date),
+            widget(for: schedule, at: date),
             widget(for: weather),
             .init(
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
@@ -176,6 +188,8 @@ final class Widgets {
         case Self.system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
         case Self.battery: return SettingsPane.battery.open
         case Self.weather: return weatherAction(titled: widget.action)
+        case Self.calendarWidget: return Self.openApp(Self.calendarApp, titled: widget.action)
+        case Self.upNext: return upNextAction(titled: widget.action)
         default: break
         }
         guard let clock = Self.clock else { return SettingsPane.dateAndTime.open }
@@ -192,6 +206,7 @@ final class Widgets {
             refresh(view)
         }
         refreshWeather()
+        refreshSchedule(in: view)
         refresh(view)
         ticking = Task { [weak self, weak view] in
             while !Task.isCancelled {
@@ -200,6 +215,7 @@ final class Widgets {
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled, let self, let view else { return }
                 refreshWeather()
+                refreshSchedule(in: view)
                 refresh(view)
             }
         }
@@ -217,6 +233,7 @@ final class Widgets {
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
         refreshWeather()
+        refreshSchedule(in: view)
         refresh(view)
     }
 
@@ -243,12 +260,15 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
+        scheduling?.cancel()
+        scheduling = nil
         weatherFeed.cancel()
     }
 
-    private func refresh(_ view: LauncherView) {
+    func refresh(_ view: LauncherView) {
         let all = Self.current(
-            at: .now, stats: stats, playing: playing, weather: weatherFeed.state)
+            at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
+            schedule: schedule)
         view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
         view.widgetPreviews = all
     }
