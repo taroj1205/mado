@@ -53,6 +53,7 @@ public struct SettingsSearch: Codable, Equatable, Sendable {
         public let place: Place
         public let title: Text
         public let note: Text?
+        public let matchedChoice: Bool
     }
 
     public struct Group: Equatable, Sendable {
@@ -66,6 +67,7 @@ public struct SettingsSearch: Codable, Equatable, Sendable {
         let score: Int
         let title: Text
         let note: Text?
+        var isChoice = false
     }
 
     private struct Scored {
@@ -108,7 +110,7 @@ public struct SettingsSearch: Codable, Equatable, Sendable {
             match(choice).map { found in
                 Option(
                     score: found.score, title: plain,
-                    note: Text(string: choice, matches: found.offsets))
+                    note: Text(string: choice, matches: found.offsets), isChoice: true)
             }
         }
         return words + choices
@@ -153,7 +155,7 @@ public struct SettingsSearch: Codable, Equatable, Sendable {
                 Suggestion(
                     entry: entry.id, place: entry.place,
                     title: Text(string: entry.label, matches: []),
-                    note: Text(string: entry.place.title, matches: []))
+                    note: Text(string: entry.place.title, matches: []), matchedChoice: false)
             }
         }
     }
@@ -196,7 +198,8 @@ public struct SettingsSearch: Codable, Equatable, Sendable {
         }
         guard let top = options.max(by: { $0.score < $1.score }) else { return nil }
         let suggestion = Suggestion(
-            entry: entry.id, place: entry.place, title: top.title, note: top.note)
+            entry: entry.id, place: entry.place, title: top.title, note: top.note,
+            matchedChoice: top.isChoice)
         let bonus = usage.bonus(for: entry.id, at: now)
         return Scored(suggestion: suggestion, score: top.score + bonus)
     }

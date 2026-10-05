@@ -1,4 +1,5 @@
 import AppKit
+import GlassUI
 import QuartzCore
 
 @MainActor
@@ -105,7 +106,7 @@ final class SettingsSpotlight {
         }
     }
 
-    func land(on id: String) {
+    func land(on id: String, choice: Bool) {
         guard let row = rows[id] else { return }
         if !Self.reducesMotion {
             let pulse = CABasicAnimation(keyPath: "backgroundColor")
@@ -115,7 +116,12 @@ final class SettingsSpotlight {
             pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
             row.layer?.add(pulse, forKey: "land")
         }
-        guard let control = controls[id]?.firstVisible((any SearchFocusable).self) else {
+        let preferred: (any SearchFocusable)? =
+            choice
+            ? controls[id]?.firstVisible(SettingsPopUp.self)
+            : controls[id]?.firstVisible(HotKeyButton.self)
+        guard let control = preferred ?? controls[id]?.firstVisible((any SearchFocusable).self)
+        else {
             unsafe row.window?.makeFirstResponder(nil)
             return
         }

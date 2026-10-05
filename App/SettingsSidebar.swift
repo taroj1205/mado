@@ -5,6 +5,7 @@ final class SettingsSidebar: NSViewController {
     struct Target: Equatable {
         let place: SettingsSearch.Place
         let entry: String?
+        let choice: Bool
     }
 
     enum Row {
@@ -196,10 +197,11 @@ final class SettingsSidebar: NSViewController {
         guard rows.indices.contains(row) else { return nil }
         switch rows[row] {
         case .group(let group) where group.isSelectable:
-            return Target(place: group.place, entry: nil)
+            return Target(place: group.place, entry: nil, choice: false)
 
         case .suggestion(let suggestion):
-            return Target(place: suggestion.place, entry: suggestion.entry)
+            return Target(
+                place: suggestion.place, entry: suggestion.entry, choice: suggestion.matchedChoice)
 
         default:
             return nil

@@ -130,7 +130,9 @@ final class EnterGuardPage: NSObject {
         let control = toggle(
             read: { settings in apps.allSatisfy(settings.guards) },
             write: { settings, isOn in settings.setGuarding(apps, isOn) })
-        return SettingsSection.Row(name, control, icon: Self.icon(for: apps)) { detail }
+        var row = SettingsSection.Row(name, control, icon: Self.icon(for: apps)) { detail }
+        row.key = apps.joined(separator: " ")
+        return row
     }
 
     private func toggle(

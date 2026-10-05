@@ -61,11 +61,14 @@ import Testing
         #expect(celsius?.entry == "temperature")
         #expect(celsius?.title.matches.isEmpty == true)
         #expect(celsius?.note == SettingsSearch.Text(string: "Celsius (°C)", matches: [0, 1, 2]))
+        #expect(celsius?.matchedChoice == true)
 
         let startup = groups("startup").first?.suggestions.first
         #expect(startup?.entry == "login")
         #expect(startup?.note?.string == "Also “startup”")
         #expect(startup?.note?.matches == Array(6..<13))
+        #expect(startup?.matchedChoice == false)
+        #expect(groups("hotk").first?.suggestions.first?.matchedChoice == false)
     }
 
     @Test func aMatchingTabNameBecomesASelectableHeader() {

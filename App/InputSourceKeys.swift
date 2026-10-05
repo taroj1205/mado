@@ -140,9 +140,13 @@ final class InputSourceKeys: NSObject {
             guard let button else { return }
             self?.record(target.label, for: target.target, clearable: hotKey != nil, from: button)
         }
-        return SettingsSection.Row(target.label, button, icon: Self.tile(target.glyph)) {
+        var row = SettingsSection.Row(target.label, button, icon: Self.tile(target.glyph)) {
             target.detail
         }
+        if case .source(let id) = target.target {
+            row.key = id
+        }
+        return row
     }
 
     @objc

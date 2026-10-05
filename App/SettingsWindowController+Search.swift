@@ -22,7 +22,7 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         home = nil
         show(target, matches: matches, dimsOthers: false)
         if let entry = target.entry {
-            spotlit?.spotlight.land(on: entry)
+            spotlit?.spotlight.land(on: entry, choice: target.choice)
         }
     }
 
