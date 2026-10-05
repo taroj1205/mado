@@ -4,14 +4,16 @@ struct NotesModule: Module {
     static let id = "notes"
 
     let descriptor: ModuleDescriptor
-    let menuBarAgenda: MenuBarAgendaItem
+    let menuBar: MenuBarItems
     unowned let modules: ModuleManager
 
     func start(context: ModuleContext) {
-        menuBarAgenda.start(context: context, modules: modules)
+        menuBar.agenda.start(context: context, modules: modules)
+        menuBar.timer.start(modules: modules)
     }
 
     func stop() {
-        menuBarAgenda.stop()
+        menuBar.agenda.stop()
+        menuBar.timer.stop()
     }
 }
