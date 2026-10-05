@@ -19,6 +19,7 @@ extension AppDelegate {
                     }
                 ],
                 keywords: ["widgets", "arrange", "customize", "customise"]),
+            textCapture.command,
         ]
     }
 }

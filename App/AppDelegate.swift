@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
     let colourPicker = ColourPicker()
+    let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()

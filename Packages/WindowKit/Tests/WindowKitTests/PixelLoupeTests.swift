@@ -49,6 +49,18 @@ import Testing
         return bytes[row * grid.bytesPerRow + column * 4 + 3]
     }
 
+    private static func topLeft(of image: CGImage) throws -> [Int] {
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let context = try #require(
+            unsafe CGContext(
+                data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(
+            image, in: CGRect(x: 0, y: 1 - image.height, width: image.width, height: image.height))
+        let bytes = try #require(context.makeImage()?.dataProvider?.data as Data?)
+        return bytes[0..<3].map(Int.init)
+    }
+
     @Test func thePointerPicksThePixelUnderItOnARetinaSnapshot() throws {
         var loupe = try Self.loupe()
         loupe.move(to: CGPoint(x: 103.6, y: 53.2))
@@ -113,5 +125,27 @@ import Testing
         loupe.move(to: .zero)
         loupe.nudge(across: 1, down: 1)
         #expect(loupe.sample == nil)
+    }
+
+    @Test func cropsTheAreaOfARetinaSnapshotInPixels() throws {
+        let snapshot = PixelLoupe.Snapshot(
+            image: try Self.image(width: 20, height: 10),
+            frame: CGRect(x: 100, y: 50, width: 10, height: 5))
+        let crop = try #require(snapshot.crop(CGRect(x: 102, y: 51, width: 4, height: 2)))
+        #expect(crop.width == 8)
+        #expect(crop.height == 4)
+        #expect(try Self.topLeft(of: crop) == [40, 40, 7])
+        let whole = try #require(snapshot.crop(snapshot.frame))
+        #expect(whole.width == 20)
+        #expect(whole.height == 10)
+    }
+
+    @Test func refusesAnAreaThatLeavesTheSnapshotOrHasNoSize() throws {
+        let snapshot = PixelLoupe.Snapshot(
+            image: try Self.image(width: 20, height: 10),
+            frame: CGRect(x: 100, y: 50, width: 10, height: 5))
+        #expect(snapshot.crop(CGRect(x: 108, y: 51, width: 4, height: 2)) == nil)
+        #expect(snapshot.crop(CGRect(x: 300, y: 300, width: 4, height: 2)) == nil)
+        #expect(snapshot.crop(CGRect(x: 102, y: 51, width: 0, height: 2)) == nil)
     }
 }
