@@ -15,7 +15,7 @@ final class Dictation {
     private static let openSettings = "Open Settings"
     private static let noModel = "Download a speech model in Settings › Voice"
     private static let notTranscribed = "Couldn’t transcribe"
-    private static let notPasted = "Couldn’t paste the text"
+    private static let notPasted = "Couldn’t paste, so it’s copied"
 
     private let logger: Logger
     private let settings: @MainActor () -> DictationSettings
@@ -152,22 +152,25 @@ final class Dictation {
             pill.hide()
             return
         }
-        let item = NSPasteboardItem()
-        item.setString(text, forType: .string)
         guard let target = PasteTarget.frontmost() else {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.writeObjects([item])
+            copy(text)
             pill.hide()
             return
         }
         do {
-            try await target.paste([item])
+            try await target.insert(text)
             guard !Task.isCancelled else { return }
             pill.hide()
         } catch {
             logger.error("Pasting dictation failed: \(String(describing: error), privacy: .public)")
             guard !Task.isCancelled else { return }
+            copy(text)
             pill.show(.failed(Self.notPasted, fix: nil), on: nil)
         }
+    }
+
+    private func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 }

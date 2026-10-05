@@ -38,10 +38,13 @@ public struct TextInsertion {
         }
     }
 
+    private static var restoringUntil: [NSPasteboard.Name: ContinuousClock.Instant] = [:]
+
     nonisolated static let keyLimit = 1_000
     private static let restoreMilliseconds = 500
     private static let pasteSeconds = 5
     private static let pollMilliseconds = 50
+    private static let restoreSlackSeconds = 10
     public static let standard = Self(
         pasteboard: .general, restoreDelay: .milliseconds(restoreMilliseconds),
         pasteTimeout: .seconds(pasteSeconds), post: Keystrokes.post)
@@ -50,6 +53,10 @@ public struct TextInsertion {
     let restoreDelay: Duration
     let pasteTimeout: Duration
     let post: @MainActor ([CGEvent]) -> Void
+
+    var isRestoring: Bool {
+        Self.restoringUntil[pasteboard.name].map { ContinuousClock.now < $0 } ?? false
+    }
 
     private static func copy(_ item: NSPasteboardItem) -> NSPasteboardItem {
         let copy = NSPasteboardItem()
@@ -70,9 +77,36 @@ public struct TextInsertion {
         _ typed: String, with expansion: SnippetTemplate.Expansion,
         if isCurrent: @MainActor () async -> Bool
     ) async throws -> Inserted? {
+        try await waitForRestore()
         let changeCount = pasteboard.changeCount
-        let saved = pasteboard.pasteboardItems?.map(Self.copy) ?? []
+        let saved = savedItems()
         guard await isCurrent() else { return nil }
+        return try put(expansion, replacing: typed, saved: saved, changeCount: changeCount)
+    }
+
+    public func paste(_ text: String) async throws {
+        try await waitForRestore()
+        let plain = SnippetTemplate.Expansion(text: text, caretBack: 0, fieldRanges: [])
+        let changeCount = pasteboard.changeCount
+        let inserted = try put(
+            plain, replacing: "", saved: savedItems(), changeCount: changeCount)
+        Task { await restore(inserted) }
+    }
+
+    public func waitForRestore() async throws {
+        while isRestoring {
+            try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
+        }
+    }
+
+    private func savedItems() -> [NSPasteboardItem] {
+        pasteboard.pasteboardItems?.map(Self.copy) ?? []
+    }
+
+    private func put(
+        _ expansion: SnippetTemplate.Expansion, replacing typed: String,
+        saved: [NSPasteboardItem], changeCount: Int
+    ) throws -> Inserted {
         let delete = try Keystrokes.press(CGKeyCode(kVK_Delete), flags: [], times: typed.count)
         let caretBack = expansion.caretBack <= Self.keyLimit ? expansion.caretBack : 0
         let back = try Keystrokes.press(
@@ -91,6 +125,8 @@ public struct TextInsertion {
             throw error
         }
         let written = pasteboard.changeCount
+        let allowed = pasteTimeout + restoreDelay + .seconds(Self.restoreSlackSeconds)
+        Self.restoringUntil[pasteboard.name] = .now + allowed
         post(delete + paste + back)
         return Inserted(
             length: expansion.text.count, caretBack: caretBack, replaced: typed,
@@ -98,17 +134,23 @@ public struct TextInsertion {
     }
 
     public func restore(_ inserted: Inserted) async {
+        defer { Self.restoringUntil[pasteboard.name] = nil }
         let deadline = ContinuousClock.now + pasteTimeout
-        while !inserted.text.wasRead, ContinuousClock.now < deadline {
+        while !inserted.text.wasRead, !isReplaced(inserted), ContinuousClock.now < deadline {
             do {
                 try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
             } catch {
                 break
             }
         }
+        guard !isReplaced(inserted) else { return }
         try? await Task.sleep(for: restoreDelay)
-        guard pasteboard.changeCount == inserted.changeCount else { return }
+        guard !isReplaced(inserted) else { return }
         put(back: inserted.saved)
+    }
+
+    private func isReplaced(_ inserted: Inserted) -> Bool {
+        pasteboard.changeCount != inserted.changeCount
     }
 
     private func put(back saved: [NSPasteboardItem]) {
