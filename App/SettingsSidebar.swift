@@ -145,6 +145,7 @@ final class SettingsSidebar: NSViewController {
         empty.show(query: query.isEmpty || !groups.isEmpty ? nil : query)
         table.reloadData()
         if !searching {
+            delegate?.sidebar(preview: nil, matches: [:])
             table.selectRowIndexes([page], byExtendingSelection: false)
         } else if !query.isEmpty, let first = rows.indices.first(where: { target(at: $0) != nil }) {
             table.selectRowIndexes([first], byExtendingSelection: false)
