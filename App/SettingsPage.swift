@@ -19,6 +19,7 @@ struct SettingsPage {
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
         let gallery: WidgetGalleryWindow
+        let speechModels: SpeechModelSettings
     }
 
     struct Tab {
@@ -115,7 +116,9 @@ struct SettingsPage {
                 Tab(title: "Enter Guard", sections: nil),
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),
-        Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
+        Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)) { context in
+            [SettingsSection("Dictation", []), context.speechModels.section]
+        },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),
         Self("Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)),

@@ -140,11 +140,11 @@ final class SettingsPageController: NSViewController {
         if let title = section.title {
             parts.append(header(title, note: section.note, accessory: section.headerAccessory))
         }
-        if !section.rows.isEmpty {
-            parts.append(Self.columns(section.columnRows.map(box)))
-        }
         if let content = section.content {
             parts.append(content)
+        }
+        if !section.rows.isEmpty {
+            parts.append(Self.columns(section.columnRows.map(box)))
         }
         if let footer = section.footer {
             parts.append(Self.footer(footer))
