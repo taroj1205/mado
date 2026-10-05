@@ -16,6 +16,7 @@ final class RadialMenu {
     private let panel: OverlayPanel
     private let ring = RadialRing()
     private let preview: SnapPreview
+    private let label: RadialLabel
     private let loadSettings: @MainActor () -> RadialSettings
     private let loadGap: @MainActor () -> CGFloat
     private var settings = RadialSettings()
@@ -28,13 +29,14 @@ final class RadialMenu {
     }
 
     init(
-        logger: Logger, panel: OverlayPanel, preview: SnapPreview,
+        logger: Logger, panel: OverlayPanel, preview: SnapPreview, label: RadialLabel,
         settings: @escaping @MainActor () -> RadialSettings,
         gap: @escaping @MainActor () -> CGFloat
     ) {
         self.logger = logger
         self.panel = panel
         self.preview = preview
+        self.label = label
         loadSettings = settings
         loadGap = gap
         panel.contentView = ring
@@ -49,11 +51,12 @@ final class RadialMenu {
 
     @AccessibilityActor
     private static func place(
-        _ action: RadialSettings.Action, gap: CGFloat, across screens: [ScreenGeometry.Screen]
+        _ action: RadialSettings.Action, step: Int, gap: CGFloat,
+        across screens: [ScreenGeometry.Screen]
     ) async throws(FocusedWindow.Failure) {
         if action == .fullScreen {
             try FocusedWindow.frontmost().enterFullScreen()
-        } else if let layout = action.layout {
+        } else if let layout = action.layout(step: step) {
             try await WindowPlacement.layout(layout).apply(
                 gap: gap, cyclesSizes: false, across: screens)
         }
@@ -85,7 +88,7 @@ final class RadialMenu {
             stop()
 
         case .clicked:
-            break
+            stepCycle()
         }
     }
 
@@ -96,6 +99,7 @@ final class RadialMenu {
         lookup = nil
         focus = nil
         preview.end()
+        label.hide()
         logger.debug("Pointer tracking stopped")
         ring.disappear { [panel] in panel.orderOut(nil) }
     }
@@ -103,15 +107,16 @@ final class RadialMenu {
     private func release() {
         guard pointer.isTracking else { return }
         let action = resolver.map { settings.action(in: $0.zone) } ?? .nothing
+        let step = resolver?.step ?? 0
         stop()
         guard action != .nothing else { return }
         let screens = NSScreen.screens.map { screen in
             ScreenGeometry.Screen(frame: screen.frame, visibleFrame: screen.visibleFrame)
         }
-        logger.debug("Radial action: \(action.rawValue, privacy: .public)")
+        logger.debug("Radial action: \(action.rawValue, privacy: .public) step \(step)")
         Task { [logger, gap] in
             do throws(FocusedWindow.Failure) {
-                try await Self.place(action, gap: gap, across: screens)
+                try await Self.place(action, step: step, gap: gap, across: screens)
             } catch {
                 logger.error(
                     "Radial action failed: \(String(describing: error), privacy: .public)")
@@ -143,7 +148,8 @@ final class RadialMenu {
     }
 
     private func move(to location: CGPoint) {
-        if resolver == nil {
+        let opening = resolver == nil
+        if opening {
             panel.setFrame(RadialRing.frame(centredOn: ringCentre(for: location)), display: false)
             panel.orderFrontRegardless()
             ring.appear()
@@ -159,8 +165,26 @@ final class RadialMenu {
                 NSHapticFeedbackManager.defaultPerformer.perform(
                     .alignment, performanceTime: .default)
             }
-            showPreview()
         }
+        if opening || next.zone != zone {
+            showChoice()
+        }
+    }
+
+    private func stepCycle() {
+        guard pointer.isTracking, settings.clickStepsCycle, var next = resolver,
+            settings.action(in: next.zone).isCycle
+        else { return }
+        next.advanceStep()
+        resolver = next
+        logger.debug("Radial cycle step: \(next.step)")
+        showChoice()
+    }
+
+    private func showChoice() {
+        showPreview()
+        guard settings.showsLabel, let resolver else { return }
+        label.show(settings.label(in: resolver.zone, step: resolver.step), below: panel.frame)
     }
 
     private func ringCentre(for location: CGPoint) -> CGPoint {
@@ -171,10 +195,11 @@ final class RadialMenu {
     }
 
     private func showPreview() {
-        guard let focus, let zone = resolver?.zone else { return }
-        let action = settings.action(in: zone)
-        var frame = action.previewFrame(of: focus.window, on: focus.screen, gap: gap)
-        if let half = frame, let side = action.half {
+        guard let focus, let resolver else { return }
+        let action = settings.action(in: resolver.zone)
+        var frame = action.previewFrame(
+            of: focus.window, on: focus.screen, gap: gap, step: resolver.step)
+        if let half = frame, let side = action.half(step: resolver.step) {
             frame = HalfSnap.target(half, on: side, beside: focus.blockers, gap: gap)
         }
         preview.show(frame)

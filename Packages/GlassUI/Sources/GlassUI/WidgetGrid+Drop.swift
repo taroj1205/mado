@@ -78,9 +78,8 @@ extension WidgetGrid {
     }
 
     func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
-        guard let window = unsafe window, let mover = listed.first(where: { $0.id == id }) else {
-            return false
-        }
+        let mover = listed.first { $0.id == id } ?? incoming.flatMap { $0.id == id ? $0 : nil }
+        guard let window = unsafe window, let mover else { return false }
         var all = widgets.filter { $0.id != id }
         all.insert(
             mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
@@ -120,9 +119,9 @@ extension WidgetGrid {
 
     @discardableResult
     func preview(moving id: String, to point: NSPoint) -> Bool {
-        guard let window = unsafe window, shown.contains(where: { $0.id == id }) else {
-            return false
-        }
+        let arriving = incoming?.id == id
+        guard let window = unsafe window, arriving || shown.contains(where: { $0.id == id })
+        else { return false }
         dragged = id
         let visible = shown
         let hit = tileFrames(in: window).firstIndex { $0.contains(point) }.map { visible[$0] }
@@ -133,7 +132,7 @@ extension WidgetGrid {
             refused = nil
             return false
         }
-        let home = home(of: id)
+        let home = arriving ? nil : home(of: id)
         if target == home, moving != nil {
             moving = nil
             order = []

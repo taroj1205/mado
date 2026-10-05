@@ -49,7 +49,7 @@ import Testing
         #expect(edits == [.move("battery", before: "clock")])
         #expect(ids == widgets.map(\.id))
         #expect(view.widgetGrid.tiles.map(\.lifted) == [false, false, false, false, false])
-        #expect(view.selectedWidget == 0)
+        #expect(view.selectedWidget == 2)
     }
 
     @Test func droppingAtTheEndMovesBeforeNothingAndLeavingPutsTheTilesBack() {
@@ -67,36 +67,40 @@ import Testing
         #expect(edits == [.move("clock", before: nil)])
     }
 
-    @Test func aGalleryCardShowsDropToAddAfterTheLastTileAndAddsItsWidget() {
+    @Test func aGalleryCardBecomesALiveTileWhereItWouldLandAndDropsThere() throws {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
-        let card = WidgetGalleryCard(
+        view.widgetCatalogue = [
             .init(
-                id: "music", name: "Now Playing", summary: "Music controls", size: .wide,
-                group: nil, symbol: "heart.fill", colour: .systemPink))
+                id: "music", name: "Now Playing", summary: "Music controls", group: .media,
+                isWide: true)
+        ]
+        let card = try #require(view.gallery.cards.first)
         let four = Array(widgets.prefix(4))
         view.widgets = four
         view.layoutSubtreeIfNeeded()
-        let height = view.widgetGrid.frame.height
-        #expect(view.dragWidget("music", at: centre(of: 0), from: card) == .copy)
-        view.layoutSubtreeIfNeeded()
-        let frame = view.widgetGrid.dropFrame.frame
-        let tile = view.widgetGrid.tiles[3]
-        #expect(!view.widgetGrid.dropFrame.isHidden)
-        #expect(view.widgetGrid.dropFrame.label.stringValue == "Drop to add")
-        #expect(abs(frame.minX - tile.frame.maxX - 8) < 1)
-        #expect(abs(frame.width - (2 * tile.frame.width + 8)) < 1)
-        #expect(view.widgetGrid.frame.height == height)
-        #expect(ids == four.map(\.id))
+        #expect(view.dragWidget("music", at: centre(of: 1), from: card) == .copy)
+        #expect(ids == ["clock", "music", "weather", "battery", "system"])
+        #expect(view.widgetGrid.tiles[1].lifted)
+        #expect(view.widgetGrid.shown[1].isWide)
+        #expect(view.widgetGrid.moving == .panel)
         #expect(view.dropWidget("music"))
-        #expect(edits == [.add("music")])
-        #expect(view.widgetGrid.dropFrame.isHidden)
-        #expect(view.dragWidget("notes", at: centre(of: 0), from: nil) == .copy)
-        view.widgets = widgets + [Self.widget("calendar")]
-        view.layoutSubtreeIfNeeded()
-        #expect(view.widgetGrid.frame.height == height + 78 + 8)
-        view.endWidgetDrag()
-        #expect(view.widgetGrid.dropFrame.isHidden)
+        #expect(edits == [.place("music", .panel, before: "weather")])
+        #expect(view.widgetGrid.incoming == nil)
+        #expect(ids == four.map(\.id))
+        #expect(view.dragWidget("notes", at: centre(of: 0), from: nil).isEmpty)
+        #expect(view.dragWidget("notes", at: centre(of: 0), from: card).isEmpty)
+    }
+
+    @Test func aGalleryCardLetGoFarFromEverySpotAddsNothing() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.widgetCatalogue = [.init(id: "notes", name: "Notes", summary: "", group: .text)]
+        let card = try #require(view.gallery.cards.first)
+        #expect(view.dragWidget("notes", at: NSPoint(x: -900, y: -900), from: card).isEmpty)
+        #expect(!ids.contains("notes"))
+        #expect(!view.dropWidget("notes"))
+        #expect(edits.isEmpty)
     }
 
     @Test func dropsAreRefusedOutsideEditModeOrWithoutAWidget() {
@@ -107,7 +111,6 @@ import Testing
         view.finishEditingWidgets()
         #expect(view.dragWidget("music", at: centre(of: 0), from: nil).isEmpty)
         #expect(!view.dropWidget("music"))
-        #expect(view.widgetGrid.dropFrame.isHidden)
         #expect(edits.isEmpty)
     }
 

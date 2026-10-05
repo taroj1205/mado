@@ -2,24 +2,47 @@ import AppKit
 
 extension LauncherView {
     static let editTitle = "Edit Widgets"
-    static let doneTitle = "Done"
-    static let editHint = "Drag a widget anywhere around the panel · ⌫ removes the selected one"
+    static let editPlaceholder = "Search widgets…"
+    static let editHint = "Click a widget to add it · drag one to any spot"
     static let editSymbol = "square.grid.2x2"
-    private static let editInset: CGFloat = 14
-    private static let dimmed: CGFloat = 0.45
+    static let doneHeight: CGFloat = 28
+    private static let doneInset: CGFloat = 14
 
-    func placeEditBar() {
-        addSubview(editBar)
+    private static func heading(of event: NSEvent) -> WidgetGrid.Heading? {
+        switch event.specialKey {
+        case .upArrow: .top
+        case .downArrow: .bottom
+        case .leftArrow: .left
+        case .rightArrow: .right
+        default: nil
+        }
+    }
+
+    func placeEditing() {
+        for view in [gallery, doneButton, editBar] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            view.isHidden = true
+            addSubview(view)
+        }
         NSLayoutConstraint.activate([
-            editBar.leadingAnchor.constraint(equalTo: field.leadingAnchor),
-            editBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.editInset),
-            editBar.centerYAnchor.constraint(equalTo: icon.centerYAnchor),
+            gallery.leadingAnchor.constraint(equalTo: leadingAnchor),
+            gallery.trailingAnchor.constraint(equalTo: trailingAnchor),
+            gallery.topAnchor.constraint(equalTo: widgetGrid.bottomAnchor),
+            gallery.bottomAnchor.constraint(equalTo: bottomAnchor),
+            doneButton.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.doneInset),
+            doneButton.centerYAnchor.constraint(equalTo: icon.centerYAnchor),
+            editBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.capsuleInset),
+            editBar.trailingAnchor.constraint(
+                lessThanOrEqualTo: trailingAnchor, constant: -Self.capsuleInset),
+            editBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.capsuleInset),
         ])
-        editBar.onAdd = { [weak self] in self?.onAddWidgets?() }
-        editBar.onDone = { [weak self] in self?.finishEditingWidgets() }
+        doneButton.onPress = { [weak self] in self?.finishEditingWidgets() }
+        editBar.onMove = { [weak self] in self?.toggleSpotPicker() }
         editBar.onRemove = { [weak self] in self?.removeSelectedWidget() }
-        editBar.onStep = { [weak self] heading in self?.stepWidget(heading) }
-        editBar.onSend = { [weak self] heading in self?.sendWidget(heading) }
+        editBar.onUndo = { [weak self] in _ = self?.undoWidgetEdit() }
+        gallery.onPick = { [weak self] id in self?.pickFromGallery(id) }
+        gallery.onDragEnd = { [weak self] in self?.endWidgetDrag() }
         widgetGrid.onDrag = { [weak self] id, point, source in
             guard let self, let window = unsafe window else { return [] }
             return dragWidget(id, at: window.convertPoint(fromScreen: point), from: source)
@@ -29,34 +52,123 @@ extension LauncherView {
         registerForDraggedTypes([WidgetGrid.dragType])
     }
 
-    func editWidgets() {
-        guard showsWidgets, !editingWidgets else { return }
+    public func editWidgets() {
+        guard !editingWidgets else { return }
+        if !scoped, !field.stringValue.isEmpty {
+            queryBeforeEditing = field.stringValue
+            field.stringValue = ""
+            onQuery?("")
+        }
+        guard !waitsForResults(then: { $0.editWidgets() }), homeShown else { return }
         closeActions()
         closePreview()
         closeCustomiser()
         editingWidgets = true
+        widgetNote = nil
+        field.stringValue = ""
         changeWidgets { widgetGrid.editing = true }
         showEditing()
-        unsafe window?.makeFirstResponder(editBar)
+        unsafe window?.makeFirstResponder(field)
+        onWidgetEditing?(true)
     }
 
     func finishEditingWidgets() {
         guard editingWidgets else { return }
         editingWidgets = false
+        closeSpotPicker()
+        widgetNote = nil
+        field.stringValue = shownQuery.text
+        restoreQueryBeforeEditing()
+        gallery.query = ""
         changeWidgets { widgetGrid.editing = false }
         showEditing()
         unsafe window?.makeFirstResponder(field)
-        onEndEditingWidgets?()
+        onWidgetEditing?(false)
+        onQuery?(field.stringValue)
+    }
+
+    func restoreQueryBeforeEditing() {
+        if let queryBeforeEditing, field.stringValue.isEmpty {
+            field.stringValue = queryBeforeEditing
+        }
+        queryBeforeEditing = nil
+    }
+
+    func report(_ edit: WidgetSettings.Edit) {
+        let id = edit.id
+        let name = widgetName(of: id)
+        let added = !widgetGrid.widgets.contains { $0.id == id }
+        onWidgetEdit?(edit)
+        guard editingWidgets else { return }
+        let text =
+            switch edit {
+            case .add: "\(name) added · \(WidgetGrid.Spot.panel.title)"
+            case .move: "\(name) moved"
+            case .remove: "\(name) removed"
+            case let .place(_, spot, _): "\(name) \(added ? "added" : "moved") · \(spot.title)"
+            }
+        if edit != .remove(id), let index = widgetGrid.shown.firstIndex(where: { $0.id == id }) {
+            selectWidget(index)
+        }
+        note(text, undoable: true)
+    }
+
+    func undoWidgetEdit() -> Bool {
+        guard editingWidgets, widgetNote?.undoable == true else { return false }
+        onUndoWidgetEdit?()
+        note("Undone", undoable: false)
+        return true
+    }
+
+    func overlayShortcut(_ event: NSEvent) -> Bool {
+        guard editingWidgets else { return actionPanel?.performShortcut(event) == true }
+        return event.modifierFlags.intersection(Self.modifierKeys) == .command
+            && event.charactersIgnoringModifiers == "z" && undoWidgetEdit()
+    }
+
+    func editCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
+        if spotPicker != nil, let widget = selectedWidget {
+            return pickerCommand(selector, moving: widgetGrid.shown[widget].id)
+        }
+        if textView.string.isEmpty, tileCommand(selector) {
+            return true
+        }
+        switch selector {
+        case #selector(NSResponder.moveUp): stepWidget(.top)
+        case #selector(NSResponder.moveDown): stepWidget(.bottom)
+
+        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText():
+            finishEditingWidgets()
+
+        case #selector(NSResponder.cancelOperation): finishEditingWidgets()
+        default: return false
+        }
+        return true
+    }
+
+    func handleWhileEditing(_ event: NSEvent) -> Bool {
+        switch event.type {
+        case .keyDown where event.modifierFlags.intersection(Self.modifierKeys) == .option:
+            guard selectedWidget != nil, let heading = Self.heading(of: event) else {
+                return false
+            }
+            sendWidget(heading)
+            return true
+
+        case .leftMouseDown:
+            let point = event.locationInWindow
+            let onMove = editBar.move.convert(editBar.move.bounds, to: nil).contains(point)
+            if !onMove, spotPicker?.contains(point) != true {
+                closeSpotPicker()
+            }
+            return false
+
+        default: return false
+        }
     }
 
     func removeWidget(_ index: Int) {
-        onWidgetEdit?(.remove(widgetGrid.shown[index].id))
-    }
-
-    private func removeSelectedWidget() {
-        if let selectedWidget {
-            removeWidget(selectedWidget)
-        }
+        report(.remove(widgetGrid.shown[index].id))
     }
 
     func stepWidget(_ heading: WidgetGrid.Heading) {
@@ -78,31 +190,33 @@ extension LauncherView {
         place(id, at: spot)
     }
 
-    private func showEditing() {
-        icon.image = NSImage(
-            systemSymbolName: editingWidgets ? Self.editSymbol : Self.searchSymbol,
-            accessibilityDescription: nil)
-        field.isHidden = editingWidgets
+    func showWidgetTools() {
         editBar.isHidden = !editingWidgets
-        results.alphaValue = editingWidgets ? Self.dimmed : 1
-        results.hidesSelection = editingWidgets || selectedWidget != nil
-        showAction(of: selectedItem)
+        guard editingWidgets else { return }
+        let widget = selectedWidget.map { widgetGrid.shown[$0] }
+        editBar.show(
+            widget.map { ($0.name, widgetGrid.home(of: $0.id)) }, moving: spotPicker != nil)
+        let hint = widgetNote ?? (widget == nil ? (Self.editHint, false) : nil)
+        editBar.show(
+            hint: hint?.text, symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
+            undoable: hint?.undoable == true)
+        gallery.placed = Dictionary(
+            widgetGrid.widgets.map { ($0.id, widgetGrid.home(of: $0.id)) }
+        ) { first, _ in first }
     }
 
     func dragWidget(_ id: String?, at point: NSPoint, from source: Any?) -> NSDragOperation {
         guard let id else { return [] }
-        guard widgetGrid.widgets.contains(where: { $0.id == id }) else {
-            guard editingWidgets, bounds.contains(convert(point, from: nil)) else { return [] }
-            widgetGrid.incoming = (source as? WidgetGalleryCard)?.card.size.span ?? 1
-            return .copy
+        let known = widgetGrid.widgets.contains { $0.id == id }
+        if !known {
+            guard editingWidgets, let card = source as? WidgetGalleryCard, card.card.id == id
+            else { return [] }
+            widgetGrid.incoming = card.widget
         }
         var droppable = false
         changeWidgets { droppable = widgetGrid.preview(moving: id, to: point) }
-        return droppable ? .move : []
-    }
-
-    private func firstHidden(after widget: String?, shown: [String]) -> String? {
-        widgetGrid.widgets.map(\.id).drop { $0 != widget }.dropFirst().first { !shown.contains($0) }
+        guard droppable else { return [] }
+        return known ? .move : .copy
     }
 
     func endWidgetDrag() {
@@ -123,9 +237,10 @@ extension LauncherView {
             order.dropFirst(index + 1).first
                 ?? firstHidden(after: order.dropLast().last, shown: order)
         }
+        let arriving = widgetGrid.incoming?.id == id
         let edit: WidgetSettings.Edit? =
-            if widgetGrid.incoming != nil {
-                .add(id)
+            if arriving {
+                spot.map { .place(id, $0, before: before.flatMap(\.self)) }
             } else if let spot, let before, spot != widgetGrid.home(of: id) {
                 .place(id, spot, before: before)
             } else if order != all.filter(order.contains), let before {
@@ -135,8 +250,85 @@ extension LauncherView {
             }
         endWidgetDrag()
         if let edit {
-            onWidgetEdit?(edit)
+            report(edit)
+        }
+        return !arriving || edit != nil
+    }
+
+    private func showEditing() {
+        icon.image = NSImage(
+            systemSymbolName: editingWidgets ? Self.editSymbol : Self.searchSymbol,
+            accessibilityDescription: nil)
+        field.placeholderString = editingWidgets ? Self.editPlaceholder : Self.searchPlaceholder
+        doneButton.isHidden = !editingWidgets
+        gallery.isHidden = !editingWidgets
+        results.isHidden = editingWidgets || showsGrid
+        results.hidesSelection = editingWidgets || selectedWidget != nil
+        fieldTrailing.isActive = false
+        fieldTrailing =
+            editingWidgets
+            ? field.trailingAnchor.constraint(
+                equalTo: doneButton.leadingAnchor, constant: -Self.searchIconGap)
+            : field.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.searchInset)
+        fieldTrailing.isActive = true
+        showAction(of: selectedItem)
+    }
+
+    private func tileCommand(_ selector: Selector) -> Bool {
+        switch selector {
+        case #selector(NSResponder.moveLeft): stepWidget(.left)
+        case #selector(NSResponder.moveRight): stepWidget(.right)
+
+        case #selector(NSResponder.deleteBackward), #selector(NSResponder.deleteForward):
+            removeSelectedWidget()
+
+        default: return false
         }
         return true
+    }
+
+    private func pickFromGallery(_ id: String) {
+        guard widgetGrid.widgets.contains(where: { $0.id == id }) else {
+            report(.add(id))
+            return
+        }
+        if let index = widgetGrid.shown.firstIndex(where: { $0.id == id }) {
+            selectWidget(index)
+        }
+        note(
+            "\(widgetName(of: id)) is \(widgetGrid.home(of: id).title)",
+            undoable: widgetNote?.undoable == true)
+    }
+
+    private func note(_ text: String, undoable: Bool) {
+        widgetNote = (text, undoable)
+        showWidgetTools()
+        unsafe NSAccessibility.post(
+            element: self, notification: .announcementRequested,
+            userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+    }
+
+    private func widgetName(of id: String) -> String {
+        widgetGrid.widgets.first { $0.id == id }?.name
+            ?? gallery.catalogue.first { $0.id == id }?.name ?? id
+    }
+
+    private func removeSelectedWidget() {
+        if let selectedWidget {
+            removeWidget(selectedWidget)
+        }
+    }
+
+    private func toggleSpotPicker() {
+        guard let selectedWidget else { return }
+        if spotPicker == nil {
+            openSpotPicker(for: widgetGrid.shown[selectedWidget])
+        } else {
+            closeSpotPicker()
+        }
+    }
+
+    private func firstHidden(after widget: String?, shown: [String]) -> String? {
+        widgetGrid.widgets.map(\.id).drop { $0 != widget }.dropFirst().first { !shown.contains($0) }
     }
 }

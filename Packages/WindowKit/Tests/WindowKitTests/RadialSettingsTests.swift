@@ -104,7 +104,7 @@ import Testing
             visibleFrame: CGRect(x: 0, y: 66, width: 1_440, height: 810))
         let window = CGRect(x: 100, y: 200, width: 800, height: 600)
         func preview(_ action: RadialSettings.Action) -> CGRect? {
-            action.previewFrame(of: window, on: screen, gap: 12)
+            action.previewFrame(of: window, on: screen, gap: 12, step: 0)
         }
         func layout(_ action: LayoutEngine.Action) -> CGRect {
             LayoutEngine.frame(
@@ -124,19 +124,19 @@ import Testing
     }
 
     @Test func releasePlacesTheLayoutBehindEachActionAndNothingElse() {
-        #expect(RadialSettings.Action.rightCycle.layout == .rightHalf)
-        #expect(RadialSettings.Action.topLeftQuarter.layout == .topLeftQuarter)
-        #expect(RadialSettings.Action.centre.layout == .centre)
-        #expect(RadialSettings.Action.fullScreen.layout == nil)
-        #expect(RadialSettings.Action.nothing.layout == nil)
+        #expect(RadialSettings.Action.rightCycle.layout(step: 0) == .rightHalf)
+        #expect(RadialSettings.Action.topLeftQuarter.layout(step: 0) == .topLeftQuarter)
+        #expect(RadialSettings.Action.centre.layout(step: 0) == .centre)
+        #expect(RadialSettings.Action.fullScreen.layout(step: 0) == nil)
+        #expect(RadialSettings.Action.nothing.layout(step: 0) == nil)
     }
 
     @Test func onlyLeftAndRightHalvesFillBesideAWindowThatRefusedItsHalf() {
-        let halves = RadialSettings.Action.allCases.filter { $0.half != nil }
+        let halves = RadialSettings.Action.allCases.filter { $0.half(step: 0) != nil }
 
         #expect(halves == [.rightCycle, .leftCycle, .rightHalf, .leftHalf])
-        #expect(RadialSettings.Action.leftCycle.half == .left)
-        #expect(RadialSettings.Action.rightHalf.half == .right)
+        #expect(RadialSettings.Action.leftCycle.half(step: 0) == .left)
+        #expect(RadialSettings.Action.rightHalf.half(step: 0) == .right)
     }
 
     @Test func turningHapticsOffSurvivesSavingAndLoading() throws {

@@ -114,7 +114,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     init(
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
-        items: ItemEditor, snippets: Snippets?
+        items: ItemEditor, snippets: Snippets?, addWidgets: @escaping @MainActor () -> Void
     ) {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = AppListSettings.ignoredApps(modules: modules)
@@ -122,14 +122,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let inputKeys = InputSourceKeys(modules: modules, recorder: recorder)
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
+        let enterGuard = EnterGuardPage(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
-            inputDefaults: inputDefaults, remaps: remaps,
-            gallery: WidgetGalleryWindow(modules: modules))
+            inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
+            addWidgets: addWidgets)
         let pages = Self.pages(context)
         let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
         sidebar.canCollapse = false
@@ -156,6 +157,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         inputKeys.onChange = { [weak self] in self?.reload() }
         inputDefaults.onChange = { [weak self] in self?.reload() }
         remaps.onChange = { [weak self] in self?.reload() }
+        enterGuard.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)

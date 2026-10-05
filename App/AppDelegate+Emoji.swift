@@ -30,7 +30,7 @@ extension AppDelegate {
         launcherView.showsGrid ? Self.gridHeight : height
     }
 
-    private func fitLauncher() {
+    func fitLauncher() {
         guard let launcher, launcher.isVisible else { return }
         let size = launcherSize
         var frame = launcher.frame

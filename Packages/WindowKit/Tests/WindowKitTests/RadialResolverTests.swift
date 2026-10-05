@@ -92,4 +92,23 @@ import Testing
         ]
         #expect(directions.map(\.degrees) == [0, 45, 90, 135, 180, 225, 270, 315])
     }
+
+    @Test func countsStepsUntilTheZoneChanges() {
+        var resolver = RadialResolver(origin: Self.origin)
+        resolver.update(pointer: CGPoint(x: Self.origin.x - Self.far, y: Self.origin.y))
+        resolver.advanceStep()
+        resolver.advanceStep()
+        resolver.update(pointer: CGPoint(x: Self.origin.x - Self.far - 20, y: Self.origin.y + 5))
+        #expect(resolver.zone == .direction(.left))
+        #expect(resolver.step == 2)
+
+        resolver.update(pointer: CGPoint(x: Self.origin.x, y: Self.origin.y + Self.far))
+        #expect(resolver.zone == .direction(.top))
+        #expect(resolver.step == 0)
+
+        resolver.advanceStep()
+        resolver.update(pointer: CGPoint(x: Self.origin.x, y: Self.origin.y + 40))
+        #expect(resolver.zone == .ring)
+        #expect(resolver.step == 0)
+    }
 }

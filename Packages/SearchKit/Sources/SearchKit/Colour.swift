@@ -187,7 +187,7 @@ public struct Colour: Sendable, Equatable {
         self = colour
     }
 
-    init(red: Int, green: Int, blue: Int) {
+    public init(red: Int, green: Int, blue: Int) {
         self.red = red
         self.green = green
         self.blue = blue

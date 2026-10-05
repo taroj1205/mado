@@ -18,9 +18,14 @@ final class ChipButton: NSButton {
     private let height: CGFloat
 
     override var title: String {
+        didSet { paintTitle() }
+    }
+
+    var isOn = true {
         didSet {
-            attributedTitle = NSAttributedString(
-                string: title, attributes: [.font: titleFont, .foregroundColor: NSColor.labelColor])
+            paintTitle()
+            setAccessibilitySelected(isOn)
+            needsDisplay = true
         }
     }
 
@@ -60,10 +65,21 @@ final class ChipButton: NSButton {
         true
     }
 
+    private func paintTitle() {
+        attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: titleFont,
+                .foregroundColor: isOn ? NSColor.labelColor : .secondaryLabelColor,
+            ])
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        Self.fill.setFill()
-        let radius = bounds.height * Self.half
-        NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+        if isOn {
+            Self.fill.setFill()
+            let radius = bounds.height * Self.half
+            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+        }
         super.draw(dirtyRect)
     }
 

@@ -39,23 +39,22 @@ public struct RadialSettings: Codable, Equatable, Sendable {
             .centreThird: .centreThird, .rightThird: .rightThird,
         ]
 
-        public var layout: LayoutEngine.Action? {
-            Self.layouts[self]
+        public func layout(step: Int) -> LayoutEngine.Action? {
+            guard let base = Self.layouts[self] else { return nil }
+            guard isCycle, let sizes = WindowPlacement.sizeCycles.first(where: { $0.first == base })
+            else { return base }
+            return sizes[step % sizes.count]
         }
 
-        public var half: HalfSnap.Side? {
-            switch self {
-            case .leftHalf, .leftCycle: .left
-            case .rightHalf, .rightCycle: .right
-            default: nil
-            }
+        public func half(step: Int) -> HalfSnap.Side? {
+            layout(step: step).flatMap { WindowPlacement.sides[$0] }
         }
 
         public func previewFrame(
-            of window: CGRect, on screen: ScreenGeometry.Screen, gap: CGFloat
+            of window: CGRect, on screen: ScreenGeometry.Screen, gap: CGFloat, step: Int
         ) -> CGRect? {
             if self == .fullScreen { return screen.frame }
-            guard let layout else { return nil }
+            guard let layout = layout(step: step) else { return nil }
             return LayoutEngine.frame(
                 for: layout, in: screen.visibleFrame, gap: gap, windowSize: window.size)
         }

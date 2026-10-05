@@ -27,12 +27,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let widgets = Widgets()
-    var launcherGallery: WidgetGalleryWindow?
+    var widgetUndo: WidgetSnapshot?
     private(set) var usage = Usage()
     private(set) var history = CalculatorHistory()
     let clipboardHistory = ClipboardHistory()
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
+    let colourPicker = ColourPicker()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
@@ -98,7 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self?.openCalculatorHistory()
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
-            try (SystemCommands.all + [openHistory, newLink]).forEach(manager.commands.register)
+            try (SystemCommands.all + [openHistory, newLink, colourPicker.command])
+                .forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
@@ -271,7 +273,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             settings
             ?? SettingsWindowController(
                 modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-                snippets: snippets)
+                snippets: snippets
+            ) { [weak self] in self?.editWidgetsInLauncher() }
         settings = controller
         controller.showWindow(nil)
     }

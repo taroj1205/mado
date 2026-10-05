@@ -12,10 +12,10 @@ public enum WindowPlacement: Hashable, Sendable {
         let applied: LayoutEngine.Action
     }
 
-    private static let sides: [LayoutEngine.Action: HalfSnap.Side] = [
+    static let sides: [LayoutEngine.Action: HalfSnap.Side] = [
         .leftHalf: .left, .rightHalf: .right,
     ]
-    private static let sizeCycles: [[LayoutEngine.Action]] = [
+    static let sizeCycles: [[LayoutEngine.Action]] = [
         [.leftHalf, .leftThird, .leftTwoThirds],
         [.rightHalf, .rightThird, .rightTwoThirds],
         [.topHalf, .topThird, .topTwoThirds],

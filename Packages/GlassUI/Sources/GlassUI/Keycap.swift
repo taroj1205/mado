@@ -1,12 +1,12 @@
-import AppKit
+public import AppKit
 
-final class Keycap: NSBox {
+public final class Keycap: NSBox {
     private static let inset: CGFloat = 10
     private static let fontSize: CGFloat = 11
 
     let name: NSTextField
 
-    init(_ key: String, radius: CGFloat, size: CGFloat) {
+    public init(_ key: String, radius: CGFloat, size: CGFloat) {
         name = NSTextField(labelWithString: key)
         super.init(frame: .zero)
         boxType = .custom
