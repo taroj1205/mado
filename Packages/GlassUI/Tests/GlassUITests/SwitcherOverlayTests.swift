@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct SwitcherOverlayTests {
+@Suite(.silentWindows) struct SwitcherOverlayTests {
     static let card = CGSize(width: 168, height: 154)
     static let wide = CGSize(width: 1_140, height: 600)
 
@@ -52,6 +52,12 @@ import Testing
         let grid = SwitcherGrid(count: 3, card: Self.card, fitting: .zero)
         #expect(grid.columns == 1)
         #expect(grid.rows == 1)
+    }
+
+    @Test func opensWithoutTheWindowAnimation() {
+        let overlay = SwitcherOverlay()
+        #expect(overlay.panel.animationBehavior == .none)
+        #expect(overlay.hint.animationBehavior == .none)
     }
 
     @Test func showsTheSelectedCardAndCountOnTheScreen() throws {

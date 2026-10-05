@@ -44,7 +44,7 @@ extension WidgetGrid {
         let range = side.isRail ? Self.railColumns : (widget.smallest.columns, Self.widest)
         return Size(
             columns: min(max(size.columns, range.0), range.1),
-            rows: min(max(size.rows, 1), Self.tallest(on: side)))
+            rows: min(max(size.rows, widget.smallest.rows), Self.tallest(on: side)))
     }
 
     func resizes(of widget: Widget) -> Set<WidgetTile.Axis> {

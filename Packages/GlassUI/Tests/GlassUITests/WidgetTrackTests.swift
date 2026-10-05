@@ -54,12 +54,14 @@ import Testing
         #expect(tile.value.isHidden && tile.detail.isHidden && !tile.track.isHidden)
         #expect(tile.track.title.stringValue == "Low Tide")
         #expect(tile.track.artist.stringValue == "Harbour Lights")
-        let pause = tile.track.toggle.image
-        let toggle = tile.track.toggle.frame
-        #expect(tile.track.art.image != nil)
+        let pause = tile.track.disc.glyph.image
+        let disc = tile.track.disc.frame
+        #expect(tile.track.cover.image == nil)
+        #expect(tile.wash.isHidden)
+        #expect(!tile.track.equalizer.isHidden && tile.track.paused.isHidden)
         #expect(tile.accessibilityLabel() == "Now playing: Low Tide by Harbour Lights")
-        #expect(abs(tile.track.art.frame.width - 48) < 0.01)
-        #expect(abs(tile.convert(tile.track.art.bounds, from: tile.track.art).minX - 10) < 0.01)
+        #expect(abs(tile.track.cover.frame.width - 52) < 0.01)
+        #expect(abs(tile.convert(tile.track.cover.bounds, from: tile.track.cover).minX - 12) < 0.01)
         let cover = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
             NSColor.red.setFill()
             rect.fill()
@@ -69,14 +71,19 @@ import Testing
         view.pressWidget(1)
         view.widgets = [clock, song(isPlaying: false, artwork: artwork)]
         #expect(view.widgetGrid.tiles.last === tile)
-        #expect(tile.track.toggle.image !== pause)
+        #expect(tile.track.disc.glyph.image !== pause)
         view.layoutSubtreeIfNeeded()
-        #expect(tile.track.toggle.frame == toggle)
-        #expect(tile.track.art.image?.size == NSSize(width: 4, height: 4))
+        #expect(tile.track.disc.frame == disc)
+        #expect(tile.track.cover.image?.size == NSSize(width: 4, height: 4))
+        #expect(tile.track.equalizer.isHidden && !tile.track.paused.isHidden)
+        #expect(!tile.wash.isHidden)
+        let hue = try #require(tile.track.tint?.usingColorSpace(.sRGB)).hueComponent
+        #expect(hue < 0.02 || hue > 0.98)
         #expect(tile.accessibilityLabel() == "Paused: Low Tide by Harbour Lights")
         #expect(view.actionLabel.stringValue == "Play / Pause")
         view.widgets = [clock, clock]
         #expect(tile.track.isHidden && !tile.value.isHidden)
+        #expect(tile.wash.isHidden)
     }
 
     @Test func prevAndNextSkipAndSelectTheTileWhileTheRestPlaysOrPauses() throws {
@@ -93,8 +100,8 @@ import Testing
         }
         #expect(track.skip(at: centre(track.previous)) == .previous)
         #expect(track.skip(at: centre(track.next)) == .next)
-        #expect(track.skip(at: centre(track.toggle)) == nil)
-        #expect(track.skip(at: centre(track.art)) == nil)
+        #expect(track.skip(at: centre(track.disc)) == nil)
+        #expect(track.skip(at: centre(track.cover)) == nil)
         let tile = try #require(view.widgetGrid.tiles.last)
         let actions = tile.accessibilityCustomActions() ?? []
         #expect(actions.map(\.name) == ["Previous Track", "Next Track"])

@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct FilePreviewTests {
+@Suite(.silentWindows) struct FilePreviewTests {
     private let launcher = CGRect(x: 100, y: 300, width: 760, height: 476)
 
     @Test func sitsRightOfTheLauncherAndCentredOnIt() {

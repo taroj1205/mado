@@ -45,7 +45,7 @@ public struct Weather: Decodable, Equatable, Sendable {
     }
 
     public struct Hour: Equatable, Sendable {
-        public let time: Date
+        public let start: Date
         public let temperature: Measurement<UnitTemperature>
         public let sky: Sky
         public let isDay: Bool
@@ -55,18 +55,18 @@ public struct Weather: Decodable, Equatable, Sendable {
         case current = "current"
         case daily = "daily"
         case hourly = "hourly"
+        case time = "time"
+        case offset = "utc_offset_seconds"
         case temperature = "temperature_2m"
         case code = "weather_code"
         case isDay = "is_day"
         case highs = "temperature_2m_max"
         case lows = "temperature_2m_min"
         case results = "results"
-        case times = "time"
         case apparent = "apparent_temperature"
         case humidity = "relative_humidity_2m"
         case wind = "wind_speed_10m"
         case rain = "precipitation_probability_max"
-        case offset = "utc_offset_seconds"
     }
 
     private static let forecastAPI = "https://api.open-meteo.com/v1/forecast"
@@ -74,8 +74,8 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let coordinateScale = 100.0
     private static let success = 200
     private static let middle = 0.5
+    private static let hour: TimeInterval = 3_600
     private static let percent = 100.0
-    private static let hoursAhead = "8"
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
@@ -87,7 +87,7 @@ public struct Weather: Decodable, Equatable, Sendable {
     public let wind: Measurement<UnitSpeed>?
     public let rainChance: Double?
     public let hours: [Hour]
-    public let utcOffset: Int
+    public let timeZone: TimeZone
 
     public var position: Double {
         let range = high.value - low.value
@@ -126,25 +126,28 @@ public struct Weather: Decodable, Equatable, Sendable {
         }
         let chances = try today.decodeIfPresent([Double?].self, forKey: .rain)
         rainChance = chances?.first?.map { chance in chance / Self.percent }
-        utcOffset = try root.decodeIfPresent(Int.self, forKey: .offset) ?? 0
-        hours = Self.hours(in: try? root.nestedContainer(keyedBy: Keys.self, forKey: .hourly))
+        timeZone =
+            try root.decodeIfPresent(Int.self, forKey: .offset)
+            .flatMap { TimeZone(secondsFromGMT: $0) } ?? .current
+        hours = try Self.hours(in: root)
     }
 
-    private static func hours(in container: KeyedDecodingContainer<Keys>?) -> [Hour] {
-        guard let container,
-            let times = try? container.decode([TimeInterval].self, forKey: .times),
-            let temperatures = try? container.decode([Double].self, forKey: .temperature),
-            let codes = try? container.decode([Int].self, forKey: .code),
-            let days = try? container.decode([Int].self, forKey: .isDay)
-        else { return [] }
-        return zip(zip(times, temperatures), zip(codes, days)).compactMap { first, second in
-            Sky(code: second.0).map { sky in
-                Hour(
-                    time: Date(timeIntervalSince1970: first.0),
-                    temperature: Measurement(value: first.1, unit: .celsius), sky: sky,
-                    isDay: second.1 != 0)
+    private static func hours(in root: KeyedDecodingContainer<Keys>) throws -> [Hour] {
+        guard root.contains(.hourly) else { return [] }
+        let hourly = try root.nestedContainer(keyedBy: Keys.self, forKey: .hourly)
+        let starts = try hourly.decode([TimeInterval].self, forKey: .time)
+        let temperatures = try hourly.decode([Double].self, forKey: .temperature)
+        let codes = try hourly.decode([Int].self, forKey: .code)
+        let days = try hourly.decode([Int].self, forKey: .isDay)
+        return (0..<min(starts.count, temperatures.count, codes.count, days.count))
+            .compactMap { index in
+                Sky(code: codes[index]).map { sky in
+                    Hour(
+                        start: Date(timeIntervalSince1970: starts[index]),
+                        temperature: Measurement(value: temperatures[index], unit: .celsius),
+                        sky: sky, isDay: days[index] != 0)
+                }
             }
-        }
     }
 
     public static func forecast(at place: Place) async throws -> Self {
@@ -164,8 +167,8 @@ public struct Weather: Decodable, Equatable, Sendable {
                     "temperature_2m,weather_code,is_day,apparent_temperature,"
                     + "relative_humidity_2m,wind_speed_10m",
                 "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
-                "hourly": "temperature_2m,weather_code,is_day", "timezone": "auto",
-                "forecast_days": "1", "forecast_hours": hoursAhead, "timeformat": "unixtime",
+                "hourly": "temperature_2m,weather_code,is_day", "timeformat": "unixtime",
+                "timezone": "auto", "forecast_days": "2",
             ])
     }
 
@@ -194,5 +197,9 @@ public struct Weather: Decodable, Equatable, Sendable {
         parts?.queryItems = query.sorted { $0.key < $1.key }.map(URLQueryItem.init)
         guard let url = parts?.url else { throw URLError(.badURL) }
         return url
+    }
+
+    public func hours(from now: Date, count: Int) -> [Hour] {
+        Array(hours.drop { $0.start.addingTimeInterval(Self.hour) <= now }.prefix(count))
     }
 }

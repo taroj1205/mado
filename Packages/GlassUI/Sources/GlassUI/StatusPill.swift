@@ -1,6 +1,7 @@
 import AppKit
 
-final class StatusPill: NSView {
+final class StatusPill: NSView, NSDraggingSource {
+    static let dragType = NSPasteboard.PasteboardType("com.taroj1205.mado.statuspill")
     private static let height: CGFloat = 36
     private static let radius: CGFloat = 12
     private static let leading: CGFloat = 11
@@ -27,11 +28,18 @@ final class StatusPill: NSView {
     let glass: GlassView
     private let highlight = NSBox()
     private(set) var symbol: String?
-    private var dragging = false
+    let slot = DashedOutline.slot(radius: StatusPill.radius)
+    private var dragStart: NSEvent?
     var onPress: (() -> Void)?
     var onGrab: (() -> Void)?
-    var onDrag: ((NSPoint) -> Void)?
     var onDrop: (() -> Void)?
+
+    var lifted = false {
+        didSet {
+            glass.alphaValue = lifted ? 0 : 1
+            slot.isHidden = !lifted
+        }
+    }
 
     var text: String {
         label.stringValue
@@ -68,7 +76,13 @@ final class StatusPill: NSView {
         highlight.isHidden = true
         glass.container.addSubview(highlight, positioned: .below, relativeTo: stack)
         addSubview(glass)
+        slot.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(slot)
         NSLayoutConstraint.activate([
+            slot.leadingAnchor.constraint(equalTo: leadingAnchor),
+            slot.trailingAnchor.constraint(equalTo: trailingAnchor),
+            slot.topAnchor.constraint(equalTo: topAnchor),
+            slot.bottomAnchor.constraint(equalTo: bottomAnchor),
             glass.leadingAnchor.constraint(equalTo: leadingAnchor),
             glass.trailingAnchor.constraint(equalTo: trailingAnchor),
             glass.topAnchor.constraint(equalTo: topAnchor),
@@ -140,27 +154,52 @@ final class StatusPill: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        dragging = onGrab != nil && event.modifierFlags.contains(.command)
-        if dragging {
+        if onGrab != nil, event.modifierFlags.contains(.command) {
+            dragStart = event
             onGrab?()
-        } else if let onPress {
+            return
+        }
+        dragStart = nil
+        if let onPress {
             onPress()
         } else {
             super.mouseDown(with: event)
         }
     }
 
-    override func mouseDragged(with event: NSEvent) {
-        if dragging {
-            onDrag?(event.locationInWindow)
-        }
+    override func mouseDragged(with _: NSEvent) {
+        guard let start = dragStart, unsafe window != nil else { return }
+        dragStart = nil
+        beginDrag(with: start)
     }
 
     override func mouseUp(with _: NSEvent) {
-        if dragging {
-            dragging = false
+        if dragStart != nil {
+            dragStart = nil
             onDrop?()
         }
+    }
+
+    private func beginDrag(with event: NSEvent) {
+        let item = NSPasteboardItem()
+        item.setString(identifier?.rawValue ?? "", forType: Self.dragType)
+        let dragging = NSDraggingItem(pasteboardWriter: item)
+        let card = DragCard.make(of: self, showing: glass.contentView ?? self, radius: Self.radius)
+        dragging.setDraggingFrame(card.frame, contents: card.image)
+        let session = beginDraggingSession(with: [dragging], event: event, source: self)
+        session.animatesToStartingPositionsOnCancelOrFail = false
+        lifted = true
+    }
+
+    func draggingSession(
+        _: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        context == .withinApplication ? .move : []
+    }
+
+    func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation _: NSDragOperation) {
+        lifted = false
+        onDrop?()
     }
 
     override func accessibilityPerformPress() -> Bool {

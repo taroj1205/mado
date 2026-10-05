@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct OverlayPanelTests {
+@Suite(.silentWindows) struct OverlayPanelTests {
     private let panel = OverlayPanel()
 
     @Test func neverTakesTheMouseOrTheKeyboard() {

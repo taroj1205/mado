@@ -1,3 +1,4 @@
+public import AppCore
 public import AppKit
 
 public final class WidgetGrid: NSView {
@@ -5,6 +6,8 @@ public final class WidgetGrid: NSView {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
+        case month(AgendaMonth)
+        case event(title: String, Event)
         case loading(title: String)
         case notice(title: String, headline: String, detail: String)
         case permission(title: String, request: String, reason: String)
@@ -166,7 +169,8 @@ public final class WidgetGrid: NSView {
     var onDragEnd: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
-    let dock = DashedOutline(colour: WidgetRailsView.dock, width: dockEdge, fill: .clear)
+    let dock = DashedOutline(
+        colour: WidgetRailsView.dock, width: dockEdge, fill: .clear, radius: WidgetTile.radius)
     let dockCaption = NSTextField(labelWithString: "IN THE PANEL · DROP OR CLICK A WIDGET BELOW")
 
     var rowHeight: CGFloat {

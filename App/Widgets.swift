@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import GlassUI
 import os
+import SearchKit
 
 @MainActor
 final class Widgets {
@@ -13,18 +14,20 @@ final class Widgets {
     private static let day = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
     private static let spokenDay = Date.FormatStyle().weekday(.wide).day().month(.wide)
     private static let clockWidget = "clock"
-    private static let system = "system"
+    static let system = "system"
     static let music = "music"
     static let weather = "weather"
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
     private static let logger = Log.logger("Widgets")
-    private static let battery = "battery"
-    private static let batteryAction = "Battery Settings"
-    private static let macName = "Mac"
-    private static let owner = #/^\S+['’]s /#
-    static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
+    static let battery = "battery"
     static let gallery: [WidgetGallery.Card] = [
+        .init(
+            id: calendarWidget, name: "Calendar", summary: "Month and today", group: .today,
+            isWide: true, isTall: true),
+        .init(
+            id: upNext, name: "Up Next", summary: "Next event, ↵ joins", group: .today,
+            isWide: true),
         .init(id: weather, name: "Weather", summary: "Now, high and low", group: .today),
         .init(id: clockWidget, name: "Clock", summary: "Time and date", group: .today),
         .init(
@@ -42,6 +45,10 @@ final class Widgets {
         Set(gallery.filter(\.isWide).map(\.id))
     }
 
+    static var tall: Set<String> {
+        Set(gallery.filter(\.isTall).map(\.id))
+    }
+
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
     }
@@ -49,7 +56,12 @@ final class Widgets {
     var shown: [String] = []
     var city = ""
     let weatherFeed = WeatherFeed()
-    private var stats: SystemStats?
+    var schedule = Schedule.loading
+    var scheduling: Task<Void, Never>?
+    private(set) var stats: SystemStats?
+    var searched: [WidgetQuery.Kind] = []
+    var delivered: [ResultList.Item] = []
+    var onSearchedChange: (() -> Void)?
     private var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
     private var listening: Task<Void, Never>?
@@ -84,11 +96,13 @@ final class Widgets {
 
     private static func current(
         at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?,
-        weather: WeatherFeed.State
+        weather: WeatherFeed.State, schedule: Schedule
     ) -> [WidgetGrid.Widget] {
         let cpu = stats?.cpu
         let memory = stats?.memory
         return [
+            month(at: date),
+            widget(for: schedule, at: date),
             widget(for: weather),
             .init(
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
@@ -127,51 +141,11 @@ final class Widgets {
             spoken: "\(playing.isPlaying ? "Now playing" : "Paused"): \(song)")
     }
 
-    private static func batteries(in stats: SystemStats) -> WidgetGrid.Widget? {
-        let mac = stats.battery
-        let macStatus = mac.map { "\(percent($0.level)), \(status(of: $0).lowercased())" }
-        guard let headphones = stats.headphones else {
-            guard let mac, let macStatus else { return nil }
-            return .init(
-                id: battery, name: name(of: battery), value: percent(mac.level),
-                detail: status(of: mac),
-                action: batteryAction, spoken: "Battery: \(macStatus)",
-                symbol: StatusPills.symbol(for: mac), facts: batteryFacts(of: mac))
-        }
-        let spoken = [
-            macStatus.map { "\(macName) \($0)" },
-            "\(headphones.name) \(percent(headphones.level))",
-        ]
-        return .init(
-            id: battery, name: name(of: battery),
-            meters: [
-                mac.map { meter(macName, $0.level) },
-                meter(headphones.name.replacing(owner, with: ""), headphones.level),
-            ]
-            .compactMap(\.self),
-            action: batteryAction,
-            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; "))",
-            facts: mac.map(batteryFacts) ?? [])
-    }
-
-    private static func status(of battery: SystemStats.Battery) -> String {
-        switch battery.power {
-        case .charging: "Charging"
-        case .charged: "Charged"
-        case .notCharging: "Not charging"
-
-        case .draining(let minutes?):
-            "\(Duration.seconds(Double(minutes) * minute).formatted(timeLeft)) left"
-
-        case .draining(nil): "On battery"
-        }
-    }
-
-    private static func meter(_ name: String, _ level: Double?) -> WidgetGrid.Meter {
+    static func meter(_ name: String, _ level: Double?) -> WidgetGrid.Meter {
         .init(name: name, value: percent(level), level: level ?? 0)
     }
 
-    private static func percent(_ level: Double?) -> String {
+    static func percent(_ level: Double?) -> String {
         level?.formatted(StatusPills.percent) ?? StatusPills.unknown
     }
 
@@ -180,14 +154,20 @@ final class Widgets {
     }
 
     func action(for widget: WidgetGrid.Widget) -> CommandAction {
-        switch widget.id {
-        case Self.system: return StatusPills.open(StatusPills.activityMonitor, title: widget.action)
+        action(forWidget: widget.id, titled: widget.action)
+    }
+
+    func action(forWidget id: String, titled title: String) -> CommandAction {
+        switch id {
+        case Self.system: return StatusPills.open(StatusPills.activityMonitor, title: title)
         case Self.battery: return SettingsPane.battery.open
-        case Self.weather: return weatherAction(titled: widget.action)
+        case Self.weather: return weatherAction(titled: title)
+        case Self.calendarWidget: return Self.openApp(Self.calendarApp, titled: title)
+        case Self.upNext: return upNextAction(titled: title)
         default: break
         }
         guard let clock = Self.clock else { return SettingsPane.dateAndTime.open }
-        return CommandAction(id: "open", title: widget.action) {
+        return CommandAction(id: "open", title: title) {
             _ = try await NSWorkspace.shared.openApplication(
                 at: clock, configuration: NSWorkspace.OpenConfiguration())
         }
@@ -200,6 +180,7 @@ final class Widgets {
             refresh(view)
         }
         refreshWeather()
+        refreshSchedule(in: view)
         refresh(view)
         ticking = Task { [weak self, weak view] in
             while !Task.isCancelled {
@@ -208,6 +189,7 @@ final class Widgets {
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled, let self, let view else { return }
                 refreshWeather()
+                refreshSchedule(in: view)
                 refresh(view)
             }
         }
@@ -225,6 +207,7 @@ final class Widgets {
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
         refreshWeather()
+        refreshSchedule(in: view)
         refresh(view)
     }
 
@@ -251,13 +234,23 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
+        scheduling?.cancel()
+        scheduling = nil
         weatherFeed.cancel()
+        searched = []
+        delivered = []
     }
 
-    private func refresh(_ view: LauncherView) {
-        let all = Self.current(
-            at: .now, stats: stats, playing: playing, weather: weatherFeed.state)
+    func current() -> [WidgetGrid.Widget] {
+        Self.current(
+            at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
+            schedule: schedule)
+    }
+
+    func refresh(_ view: LauncherView) {
+        let all = current()
         view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
         view.widgetPreviews = all
+        refreshCards(among: all)
     }
 }

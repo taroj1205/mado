@@ -77,8 +77,6 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
         didSet { showSpot() }
     }
 
-    var size: WidgetGrid.Size { widget.size }
-
     init(_ card: WidgetGallery.Card, showing widget: WidgetGrid.Widget) {
         self.card = card
         self.widget = widget
@@ -102,7 +100,9 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
             tile.topAnchor.constraint(equalTo: topAnchor),
             tile.leadingAnchor.constraint(equalTo: leadingAnchor),
             tile.trailingAnchor.constraint(equalTo: trailingAnchor),
-            tile.heightAnchor.constraint(equalToConstant: WidgetGrid.rowHeight),
+            tile.heightAnchor.constraint(
+                equalToConstant: WidgetGrid.extent(
+                    of: widget.size.rows, unit: WidgetGrid.rowHeight, gap: WidgetGrid.gap)),
             labels.topAnchor.constraint(equalTo: tile.bottomAnchor, constant: Self.labelGap),
             labels.leadingAnchor.constraint(equalTo: leadingAnchor),
             labels.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),

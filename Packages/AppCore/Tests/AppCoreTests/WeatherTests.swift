@@ -4,6 +4,8 @@ import Testing
 @testable import AppCore
 
 @Suite struct WeatherTests {
+    private let first = 1_790_000_000.0
+
     private let detailed = Data(
         """
         {"utc_offset_seconds":46800,
@@ -22,6 +24,25 @@ import Testing
             "current":{"time":"2026-10-05T13:00","interval":900,"temperature_2m":15.4,
             "weather_code":\(code),"is_day":\(isDay)},
             "daily":{"time":["2026-10-05"],"temperature_2m_max":\(highs),
+            "temperature_2m_min":[11.0]}}
+            """.utf8)
+    }
+
+    private func hourlyForecast(_ hourly: String? = nil) -> Data {
+        let rows =
+            hourly
+                ?? """
+                "hourly":{"time":[\(first),\(first + 3_600),\(first + 7_200),\(first + 10_800)],
+                "temperature_2m":[15.4,16.0,17.2,14.1],"weather_code":[2,0,3,61],
+                "is_day":[1,1,1,0]},
+                """
+        return Data(
+            """
+            {"utc_offset_seconds":46800,
+            "current":{"time":1790000000,"interval":900,"temperature_2m":15.4,
+            "weather_code":2,"is_day":1},
+            \(rows)
+            "daily":{"time":[1789999000],"temperature_2m_max":[17.1],
             "temperature_2m_min":[11.0]}}
             """.utf8)
     }
@@ -61,19 +82,7 @@ import Testing
         #expect(weather.humidity == 0.77)
         #expect(weather.wind == Measurement(value: 14.5, unit: .kilometersPerHour))
         #expect(weather.rainChance == 0.35)
-        #expect(weather.utcOffset == 46_800)
-    }
-
-    @Test func readsTheHoursFromNowOnAndSkipsAnyWithAnUnknownCode() throws {
-        let weather = try decode(detailed)
-        #expect(weather.hours.map(\.sky) == [.clear, .partlyCloudy, .rain])
-        #expect(weather.hours.map(\.isDay) == [false, false, true])
-        #expect(weather.hours.first?.time == Date(timeIntervalSince1970: 1_791_187_200))
-        #expect(weather.hours.last?.temperature == Measurement(value: 12.1, unit: .celsius))
-        let broken =
-            String(bytes: detailed, encoding: .utf8)?
-            .replacing("[0,2,61]", with: "[0,-1,61]") ?? ""
-        #expect(try decode(Data(broken.utf8)).hours.count == 2)
+        #expect(weather.timeZone.secondsFromGMT() == 46_800)
     }
 
     @Test func aReplyWithoutTheExtrasStillGivesTheBasics() throws {
@@ -83,16 +92,16 @@ import Testing
         #expect(weather.wind == nil)
         #expect(weather.rainChance == nil)
         #expect(weather.hours.isEmpty)
-        #expect(weather.utcOffset == 0)
     }
 
-    @Test func askForTheNextHoursAsUnixTimes() throws {
+    @Test func asksForTheDetailsAndTheChanceOfRain() throws {
         let url = try Weather.forecastURL(at: .init(latitude: 1, longitude: 2))
         let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
             .queryItems
-        #expect(items?.first { $0.name == "timeformat" }?.value == "unixtime")
-        #expect(items?.first { $0.name == "forecast_hours" }?.value == "8")
-        #expect(items?.first { $0.name == "hourly" }?.value?.contains("weather_code") == true)
+        #expect(items?.first { $0.name == "current" }?.value?.contains("wind_speed_10m") == true)
+        #expect(
+            items?.first { $0.name == "daily" }?.value?.contains("precipitation_probability_max")
+                == true)
     }
 
     @Test func nightIsKept() throws {
@@ -102,6 +111,39 @@ import Testing
     @Test func aNegativeCodeOrMissingRangeIsRejected() {
         #expect(throws: DecodingError.self) { try decode(forecast(code: -1)) }
         #expect(throws: DecodingError.self) { try decode(forecast(highs: "[]")) }
+    }
+
+    @Test func readsTheHoursAheadInThePlacesTimeZone() throws {
+        let weather = try decode(hourlyForecast())
+        #expect(weather.timeZone.secondsFromGMT() == 46_800)
+        #expect(weather.hours.map(\.sky) == [.partlyCloudy, .clear, .overcast, .rain])
+        #expect(weather.hours.map(\.isDay) == [true, true, true, false])
+        #expect(weather.hours[2].temperature == Measurement(value: 17.2, unit: .celsius))
+        #expect(weather.hours[1].start == Date(timeIntervalSince1970: first + 3_600))
+    }
+
+    @Test func listsHoursFromTheOneThatContainsNow() throws {
+        let weather = try decode(hourlyForecast())
+        let now = Date(timeIntervalSince1970: first + 3_600 + 600)
+        #expect(weather.hours(from: now, count: 2).map(\.sky) == [.clear, .overcast])
+        #expect(weather.hours(from: now, count: 9).count == 3)
+        #expect(weather.hours(from: now.addingTimeInterval(86_400), count: 2).isEmpty)
+    }
+
+    @Test func aReplyWithoutHoursStillReadsToday() throws {
+        let weather = try decode(forecast())
+        #expect(weather.hours.isEmpty)
+        #expect(weather.sky == .partlyCloudy)
+    }
+
+    @Test func mismatchedHourlyListsKeepTheCompleteHours() throws {
+        let weather = try decode(
+            hourlyForecast(
+                """
+                "hourly":{"time":[\(first),\(first + 3_600)],"temperature_2m":[15.4],
+                "weather_code":[2,0],"is_day":[1,1]},
+                """))
+        #expect(weather.hours.count == 1)
     }
 
     @Test func anErrorReplyIsRejected() {
@@ -126,6 +168,7 @@ import Testing
         let items = query.queryItems ?? []
         #expect(items.first { $0.name == "latitude" }?.value == "-36.85")
         #expect(items.first { $0.name == "longitude" }?.value == "174.76")
+        #expect(items.first { $0.name == "timeformat" }?.value == "unixtime")
         #expect(query.host == "api.open-meteo.com")
     }
 

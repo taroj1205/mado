@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import SearchKit
 
 extension Widgets {
     private typealias Look = (condition: String, symbol: String)
@@ -18,6 +19,7 @@ extension Widgets {
         .rainShowers: ("Showers", "cloud.sun.rain"), .snowShowers: ("Snow showers", "cloud.snow"),
         .thunderstorm: ("Thunderstorms", "cloud.bolt.rain"),
     ]
+    private static let forecastHours = 6
     private static let freezing = -10.0
     private static let cold = 0.0
     private static let cool = 10.0
@@ -79,17 +81,12 @@ extension Widgets {
             hours: hours(of: now), facts: facts(of: now))
     }
 
-    private static func symbol(of sky: Weather.Sky, isDay: Bool) -> String {
-        let look = looks[sky] ?? unknownSky
-        return isDay ? look.symbol : nightSymbols[sky] ?? look.symbol
-    }
-
     private static func hours(of now: Weather) -> [WidgetGrid.Hour] {
-        let zone = TimeZone(secondsFromGMT: now.utcOffset) ?? .current
-        let style = Date.FormatStyle(timeZone: zone).hour(.defaultDigits(amPM: .abbreviated))
-        return now.hours.enumerated().map { index, hour in
+        let style = Date.FormatStyle(timeZone: now.timeZone).hour(
+            .defaultDigits(amPM: .abbreviated))
+        return now.hours(from: Date(), count: forecastHours).enumerated().map { index, hour in
             .init(
-                label: index == 0 ? "Now" : hour.time.formatted(style),
+                label: index == 0 ? "Now" : hour.start.formatted(style),
                 symbol: symbol(of: hour.sky, isDay: hour.isDay),
                 value: degrees(hour.temperature))
         }
@@ -106,6 +103,34 @@ extension Widgets {
             now.rainChance.map { .init(name: "Rain", value: $0.formatted(StatusPills.percent)) },
         ]
         .compactMap(\.self)
+    }
+
+    private static func symbol(of sky: Weather.Sky, isDay: Bool) -> String {
+        let day = (looks[sky] ?? unknownSky).symbol
+        return isDay ? day : nightSymbols[sky] ?? day
+    }
+
+    static func forecast(
+        of now: Weather, at date: Date, spoken: String
+    ) -> ResultList.WidgetCard {
+        let look = looks[now.sky] ?? unknownSky
+        let range = "H \(degrees(now.high)) L \(degrees(now.low))"
+        let hour = Date.FormatStyle(timeZone: now.timeZone).hour()
+        let next = now.hours(from: date, count: forecastHours).dropFirst().map { ahead in
+            ResultList.WidgetHour(
+                label: ahead.start.formatted(hour),
+                symbol: symbol(of: ahead.sky, isDay: ahead.isDay),
+                value: degrees(ahead.temperature))
+        }
+        let current = ResultList.WidgetHour(
+            label: "Now", symbol: symbol(of: now.sky, isDay: now.isDay),
+            value: degrees(now.temperature))
+        return .init(
+            body: .forecast(
+                symbol: current.symbol, value: current.value,
+                detail: [look.condition, range].filter { !$0.isEmpty }.joined(separator: " · "),
+                hours: [current] + next),
+            spoken: spoken)
     }
 
     private static func colour(of temperature: Measurement<UnitTemperature>) -> NSColor {
@@ -142,7 +167,7 @@ extension Widgets {
     }
 
     func refreshWeather() {
-        if shown.contains(Self.weather) {
+        if shown.contains(Self.weather) || searched.contains(.weather) {
             weatherFeed.refresh(for: city)
         } else {
             weatherFeed.cancel()
@@ -162,14 +187,7 @@ extension Widgets {
             }
 
         default:
-            return CommandAction(id: "open", title: title) {
-                guard
-                    let app = NSWorkspace.shared.urlForApplication(
-                        withBundleIdentifier: Self.weatherApp)
-                else { throw CocoaError(.fileNoSuchFile) }
-                _ = try await NSWorkspace.shared.openApplication(
-                    at: app, configuration: NSWorkspace.OpenConfiguration())
-            }
+            return Self.openApp(Self.weatherApp, titled: title)
         }
     }
 }

@@ -1,17 +1,22 @@
 extension WidgetGrid {
     public struct Widget: Sendable, Equatable {
+        static let wideSpan = 2
+        static let tallRows = 2
+
         public let id: String
         public let name: String
         public let content: Content
         public let action: String
         public let spoken: String
         public let isWide: Bool
+        public let isTall: Bool
         public var hours: [Hour] = []
         public var facts: [Fact] = []
         var resized: Size?
 
         var smallest: Size {
-            isWide ? .wide : .small
+            Size(
+                columns: isWide ? Self.wideSpan : 1, rows: isTall ? Self.tallRows : 1)
         }
 
         var size: Size {
@@ -36,7 +41,7 @@ extension WidgetGrid {
 
         public init(
             id: String, name: String, content: Content, action: String, spoken: String,
-            isWide: Bool = false
+            isWide: Bool = false, isTall: Bool = false
         ) {
             self.id = id
             self.name = name
@@ -44,6 +49,7 @@ extension WidgetGrid {
             self.action = action
             self.spoken = spoken
             self.isWide = isWide
+            self.isTall = isTall
         }
 
         public init(

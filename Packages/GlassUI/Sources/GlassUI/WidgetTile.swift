@@ -3,7 +3,6 @@ import AppKit
 final class WidgetTile: NSView {
     static let radius: CGFloat = 16
     static let horizontal: CGFloat = 12
-    static let trackLeading: CGFloat = 10
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
     private static let iconSize: CGFloat = 13
@@ -25,12 +24,16 @@ final class WidgetTile: NSView {
     let meters = NSStackView()
     let track = WidgetTrack()
     let face = WidgetFace()
+    let wash = WidgetWash()
+    let month = WidgetMonth()
+    let countdown = NSTextField(labelWithString: "")
     private lazy var trackPlacement = trackConstraints()
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
-    let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
-    let slot = WidgetTile.makeSlot()
+    let dash = DashedOutline(
+        colour: WidgetTile.editEdge, width: 1, fill: .clear, radius: WidgetTile.radius)
+    let slot = DashedOutline.slot(radius: WidgetTile.radius)
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let resizer = WidgetResizeHandle()
@@ -63,6 +66,7 @@ final class WidgetTile: NSView {
     var editing = false {
         didSet {
             showEditing()
+            wash.alphaValue = editing ? 0 : 1
             paint()
         }
     }
@@ -85,10 +89,14 @@ final class WidgetTile: NSView {
         paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
+        wash.frame = bounds
+        wash.autoresizingMask = [.width, .height]
+        addSubview(wash)
         face.autoresizingMask = [.width, .height]
         face.isHidden = true
         addSubview(face)
         arrangeLines()
+        arrangeCalendar()
         arrangeEditing()
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
@@ -148,8 +156,9 @@ final class WidgetTile: NSView {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
-        case .loading, .notice, .permission, .unavailable: break
+        case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
+        wash.tint = widget.track == nil ? nil : track.tint
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
@@ -191,20 +200,6 @@ final class WidgetTile: NSView {
         NSAccessibilityCustomAction(name: name) { [weak self] in
             self?.onSkip?(skip)
             return true
-        }
-    }
-
-    private func showMeters(_ readings: [WidgetGrid.Meter]) {
-        if meters.arrangedSubviews.count != readings.count {
-            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for _ in readings {
-                let meter = WidgetMeter()
-                meters.addArrangedSubview(meter)
-                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
-            }
-        }
-        for (view, meter) in zip(meters.arrangedSubviews, readings) {
-            (view as? WidgetMeter)?.show(meter)
         }
     }
 

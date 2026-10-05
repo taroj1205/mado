@@ -35,7 +35,9 @@ enum WidgetPlacement: String, LauncherSetting {
     ) throws {
         let placement = load(from: modules)
         guard placement != .custom else { return }
-        settings.keep(settings.spots(placement.arrangement, from: ids, wide: Widgets.wide))
+        settings.keep(
+            settings.spots(placement.arrangement, from: ids, wide: Widgets.wide, tall: Widgets.tall)
+        )
         try custom.save(to: modules)
     }
 }

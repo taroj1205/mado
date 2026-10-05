@@ -24,7 +24,7 @@ extension AppDelegate {
         let settings = WidgetSettings.load(from: modules)
         launcherView.widgetSpots = settings.spots(
             WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids,
-            wide: Widgets.wide)
+            wide: Widgets.wide, tall: Widgets.tall)
         launcherView.widgetSizes = settings.sizes(from: Widgets.ids)
     }
 
@@ -51,6 +51,7 @@ extension AppDelegate {
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
+        widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
     }
 

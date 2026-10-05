@@ -268,7 +268,9 @@ extension WidgetGrid {
         let available = listed
         let arranged =
             order.isEmpty ? available : order.compactMap { id in available.first { $0.id == id } }
-        let panelWidgets = arranged.filter { spot(of: $0).side == .panel }
+        let panelWidgets = arranged.filter { widget in
+            spot(of: widget).side == .panel && !(tileLayout == .strip && widget.isTall)
+        }
         let rows =
             tileLayout == .strip
             ? Self.cells(of: panelWidgets, in: .strip).count { $0.row == 0 } : nil

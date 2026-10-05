@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct GestureOverlayTests {
+@Suite(.silentWindows) struct GestureOverlayTests {
     private let overlay = GestureOverlay()
 
     @Test func moveNamesTheHeldKeysAndTheDisplayOnlyWhenThereAreSeveral() {

@@ -61,7 +61,8 @@ extension WidgetGrid {
     }
 
     private static func panelFits(_ inPanel: [Placed], layout: Layout?) -> Bool {
-        let placements = inPanel.map { item in
+        let tiles = layout == .strip ? inPanel.filter { !$0.widget.isTall } : inPanel
+        let placements = tiles.map { item in
             Placement(size: item.widget.size(in: layout), pin: item.spot.pin(in: layout))
         }
         let laid = cells(spanning: placements)
@@ -105,7 +106,11 @@ extension WidgetGrid {
         let movers = members(unit)
         var all = widgets.filter { !unit.contains($0.id) }
         let taken = target != .panel && all.contains { spot(of: $0) == target }
-        guard movers.count == unit.count, !movers.isEmpty, !taken else { return false }
+        let tallInStrip =
+            target.side == .panel && tileLayout == .strip && movers.contains(where: \.isTall)
+        guard movers.count == unit.count, !movers.isEmpty, !taken, !tallInStrip else {
+            return false
+        }
         all.insert(
             contentsOf: movers,
             at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
