@@ -27,7 +27,7 @@ import Testing
         let disk = try #require(view.statusBar.views.first)
         let thermal = try #require(view.statusBar.views.last)
         let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
-        disk.mouseDown(with: try mouse(.leftMouseDown, at: past, [.command]))
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
         disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "disk"])
         view.pills = ["disk", "thermal"].map { id in
@@ -83,13 +83,26 @@ import Testing
         let disk = try #require(view.statusBar.views.first)
         let thermal = try #require(view.statusBar.views.last)
         let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
-        disk.mouseDown(with: try mouse(.leftMouseDown, at: past, [.command]))
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
         view.pills = pills(["disk", "thermal", "vpn"], value: "1")
         #expect(view.statusBar.views.contains { $0 === disk })
         disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
         disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
         #expect(saved.count == 1)
         #expect(view.statusBar.pills.map(\.id) == ["thermal", "vpn", "disk"])
+    }
+
+    @Test func aPlainPressAfterALostCommandPressDoesNotReorder() throws {
+        var ran: [String] = []
+        view.onPill = { ran.append($0.id) }
+        let disk = try #require(view.statusBar.views.first)
+        let thermal = try #require(view.statusBar.views.last)
+        let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk)))
+        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past))
+        #expect(ran == ["disk"])
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal"])
     }
 
     @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
@@ -105,13 +118,17 @@ import Testing
     private func drag(_ pill: StatusPill) throws -> NSPoint {
         let thermal = try #require(view.statusBar.views.last)
         let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
-        pill.mouseDown(with: try mouse(.leftMouseDown, at: past, [.command]))
+        pill.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: pill), [.command]))
         pill.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
         return past
     }
 
     private func pills(_ ids: [String], value: String) -> [StatusBar.Pill] {
         ids.map { id in .init(id: id, name: id, symbol: "cpu", value: value, action: "Open \(id)") }
+    }
+
+    private func centre(of pill: StatusPill) -> NSPoint {
+        pill.convert(NSPoint(x: pill.bounds.midX, y: pill.bounds.midY), to: nil)
     }
 
     private func mouse(
