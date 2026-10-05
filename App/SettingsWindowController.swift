@@ -54,6 +54,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let window = Self.window(showing: Self.split(sidebar, pages))
         super.init(window: window)
         sidebar.delegate = self
+        window.initialFirstResponder = sidebar.table
         endSearchOnTabPicks()
         window.delegate = self
         window.onEscape = { [weak self] in self?.endSearchIfActive() ?? false }
