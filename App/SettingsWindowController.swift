@@ -122,6 +122,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let inputKeys = InputSourceKeys(modules: modules, recorder: recorder)
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
+        let enterGuard = EnterGuardPage(modules: modules)
         let speechModels = SpeechModelSettings(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
@@ -129,23 +130,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
-            inputDefaults: inputDefaults, remaps: remaps,
+            inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             gallery: WidgetGalleryWindow(modules: modules), speechModels: speechModels)
         let pages = Self.pages(context)
-        let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
-        sidebar.canCollapse = false
-        sidebar.minimumThickness = Self.sidebarWidth
-        sidebar.maximumThickness = Self.sidebarWidth
-        let split = NSSplitViewController()
-        split.addSplitViewItem(sidebar)
-        split.addSplitViewItem(NSSplitViewItem(viewController: pages))
-
-        let glass = GlassView(shape: .rounded(Self.cornerRadius), tint: Self.tint)
-        glass.frame = split.splitView.bounds
-        glass.autoresizingMask = [.width, .height]
-        split.splitView.addSubview(glass, positioned: .below, relativeTo: nil)
-
-        let window = Self.window(showing: split)
+        let window = Self.window(showing: Self.split(showing: pages))
         tabs = pages
         super.init(window: window)
         window.delegate = self
@@ -157,12 +145,29 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         inputKeys.onChange = { [weak self] in self?.reload() }
         inputDefaults.onChange = { [weak self] in self?.reload() }
         remaps.onChange = { [weak self] in self?.reload() }
+        enterGuard.onChange = { [weak self] in self?.reload() }
         speechModels.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    private static func split(showing pages: NSTabViewController) -> NSSplitViewController {
+        let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
+        sidebar.canCollapse = false
+        sidebar.minimumThickness = sidebarWidth
+        sidebar.maximumThickness = sidebarWidth
+        let split = NSSplitViewController()
+        split.addSplitViewItem(sidebar)
+        split.addSplitViewItem(NSSplitViewItem(viewController: pages))
+
+        let glass = GlassView(shape: .rounded(cornerRadius), tint: tint)
+        glass.frame = split.splitView.bounds
+        glass.autoresizingMask = [.width, .height]
+        split.splitView.addSubview(glass, positioned: .below, relativeTo: nil)
+        return split
     }
 
     private static func window(showing split: NSSplitViewController) -> NSWindow {

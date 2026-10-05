@@ -11,6 +11,7 @@ struct KeyboardModule: Module {
     let hotKeys: HotKeyRegistry?
     let inputSourceSettings: @MainActor () -> InputSourceSettings
     let remapSettings: @MainActor () -> RemapSettings
+    let enterGuardSettings: @MainActor () -> EnterGuardSettings
     let showLauncher: @MainActor (_ toggles: Bool) -> Void
     let inputMemory = AppInputSwitch.Memory()
 
@@ -24,6 +25,7 @@ struct KeyboardModule: Module {
             AppInputSwitch.install(
                 context: context, settings: inputSourceSettings, memory: inputMemory)
             startRemaps(remaps, context: context)
+            startEnterGuard(enterGuardSettings(), context: context)
         }
     }
 
@@ -57,6 +59,18 @@ struct KeyboardModule: Module {
         context.installWhenTrusted("input mode taps") {
             do {
                 try ModifierTap.install(name: "input mode taps", context: context, bindings: taps)
+                return true
+            } catch {
+                return false
+            }
+        }
+    }
+
+    private func startEnterGuard(_ settings: EnterGuardSettings, context: ModuleContext) {
+        guard settings.isOn else { return }
+        context.installWhenTrusted("enter guard") {
+            do {
+                try EnterGuard.install(name: "enter guard", context: context, settings: settings)
                 return true
             } catch {
                 return false
