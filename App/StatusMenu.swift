@@ -16,8 +16,8 @@ enum StatusMenu {
         target: AnyObject, open: Selector, settings: Selector, pauseKeys: Selector, hide: Selector
     ) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.autosaveName = "Mado"
         item.behavior = .removalAllowed
-        item.isVisible = true
 
         let menu = NSMenu()
         let openItem = menu.addItem(
