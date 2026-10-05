@@ -58,8 +58,7 @@ final class MenuBarAgendaCard: NSView {
     }
 
     private static func detail(of event: Agenda.Event) -> String {
-        let hours = (event.start..<event.end).formatted(.interval.hour().minute())
-        return [hours, event.place].filter { !$0.isEmpty }.joined(separator: " · ")
+        [event.hours, event.place].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private static func label(

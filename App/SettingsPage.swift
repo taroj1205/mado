@@ -118,7 +118,12 @@ struct SettingsPage {
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self(
             "Notes", "note.text", module: module(NotesModule.id, "Notes & calendar", enabled: true)
-        ) { context in [MenuBarAgendaSettings.section(context.modules, context.menuBarAgenda)] },
+        ) { context in
+            [
+                MenuBarAgendaSettings.section(context.modules, context.menuBarAgenda),
+                MeetingHUDSettings.section(context.modules),
+            ]
+        },
         Self(
             "Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)
         ) { context in context.colourKeys.sections },
