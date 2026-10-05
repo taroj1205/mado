@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
     let colourPicker = ColourPicker()
+    let calendarAgenda = CalendarAgenda()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
@@ -141,12 +142,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             deliver: { [weak self] sections in self?.show(sections) })
     }
 
-    func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
-        menu(for: item).actions(
-            labelling: { editor.action(for: $0, on: item.id) },
-            running: { [weak self] in self?.run($0, for: item, recordingUse: $1) })
-    }
-
     private func run(_ item: ResultList.Item, action index: Int) {
         let menu = menu(for: item)
         switch menu.entry(at: index) {
@@ -160,7 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
+    func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
         let opensView =
             CalculatorHistory.opens(item.id)
             || [

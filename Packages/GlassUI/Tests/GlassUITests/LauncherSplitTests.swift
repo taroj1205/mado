@@ -103,19 +103,68 @@ import Testing
         defer { try? FileManager.default.removeItem(at: file) }
         let thumbnail = Thumbnails.Request(url: file, side: 48)
         #expect(await Thumbnails.shared.load(thumbnail) != nil)
-        let image = NSImage(size: NSSize(width: 4, height: 4))
         view.enter(
             placeholder: "Filter",
-            detail: .preview { _ in .init(text: "", image: image, details: []) })
+            detail: .preview { _ in .init(text: "", image: file, details: []) })
         view.results.sections = [.init(title: "Today", items: [Self.item("image")])]
-        #expect(view.detail.image.image === image)
         #expect(!view.detail.image.isHidden)
         #expect(view.detail.text.isHidden)
+        await view.detail.loading?.value
+        let shown = try #require(view.detail.image.image)
+        let loading = view.detail.loading
+
+        view.refreshDetail()
+
+        #expect(view.detail.image.image === shown)
+        #expect(view.detail.loading == loading)
 
         view.leave()
 
         #expect(view.detail.image.image == nil)
         #expect(Thumbnails.shared.cached(thumbnail) == nil)
+    }
+
+    @Test func aPreviewStillLoadingIsDroppedWhenTheSelectionMoves() async throws {
+        let file = try Self.png()
+        defer { try? FileManager.default.removeItem(at: file) }
+        view.enter(
+            placeholder: "Filter",
+            detail: .preview { item in
+                .init(text: item.title, image: item.id == "image" ? file : nil, details: [])
+            })
+        view.results.sections = [
+            .init(title: "Today", items: [Self.item("image"), Self.item("text")])
+        ]
+        let stale = try #require(view.detail.loading)
+
+        press(kVK_DownArrow, "\u{F701}")
+        await stale.value
+
+        #expect(view.detail.loading == nil)
+        #expect(view.detail.image.image == nil)
+        #expect(view.detail.image.isHidden)
+        #expect(view.detail.text.stringValue == "text")
+    }
+
+    @Test func showsTheTextWhenTheImageCantBeDecoded() async throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).mov")
+        try Data("not a movie".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        view.enter(
+            placeholder: "Filter",
+            detail: .preview { _ in .init(text: file.path(), image: file, details: []) })
+        view.results.sections = [.init(title: "Today", items: [Self.item("video")])]
+        #expect(view.detail.text.isHidden)
+        await view.detail.loading?.value
+
+        #expect(view.detail.image.isHidden)
+        #expect(!view.detail.text.isHidden)
+        #expect(view.detail.text.stringValue == file.path())
+
+        view.refreshDetail()
+
+        #expect(view.detail.image.isHidden)
+        #expect(!view.detail.text.isHidden)
     }
 
     @Test func leavingWhileAThumbnailLoadsKeepsItOutOfTheCache() async throws {

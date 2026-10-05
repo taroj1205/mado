@@ -61,16 +61,16 @@ import Testing
         #expect(edits == [.move("battery", before: "clock")])
     }
 
-    @Test func outsideEditModeADropOffTheTilesPutsThemBack() {
+    @Test func outsideEditModeADropOffTheTilesLandsWhereTheSlotShows() {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
         #expect(view.dragWidget("battery", at: centre(of: 0), from: nil) == .move)
         let list = view.results.convert(
             NSPoint(x: view.results.bounds.midX, y: view.results.bounds.midY), to: nil)
-        #expect(view.dragWidget("battery", at: list, from: nil).isEmpty)
-        view.endWidgetDrag()
-        #expect(ids == widgets.map(\.id))
-        #expect(edits.isEmpty)
+        #expect(view.dragWidget("battery", at: list, from: nil) == .move)
+        #expect(ids == ["battery", "clock", "weather", "system"])
+        #expect(view.dropWidget("battery"))
+        #expect(edits == [.move("battery", before: "clock")])
     }
 
     @Test func droppingOnTheLastStripTileKeepsTheWidgetInTheStrip() {

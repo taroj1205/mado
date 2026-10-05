@@ -31,6 +31,10 @@ extension LauncherView {
         customiser.show(shown, more: pills.filter { pill in !shown.contains { $0.id == pill.id } })
     }
 
+    func movePill(_ id: String, before target: String?) {
+        editStatusLayout { layout, pills in layout.move(id, before: target, among: pills) }
+    }
+
     private func openCustomiser() {
         leavePillsAndWidgets()
         closePreview()
@@ -55,10 +59,7 @@ extension LauncherView {
         panel.onToggle = { [weak self] id, isShown in
             self?.editStatusLayout { layout, pills in layout.show(id, isShown, among: pills) }
         }
-        panel.onMove = { [weak self] id, target in
-            self?.editStatusLayout { layout, pills in layout.move(id, before: target, among: pills)
-            }
-        }
+        panel.onMove = { [weak self] id, target in self?.movePill(id, before: target) }
         panel.onReset = { [weak self] in
             self?.editStatusLayout { layout, _ in layout = StatusBarLayout() }
         }

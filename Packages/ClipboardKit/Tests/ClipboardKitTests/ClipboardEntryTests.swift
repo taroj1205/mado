@@ -107,6 +107,20 @@ import Testing
             .count == 3)
     }
 
+    @Test func showsACopiedImageOrVideoFileAsAThumbnail() {
+        let png = "/tmp/Screenshot.png"
+        let video = "/tmp/Recording.mp4"
+        let notes = "/tmp/Notes.txt"
+
+        #expect(Self.entry(.file, png).thumbnail == URL(filePath: png))
+        #expect(Self.entry(.file, video).thumbnail == URL(filePath: video))
+        #expect(Self.entry(.file, notes).thumbnail == nil)
+        #expect(Self.entry(.file, "\(png)\n\(png)").thumbnail == nil)
+        let saved = URL(filePath: "/tmp/Images/1.png")
+        #expect(Self.entry(.image, "", image: saved).thumbnail == saved)
+        #expect(Self.entry(.text, png).thumbnail == nil)
+    }
+
     @Test func countsShortTextRightAwayAndLeavesLongTextForLater() {
         let short = Self.entry(.text, "Thanks! I’ll send the file tonight.")
         let long = Self.entry(.text, String(repeating: "word ", count: 20_001))

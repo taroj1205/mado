@@ -6,10 +6,11 @@ struct DictationModule: Module {
     static let id = "dictation"
 
     let descriptor: ModuleDescriptor
+    let settings: @MainActor () -> DictationSettings
 
     func start(context: ModuleContext) {
         context.startKeyFeatures {
-            let dictation = Dictation(logger: context.logger)
+            let dictation = Dictation(logger: context.logger, settings: settings)
             context.own(.other, "dictation") { dictation.stop() }
             context.installWhenTrusted("dictation key") {
                 do {

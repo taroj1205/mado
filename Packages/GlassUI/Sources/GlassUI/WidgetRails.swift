@@ -14,4 +14,8 @@ final class WidgetRails: NSPanel {
         contentView = board
         board.registerForDraggedTypes([WidgetGrid.dragType])
     }
+
+    override func constrainFrameRect(_ frameRect: NSRect, to _: NSScreen?) -> NSRect {
+        frameRect
+    }
 }

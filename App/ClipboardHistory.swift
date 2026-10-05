@@ -93,7 +93,7 @@ final class ClipboardHistory: NSObject {
         return ResultList.Item(
             id: id(of: entry), title: entry.title, subtitle: "",
             kind: entry.kind.title, symbol: symbol(for: entry.kind), action: action,
-            thumbnail: entry.image, tint: tint)
+            thumbnail: entry.thumbnail, tint: tint)
     }
 
     func start(with store: ClipboardStore, context: ModuleContext) {
@@ -165,7 +165,7 @@ final class ClipboardHistory: NSObject {
             stopCounting()
         }
         return LauncherView.Preview(
-            text: entry.preview, image: entry.image.map(NSImage.init(byReferencing:)),
+            text: entry.preview, image: entry.thumbnail,
             details: entry.details(source: source, now: .now, calendar: .current, counts: counts))
     }
 
