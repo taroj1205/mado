@@ -77,6 +77,21 @@ import Testing
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "vpn", "disk"])
     }
 
+    @Test func aPillThatAppearsBeforeTheFirstMoveKeepsTheDraggedPill() throws {
+        var saved: [StatusBarLayout] = []
+        view.onStatusLayout = { saved.append($0) }
+        let disk = try #require(view.statusBar.views.first)
+        let thermal = try #require(view.statusBar.views.last)
+        let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: past, [.command]))
+        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        #expect(view.statusBar.views.contains { $0 === disk })
+        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
+        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        #expect(saved.count == 1)
+        #expect(view.statusBar.pills.map(\.id) == ["thermal", "vpn", "disk"])
+    }
+
     @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
         let disk = try #require(view.statusBar.views.first)
         _ = try drag(disk)

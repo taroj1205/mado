@@ -139,8 +139,9 @@ final class StatusPill: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        if onDrag != nil, event.modifierFlags.contains(.command) {
+        if let onDrag, event.modifierFlags.contains(.command) {
             dragging = true
+            onDrag(event.locationInWindow)
         } else if let onPress {
             onPress()
         } else {
