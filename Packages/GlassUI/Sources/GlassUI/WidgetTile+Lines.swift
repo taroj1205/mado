@@ -21,7 +21,8 @@ extension WidgetTile {
         [reason, allow].forEach(request.addArrangedSubview)
         request.distribution = .fill
         request.spacing = 0
-        ([title, value, headline] + skeleton + [detail, request]).forEach(lines.addArrangedSubview)
+        ([title, value, headline] + skeleton + [detail, span, request])
+            .forEach(lines.addArrangedSubview)
         lines.orientation = .vertical
         lines.alignment = .leading
         lines.distribution = .equalSpacing
@@ -37,6 +38,7 @@ extension WidgetTile {
                 lines.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
                 lines.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
                 request.widthAnchor.constraint(equalTo: width),
+                span.widthAnchor.constraint(equalTo: width),
             ]
                 + skeleton.map { bar in
                     bar.widthAnchor.constraint(equalTo: width, multiplier: bar.fraction)
@@ -45,10 +47,12 @@ extension WidgetTile {
 
     func showLines(of content: WidgetGrid.Content) -> [NSView] {
         switch content {
-        case let .value(text, note, _):
+        case let .value(text, line, _, range):
             showValue(text)
-            showDetail(note, size: Self.detailSize)
-            return [value, detail]
+            showDetail(line, size: Self.detailSize)
+            guard let range, !compact else { return [value, detail] }
+            span.show(range)
+            return [value, detail, span]
 
         case .meters, .track:
             return []

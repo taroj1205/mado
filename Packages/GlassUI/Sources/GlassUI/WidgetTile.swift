@@ -47,6 +47,7 @@ final class WidgetTile: NSView {
         WidgetSkeleton(fraction: bar.fraction, height: bar.height)
     }
     let detail = NSTextField(labelWithString: "")
+    let span = WidgetSpan()
     let reason = NSTextField(labelWithString: "")
     let allow = AllowCapsule()
     let icon = NSImageView()
@@ -68,6 +69,7 @@ final class WidgetTile: NSView {
     private(set) var widgetID = ""
     private var hasTrack = false
     var dragStart: NSEvent?
+    var compact = false
     var onPress: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onRemove: (() -> Void)?
@@ -156,7 +158,7 @@ final class WidgetTile: NSView {
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
-        case let .value(_, _, name): symbol = name
+        case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
         case .loading, .notice, .permission, .unavailable: break

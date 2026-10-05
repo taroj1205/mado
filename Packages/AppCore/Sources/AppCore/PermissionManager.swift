@@ -35,6 +35,7 @@ public final class PermissionManager {
             case .accessibility: "Privacy_Accessibility"
             case .calendars: "Privacy_Calendars"
             case .inputMonitoring: "Privacy_ListenEvent"
+            case .location: "Privacy_LocationServices"
             case .microphone: "Privacy_Microphone"
             case .screenRecording: "Privacy_ScreenCapture"
             }

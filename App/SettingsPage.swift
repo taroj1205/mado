@@ -67,6 +67,7 @@ struct SettingsPage {
                 SettingsSection(
                     "Gallery",
                     [.init("Widgets on the empty query", galleryButton(context))]),
+                WeatherSettings.section(context.modules),
             ]
         },
         Self(

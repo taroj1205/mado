@@ -32,7 +32,7 @@ struct SystemPermissionProbe: PermissionProbe {
         case .microphone:
             Self.microphone(AVCaptureDevice.authorizationStatus(for: .audio))
 
-        case .calendars:
+        case .calendars, .location:
             .unsupported
         }
     }
@@ -51,7 +51,7 @@ struct SystemPermissionProbe: PermissionProbe {
         case .microphone:
             _ = await AVCaptureDevice.requestAccess(for: .audio)
 
-        case .calendars:
+        case .calendars, .location:
             break
         }
     }
