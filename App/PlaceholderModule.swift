@@ -27,7 +27,8 @@ extension ModuleDescriptor {
                 descriptor: self, settings: { [weak modules] in .load(from: modules) },
                 screens: clipboard, snippets: snippets)
 
-        case DictationModule.id: DictationModule(descriptor: self)
+        case DictationModule.id:
+            DictationModule(descriptor: self) { [weak modules] in .load(from: modules) }
 
         case KeyboardModule.id:
             KeyboardModule(

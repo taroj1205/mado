@@ -1,10 +1,16 @@
 import AVFAudio
 import Foundation
+import os
 
 @MainActor
 public final class Microphone {
     enum Failure: Error {
         case noInput
+    }
+
+    struct Chunk: Sendable {
+        let samples: [Float]
+        let sampleRate: Double
     }
 
     private static let bus: AVAudioNodeBus = 0
@@ -14,6 +20,10 @@ public final class Microphone {
     nonisolated private static let decibelsPerPowerDecade = 10.0
 
     private let engine: AVAudioEngine
+    private let sampleRate: Double
+    nonisolated private let pending = OSAllocatedUnfairLock<[Chunk]>(initialState: [])
+    private var converter: AVAudioConverter?
+    private(set) var recorded: [Float] = []
     private var onLevel: (@MainActor (Double) -> Void)?
     private var onFailure: (@MainActor (any Error) -> Void)?
     private var observer: (any NSObjectProtocol)?
@@ -23,8 +33,14 @@ public final class Microphone {
         onLevel != nil
     }
 
-    public init() {
+    public init(sampleRate: Double) {
         engine = AVAudioEngine()
+        self.sampleRate = sampleRate
+    }
+
+    nonisolated private static func mono(at rate: Double) -> AVAudioFormat? {
+        AVAudioFormat(
+            commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
     }
 
     nonisolated static func level(decibels: Double) -> Double {
@@ -39,10 +55,19 @@ public final class Microphone {
         return level(decibels: decibelsPerPowerDecade * log10(power))
     }
 
+    nonisolated static func samples(of buffer: AVAudioPCMBuffer) -> [Float] {
+        guard let channels = unsafe buffer.floatChannelData else { return [] }
+        return unsafe Array(UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength)))
+    }
+
     nonisolated private static func tap(
-        _ send: @escaping @Sendable (Double) -> Void
+        into pending: OSAllocatedUnfairLock<[Chunk]>, _ send: @escaping @Sendable (Double) -> Void
     ) -> AVAudioNodeTapBlock {
-        { buffer, _ in send(level(of: buffer)) }
+        { buffer, _ in
+            let chunk = Chunk(samples: samples(of: buffer), sampleRate: buffer.format.sampleRate)
+            pending.withLock { $0.append(chunk) }
+            send(level(of: buffer))
+        }
     }
 
     public func start(
@@ -50,6 +75,7 @@ public final class Microphone {
         onFailure: @escaping @MainActor (any Error) -> Void
     ) throws {
         stop()
+        pending.withLock { $0 = [] }
         try run()
         self.onLevel = onLevel
         self.onFailure = onFailure
@@ -60,8 +86,13 @@ public final class Microphone {
         }
     }
 
-    public func stop() {
-        guard isRunning else { return }
+    @discardableResult
+    public func stop() -> [Float] {
+        guard isRunning else { return [] }
+        defer {
+            recorded = []
+            converter = nil
+        }
         if let observer {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -70,6 +101,43 @@ public final class Microphone {
         onFailure = nil
         engine.inputNode.removeTap(onBus: Self.bus)
         engine.stop()
+        drain()
+        return recorded
+    }
+
+    private func drain() {
+        let chunks = pending.withLock { queued in
+            defer { queued = [] }
+            return queued
+        }
+        for chunk in chunks {
+            record(chunk.samples, at: chunk.sampleRate)
+        }
+    }
+
+    func record(_ chunk: [Float], at chunkRate: Double) {
+        guard let input = Self.mono(at: chunkRate), let speech = Self.mono(at: sampleRate),
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: input, frameCapacity: AVAudioFrameCount(chunk.count)),
+            let channels = unsafe buffer.floatChannelData
+        else { return }
+        if converter?.inputFormat != input {
+            converter = AVAudioConverter(from: input, to: speech)
+        }
+        let frames = AVAudioFrameCount((Double(chunk.count) * sampleRate / chunkRate).rounded(.up))
+        guard let converter,
+            let output = AVAudioPCMBuffer(pcmFormat: speech, frameCapacity: frames)
+        else { return }
+        buffer.frameLength = buffer.frameCapacity
+        _ = unsafe UnsafeMutableBufferPointer(start: channels[0], count: chunk.count)
+            .update(fromContentsOf: chunk)
+        var unread: AVAudioPCMBuffer? = buffer
+        unsafe converter.convert(to: output, error: nil) { _, status in
+            defer { unread = nil }
+            unsafe status.pointee = unread == nil ? .noDataNow : .haveData
+            return unread
+        }
+        recorded += Self.samples(of: output)
     }
 
     private func run() throws {
@@ -80,7 +148,7 @@ public final class Microphone {
         let current = session
         input.installTap(
             onBus: Self.bus, bufferSize: Self.bufferSize, format: nil,
-            block: Self.tap { [weak self] level in
+            block: Self.tap(into: pending) { [weak self] level in
                 DispatchQueue.main.async { self?.deliver(level, in: current) }
             })
         do {
@@ -92,7 +160,8 @@ public final class Microphone {
     }
 
     private func deliver(_ level: Double, in delivered: Int) {
-        guard delivered == session else { return }
+        guard delivered == session, isRunning else { return }
+        drain()
         onLevel?(level)
     }
 

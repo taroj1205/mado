@@ -5,6 +5,7 @@ public final class DictationPill: NSObject {
     public enum State: Equatable, Sendable {
         case ready(hint: String)
         case listening(since: ContinuousClock.Instant)
+        case transcribing(model: String)
         case failed(String, fix: String?)
     }
 
@@ -43,6 +44,7 @@ public final class DictationPill: NSObject {
     let glass: GlassView
     let stack = NSStackView()
     let icon = NSImageView()
+    let spinner = Spinner()
     let dot = NSImageView(image: recordingDot)
     let meter = LevelMeter()
     let title = FloatingCapsule.label(weight: .medium, color: .labelColor)
@@ -74,7 +76,8 @@ public final class DictationPill: NSObject {
             self?.onFix?()
             self?.hide()
         }
-        for view in [icon, dot, meter, title, detail, clock, fix] {
+        spinner.setAccessibilityElement(false)
+        for view in [icon, spinner, dot, meter, title, detail, clock, fix] {
             stack.addView(view, in: .center)
         }
         stack.spacing = Self.gap
@@ -103,33 +106,7 @@ public final class DictationPill: NSObject {
         dismissal?.cancel()
         dismissal = nil
         self.state = state
-        let visible: [NSView]
-        switch state {
-        case .ready(let hint):
-            show(symbol: "mic", tint: .labelColor)
-            title.stringValue = "Ready"
-            detail.stringValue = hint
-            visible = [icon, title, detail]
-            stack.setAccessibilityLabel("Ready, \(hint)")
-
-        case .listening:
-            meter.reset()
-            clock.stringValue = Self.clock(.zero)
-            visible = [dot, meter, clock]
-            stack.setAccessibilityLabel("Listening")
-
-        case let .failed(message, fixTitle):
-            show(symbol: "exclamationmark.triangle", tint: .systemOrange)
-            title.stringValue = message
-            fix.title = fixTitle ?? ""
-            visible = fixTitle == nil ? [icon, title] : [icon, title, fix]
-            stack.setAccessibilityLabel(message)
-            dismissal = Task { [weak self, failureDuration] in
-                try? await Task.sleep(for: failureDuration)
-                guard !Task.isCancelled else { return }
-                self?.hide()
-            }
-        }
+        let visible = fill(for: state)
         if panel.isVisible {
             let fade = CATransition()
             fade.type = .fade
@@ -142,6 +119,41 @@ public final class DictationPill: NSObject {
         panel.ignoresMouseEvents = fix.isHidden
         morph(on: screen)
         panel.orderFrontRegardless()
+    }
+
+    private func fill(for state: State) -> [NSView] {
+        switch state {
+        case .ready(let hint):
+            show(symbol: "mic", tint: .labelColor)
+            title.stringValue = "Ready"
+            detail.stringValue = hint
+            stack.setAccessibilityLabel("Ready, \(hint)")
+            return [icon, title, detail]
+
+        case .listening:
+            meter.reset()
+            clock.stringValue = Self.clock(.zero)
+            stack.setAccessibilityLabel("Listening")
+            return [dot, meter, clock]
+
+        case .transcribing(let model):
+            title.stringValue = "Transcribing…"
+            detail.stringValue = "\(model) · on device"
+            stack.setAccessibilityLabel("Transcribing, \(model) on device")
+            return [spinner, title, detail]
+
+        case let .failed(message, fixTitle):
+            show(symbol: "exclamationmark.triangle", tint: .systemOrange)
+            title.stringValue = message
+            fix.title = fixTitle ?? ""
+            stack.setAccessibilityLabel(message)
+            dismissal = Task { [weak self, failureDuration] in
+                try? await Task.sleep(for: failureDuration)
+                guard !Task.isCancelled else { return }
+                self?.hide()
+            }
+            return fixTitle == nil ? [icon, title] : [icon, title, fix]
+        }
     }
 
     public func hear(_ level: Double, at now: ContinuousClock.Instant = .now) {
