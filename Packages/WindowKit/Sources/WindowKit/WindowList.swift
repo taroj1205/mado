@@ -77,15 +77,19 @@ public final class WindowList {
     }
 
     private static func set(_ name: String, _ value: Bool, on node: AXUIElement) throws(Failure) {
-        let error = AXUIElementSetAttributeValue(
-            node, name as CFString, value ? kCFBooleanTrue : kCFBooleanFalse)
+        let error = AccessibilityActor.call(on: node) {
+            AXUIElementSetAttributeValue(
+                node, name as CFString, value ? kCFBooleanTrue : kCFBooleanFalse)
+        }
         guard error == .success || FocusedWindow.refusal(error) else {
             throw FocusedWindow.failure(error)
         }
     }
 
     private static func perform(_ action: String, on element: AXUIElement) throws(Failure) {
-        let error = AXUIElementPerformAction(element, action as CFString)
+        let error = AccessibilityActor.call(on: element) {
+            AXUIElementPerformAction(element, action as CFString)
+        }
         guard error == .success || FocusedWindow.refusal(error) else {
             throw FocusedWindow.failure(error)
         }
