@@ -68,10 +68,11 @@ final class PasteStack {
             return
         }
         end()
-        let caret = await FocusedText.current(readingBack: 0)?.caret
         checkCopies?()
-        anchor = CaretAnchor.find(caret)
         queue = PasteQueue()
+        let caret = await FocusedText.current(readingBack: 0)?.caret
+        guard queue != nil else { return }
+        anchor = CaretAnchor.find(caret)
         refresh()
     }
 
