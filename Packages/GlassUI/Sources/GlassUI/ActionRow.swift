@@ -25,6 +25,7 @@ final class ActionRow: NSBox {
     private var iconView: NSImageView?
     let isDestructive: Bool
     var onPress: (() -> Void)?
+    var onHover: (() -> Void)?
     var isSelected = false {
         didSet { restyle() }
     }
@@ -90,6 +91,19 @@ final class ActionRow: NSBox {
 
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
         true
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds, options: [.mouseMoved, .activeAlways, .inVisibleRect], owner: self))
+    }
+
+    override func mouseMoved(with _: NSEvent) {
+        guard !isSelected else { return }
+        onHover?()
     }
 
     override func mouseDown(with _: NSEvent) {

@@ -47,6 +47,7 @@ final class ActionList: NSScrollView {
         }
         self.rows = rows
         for (index, row) in rows.enumerated() {
+            row.onHover = { [weak self] in self?.select(index) }
             if index > 0, groups[index] != groups[index - 1] {
                 addSeparator(after: rows[index - 1])
             }
@@ -62,11 +63,19 @@ final class ActionList: NSScrollView {
 
     func moveSelection(by offset: Int) {
         let index = selected + offset
-        guard rows.indices.contains(index) else { return }
-        rows[selected].isSelected = false
+        guard select(index) else { return }
+        rows[index].scrollToVisible(rows[index].bounds)
+    }
+
+    @discardableResult
+    private func select(_ index: Int) -> Bool {
+        guard rows.indices.contains(index) else { return false }
+        if rows.indices.contains(selected) {
+            rows[selected].isSelected = false
+        }
         selected = index
         rows[index].isSelected = true
-        rows[index].scrollToVisible(rows[index].bounds)
+        return true
     }
 
     func press() {
