@@ -2,6 +2,7 @@ import AppKit
 
 extension LauncherView {
     static let moveTitle = "Move…"
+    static let addTitle = "Add Widgets…"
     static let removeTitle = "Remove Widget"
 
     func showActions(for widget: WidgetGrid.Widget) {
@@ -17,6 +18,7 @@ extension LauncherView {
             ),
             (move, { [weak self] in self?.openSpotPicker(for: widget) }),
             (Action(Self.editTitle), { [weak self] in self?.editWidgets() }),
+            (Action(Self.addTitle), { [weak self] in self?.addWidgets() }),
             (remove, { [weak self] in self?.report(.remove(widget.id)) }),
         ]
         present(entries.map(\.action), for: widget.name) { index in entries[index].run() }
@@ -24,8 +26,10 @@ extension LauncherView {
     }
 
     func openSpotPicker(for widget: WidgetGrid.Widget) {
-        let panel = editingWidgets ? nil : actionPanel
-        guard spotPicker == nil, editingWidgets || panel != nil else { return }
+        let panel = editingWidgets || widgetMenu != nil ? nil : actionPanel
+        guard spotPicker == nil, editingWidgets || widgetMenu != nil || panel != nil else {
+            return
+        }
         let picker = WidgetSpotPicker(moving: widget.name, from: widgetGrid.home(of: widget.id))
         picker.onPick = { [weak self] spot in self?.place(widget.id, at: spot) }
         addSubview(picker.glass)
@@ -34,6 +38,10 @@ extension LauncherView {
             picker.glass.heightAnchor.constraint(equalToConstant: WidgetSpotPicker.size.height),
         ])
         spotPicker = picker
+        if let widgetMenu {
+            place(picker, beside: widgetMenu)
+            return
+        }
         guard let panel else {
             NSLayoutConstraint.activate([
                 picker.glass.leadingAnchor.constraint(equalTo: editBar.move.leadingAnchor),

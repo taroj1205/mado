@@ -165,6 +165,11 @@ public final class WidgetGrid: NSView {
         didSet { tiles.forEach { $0.opensOnSingleClick = opensOnSingleClick } }
     }
     var onExtend: ((Int) -> Void)?
+    var onMenu: ((Int, NSPoint) -> Void)?
+    var onHold: ((Int, NSPoint) -> Void)?
+    var beginsDrag: (WidgetTile, NSEvent, NSPoint) -> Void = { tile, event, grab in
+        tile.beginDrag(with: event, grabbedAt: grab)
+    }
     var onSkip: ((Int, Skip) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((Int, Page) -> Void)?

@@ -17,6 +17,7 @@ extension LauncherView: NSTextFieldDelegate {
             closeCustomiser()
             return true
         }
+        if widgetMenu != nil, widgetMenuCommand(selector, in: textView) { return true }
         if editingWidgets { return editCommand(selector, in: textView) }
         if let pill = selectedPill { return pillCommand(selector, from: pill, in: textView) }
         if let widget = selectedWidget {

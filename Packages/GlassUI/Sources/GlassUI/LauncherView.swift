@@ -79,6 +79,7 @@ public final class LauncherView: NSView {
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
+    var widgetMenu: WidgetMenu?
     var spotPicker: WidgetSpotPicker?
     private(set) var browsing = false
     var isKeyRepeat = { NSApp.currentEvent.map { $0.type == .keyDown && $0.isARepeat } ?? false }

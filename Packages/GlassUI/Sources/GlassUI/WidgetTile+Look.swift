@@ -28,4 +28,25 @@ extension WidgetTile {
     static let floatingLooks: (resting: Look, picked: Look) = (
         (.clear, .clear), (floatingSelectedFill, selectedEdge)
     )
+
+    static func tone(
+        _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
+    ) -> NSColor {
+        NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
+        }
+    }
+
+    func paint() {
+        let look = selected ? looks.picked : looks.resting
+        if editing {
+            box.fillColor = selected ? Self.selectedFill : Self.editFill
+            box.borderColor = .clear
+        } else {
+            box.fillColor = look.fill
+            box.borderColor = look.edge
+        }
+        setAccessibilitySelected(selected)
+    }
 }

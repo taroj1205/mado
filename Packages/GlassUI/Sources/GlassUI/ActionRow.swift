@@ -22,6 +22,7 @@ final class ActionRow: NSBox {
     let keycaps: [Keycap]
     let detail = NSTextField(labelWithString: "")
     let chevron = NSImageView()
+    private var iconView: NSImageView?
     let isDestructive: Bool
     var onPress: (() -> Void)?
     var isSelected = false {
@@ -121,6 +122,7 @@ final class ActionRow: NSBox {
         let image = NSImageView(image: icon)
         image.imageScaling = .scaleProportionallyUpOrDown
         image.translatesAutoresizingMaskIntoConstraints = false
+        iconView = image
         addSubview(image)
         NSLayoutConstraint.activate([
             image.widthAnchor.constraint(equalToConstant: Self.iconSize),
@@ -138,6 +140,7 @@ final class ActionRow: NSBox {
         detail.textColor =
             isSelected ? .white.withAlphaComponent(Self.detailAlpha) : .secondaryLabelColor
         chevron.contentTintColor = isSelected ? .white : .secondaryLabelColor
+        iconView?.contentTintColor = label.textColor
         for keycap in keycaps {
             keycap.fillColor =
                 isSelected

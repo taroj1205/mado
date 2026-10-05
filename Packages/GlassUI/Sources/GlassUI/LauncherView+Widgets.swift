@@ -75,7 +75,12 @@ extension LauncherView {
             widgetGrid.trailingAnchor.constraint(equalTo: trailingAnchor),
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
-        widgetGrid.onPress = { [weak self] index in self?.selectWidget(index) }
+        widgetGrid.onPress = { [weak self] index in
+            self?.closeWidgetMenu()
+            self?.selectWidget(index)
+        }
+        widgetGrid.onMenu = { [weak self] index, point in self?.openWidgetMenu(index, at: point) }
+        widgetGrid.onHold = { [weak self] index, grab in self?.holdWidget(index, grabbedAt: grab) }
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }

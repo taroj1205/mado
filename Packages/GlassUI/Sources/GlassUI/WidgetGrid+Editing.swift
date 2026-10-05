@@ -26,6 +26,8 @@ extension WidgetGrid {
         tile.onPress = { [weak self] in self?.onPress?(index) }
         tile.onOpen = { [weak self] in self?.onOpen?(index) }
         tile.onExtend = { [weak self] in self?.onExtend?(index) }
+        tile.onMenu = { [weak self] point in self?.onMenu?(index, point) }
+        tile.onHold = { [weak self] grab in self?.onHold?(index, grab) }
         tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
         tile.onDay = { [weak self] query in self?.onDay?(query) }
         tile.onPage = { [weak self] page in self?.onPage?(index, page) }

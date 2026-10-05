@@ -45,6 +45,10 @@ final class WidgetMonth: NSView {
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
+    var controlStrip: CGFloat {
+        [next, previous, today].reduce(0) { $0 + $1.width + Self.controlGap }
+    }
+
     init() {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -103,7 +107,7 @@ final class WidgetMonth: NSView {
                 height: WidgetMonthControl.height)
             right -= control.width + Self.controlGap
         }
-        page.reserved = isInteractive ? bounds.maxX - right : 0
+        page.reserved = isInteractive ? controlStrip : 0
     }
 
     func hit(at point: NSPoint) -> Hit? {
