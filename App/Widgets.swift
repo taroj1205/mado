@@ -263,6 +263,7 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
+        weatherFeed.cancel()
     }
 
     private func refresh(_ view: LauncherView) {
