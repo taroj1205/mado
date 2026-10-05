@@ -5,6 +5,7 @@ final class WidgetTile: NSView {
     static let horizontal: CGFloat = 12
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
+    private static let lyricSpan = 3
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
     private static let meterGap: CGFloat = 8
@@ -23,13 +24,20 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let verse = WidgetLyrics()
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    private lazy var trackPlacement = [
+    lazy var trackPlacement = [
         track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
         track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
         track.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ]
+    lazy var versePlacement = [
+        verse.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
+        verse.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+        verse.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
+        verse.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
     ]
     private let box = NSBox()
     let lines = NSStackView()
@@ -54,6 +62,7 @@ final class WidgetTile: NSView {
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
+    var onSeek: ((Int) -> Void)?
     var onRemove: (() -> Void)?
     var onResize: ((Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
@@ -109,7 +118,7 @@ final class WidgetTile: NSView {
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        [meters, track].forEach(addSubview)
+        [meters, track, verse].forEach(addSubview)
         NSLayoutConstraint.activate([
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -157,10 +166,12 @@ final class WidgetTile: NSView {
         switch widget.content {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
-        case let .track(playing): track.show(playing)
+        case let .track(playing): track.show(playing, fitsLyric: widget.span >= Self.lyricSpan)
+        case let .verse(lyrics): verse.show(lyrics)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
-        wash.tint = widget.track == nil ? nil : track.tint
+        wash.tint =
+            widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
@@ -171,6 +182,7 @@ final class WidgetTile: NSView {
         showMeters(readings)
         showTrack(widget.track != nil)
         month.isInteractive = onPage != nil && !editing
+        showVerse(widget.verse != nil)
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
     }
@@ -179,22 +191,6 @@ final class WidgetTile: NSView {
         if editing { return editingActions() }
         if !month.isHidden { return month.accessibilityActions() }
         return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
-    }
-
-    private func showTrack(_ shows: Bool) {
-        track.isHidden = !shows
-        if shows {
-            NSLayoutConstraint.activate(trackPlacement)
-        } else {
-            NSLayoutConstraint.deactivate(trackPlacement)
-        }
-    }
-
-    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
-        NSAccessibilityCustomAction(name: name) { [weak self] in
-            self?.onSkip?(skip)
-            return true
-        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -220,6 +216,8 @@ final class WidgetTile: NSView {
             onSkip?(skip)
         } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
             month.press(hit)
+        } else if let line = lyricLine(at: event) {
+            onSeek?(line)
         } else {
             onPress?()
             openIfAsked(by: event)

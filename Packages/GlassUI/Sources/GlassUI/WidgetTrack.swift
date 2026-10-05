@@ -21,10 +21,12 @@ final class WidgetTrack: NSView {
     let title = NSTextField(labelWithString: "")
     let artist = NSTextField(labelWithString: "")
     let paused = NSTextField(labelWithString: "")
+    let lyric = LyricLine()
     let equalizer = WidgetEqualizer()
     let disc = WidgetDisc()
     let previous = WidgetTrack.symbol("backward.fill")
     let next = WidgetTrack.symbol("forward.fill")
+    private let eyebrow = NSStackView()
     private(set) var tint: NSColor?
     private var shown: WidgetGrid.Track?
 
@@ -46,9 +48,11 @@ final class WidgetTrack: NSView {
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
-        let eyebrow = NSStackView(views: [equalizer, paused])
+        eyebrow.addArrangedSubview(equalizer)
+        eyebrow.addArrangedSubview(paused)
         eyebrow.heightAnchor.constraint(equalToConstant: Self.eyebrowHeight).isActive = true
-        let lines = NSStackView(views: [eyebrow, title, artist])
+        lyric.isHidden = true
+        let lines = NSStackView(views: [eyebrow, title, artist, lyric])
         lines.orientation = .vertical
         lines.alignment = .leading
         lines.spacing = Self.lineGap
@@ -71,6 +75,29 @@ final class WidgetTrack: NSView {
         view.contentTintColor = skipTone
         view.wantsLayer = true
         return view
+    }
+
+    private static func heading(_ track: WidgetGrid.Track) -> NSAttributedString {
+        let line = NSMutableAttributedString(
+            string: track.title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: titleSize, weight: .semibold),
+                .foregroundColor: NSColor.labelColor,
+            ])
+        if !track.artist.isEmpty {
+            line.append(
+                NSAttributedString(
+                    string: "  \(track.artist)",
+                    attributes: [
+                        .font: NSFont.systemFont(ofSize: artistSize),
+                        .foregroundColor: NSColor.secondaryLabelColor,
+                    ]))
+        }
+        let style = NSMutableParagraphStyle()
+        style.lineBreakMode = .byTruncatingTail
+        line.addAttribute(
+            .paragraphStyle, value: style, range: NSRange(location: 0, length: line.length))
+        return line
     }
 
     private func layOut(_ lines: NSView, _ controls: NSView) {
@@ -113,11 +140,10 @@ final class WidgetTrack: NSView {
         (skip == .previous ? previous : next).layer?.add(push, forKey: "pulse")
     }
 
-    func show(_ track: WidgetGrid.Track) {
+    func show(_ track: WidgetGrid.Track, fitsLyric: Bool) {
         let first = shown == nil
         let flipped = shown?.isPlaying != track.isPlaying
-        title.stringValue = track.title
-        artist.stringValue = track.artist
+        showLines(of: track, lyric: fitsLyric ? track.lyric : nil)
         equalizer.isActive = track.isPlaying
         equalizer.isHidden = !track.isPlaying
         paused.isHidden = track.isPlaying
@@ -131,5 +157,20 @@ final class WidgetTrack: NSView {
             cover.show(image, tint: tint, animated: !first)
         }
         shown = track
+    }
+
+    private func showLines(of track: WidgetGrid.Track, lyric current: WidgetGrid.Lyric?) {
+        let hasLyric = current != nil
+        eyebrow.isHidden = hasLyric
+        artist.isHidden = hasLyric
+        lyric.isHidden = !hasLyric
+        artist.stringValue = track.artist
+        if let line = current {
+            title.attributedStringValue = Self.heading(track)
+            lyric.show(line, playing: track.isPlaying)
+        } else {
+            title.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
+            title.stringValue = track.title
+        }
     }
 }

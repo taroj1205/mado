@@ -32,6 +32,10 @@ extension WidgetGrid {
             if case .month = content { true } else { false }
         }
 
+        var verse: Verse? {
+            if case .verse(let lyrics) = content { lyrics } else { nil }
+        }
+
         var isUnavailable: Bool {
             if case .unavailable = content { true } else { false }
         }
@@ -68,6 +72,12 @@ extension WidgetGrid {
             self.init(
                 id: id, name: name, content: .track(track), action: action, spoken: spoken,
                 isWide: true)
+        }
+
+        public init(id: String, name: String, verse: Verse, action: String, spoken: String) {
+            self.init(
+                id: id, name: name, content: .verse(verse), action: action, spoken: spoken,
+                isWide: true, isTall: true)
         }
     }
 }
