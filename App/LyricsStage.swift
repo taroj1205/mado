@@ -63,6 +63,8 @@ final class LyricsStage: NSObject {
 
     func update() {
         guard settings.pin != nil, settings.lookup else {
+            latest = nil
+            presence = LyricsPresence(hideAfter: presence.hideAfter)
             hide()
             return
         }

@@ -25,6 +25,7 @@ public final class LyricsSession {
     private let logger = Log.logger("Lyrics")
     private let lookup: LyricsLookup
     private var clock = LyricsClock()
+    private var clocked: String?
     private var duration: TimeInterval?
     private var fetching: (id: String, task: Task<Void, Never>)?
     private var tried: (id: String, at: TimeInterval)?
@@ -56,10 +57,15 @@ public final class LyricsSession {
             fetching?.task.cancel()
             fetching = nil
             tried = nil
+            clocked = nil
             state = enabled ? .idle : .off
             return
         }
         duration = track.duration
+        if clocked != track.id {
+            clock = LyricsClock()
+            clocked = track.id
+        }
         if let position {
             clock.sync(position: position, at: now, isPlaying: track.isPlaying)
         }

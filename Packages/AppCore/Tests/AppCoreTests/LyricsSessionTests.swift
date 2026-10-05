@@ -75,6 +75,16 @@ import Testing
         #expect(session.lyrics != nil)
     }
 
+    @Test func aNewSongWithoutAPositionStartsFromTheTopNotTheOldClock() {
+        session.update(song, position: 90, enabled: true, at: 100)
+        let next = MusicPlayer.Track(
+            id: "B2", title: "Night Drive", artist: "Neon", isPlaying: true)
+        session.update(next, position: nil, enabled: true, at: 101)
+        #expect(session.position(at: 105) == 0)
+        session.update(next, position: 4, enabled: true, at: 106)
+        #expect(session.position(at: 107) == 5)
+    }
+
     @Test func aFailedLookupIsRetriedAfterAMinuteNotBefore() async {
         server.status = 500
         session.update(song, position: 1, enabled: true, at: 100)

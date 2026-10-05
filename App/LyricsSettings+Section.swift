@@ -40,14 +40,16 @@ extension LyricsSettings {
                     .init("Hide after music stops", editor.hidePopUp(), icon: nil) {
                         "Counts from the moment playback pauses or stops."
                     },
-                    .init("Hide in screen sharing", editor.toggle(\.hidesInSharing)),
+                    .init("Hide in screen sharing", editor.toggle(\.hidesInSharing), icon: nil) {
+                        "Asks sharing apps to skip it. Some newer capture methods ignore this."
+                    },
                 ]),
             SettingsSection(
                 "Lookup",
                 [
                     .init("Players", editor.playerChecks()),
                     .init("Source", caption(site)),
-                    .init("Kept on this Mac", caption("this song only")),
+                    .init("Kept on this Mac", caption("in memory until you quit")),
                 ], footer: footer, accessory: nil),
         ]
     }

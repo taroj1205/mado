@@ -35,7 +35,7 @@ extension Widgets {
     func sections(
         for query: String, enabled: Bool, in view: LauncherView
     ) -> [ResultList.Section] {
-        let kinds = enabled ? WidgetQuery.kinds(for: query) : []
+        let kinds = WidgetQuery.kinds(for: query).filter { enabled || $0 == .lyrics }
         if kinds != searched {
             searched = kinds
             delivered = []
