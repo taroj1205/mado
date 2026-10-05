@@ -25,14 +25,6 @@ import Testing
                 isARepeat: false, keyCode: UInt16(keyCode)))
     }
 
-    private func key(_ keyCode: Int) throws -> NSEvent {
-        try #require(
-            NSEvent.keyEvent(
-                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
-                windowNumber: 0, context: nil, characters: " ", charactersIgnoringModifiers: " ",
-                isARepeat: false, keyCode: UInt16(keyCode)))
-    }
-
     private func escape() throws -> NSEvent {
         try #require(
             NSEvent.keyEvent(
@@ -83,7 +75,7 @@ import Testing
         #expect(!button.isRecording)
     }
 
-    @Test func searchFocusWaitsForSpaceBeforeRecording() throws {
+    @Test func searchFocusWaitsForAPressBeforeRecording() throws {
         var saved: [Shortcut.Modifiers] = []
         button.onChange = { saved.append($0) }
         button.takesSearchFocus = true
@@ -95,7 +87,7 @@ import Testing
         button.flagsChanged(with: try flags(kVK_Command, []))
         #expect(saved.isEmpty)
 
-        button.keyDown(with: try key(kVK_Space))
+        #expect(button.accessibilityPerformPress())
         #expect(button.isRecording)
         #expect(!button.takesSearchFocus)
         #expect(button.keycaps == ["fn"])

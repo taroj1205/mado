@@ -83,8 +83,7 @@ public final class TriggerButton: NSView {
                 unsafe window?.makeFirstResponder(nil)
             }
         } else if [kVK_Space, kVK_Return].contains(key) {
-            takesSearchFocus = false
-            startRecording()
+            record()
         } else {
             super.keyDown(with: event)
         }
@@ -127,7 +126,14 @@ public final class TriggerButton: NSView {
     }
 
     private func record() {
-        unsafe window?.makeFirstResponder(self)
+        guard unsafe window?.firstResponder === self else {
+            unsafe window?.makeFirstResponder(self)
+            return
+        }
+        takesSearchFocus = false
+        if !isRecording {
+            startRecording()
+        }
     }
 
     private func render() {

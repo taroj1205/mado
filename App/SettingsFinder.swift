@@ -123,7 +123,7 @@ final class SettingsFinder {
                 entries.append(
                     .init(
                         id: id, place: place, section: section.title, label: row.label,
-                        keywords: Self.otherWords[row.label] ?? [],
+                        keywords: Self.otherWords[row.key] ?? [],
                         choices: row.control.firstVisible(SettingsPopUp.self)?.choiceTitles ?? [],
                         isHotkey: keycaps != nil))
                 keys[id] = keycaps

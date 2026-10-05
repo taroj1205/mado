@@ -157,6 +157,7 @@ final class SettingsSidebar: NSViewController {
         refill()
         if let kept, let row = rows.indices.first(where: { target(at: $0) == kept }) {
             table.selectRowIndexes([row], byExtendingSelection: false)
+            delegate?.sidebar(rematched: matches)
         } else if searching {
             table.deselectAll(nil)
             delegate?.sidebar(preview: nil, matches: [:])

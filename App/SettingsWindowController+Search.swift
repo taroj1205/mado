@@ -33,6 +33,12 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         }
     }
 
+    func sidebar(rematched matches: [String: [Int]]) {
+        guard let spotlit, let focus = spotlit.spotlight.focus else { return }
+        spotlit.spotlight.focus = .init(
+            matches: matches, selected: focus.selected, dimsOthers: focus.dimsOthers)
+    }
+
     func sidebarShowedPages() {
         restoreHome()
         spotlit?.spotlight.focus = nil
