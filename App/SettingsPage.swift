@@ -47,7 +47,15 @@ struct SettingsPage {
                     ]),
                 SettingsSection(
                     "Mouse",
-                    [.init("Open a widget with", popUp(WidgetOpenGesture.self, context.modules))]),
+                    [
+                        .init("Open a widget with", popUp(WidgetOpenGesture.self, context.modules)),
+                        .init(
+                            "Search a day clicked in Calendar",
+                            SettingsSwitch(
+                                read: { CalendarDayClick.searches(in: context.modules) },
+                                write: { try CalendarDayClick.setSearches($0, in: context.modules) }
+                            )),
+                    ]),
                 SettingsSection(
                     "Gallery",
                     [.init("Widgets on the empty query", galleryButton(context))]),
