@@ -112,6 +112,7 @@ extension LauncherView {
             }
             return
         }
+        closeWidgetMenu()
         if editingWidgets {
             closeSpotPicker()
         }

@@ -151,6 +151,19 @@ import Testing
         #expect(view.selectedWidget == 2)
     }
 
+    @Test func clearingTheWidgetSelectionClosesItsMenuAndPicker() throws {
+        try rig.open(1)
+        #expect(try #require(view.widgetMenu?.rows[1]).accessibilityPerformPress())
+        #expect(view.spotPicker != nil)
+        view.selectWidget(nil)
+        #expect(view.widgetMenu == nil)
+        #expect(view.spotPicker == nil)
+        try rig.open(1)
+        view.selectWidget(2)
+        #expect(view.widgetMenu == nil)
+        #expect(tiles.allSatisfy { !$0.menuOpen })
+    }
+
     @Test func theMenuIsOnlyForWidgetsOutsideEditMode() throws {
         view.editWidgets()
         tiles[1].rightMouseDown(with: try rig.event(.rightMouseDown, on: tiles[1]))
