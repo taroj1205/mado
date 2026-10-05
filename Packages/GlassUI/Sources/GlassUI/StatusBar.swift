@@ -49,7 +49,11 @@ public final class StatusBar: NSScrollView {
         didSet {
             guard pills != oldValue else { return }
             if pills.map(\.id) == oldValue.map(\.id) {
-                zip(pills, views).forEach(show)
+                for view in views {
+                    if let pill = pills.first(where: { $0.id == view.identifier?.rawValue }) {
+                        show(pill, in: view)
+                    }
+                }
                 return
             }
             stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -61,6 +65,7 @@ public final class StatusBar: NSScrollView {
     }
 
     var onPress: ((Int) -> Void)?
+    var onMove: ((String, String?) -> Void)?
     let edges = CAGradientLayer()
     let customise = CustomiseButton()
     private let stack = NSStackView()
@@ -203,11 +208,31 @@ public final class StatusBar: NSScrollView {
 
     private func makeView(for pill: Pill, at index: Int) -> StatusPill {
         let view = StatusPill()
+        view.identifier = NSUserInterfaceItemIdentifier(pill.id)
         view.onPress = { [weak self] in self?.onPress?(index) }
+        view.onDrag = { [weak self, weak view] point in
+            if let view { self?.drag(view, to: point) }
+        }
+        view.onDrop = { [weak self] in self?.drop(pill.id) }
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
         show(pill, in: view)
         return view
+    }
+
+    private func drag(_ pill: StatusPill, to point: NSPoint) {
+        let along = stack.convert(point, from: nil).x
+        let index = views.count { $0 !== pill && $0.frame.midX < along }
+        guard views.firstIndex(of: pill) != index else { return }
+        stack.removeArrangedSubview(pill)
+        stack.insertArrangedSubview(pill, at: index)
+        stack.layoutSubtreeIfNeeded()
+    }
+
+    private func drop(_ id: String) {
+        let order = views.compactMap(\.identifier?.rawValue)
+        guard order != pills.map(\.id), let index = order.firstIndex(of: id) else { return }
+        onMove?(id, order.dropFirst(index + 1).first)
     }
 
     private func show(_ pill: Pill, in view: StatusPill) {

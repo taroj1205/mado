@@ -129,6 +129,12 @@ final class WidgetRailsView: NSView {
             window.convertPoint(toScreen: sender.draggingLocation), sender.draggingSource) ?? []
     }
 
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) {
+        if let sender {
+            _ = draggingUpdated(sender)
+        }
+    }
+
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         onDrop?(sender.draggingPasteboard.string(forType: WidgetGrid.dragType)) ?? false
     }

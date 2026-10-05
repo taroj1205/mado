@@ -64,11 +64,11 @@ import Testing
         #expect(view.widgetGrid.refused == nil)
     }
 
-    @Test func farFromEverySpotTheDragKeepsItsLastPreviewButCannotDrop() {
+    @Test func farFromEverySpotTheDragShowsItGoingBackHome() {
         start(dragging: 1)
         #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
         #expect(view.dragWidget("2", at: window(CGPoint(x: 100, y: 950)), from: nil).isEmpty)
-        #expect(view.widgetGrid.spot(of: numbered(2)) == .leftMiddle)
+        #expect(view.widgetGrid.spot(of: numbered(2)) == .panel)
     }
 
     @Test func thePreviewedSpotStaysDroppableAroundItsGhost() {
@@ -115,7 +115,7 @@ import Testing
     @Test func comingBackToItsOwnSpotPutsTheWidgetBackInPlace() {
         start(dragging: 1)
         #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
-        #expect(view.dragWidget("2", at: window(CGPoint(x: 500, y: 300)), from: nil).isEmpty)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 500, y: 300)), from: nil) == .move)
         #expect(view.widgetGrid.moving == nil)
         #expect(ids == (1...7).map(String.init))
     }
@@ -185,6 +185,32 @@ import Testing
         view.endWidgetDrag()
         #expect(view.widgetGrid.floats.map(\.alphaValue) == [1])
         #expect(view.widgetGrid.tiles[6].slot.isHidden)
+        #expect(view.widgetGrid.rails.board.model.ghost == nil)
+    }
+
+    @Test func aReorderedPanelWidgetLandsWhereItsSlotShowsEvenFromAGap() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        start(dragging: 0)
+        let frames = view.widgetGrid.tileFrames(in: panel)
+        let over = CGPoint(x: frames[2].midX, y: frames[2].midY)
+        #expect(view.dragWidget("1", at: over, from: nil) == .move)
+        #expect(ids == ["2", "3", "1", "4", "5", "6", "7"])
+        let gap = CGPoint(x: (frames[2].maxX + frames[3].minX) / 2, y: frames[2].midY)
+        #expect(view.dragWidget("1", at: gap, from: nil) == .move)
+        #expect(view.widgetGrid.tiles[2].lifted)
+        #expect(view.dropWidget("1"))
+        #expect(edits == [.move("1", before: "4")])
+    }
+
+    @Test func leavingTheRailsPutsThePreviewBackHome() {
+        start(dragging: 1)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
+        let rails = WidgetGrid.railsFrame(beside: Self.frame)
+        let outside = CGPoint(x: rails.minX - 1, y: 437)
+        #expect(view.dragWidget("2", at: window(outside), from: nil).isEmpty)
+        #expect(view.widgetGrid.moving == nil)
+        #expect(ids == (1...7).map(String.init))
         #expect(view.widgetGrid.rails.board.model.ghost == nil)
     }
 
