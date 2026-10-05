@@ -35,6 +35,10 @@ extension WidgetGrid {
                 rows: resized.rows)
         }
 
+        var isMonth: Bool {
+            if case .month = content { true } else { false }
+        }
+
         var isUnavailable: Bool {
             if case .unavailable = content { true } else { false }
         }

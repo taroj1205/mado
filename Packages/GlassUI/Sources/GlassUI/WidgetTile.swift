@@ -42,13 +42,14 @@ final class WidgetTile: NSView {
     private(set) var widgetID = ""
     private(set) var widget: WidgetGrid.Widget?
     var form = WidgetForm(size: .zero)
-    private var hasTrack = false
     var dragStart: NSEvent?
     var resizeStart: NSPoint?
     var compact = false
     var onPress: (() -> Void)?
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onDay: ((String) -> Void)?
+    var onPage: ((WidgetGrid.Page) -> Void)?
     var onRemove: (() -> Void)?
     var onResize: ((Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
@@ -98,6 +99,8 @@ final class WidgetTile: NSView {
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
+        month.onDay = { [weak self] query in self?.onDay?(query) }
+        month.onPage = { [weak self] page in self?.onPage?(page) }
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -124,15 +127,6 @@ final class WidgetTile: NSView {
         nil
     }
 
-    static func tone(
-        _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
-    ) -> NSColor {
-        NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
-        }
-    }
-
     private func paint() {
         let look = selected ? looks.picked : looks.resting
         if editing {
@@ -149,7 +143,6 @@ final class WidgetTile: NSView {
         self.widget = widget
         form = WidgetForm(size: bounds.size)
         widgetID = widget.id
-        hasTrack = widget.track != nil
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
@@ -168,6 +161,7 @@ final class WidgetTile: NSView {
         }
         showMeters(readings)
         showTrack(widget.track != nil)
+        month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
         showFace()
@@ -182,24 +176,12 @@ final class WidgetTile: NSView {
         }
     }
 
-    func customActions() -> [NSAccessibilityCustomAction] {
-        if editing { return editingActions() }
-        return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
-    }
-
     private func showTrack(_ shows: Bool) {
         track.isHidden = !shows
         if shows {
             NSLayoutConstraint.activate(trackPlacement)
         } else {
             NSLayoutConstraint.deactivate(trackPlacement)
-        }
-    }
-
-    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
-        NSAccessibilityCustomAction(name: name) { [weak self] in
-            self?.onSkip?(skip)
-            return true
         }
     }
 
@@ -224,8 +206,18 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
+            month.press(hit)
         } else {
             onPress?()
+        }
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        if month.isInteractive, !month.isHidden {
+            month.scroll(event)
+        } else {
+            super.scrollWheel(with: event)
         }
     }
 

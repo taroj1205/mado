@@ -37,6 +37,7 @@ public struct SpeechModelFilter: Equatable, Sendable {
         case any
         case multilingual
         case englishOnly
+        case japaneseOnly
     }
 
     public enum Size: CaseIterable, Sendable {
@@ -140,8 +141,9 @@ public struct SpeechModelFilter: Equatable, Sendable {
     private func matchesLanguage(_ model: SpeechModel) -> Bool {
         switch language {
         case .any: true
-        case .multilingual: !model.isEnglishOnly
+        case .multilingual: model.languages > 1
         case .englishOnly: model.isEnglishOnly
+        case .japaneseOnly: model.isJapaneseOnly
         }
     }
 

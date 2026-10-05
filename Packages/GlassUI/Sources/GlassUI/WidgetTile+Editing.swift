@@ -83,6 +83,7 @@ extension WidgetTile: NSDraggingSource {
             view.isHidden = !editing
         }
         showGrip()
+        month.isInteractive = onPage != nil && !editing
         setAccessibilityCustomActions(customActions())
     }
 
@@ -146,6 +147,20 @@ extension WidgetTile: NSDraggingSource {
     func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation: NSDragOperation) {
         if operation.isEmpty {
             onDragEnd?()
+        }
+    }
+
+    func customActions() -> [NSAccessibilityCustomAction] {
+        if editing { return editingActions() }
+        if !month.isHidden { return month.accessibilityActions() }
+        return widget?.track != nil
+            ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
+    }
+
+    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
+        NSAccessibilityCustomAction(name: name) { [weak self] in
+            self?.onSkip?(skip)
+            return true
         }
     }
 }

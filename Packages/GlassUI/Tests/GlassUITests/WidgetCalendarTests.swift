@@ -22,13 +22,12 @@ import Testing
         action: "Join Meeting", spoken: "Up Next: Design review", isWide: true)
 
     init() throws {
-        var gregorian = Calendar(identifier: .gregorian)
-        gregorian.locale = Locale(identifier: "en_NZ")
-        gregorian.firstWeekday = 2
-        let day = try #require(gregorian.date(from: DateComponents(year: 2_026, month: 9, day: 30)))
-        month = try #require(Agenda(events: []).month(showing: day, at: day, calendar: gregorian))
+        let day = try #require(
+            Calendar.current.date(from: DateComponents(year: 2_026, month: 9, day: 30)))
+        let shown = WidgetGrid.Month(today: day)
+        month = try #require(shown.grid(in: .current))
         calendar = .init(
-            id: "calendar", name: "Calendar", content: .month(month), action: "Open Calendar",
+            id: "calendar", name: "Calendar", content: .month(shown), action: "Open Calendar",
             spoken: "Calendar", isWide: true, isTall: true)
         panel.contentView = view
         view.widgets = [

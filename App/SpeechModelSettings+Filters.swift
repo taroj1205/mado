@@ -18,6 +18,7 @@ extension SpeechModelSettings {
         case .any: "Any Language"
         case .multilingual: "Multilingual"
         case .englishOnly: "English Only"
+        case .japaneseOnly: "Japanese Only"
         }
     }
 

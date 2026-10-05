@@ -55,6 +55,7 @@ final class CalendarAgenda {
     private static let prefix = "agenda."
     private static let allowID = "agenda.allow"
     private static let upNextDays = 2
+    private static let monthsAround = 1
     static let joinTitle = "Join Meeting"
     static let openTitle = "Open in Calendar"
     private static let events = Events()
@@ -119,6 +120,15 @@ final class CalendarAgenda {
         guard let end = Calendar.current.date(byAdding: .day, value: upNextDays, to: today)
         else { return [] }
         return await events.found(in: DateInterval(start: today, end: end))
+    }
+
+    static func month(around day: Date) async -> [Found] {
+        let calendar = Calendar.current
+        guard let month = calendar.dateInterval(of: .month, for: day),
+            let start = calendar.date(byAdding: .month, value: -monthsAround, to: month.start),
+            let end = calendar.date(byAdding: .month, value: monthsAround + 1, to: month.start)
+        else { return [] }
+        return await events.found(in: DateInterval(start: start, end: end))
     }
 
     static func open(_ found: Found) -> CommandAction {

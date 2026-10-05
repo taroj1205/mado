@@ -10,6 +10,23 @@ extension Widgets {
         case found([CalendarAgenda.Found])
     }
 
+    struct Calendars {
+        var schedule = Schedule.loading
+        var scheduling: Task<Void, Never>?
+        var monthShift = 0
+        var monthEvents: [CalendarAgenda.Found] = []
+        var monthFetching: Task<Void, Never>?
+        var isOn = true
+
+        mutating func stop() {
+            scheduling?.cancel()
+            scheduling = nil
+            monthFetching?.cancel()
+            monthFetching = nil
+            monthShift = 0
+        }
+    }
+
     static let calendarWidget = "calendar"
     static let upNext = "up_next"
     static let calendarApp = "com.apple.iCal"
@@ -19,15 +36,26 @@ extension Widgets {
     private static let noEventsToday = "No events today"
     private static let cardEvents = 4
 
-    static func month(at date: Date) -> WidgetGrid.Widget {
+    static func month(
+        at date: Date, shift: Int, events: [CalendarAgenda.Found], opensDays: Bool
+    ) -> WidgetGrid.Widget {
         let name = name(of: calendarWidget)
+        let shown = Calendar.current.date(byAdding: .month, value: shift, to: date) ?? date
+        let spoken =
+            shift == 0
+            ? date.formatted(date: .complete, time: .omitted)
+            : shown.formatted(.dateTime.month(.wide).year())
         return .init(
             id: calendarWidget, name: name,
-            content: Agenda(events: []).month(showing: date, at: date, calendar: .current)
-                .map(WidgetGrid.Content.month) ?? .loading(title: name),
-            action: openCalendar,
-            spoken: "\(name): \(date.formatted(date: .complete, time: .omitted))", isWide: true,
-            isTall: true)
+            content: .month(
+                .init(
+                    today: Calendar.current.startOfDay(for: date), shift: shift,
+                    events: events.map(\.event),
+                    colours: Dictionary(
+                        events.map { ($0.event.id, $0.colour ?? .controlAccentColor) }
+                    ) { first, _ in first },
+                    opensDays: opensDays)),
+            action: openCalendar, spoken: "\(name): \(spoken)", isWide: true, isTall: true)
     }
 
     static func widget(for schedule: Schedule, at date: Date) -> WidgetGrid.Widget {
@@ -147,23 +175,56 @@ extension Widgets {
     }
 
     func refreshSchedule(in view: LauncherView) {
-        scheduling?.cancel()
-        scheduling = nil
+        calendars.scheduling?.cancel()
+        calendars.scheduling = nil
         guard shown.contains(Self.upNext) || searched.contains(.calendar) else { return }
         guard CalendarAgenda.hasAccess else {
-            schedule = .blocked
+            calendars.schedule = .blocked
             return
         }
-        scheduling = Task { [weak self, weak view] in
+        calendars.scheduling = Task { [weak self, weak view] in
             let found = await CalendarAgenda.upNext(around: .now)
             guard !Task.isCancelled, let self, let view else { return }
-            schedule = .found(found)
+            calendars.schedule = .found(found)
+            refresh(view)
+        }
+    }
+
+    func page(_ page: WidgetGrid.Page, in view: LauncherView) {
+        switch page {
+        case .previous: calendars.monthShift -= 1
+        case .next: calendars.monthShift += 1
+        case .today: calendars.monthShift = 0
+        }
+        refresh(view)
+        refreshMonth(in: view)
+    }
+
+    func refreshCalendars(in view: LauncherView) {
+        refreshSchedule(in: view)
+        refreshMonth(in: view)
+    }
+
+    private func refreshMonth(in view: LauncherView) {
+        calendars.monthFetching?.cancel()
+        calendars.monthFetching = nil
+        let shift = calendars.monthShift
+        guard shown.contains(Self.calendarWidget), calendars.isOn, CalendarAgenda.hasAccess,
+            let day = Calendar.current.date(byAdding: .month, value: shift, to: .now)
+        else {
+            calendars.monthEvents = []
+            return
+        }
+        calendars.monthFetching = Task { [weak self, weak view] in
+            let found = await CalendarAgenda.month(around: day)
+            guard !Task.isCancelled, let self, let view else { return }
+            calendars.monthEvents = found
             refresh(view)
         }
     }
 
     func upNextAction(titled title: String) -> CommandAction {
-        switch schedule {
+        switch calendars.schedule {
         case .loading:
             return Self.openApp(Self.calendarApp, titled: title)
 

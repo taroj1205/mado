@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import os
+import SpeechKit
 
 @MainActor
 final class SpeechModelSettings: NSObject {
@@ -111,8 +112,17 @@ final class SpeechModelSettings: NSObject {
         guard let model = model(for: sender), downloads[model.id] == nil else { return }
         let task = Task { [weak self, store] in
             do {
-                try await store.download(model) { fraction in
+                let progress: @Sendable (Double) -> Void = { fraction in
                     Task { @MainActor in self?.show(fraction, for: model.id) }
+                }
+                switch model.engine {
+                case .whisper:
+                    try await store.download(model, progress: progress)
+
+                case .parakeet:
+                    try await store.install(model) { root, folder in
+                        try await Parakeet.download(folder, into: root, progress: progress)
+                    }
                 }
                 self?.saveModelInUse()
             } catch  where !Task.isCancelled {
