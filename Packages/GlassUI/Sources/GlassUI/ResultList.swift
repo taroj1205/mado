@@ -79,6 +79,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         var prefersSelection: Bool {
             if case .item(let item) = self { item.prefersSelection } else { false }
         }
+
+        var isAnswer: Bool {
+            if case .item(let item) = self { item.answer != nil } else { false }
+        }
     }
 
     static let rowHeight: CGFloat = 42
@@ -92,7 +96,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     static let rowGap: CGFloat = 1
     static let topInset: CGFloat = 4
     private static let headerInset: CGFloat = 12
-    private static let headerBottom: CGFloat = 6
+    static let headerBottom: CGFloat = 6
     private static let headerFontSize: CGFloat = 12
     private static let headerID = NSUserInterfaceItemIdentifier("header")
 
@@ -115,6 +119,14 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     public var compact = false {
         didSet { table.reloadData() }
+    }
+
+    public var trailingInset: CGFloat = 0 {
+        didSet {
+            guard trailingInset != oldValue else { return }
+            scrollerInsets.right = trailingInset
+            table.reloadData()
+        }
     }
 
     public var onSelect: ((Item?) -> Void)?
@@ -164,19 +176,6 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         nil
     }
 
-    static func rows(for sections: [Section]) -> [Row] {
-        sections.filter { !$0.items.isEmpty || $0.notice != nil }
-            .flatMap { section in
-                let above: [Row?] = [
-                    section.notice.map(Row.notice), section.card.map(Row.card),
-                    section.colour.map(Row.colour),
-                ]
-                let items = section.items.map(Row.item)
-                return above.compactMap(\.self) + (items.isEmpty ? [] : [.header(section.title)])
-                    + items
-            }
-    }
-
     public func update(_ sections: [Section], keepingSelectionOf id: String?) {
         kept = id
         self.sections = sections
@@ -223,6 +222,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
         view.radius = radius(ofRow: row)
+        view.trailingInset = rows[row].isAnswer ? 0 : trailingInset
         return view
     }
 

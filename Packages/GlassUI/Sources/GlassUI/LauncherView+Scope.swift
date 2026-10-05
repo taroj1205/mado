@@ -19,6 +19,8 @@ extension LauncherView {
 
     public var scoped: Bool { rootQuery != nil }
 
+    public var showsCalendarAnswer: Bool { !calendarPane.isHidden && results.answerRow != nil }
+
     var homeShown: Bool {
         !shownQuery.scoped
             && shownQuery.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -80,7 +82,6 @@ extension LauncherView {
     func placeDetail(below separator: NSView) {
         for (pane, listWidth) in [
             (detail, DetailPane.listWidth), (comparisonPane, ComparisonPane.listWidth),
-            (calendarPane, CalendarPane.listWidth),
         ] as [(NSView, CGFloat)] {
             NSLayoutConstraint.activate([
                 pane.leadingAnchor.constraint(equalTo: leadingAnchor, constant: listWidth - 1),
@@ -89,6 +90,12 @@ extension LauncherView {
                 pane.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
         }
+        NSLayoutConstraint.activate([
+            calendarPane.trailingAnchor.constraint(equalTo: trailingAnchor),
+            calendarPane.widthAnchor.constraint(equalToConstant: CalendarPane.width),
+            calendarTop,
+            calendarPane.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
     }
 
     func openFilter(_ key: String) -> Bool {
@@ -109,10 +116,18 @@ extension LauncherView {
         case .calendar(let month):
             detail.show(nil)
             calendarPane.show(month(item))
+            calendarTop.constant = results.belowAnswer
 
         case nil:
             detail.show(nil)
         }
+        fitForCalendarAnswer()
+    }
+
+    private func fitForCalendarAnswer() {
+        guard showsCalendarAnswer != fittedForCalendarAnswer else { return }
+        fittedForCalendarAnswer = showsCalendarAnswer
+        onFit?()
     }
 
     func placeSearchBar(_ bar: NSLayoutGuide) {
@@ -173,13 +188,13 @@ extension LauncherView {
             switch shown {
             case .preview: DetailPane.listWidth
             case .comparison: ComparisonPane.listWidth
-            case .calendar: CalendarPane.listWidth
-            case nil: nil
+            case .calendar, nil: nil
             }
         let previews = if case .preview = shown { true } else { false }
         let compares = if case .comparison = shown { true } else { false }
         let dates = if case .calendar = shown { true } else { false }
         results.compact = previews
+        results.trailingInset = dates ? CalendarPane.width : 0
         detail.isHidden = !previews
         comparisonPane.isHidden = !compares
         calendarPane.isHidden = !dates

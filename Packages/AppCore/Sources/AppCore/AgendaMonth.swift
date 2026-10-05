@@ -17,9 +17,6 @@ public struct AgendaMonth: Sendable, Equatable {
     public let weekdays: [String]
     public let days: [Day]
     public let focused: Int
-    public let heading: String
-    public let detail: String
-    public let badge: String
 }
 
 extension Agenda {
@@ -76,9 +73,6 @@ extension Agenda {
             name: focus.formatted(Self.style(.dateTime.month(.wide), in: calendar)),
             year: focus.formatted(Self.style(.dateTime.year(), in: calendar)),
             weekdays: Self.weekdays(in: calendar), days: days,
-            focused: days.firstIndex { $0.start == focus } ?? 0,
-            heading: focus.formatted(full),
-            detail: Self.count(events(on: focus, calendar: calendar)),
-            badge: Self.relative(focus, at: now, calendar: calendar))
+            focused: days.firstIndex { $0.start == focus } ?? 0)
     }
 }

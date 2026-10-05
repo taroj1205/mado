@@ -99,11 +99,6 @@ import Testing
         #expect(focused.query == "27 sep 2026")
         #expect(focused.isWeekend)
         #expect(focused.events.map(\.id) == ["party"])
-        style = .dateTime.weekday(.wide).day().month(.wide)
-        style.timeZone = mondays.timeZone
-        #expect(month.heading == focus.formatted(style))
-        #expect(month.detail == "1 event")
-        #expect(month.badge == "In 5 days")
         #expect(month.days.filter(\.isToday).map(\.start) == [today])
         #expect(month.days.first(where: \.isToday)?.events.map(\.id) == ["review"])
     }
