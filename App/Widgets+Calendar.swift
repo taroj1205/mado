@@ -16,6 +16,7 @@ extension Widgets {
         var monthShift = 0
         var day: Date?
         var searchesDays = false
+        var monthLoaded = false
         var monthEvents: [CalendarAgenda.Found] = []
         var monthFetching: Task<Void, Never>?
         var isOn = true
@@ -27,6 +28,7 @@ extension Widgets {
             monthFetching = nil
             monthShift = 0
             day = nil
+            monthLoaded = false
         }
     }
 
@@ -46,7 +48,7 @@ extension Widgets {
         let shown = Calendar.current.date(byAdding: .month, value: shift, to: date) ?? date
         let spoken: String
         if let day = calendars.day {
-            spoken = day.formatted(date: .complete, time: .omitted)
+            spoken = Self.spoken(day: day, in: events, at: date)
         } else if shift == 0 {
             spoken = date.formatted(date: .complete, time: .omitted)
         } else {
@@ -61,9 +63,28 @@ extension Widgets {
                     colours: Dictionary(
                         events.map { ($0.event.id, $0.colour ?? .controlAccentColor) }
                     ) { first, _ in first },
-                    opensDays: calendars.isOn, searchesDays: calendars.searchesDays,
+                    opensDays: calendars.isOn
+                        && (!CalendarAgenda.hasAccess || calendars.monthLoaded),
+                    searchesDays: calendars.searchesDays || !CalendarAgenda.hasAccess,
                     day: calendars.day)),
             action: openCalendar, spoken: "\(name): \(spoken)", isWide: true, isTall: true)
+    }
+
+    private static func spoken(
+        day: Date, in found: [CalendarAgenda.Found], at date: Date
+    ) -> String {
+        let calendar = Calendar.current
+        let heading = Agenda.heading(for: day, at: date, calendar: calendar)
+        let events = Agenda(events: found.map(\.event))
+            .days(under: [heading], calendar: calendar).flatMap(\.events)
+        let title = day.formatted(date: .complete, time: .omitted)
+        guard !events.isEmpty else { return "\(title), no events" }
+        let lines = events.map { event in
+            let time = Agenda.time(of: event, listedFrom: heading.start, calendar: calendar)
+            return "\(event.title), \(time)"
+        }
+        let count = events.count == 1 ? "1 event" : "\(events.count) events"
+        return "\(title), \(count): \(lines.joined(separator: "; "))"
     }
 
     static func widget(for schedule: Schedule, at date: Date) -> WidgetGrid.Widget {
@@ -199,6 +220,7 @@ extension Widgets {
     }
 
     func page(_ page: WidgetGrid.Page, in view: LauncherView) {
+        dropHiddenDay()
         let shift = calendars.monthShift
         switch page {
         case .previous: step(by: -1)
@@ -213,6 +235,17 @@ extension Widgets {
         }
         refresh(view)
         if calendars.monthShift != shift { refreshMonth(in: view) }
+    }
+
+    private func dropHiddenDay() {
+        let calendar = Calendar.current
+        guard let day = calendars.day else { return }
+        let shown = calendar.date(byAdding: .month, value: calendars.monthShift, to: .now)
+        let grid = shown.flatMap { month in
+            Agenda.span(
+                of: [Agenda.heading(for: month, at: .now, calendar: calendar)], calendar: calendar)
+        }
+        if grid?.contains(day) != true { calendars.day = nil }
     }
 
     private func step(by amount: Int) {
@@ -250,6 +283,7 @@ extension Widgets {
             let found = await CalendarAgenda.month(around: day)
             guard !Task.isCancelled, let self, let view else { return }
             calendars.monthEvents = found
+            calendars.monthLoaded = true
             refresh(view)
         }
     }
