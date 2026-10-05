@@ -122,7 +122,10 @@ final class SettingsSpotlight {
             : controls[id]?.firstVisible(HotKeyButton.self)
         guard let control = preferred ?? controls[id]?.firstVisible((any SearchFocusable).self)
         else {
-            unsafe row.window?.makeFirstResponder(nil)
+            let native: NSView? =
+                controls[id]?.firstVisible(NSSegmentedControl.self)
+                ?? controls[id]?.firstVisible(NSTextField.self).flatMap { $0.isEditable ? $0 : nil }
+            unsafe row.window?.makeFirstResponder(native)
             return
         }
         control.takesSearchFocus = true

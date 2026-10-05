@@ -26,10 +26,14 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         }
     }
 
-    func sidebarEndedSearch() {
+    func sidebarShowedPages() {
         restoreHome()
         spotlit?.spotlight.focus = nil
         spotlit = nil
+    }
+
+    func sidebarEndedSearch() {
+        sidebarShowedPages()
         sidebar.select(page: tabs.selectedTabViewItemIndex)
         sidebar.endSearch()
     }

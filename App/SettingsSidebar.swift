@@ -137,7 +137,7 @@ final class SettingsSidebar: NSViewController {
     func update() {
         refill()
         if !searching {
-            delegate?.sidebar(preview: nil, matches: [:])
+            delegate?.sidebarShowedPages()
             table.selectRowIndexes([page], byExtendingSelection: false)
             table.allowsEmptySelection = false
         } else if !query.isEmpty, let first = rows.indices.first(where: { target(at: $0) != nil }) {
