@@ -10,7 +10,7 @@ extension SpeechModelSettings {
     private static let lineSpacing: CGFloat = 2
     private static let padding: CGFloat = 12
     private static let rowInset: CGFloat = 10
-    private static let searchWidth: CGFloat = 220
+    private static let searchWidth: CGFloat = 180
     private static let speedWidth: CGFloat = 48
     private static let accuracyWidth: CGFloat = 56
     private static let actionWidth: CGFloat = 104
@@ -94,7 +94,7 @@ extension SpeechModelSettings {
         filterButton = filters
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let toolbar = NSStackView(views: [search, spacer, count, filters])
+        let toolbar = NSStackView(views: [search, spacer, count, makeSortButton(), filters])
         toolbar.spacing = Self.spacing
         let card = NSStackView()
         summary = card

@@ -38,6 +38,47 @@ extension SpeechModelSettings {
         }
     }
 
+    private static func title(_ order: SpeechModelFilter.Order) -> String {
+        switch order {
+        case .recommended: "Recommended"
+        case .fastest: "Fastest"
+        case .mostAccurate: "Most Accurate"
+        case .bestOverall: "Best Overall"
+        case .smallest: "Smallest"
+        }
+    }
+
+    private static func speedTitle(_ rating: SpeechModelFilter.Rating) -> String {
+        switch rating {
+        case .any: "Any Speed"
+        case .high: "Fast and Up"
+        case .highest: "Fastest Only"
+        }
+    }
+
+    private static func accuracyTitle(_ rating: SpeechModelFilter.Rating) -> String {
+        switch rating {
+        case .any: "Any Accuracy"
+        case .high: "Accurate and Up"
+        case .highest: "Most Accurate Only"
+        }
+    }
+
+    func makeSortButton() -> NSPopUpButton {
+        let button = SettingsPopUp { [weak self] in
+            let current = self?.filter.order
+            let choices = SpeechModelFilter.Order.allCases.map { order in
+                SettingsPopUp.Choice(title: Self.title(order), isSelected: order == current) {
+                    self?.filter.order = order
+                    self?.refreshList()
+                }
+            }
+            return [SettingsPopUp.Section(title: "Sort By", choices: choices)]
+        }
+        button.setAccessibilityLabel("Sort by")
+        return button
+    }
+
     func makeFilterButton() -> NSPopUpButton {
         let button = NSPopUpButton(frame: .zero, pullsDown: true)
         button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
@@ -60,6 +101,8 @@ extension SpeechModelSettings {
         add("Language", \.language, titled: Self.title, to: menu)
         add("Size", \.size, titled: Self.title, to: menu)
         add("Version", \.version, titled: Self.title, to: menu)
+        add("Speed", \.speed, titled: Self.speedTitle, to: menu)
+        add("Accuracy", \.accuracy, titled: Self.accuracyTitle, to: menu)
         menu.addItem(.separator())
         let clear = NSMenuItem(
             title: "Clear Filters", action: #selector(clearFilters), keyEquivalent: "")

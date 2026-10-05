@@ -41,9 +41,7 @@ final class SpeechModelSettings: NSObject {
     func refreshList() {
         guard let list else { return }
         let inUse = store.model(preferring: DictationSettings.load(from: modules).model)
-        let shown = SpeechModel.all.filter { model in
-            filter.matches(model, isInstalled: store.isInstalled(model))
-        }
+        let shown = filter.shown(SpeechModel.all, isInstalled: store.isInstalled)
         let box =
             shown.isEmpty
             ? emptyState()
@@ -87,7 +85,9 @@ final class SpeechModelSettings: NSObject {
 
     @objc
     func showAll() {
+        let order = filter.order
         filter = SpeechModelFilter()
+        filter.order = order
         searchField?.stringValue = ""
         refreshList()
     }
@@ -95,8 +95,10 @@ final class SpeechModelSettings: NSObject {
     @objc
     func clearFilters() {
         let query = filter.query
+        let order = filter.order
         filter = SpeechModelFilter()
         filter.query = query
+        filter.order = order
         refreshList()
     }
 
