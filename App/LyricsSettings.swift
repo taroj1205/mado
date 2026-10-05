@@ -7,21 +7,27 @@ struct LyricsSettings: StoredValue, Equatable {
         case five = 5
         case minute = 60
         case never = 0
+        case now = -1
         case ten = 10
         case thirty = 30
 
-        static let allCases: [Self] = [.five, .ten, .thirty, .minute, .never]
+        static let allCases: [Self] = [.now, .five, .ten, .thirty, .minute, .never]
 
         var title: String {
             switch self {
             case .five, .ten, .thirty: "\(rawValue) seconds"
             case .minute: "1 minute"
+            case .now: "Immediately"
             case .never: "Never"
             }
         }
 
         var seconds: TimeInterval? {
-            self == .never ? nil : TimeInterval(rawValue)
+            switch self {
+            case .never: nil
+            case .now: 0
+            case .five, .ten, .thirty, .minute: TimeInterval(rawValue)
+            }
         }
     }
 

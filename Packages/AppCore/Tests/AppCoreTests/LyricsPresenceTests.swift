@@ -46,6 +46,12 @@ import Testing
         #expect(!presence.shows(timed: true, playing: false, at: 35))
     }
 
+    @Test func aZeroGraceHidesAtTheMomentOfThePause() {
+        let presence = Screen(hideAfter: 0)
+        #expect(presence.shows(timed: true, playing: true, at: 0))
+        #expect(!presence.shows(timed: true, playing: false, at: 1))
+    }
+
     @Test func neverHidingKeepsAPausedSongOnScreen() {
         let presence = Screen(hideAfter: nil)
         #expect(presence.shows(timed: true, playing: false, at: 0))

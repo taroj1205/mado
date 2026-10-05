@@ -37,7 +37,9 @@ extension LyricsSettings {
                     },
                     .init("Size", editor.sizeControl()),
                     .init("Show on", editor.screenPopUp()),
-                    .init("Hide when paused for", editor.hidePopUp()),
+                    .init("Hide after music stops", editor.hidePopUp(), icon: nil) {
+                        "Counts from the moment playback pauses or stops."
+                    },
                     .init("Hide in screen sharing", editor.toggle(\.hidesInSharing)),
                 ]),
             SettingsSection(
