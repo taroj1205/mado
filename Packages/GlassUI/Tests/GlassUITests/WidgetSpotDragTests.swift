@@ -214,6 +214,17 @@ import Testing
         #expect(view.widgetGrid.rails.board.model.ghost == nil)
     }
 
+    @Test func theRailsStayBesideAPanelNearTheTopOfTheScreen() throws {
+        let screen = try #require(NSScreen.main).frame
+        let near = NSRect(x: screen.midX - 380, y: screen.maxY - 520, width: 760, height: 476)
+        panel.setFrame(near, display: false)
+        panel.orderFrontRegardless()
+        defer { panel.orderOut(nil) }
+        start(dragging: 1)
+        #expect(view.widgetGrid.rails.isVisible)
+        #expect(view.widgetGrid.rails.frame == WidgetGrid.railsFrame(beside: near))
+    }
+
     private func start(dragging index: Int) {
         view.widgetGrid.tiles[index].onDragStart?()
     }
