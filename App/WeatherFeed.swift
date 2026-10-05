@@ -113,7 +113,11 @@ final class WeatherFeed: NSObject, CLLocationManagerDelegate {
         } catch {
             guard !Task.isCancelled else { return }
             logger.error("Weather failed: \(error, privacy: .public)")
-            finish(city, fetched?.city == city ? state : .failed)
+            if let fetched, fetched.city == city {
+                finish(city, .ready(fetched.weather))
+            } else {
+                finish(city, .failed)
+            }
         }
     }
 
