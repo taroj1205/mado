@@ -92,6 +92,10 @@ extension RemapSettings: StoredValue {
     static let key = "remaps"
 }
 
+extension EnterGuardSettings: StoredValue {
+    static let key = "enter_guard"
+}
+
 extension WidgetSettings: StoredValue {
     static let key = "widgets"
 }

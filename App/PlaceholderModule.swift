@@ -34,6 +34,7 @@ extension ModuleDescriptor {
                 descriptor: self, hotKeys: hotKeys,
                 inputSourceSettings: { [weak modules] in .load(from: modules) },
                 remapSettings: { [weak modules] in .load(from: modules) },
+                enterGuardSettings: { [weak modules] in .load(from: modules) },
                 showLauncher: showLauncher)
 
         case WindowsModule.id:
