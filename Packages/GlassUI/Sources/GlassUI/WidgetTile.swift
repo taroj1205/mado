@@ -19,7 +19,6 @@ final class WidgetTile: NSView {
     private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
     private static let editFillAlpha = (dark: 0.07, light: 0.55)
     private static let editEdgeAlpha = (dark: 0.28, light: 0.2)
-    private static let liftedAlpha: CGFloat = 0.35
     static let fill = tone(.white, .white, fillAlpha)
     static let edge = tone(.white, .black, edgeAlpha)
     static let selectedFill = tone(.white, .black, selectedFillAlpha)
@@ -62,6 +61,7 @@ final class WidgetTile: NSView {
     let lines = NSStackView()
     let request = NSStackView()
     let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
+    let slot = WidgetTile.makeSlot()
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let floating: Bool
@@ -91,7 +91,7 @@ final class WidgetTile: NSView {
     }
 
     var lifted = false {
-        didSet { alphaValue = lifted ? Self.liftedAlpha : 1 }
+        didSet { showLifted() }
     }
 
     init(floating: Bool) {
@@ -245,10 +245,10 @@ final class WidgetTile: NSView {
         }
     }
 
-    override func mouseDragged(with event: NSEvent) {
-        guard dragStart != nil, unsafe window != nil else { return }
+    override func mouseDragged(with _: NSEvent) {
+        guard let start = dragStart, unsafe window != nil else { return }
         dragStart = nil
-        beginDrag(with: event)
+        beginDrag(with: start)
     }
 
     override func mouseUp(with _: NSEvent) {
