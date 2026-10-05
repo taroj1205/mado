@@ -25,7 +25,7 @@ extension ResultList {
     }
 
     @discardableResult
-    private func moveSelection(by step: Int) -> Bool {
+    func moveSelection(by step: Int) -> Bool {
         var row = table.selectedRow + step
         while rows.indices.contains(row), !rows[row].isItem {
             row += step

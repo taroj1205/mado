@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct ColourLoupeTests {
+@Suite(.silentWindows) struct ColourLoupeTests {
     static let screen = CGRect(x: 0, y: 0, width: 1_280, height: 800)
     static let card = CGSize(width: 240, height: 80)
 
@@ -57,34 +57,40 @@ import Testing
 
     @Test func keysNudgePickAndCancel() throws {
         let panel = LoupePanel(frame: Self.screen)
+        panel.keys.choose(.vim)
         let expected: [(Int, ColourLoupe.Input?)] = [
             (kVK_LeftArrow, .nudged(across: -1, down: 0)),
             (kVK_RightArrow, .nudged(across: 1, down: 0)),
             (kVK_UpArrow, .nudged(across: 0, down: -1)),
             (kVK_DownArrow, .nudged(across: 0, down: 1)),
+            (kVK_ANSI_H, .nudged(across: -1, down: 0)),
+            (kVK_ANSI_L, .nudged(across: 1, down: 0)),
+            (kVK_ANSI_K, .nudged(across: 0, down: -1)),
+            (kVK_ANSI_J, .nudged(across: 0, down: 1)),
             (kVK_Return, .picked), (kVK_ANSI_KeypadEnter, .picked), (kVK_Escape, .cancelled),
             (kVK_ANSI_A, nil),
         ]
         for (code, input) in expected {
-            #expect(LoupePanel.input(for: try Self.key(code, in: panel), in: panel) == input)
+            #expect(panel.input(for: try Self.key(code, in: panel)) == input)
         }
     }
 
     @Test func movingReportsTheScreenPointAndReleasingPicks() throws {
         let panel = LoupePanel(frame: CGRect(x: 100, y: 50, width: 400, height: 300))
         let moved = try Self.mouse(.mouseMoved, at: CGPoint(x: 10, y: 20))
-        #expect(LoupePanel.input(for: moved, in: panel) == .moved(CGPoint(x: 110, y: 70)))
+        #expect(panel.input(for: moved) == .moved(CGPoint(x: 110, y: 70)))
         let dragged = try Self.mouse(.leftMouseDragged, at: CGPoint(x: 4, y: 5))
-        #expect(LoupePanel.input(for: dragged, in: panel) == .moved(CGPoint(x: 104, y: 55)))
+        #expect(panel.input(for: dragged) == .moved(CGPoint(x: 104, y: 55)))
         let release = try Self.mouse(.leftMouseUp, at: .zero)
-        #expect(LoupePanel.input(for: release, in: panel) == .picked)
+        #expect(panel.input(for: release) == .picked)
         let press = try Self.mouse(.leftMouseDown, at: .zero)
-        #expect(LoupePanel.input(for: press, in: panel) == nil)
+        #expect(panel.input(for: press) == nil)
     }
 
     @Test func showsTheReadingAroundTheSampledPixel() throws {
         let display = try #require(NSScreen.screens.first)
         let loupe = ColourLoupe()
+        loupe.keys.choose(.vim)
         loupe.pointer = { CGPoint(x: display.frame.midX, y: display.frame.midY) }
         var inputs: [ColourLoupe.Input] = []
         loupe.onInput = { inputs.append($0) }
@@ -107,7 +113,7 @@ import Testing
         #expect(loupe.card.frame.width == 240)
         #expect(loupe.hex.stringValue == "#0A84FF")
         #expect(loupe.detail.stringValue == "rgb(10 132 255) · x 1024 y 612")
-        #expect(loupe.hint.stringValue == "Click copies · arrow keys nudge 1 px · esc cancels")
+        #expect(loupe.hint.stringValue == "Click copies · arrows or HJKL nudge 1 px · esc cancels")
         loupe.card.layoutSubtreeIfNeeded()
         let hint = loupe.hint.convert(loupe.hint.bounds, to: loupe.card)
         #expect(loupe.card.bounds.insetBy(dx: 8, dy: 8).contains(hint))

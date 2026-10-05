@@ -13,7 +13,14 @@ extension StatusBar {
         dragStart = shownIDs
     }
 
-    func drag(_ pill: StatusPill, to point: NSPoint) {
+    func drag(_ id: String?, to point: NSPoint) -> NSDragOperation {
+        guard !dragStart.isEmpty, let pill = views.first(where: { $0.identifier?.rawValue == id })
+        else { return [] }
+        drag(pill, to: point)
+        return .move
+    }
+
+    private func drag(_ pill: StatusPill, to point: NSPoint) {
         let along = stack.convert(point, from: nil).x
         let index = views.count { $0 !== pill && $0.frame.midX < along }
         guard views.firstIndex(of: pill) != index else { return }

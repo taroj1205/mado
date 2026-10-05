@@ -24,6 +24,12 @@ import Testing
         ("3 days ago", "2026-10-02"),
         ("45 days from today", "2026-11-19"),
         ("1 month later", "2026-11-05"),
+        ("today + 90 days", "2027-01-03"),
+        ("1 jan 2027 + 30 days", "2027-01-31"),
+        ("3 days before christmas", "2026-12-22"),
+        ("monday + 3 days", "2026-10-08"),
+        ("10 business days from today", "2026-10-19"),
+        ("3 working days before 8 oct", "2026-10-05"),
         ("monday", "2026-10-05"),
         ("next monday", "2026-10-12"),
         ("next fri", "2026-10-09"),
@@ -46,7 +52,8 @@ import Testing
 
     @Test(arguments: [
         "mon", "monitor", "calendar", "5 min", "in 2", "2 days", "30 feb 2026", "next", "agenda",
-        "days until 3 oct 2026", "christmas",
+        "days until 3 oct 2026", "christmas", "days between 1 jan and 1 mar", "days since 1 jan",
+        "foo - 2 days", "1 jan + 2h",
     ])
     func otherSearchesAreNotDays(query: String) {
         #expect(DayQuery.day(in: query, now: now, calendar: calendar) == nil)

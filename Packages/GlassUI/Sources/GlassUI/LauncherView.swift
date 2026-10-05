@@ -39,6 +39,7 @@ public final class LauncherView: NSView {
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
     public var onUndoWidgetEdit: (() -> Void)?
+    public var onEdit: ((ResultList.Item) -> Void)?
     public var onWidgetEditing: ((Bool) -> Void)?
     public internal(set) var editingWidgets = false
     public var context: String? {
@@ -62,6 +63,7 @@ public final class LauncherView: NSView {
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()
     let comparisonPane = ComparisonPane()
+    let mergePane = MergePane()
     let calendarPane = CalendarPane()
     let chip = ScopeChip()
     var shownDetail: Detail?
@@ -114,7 +116,7 @@ public final class LauncherView: NSView {
         addLayoutGuide(bar)
         for view in [
             icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
-            calendarPane, emojiGrid,
+            mergePane, calendarPane, emojiGrid,
         ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -133,6 +135,7 @@ public final class LauncherView: NSView {
         placeDetail(below: separator)
         placeGrid(below: separator)
         placeCapsules()
+        placeMerge()
     }
 
     @available(*, unavailable)
@@ -159,7 +162,7 @@ public final class LauncherView: NSView {
         case "y" where selectedItem?.file != nil: togglePreview()
 
         case let key?:
-            return runActionShortcut(event) || openFilter(key) || runShortcut(key)
+            return runActionShortcut(event) || scopeShortcut(key) || runShortcut(key)
                 || super.performKeyEquivalent(with: event)
 
         default: return super.performKeyEquivalent(with: event)
@@ -186,6 +189,7 @@ public final class LauncherView: NSView {
     }
 
     func selectionChanged(to item: ResultList.Item?) {
+        endMergeEdit(for: item)
         showAction(of: item)
         showDetail(of: item)
         if previewing {
@@ -239,6 +243,7 @@ public final class LauncherView: NSView {
     }
 
     func selectionMoved() {
+        if mergePane.isEditing { unsafe window?.makeFirstResponder(field) }
         leavePillsAndWidgets()
         browsing = true
         showContext()

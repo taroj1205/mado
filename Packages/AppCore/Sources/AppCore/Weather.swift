@@ -44,9 +44,19 @@ public struct Weather: Decodable, Equatable, Sendable {
         }
     }
 
+    public struct Hour: Equatable, Sendable {
+        public let start: Date
+        public let temperature: Measurement<UnitTemperature>
+        public let sky: Sky
+        public let isDay: Bool
+    }
+
     private enum Keys: String, CodingKey {
         case current = "current"
         case daily = "daily"
+        case hourly = "hourly"
+        case time = "time"
+        case offset = "utc_offset_seconds"
         case temperature = "temperature_2m"
         case code = "weather_code"
         case isDay = "is_day"
@@ -60,12 +70,15 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let coordinateScale = 100.0
     private static let success = 200
     private static let middle = 0.5
+    private static let hour: TimeInterval = 3_600
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
     public let low: Measurement<UnitTemperature>
     public let sky: Sky
     public let isDay: Bool
+    public let hours: [Hour]
+    public let timeZone: TimeZone
 
     public var position: Double {
         let range = high.value - low.value
@@ -93,6 +106,28 @@ public struct Weather: Decodable, Equatable, Sendable {
         low = Measurement(value: lowest, unit: .celsius)
         sky = found
         isDay = try now.decode(Int.self, forKey: .isDay) != 0
+        timeZone =
+            try root.decodeIfPresent(Int.self, forKey: .offset)
+            .flatMap { TimeZone(secondsFromGMT: $0) } ?? .current
+        hours = try Self.hours(in: root)
+    }
+
+    private static func hours(in root: KeyedDecodingContainer<Keys>) throws -> [Hour] {
+        guard root.contains(.hourly) else { return [] }
+        let hourly = try root.nestedContainer(keyedBy: Keys.self, forKey: .hourly)
+        let starts = try hourly.decode([TimeInterval].self, forKey: .time)
+        let temperatures = try hourly.decode([Double].self, forKey: .temperature)
+        let codes = try hourly.decode([Int].self, forKey: .code)
+        let days = try hourly.decode([Int].self, forKey: .isDay)
+        return (0..<min(starts.count, temperatures.count, codes.count, days.count))
+            .compactMap { index in
+                Sky(code: codes[index]).map { sky in
+                    Hour(
+                        start: Date(timeIntervalSince1970: starts[index]),
+                        temperature: Measurement(value: temperatures[index], unit: .celsius),
+                        sky: sky, isDay: days[index] != 0)
+                }
+            }
     }
 
     public static func forecast(at place: Place) async throws -> Self {
@@ -109,8 +144,9 @@ public struct Weather: Decodable, Equatable, Sendable {
             [
                 "latitude": rounded(place.latitude), "longitude": rounded(place.longitude),
                 "current": "temperature_2m,weather_code,is_day",
-                "daily": "temperature_2m_max,temperature_2m_min", "timezone": "auto",
-                "forecast_days": "1",
+                "daily": "temperature_2m_max,temperature_2m_min",
+                "hourly": "temperature_2m,weather_code,is_day", "timeformat": "unixtime",
+                "timezone": "auto", "forecast_days": "2",
             ])
     }
 
@@ -139,5 +175,9 @@ public struct Weather: Decodable, Equatable, Sendable {
         parts?.queryItems = query.sorted { $0.key < $1.key }.map(URLQueryItem.init)
         guard let url = parts?.url else { throw URLError(.badURL) }
         return url
+    }
+
+    public func hours(from now: Date, count: Int) -> [Hour] {
+        Array(hours.drop { $0.start.addingTimeInterval(Self.hour) <= now }.prefix(count))
     }
 }

@@ -33,7 +33,8 @@ enum TimeMath {
         calendar.timeZone = local
         return hoursBetween(text) ?? timeOfDay(text) ?? duration(text)
             ?? date(text, now: now, calendar: calendar)
-            ?? countdown(text, now: now, calendar: calendar)
+            ?? spans(text, now: now, calendar: calendar)
+            ?? DateFacts.answer(for: text, now: now, calendar: calendar)
     }
 
     private static func hoursBetween(_ text: String) -> Calculator.Answer? {
@@ -81,10 +82,10 @@ enum TimeMath {
         }
         let expression = String(body)
         var factor: Double?
-        if let match = body.wholeMatch(of: /(.+?) ?[*x×] ?([\d.]+)/) {
-            guard let value = Double(match.2) else { return nil }
+        if let match = body.wholeMatch(of: /(.+?) ?([*x×\/÷]) ?([\d.]+)/) {
+            guard let value = Double(match.3) else { return nil }
             body = match.1
-            factor = value
+            factor = "/÷".contains(match.2) ? 1 / value : value
         }
         let terms = body.replacing("-", with: "+-").split(
             separator: "+", omittingEmptySubsequences: false)
@@ -111,26 +112,62 @@ enum TimeMath {
         _ text: String, now: Date, calendar: Calendar
     ) -> Calculator.Answer? {
         let today = calendar.startOfDay(for: now)
-        guard let day = DayQuery.offset(text, from: today, calendar: calendar) else { return nil }
+        guard let shifted = DayQuery.offset(text, from: today, calendar: calendar) else {
+            return nil
+        }
         return Calculator.Answer(
             kind: "Dates", expression: text.prefix(1).uppercased() + text.dropFirst(),
-            expressionDetail: "From \(label(today, "EEE, d MMM yyyy", calendar))",
-            result: label(day, "d MMM yyyy", calendar), resultDetail: label(day, "EEEE", calendar))
+            expressionDetail: "From \(label(shifted.from, "EEE, d MMM yyyy", calendar))",
+            result: label(shifted.day, "d MMM yyyy", calendar),
+            resultDetail: label(shifted.day, "EEEE", calendar))
     }
 
-    private static func countdown(
+    private static func spans(
         _ text: String, now: Date, calendar: Calendar
     ) -> Calculator.Answer? {
         let today = calendar.startOfDay(for: now)
-        guard let target = DayQuery.until(text, after: today, calendar: calendar),
-            let days = calendar.dateComponents([.day], from: today, to: target).day
+        let business = /\b(?:business|working|work) days?\b|\bweekdays?\b/
+        let plain = text.replacing(business, with: "days")
+        let counted = text.contains(business)
+        let format = "EEE, d MMM yyyy"
+        if let target = DayQuery.until(plain, after: today, calendar: calendar) {
+            return days(
+                "Until \(label(target, "d MMM", calendar))",
+                detail: label(target, format, calendar), span: (today, target),
+                business: counted, calendar: calendar)
+        }
+        if let target = DayQuery.since(plain, before: today, calendar: calendar) {
+            return days(
+                "Since \(label(target, "d MMM yyyy", calendar))",
+                detail: label(target, format, calendar), span: (target, today),
+                business: counted, calendar: calendar)
+        }
+        guard let span = DayQuery.between(plain, after: today, calendar: calendar) else {
+            return nil
+        }
+        let shown = "d MMM yyyy"
+        return days(
+            "\(label(span.start, shown, calendar)) → \(label(span.end, shown, calendar))",
+            detail: "Days between", span: span, business: counted, calendar: calendar)
+    }
+
+    private static func days(
+        _ expression: String, detail: String, span: (start: Date, end: Date), business: Bool,
+        calendar: Calendar
+    ) -> Calculator.Answer? {
+        guard
+            let days = calendar.dateComponents([.day], from: span.start, to: span.end).day.map(abs)
         else { return nil }
+        let counted =
+            business ? DayQuery.weekdays(from: span.start, to: span.end, calendar: calendar) : days
         return Calculator.Answer(
-            kind: "Dates", expression: "Until \(label(target, "d MMM", calendar))",
-            expressionDetail: label(target, "EEE, d MMM yyyy", calendar),
-            result: count(days, "day"),
-            resultDetail:
-                "\(count(days / daysPerWeek, "week")) \(count(days % daysPerWeek, "day"))")
+            kind: "Dates", expression: expression, expressionDetail: detail,
+            result: count(counted, business ? "business day" : "day"),
+            resultDetail: business ? count(days, "calendar day") : weeksAndDays(days))
+    }
+
+    static func weeksAndDays(_ days: Int) -> String {
+        "\(count(days / daysPerWeek, "week")) \(count(days % daysPerWeek, "day"))"
     }
 
     private static func clock(_ text: Substring) -> Int? {
@@ -201,11 +238,11 @@ enum TimeMath {
         Int((Double(value) / Double(divisor)).rounded(.down))
     }
 
-    private static func count(_ value: Int, _ unit: String) -> String {
+    static func count(_ value: Int, _ unit: String) -> String {
         "\(Calculator.format(Double(value))) \(unit)\(value == 1 ? "" : "s")"
     }
 
-    private static func label(_ date: Date, _ format: String, _ calendar: Calendar) -> String {
+    static func label(_ date: Date, _ format: String, _ calendar: Calendar) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.timeZone = calendar.timeZone

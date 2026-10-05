@@ -22,7 +22,7 @@ extension LauncherView: NSTextFieldDelegate {
         if let widget = selectedWidget {
             return widgetCommand(selector, from: widget, in: textView)
         }
-        return fieldCommand(selector, in: textView)
+        return extendCommand(selector) || fieldCommand(selector, in: textView)
     }
 
     private func fieldCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
@@ -53,6 +53,8 @@ extension LauncherView: NSTextFieldDelegate {
     private func cancelInField() {
         if previewing {
             closePreview()
+        } else if !results.checked.isEmpty {
+            results.clearChecks()
         } else if scoped {
             leave()
         } else {

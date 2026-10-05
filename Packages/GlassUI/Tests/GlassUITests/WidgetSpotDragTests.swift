@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct WidgetSpotDragTests {
+@Suite(.silentWindows) struct WidgetSpotDragTests {
     private static let frame = NSRect(x: 400, y: 200, width: 760, height: 476)
 
     private let panel = NSPanel(

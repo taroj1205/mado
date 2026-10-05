@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
+        colourPicker.keys = { [weak self] in ColourPickerSettings.load(from: self?.modules).keys }
         HyperGlyph.isShown = RemapSettings.load(from: modules).showsHyperGlyph
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
@@ -100,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self?.openCalculatorHistory()
             }
             let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
-            try (SystemCommands.all + [openHistory, newLink, colourPicker.command])
+            try (SystemCommands.all + appCommands + [openHistory, newLink, colourPicker.command])
                 .forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
@@ -262,15 +263,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    @objc
-    private func showSettings() {
-        let controller =
-            settings
-            ?? SettingsWindowController(
-                modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-                snippets: snippets, statusItem: statusItem
-            ) { [weak self] in self?.editWidgetsInLauncher() }
+    func settingsWindow() -> SettingsWindowController {
+        if let settings { return settings }
+        let controller = SettingsWindowController(
+            modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
+            snippets: snippets, statusItem: statusItem
+        ) { [weak self] in self?.editWidgetsInLauncher() }
         settings = controller
-        controller.showWindow(nil)
+        return controller
+    }
+
+    @objc
+    func showSettings() {
+        settingsWindow().showWindow(nil)
     }
 }
