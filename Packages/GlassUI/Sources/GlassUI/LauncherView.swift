@@ -62,6 +62,7 @@ public final class LauncherView: NSView {
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()
     let comparisonPane = ComparisonPane()
+    let calendarPane = CalendarPane()
     let chip = ScopeChip()
     var shownDetail: Detail?
     var gridHome: String?
@@ -112,7 +113,7 @@ public final class LauncherView: NSView {
         addLayoutGuide(bar)
         for view in [
             icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
-            emojiGrid,
+            calendarPane, emojiGrid,
         ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -160,6 +161,7 @@ public final class LauncherView: NSView {
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
+        calendarPane.grid.onPick = { [weak self] query in self?.replaceQuery(with: query) }
         actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         statusBar.onPress = { [weak self] index in self?.pressPill(index) }
         statusBar.onMove = { [weak self] id, target in self?.movePill(id, before: target) }

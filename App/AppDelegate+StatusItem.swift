@@ -4,6 +4,7 @@ import AppKit
 extension AppDelegate: NSMenuItemValidation {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         statusItem?.isVisible = true
+        settings?.refresh()
         return true
     }
 
@@ -25,6 +26,7 @@ extension AppDelegate: NSMenuItemValidation {
     @objc
     func hideStatusItem() {
         statusItem?.isVisible = false
+        settings?.refresh()
     }
 
     @objc

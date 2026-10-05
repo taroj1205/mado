@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -10,7 +11,8 @@ import Testing
     @Test func anObserverDeliversUntilReleased() {
         let center = NotificationCenter()
         let context = ModuleContext(
-            moduleID: "keyboard", commands: CommandRegistry(), eventTap: EventTap())
+            moduleID: "keyboard", commands: CommandRegistry(), eventTap: EventTap(),
+            listenTap: EventTap(options: .listenOnly))
         var received: [String?] = []
         context.observe(
             Self.name, on: center, reading: { $0.object as? String },
@@ -31,7 +33,8 @@ import Testing
 
     @Test func aHandlerKeptUntilStoppedDropsWhatArrivesAfterTheRelease() {
         let context = ModuleContext(
-            moduleID: "windows", commands: CommandRegistry(), eventTap: EventTap())
+            moduleID: "windows", commands: CommandRegistry(), eventTap: EventTap(),
+            listenTap: EventTap(options: .listenOnly))
         var received: [String] = []
         let beforePause = context.untilStopped { (event: String) in received.append(event) }
 

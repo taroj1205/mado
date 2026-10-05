@@ -13,6 +13,7 @@ final class EventTap {
         didSet { _ = install(mask) }
     }
 
+    private let options: CGEventTapOptions
     private let logger = Log.logger("EventTap")
     private let signposter = Log.signposter("EventTap")
     private var routes = EventRoutes()
@@ -23,6 +24,14 @@ final class EventTap {
 
     private var mask: CGEventMask {
         isPaused || isReleasing ? 0 : routes.mask
+    }
+
+    init(options: CGEventTapOptions) {
+        self.options = options
+    }
+
+    convenience init() {
+        self.init(options: .defaultTap)
     }
 
     func add(
@@ -97,7 +106,7 @@ final class EventTap {
         }
         guard
             let created = unsafe CGEvent.tapCreate(
-                tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+                tap: .cgSessionEventTap, place: .headInsertEventTap, options: options,
                 eventsOfInterest: mask,
                 callback: { _, type, event, userInfo in
                     guard let info = unsafe userInfo else {

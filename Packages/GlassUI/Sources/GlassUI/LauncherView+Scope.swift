@@ -14,6 +14,7 @@ extension LauncherView {
     public enum Detail {
         case preview((ResultList.Item) -> Preview?)
         case comparison((ResultList.Item) -> Comparison?)
+        case calendar((ResultList.Item?) -> CalendarMonth?)
     }
 
     public var scoped: Bool { rootQuery != nil }
@@ -79,6 +80,7 @@ extension LauncherView {
     func placeDetail(below separator: NSView) {
         for (pane, listWidth) in [
             (detail, DetailPane.listWidth), (comparisonPane, ComparisonPane.listWidth),
+            (calendarPane, CalendarPane.listWidth),
         ] as [(NSView, CGFloat)] {
             NSLayoutConstraint.activate([
                 pane.leadingAnchor.constraint(equalTo: leadingAnchor, constant: listWidth - 1),
@@ -104,6 +106,10 @@ extension LauncherView {
             detail.show(nil)
             comparisonPane.show(item.flatMap(compare))
 
+        case .calendar(let month):
+            detail.show(nil)
+            calendarPane.show(month(item))
+
         case nil:
             detail.show(nil)
         }
@@ -125,6 +131,15 @@ extension LauncherView {
             fieldTrailing,
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
         ])
+    }
+
+    public func showCalendar(_ month: ((ResultList.Item?) -> CalendarMonth?)?) {
+        guard !scoped else { return }
+        if let month {
+            split(.calendar(month))
+        } else if shownDetail != nil {
+            split(nil)
+        }
     }
 
     public func refreshDetail() {
@@ -158,13 +173,16 @@ extension LauncherView {
             switch shown {
             case .preview: DetailPane.listWidth
             case .comparison: ComparisonPane.listWidth
+            case .calendar: CalendarPane.listWidth
             case nil: nil
             }
         let previews = if case .preview = shown { true } else { false }
         let compares = if case .comparison = shown { true } else { false }
+        let dates = if case .calendar = shown { true } else { false }
         results.compact = previews
         detail.isHidden = !previews
         comparisonPane.isHidden = !compares
+        calendarPane.isHidden = !dates
         resultsTrailing.isActive = false
         resultsTrailing =
             listWidth.map { width in

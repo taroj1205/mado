@@ -43,14 +43,13 @@ import Testing
         #expect(pill.stack.accessibilityLabel() == "Listening")
     }
 
-    @Test func transcribingNamesTheModelOnTheMac() {
-        pill.show(.transcribing(model: "Whisper Small"), on: nil)
+    @Test func transcribingShowsOnlyTheSpinnerAndTitle() {
+        pill.show(.transcribing, on: nil)
         defer { pill.hide() }
-        #expect(shown == [pill.spinner, pill.title, pill.detail])
+        #expect(shown == [pill.spinner, pill.title])
         #expect(pill.title.stringValue == "Transcribing…")
-        #expect(pill.detail.stringValue == "Whisper Small · on device")
         #expect(pill.panel.ignoresMouseEvents)
-        #expect(pill.stack.accessibilityLabel() == "Transcribing, Whisper Small on device")
+        #expect(pill.stack.accessibilityLabel() == "Transcribing")
     }
 
     @Test func aNewRecordingStartsWithAQuietMeter() {

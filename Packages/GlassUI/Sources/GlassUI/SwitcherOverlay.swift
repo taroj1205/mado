@@ -137,6 +137,10 @@ public final class SwitcherOverlay {
         layoutHint()
     }
 
+    public func index(_ index: Int, movedBy rowCount: Int) -> Int {
+        layout.index(index, movedBy: rowCount, count: cards.count)
+    }
+
     private func hovered(_ index: Int) {
         guard pointer() != shownAt else { return }
         onHover?(index)

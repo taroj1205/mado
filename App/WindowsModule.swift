@@ -115,5 +115,16 @@ struct WindowsModule: Module {
                 return false
             }
         }
+        guard let fingers = switcherSettings().swipe.fingers else { return }
+        context.installWhenTrusted("window switcher swipe") {
+            do {
+                try TrackpadSwipe.install(
+                    fingers: fingers, name: "window switcher swipe", context: context,
+                    onEvent: context.untilStopped(switcher.handle))
+                return true
+            } catch {
+                return false
+            }
+        }
     }
 }
