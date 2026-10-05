@@ -43,7 +43,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
-            addWidgets: addWidgets, speechModels: speechModels, statusItem: statusItem)
+            addWidgets: addWidgets, speechModels: speechModels,
+            colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem)
         let pages = Self.pages(context)
         tabs = pages
         finder = SettingsFinder(context: context) {

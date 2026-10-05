@@ -25,7 +25,6 @@ public final class ColourLoupe {
         }
     }
 
-    static let hintText = "Click copies · arrow keys nudge 1 px · esc cancels"
     static let cardWidth: CGFloat = 240
     static let gap: CGFloat = 10
     private static let radius: CGFloat = 18
@@ -42,11 +41,12 @@ public final class ColourLoupe {
     let swatch = NSView()
     let hex = NSTextField(labelWithString: "")
     let detail = NSTextField(labelWithString: "")
-    let hint = NSTextField(wrappingLabelWithString: hintText)
+    let hint = NSTextField(wrappingLabelWithString: hintText(for: LoupeKeys()))
     private(set) lazy var card = makeCard()
     private(set) var panels: [LoupePanel] = []
     var pointer = { NSEvent.mouseLocation }
     public var onInput: ((Input) -> Void)?
+    public var keys = LoupeKeys()
 
     public var isVisible: Bool { !panels.isEmpty }
 
@@ -61,6 +61,10 @@ public final class ColourLoupe {
             note.textColor = .secondaryLabelColor
         }
         hint.preferredMaxLayoutWidth = Self.cardWidth - Self.padding - Self.padding
+    }
+
+    static func hintText(for keys: LoupeKeys) -> String {
+        "Click copies · \(keys.hint) nudge 1 px · esc cancels"
     }
 
     static func frames(around centre: CGPoint, card: CGSize, in bounds: CGRect) -> (
@@ -114,8 +118,10 @@ public final class ColourLoupe {
     public func show(on screens: [NSScreen]) {
         hide()
         let mouse = pointer()
+        hint.stringValue = Self.hintText(for: keys)
         panels = screens.map { screen in
             let panel = LoupePanel(frame: screen.frame)
+            panel.keys = keys
             panel.onInput = { [weak self] input in self?.receive(input) }
             return panel
         }

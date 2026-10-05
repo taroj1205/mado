@@ -9,135 +9,22 @@ public enum Calculator {
         public let resultDetail: String
     }
 
-    struct Parser {
-        private static let maxDepth = 64
-        private static let shown = ["*": "×", "x": "×", "/": "÷"]
-
-        var pretty: String {
-            var text = ""
-            var position = 0
-            while position < characters.count {
-                let length = operators[position] ?? 1
-                let piece = String(characters[position..<position + length])
-                if operators[position] != nil {
-                    text += " \(Self.shown[piece] ?? piece) "
-                } else if !piece.allSatisfy(\.isWhitespace) {
-                    text += piece
-                }
-                position += length
-            }
-            return text
-        }
-
-        private let characters: [Character]
-        private var index = 0
-        private var depth = 0
-        private var operators: [Int: Int] = [:]
-        private var percentTerm = false
-
-        init(_ text: String) {
-            characters = Array(text)
-        }
-
-        mutating func parse() -> Double? {
-            guard let value = sum(), skipSpaces() == nil else { return nil }
-            return value
-        }
-
-        private mutating func sum() -> Double? {
-            guard var value = product() else { return nil }
-            var percentSoFar = percentTerm
-            while let symbol = takeOperator(["+", "-"]) {
-                guard let rhs = product() else { return nil }
-                let change = percentTerm && !percentSoFar ? value * rhs : rhs
-                value = symbol == "+" ? value + change : value - change
-                percentSoFar = percentSoFar && percentTerm
-            }
-            return value
-        }
-
-        private mutating func product() -> Double? {
-            guard var value = signed() else { return nil }
-            while let symbol = takeOperator(["off", "of", "*", "x", "×", "/", "÷"]) {
-                guard let rhs = signed() else { return nil }
-                switch symbol {
-                case "/", "÷": value /= rhs
-                case "off": value = rhs * (1 - value)
-                default: value *= rhs
-                }
-                percentTerm = false
-            }
-            return value
-        }
-
-        private mutating func signed() -> Double? {
-            guard depth < Self.maxDepth else { return nil }
-            depth += 1
-            defer { depth -= 1 }
-            guard let sign = take(["+", "-"]) else { return power() }
-            return signed().map { sign == "-" ? -$0 : $0 }
-        }
-
-        private mutating func power() -> Double? {
-            guard let base = percent() else { return nil }
-            guard takeOperator(["^"]) != nil else { return base }
-            let exponent = signed()
-            percentTerm = false
-            return exponent.map { pow(base, $0) }
-        }
-
-        private mutating func percent() -> Double? {
-            guard var value = atom() else { return nil }
-            percentTerm = false
-            while take(["%"]) != nil {
-                value /= 100
-                percentTerm = true
-            }
-            return value
-        }
-
-        private mutating func atom() -> Double? {
-            if take(["("]) != nil {
-                guard let value = sum(), take([")"]) != nil else { return nil }
-                return value
-            }
-            skipSpaces()
-            let digits = characters[index...].prefix { $0.isASCII && ($0.isNumber || $0 == ".") }
-            index += digits.count
-            return Double(String(digits))
-        }
-
-        @discardableResult
-        private mutating func skipSpaces() -> Character? {
-            while index < characters.count, characters[index].isWhitespace {
-                index += 1
-            }
-            return index < characters.count ? characters[index] : nil
-        }
-
-        private mutating func take(_ symbols: Set<Character>) -> Character? {
-            guard let next = skipSpaces(), symbols.contains(next) else { return nil }
-            index += 1
-            return next
-        }
-
-        private mutating func takeOperator(_ symbols: [String]) -> String? {
-            skipSpaces()
-            guard let symbol = symbols.first(where: { characters[index...].starts(with: $0) })
-            else { return nil }
-            operators[index] = symbol.count
-            index += symbol.count
-            return symbol
-        }
-    }
-
     private static let locale = Locale(identifier: "en_US")
     private static let fractionDigits = 4
     private static let smallFractionDigits = 6
     private static let spelledLimit = 1e12
+    private static let groupedLimit = 1e15
+    private static let scientificDigits = 5
     private static let spelledPrecision = 10_000.0
     private static let triggers: Set<Character> = [
-        "+", "-", "*", "/", "×", "÷", "x", "^", "%", "(",
+        "+", "-", "*", "/", "×", "÷", "x", "^", "%", "(", "!", "°",
+    ]
+    private static let spoken = [
+        (#"\s+to the power of\s+"#, "^"), (#"\s*squared\b"#, "^2"), (#"\s*cubed\b"#, "^3"),
+        (#"\s+plus\s+"#, "+"), (#"\s+minus\s+"#, "-"),
+        (#"\s+(?:times|multiplied by)\s+"#, "*"), (#"\s+divided by\s+"#, "/"),
+        (#"\s*percent\b"#, "%"), (#"(\d)\s*deg(?:rees?)?\b"#, "$1°"),
+        (#"square root of ([\d.]+)"#, "sqrt($1)"), (#"cube root of ([\d.]+)"#, "cbrt($1)"),
     ]
     private static let operatorWords = [
         "+": "plus", "-": "minus", "*": "times", "x": "times", "×": "times",
@@ -149,8 +36,10 @@ public enum Calculator {
         rates: ExchangeRates? = nil, settings: AnswerSettings = AnswerSettings(),
         region: Locale = .current
     ) -> Answer? {
-        let text = query.lowercased()
-            .replacing(/(\d),(?=\d{3})/) { "\($0.1)" }
+        let lowered = query.lowercased()
+        let text =
+            (lowered.contains(/[a-z]\(/)
+            ? lowered : lowered.replacing(/(\d),(?=\d{3})/) { "\($0.1)" })
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
             .replacing(/^what is\s/, with: "")
@@ -170,10 +59,12 @@ public enum Calculator {
         return nil
     }
 
-    private static func arithmetic(_ text: String) -> Answer? {
-        guard text.drop(while: { $0 == "-" }).contains(where: triggers.contains) else {
-            return nil
-        }
+    private static func arithmetic(_ query: String) -> Answer? {
+        let text = symbols(in: query)
+        guard
+            text.drop(while: { $0 == "-" }).contains(where: triggers.contains)
+                || text.contains(" mod ") || text.contains(/\d ?(?:pi|π)\b/)
+        else { return nil }
         var parser = Parser(text)
         guard let value = parser.parse() else { return nil }
         let compact = text.filter { !$0.isWhitespace }
@@ -183,7 +74,18 @@ public enum Calculator {
             detail: percentage ?? spelled(compact) ?? "Expression", value: value)
     }
 
+    private static func symbols(in text: String) -> String {
+        spoken.reduce(text) { text, rule in
+            text.replacingOccurrences(of: rule.0, with: rule.1, options: .regularExpression)
+        }
+    }
+
     static func format(_ value: Double) -> String {
+        if abs(value) >= groupedLimit {
+            var style = FloatingPointFormatStyle<Double>.number.locale(locale)
+            style = style.notation(.scientific).precision(.significantDigits(1...scientificDigits))
+            return value.formatted(style)
+        }
         let digits = abs(value) < 1 ? smallFractionDigits : fractionDigits
         let normalized = value == 0 ? 0 : value
         return normalized.formatted(.number.locale(locale).precision(.fractionLength(0...digits)))

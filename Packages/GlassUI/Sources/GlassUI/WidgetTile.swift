@@ -3,7 +3,6 @@ import AppKit
 final class WidgetTile: NSView {
     static let radius: CGFloat = 16
     static let horizontal: CGFloat = 12
-    private static let trackLeading: CGFloat = 10
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
     private static let iconSize: CGFloat = 13
@@ -24,18 +23,20 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
     private lazy var trackPlacement = [
-        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.trackLeading),
+        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
         track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
         track.centerYAnchor.constraint(equalTo: centerYAnchor),
     ]
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
-    let dash = DashedOutline(colour: WidgetTile.editEdge, width: 1, fill: .clear)
-    let slot = WidgetTile.makeSlot()
+    let dash = DashedOutline(
+        colour: WidgetTile.editEdge, width: 1, fill: .clear, radius: WidgetTile.radius)
+    let slot = DashedOutline.slot(radius: WidgetTile.radius)
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let resizer = WidgetResizeHandle()
@@ -66,6 +67,7 @@ final class WidgetTile: NSView {
     var editing = false {
         didSet {
             showEditing()
+            wash.alphaValue = editing ? 0 : 1
             paint()
         }
     }
@@ -88,6 +90,9 @@ final class WidgetTile: NSView {
         paint()
         box.autoresizingMask = [.width, .height]
         addSubview(box)
+        wash.frame = bounds
+        wash.autoresizingMask = [.width, .height]
+        addSubview(wash)
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
@@ -149,6 +154,7 @@ final class WidgetTile: NSView {
         case let .track(playing): track.show(playing)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
+        wash.tint = widget.track == nil ? nil : track.tint
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
