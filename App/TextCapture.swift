@@ -47,9 +47,10 @@ final class TextCapture {
         dismissal?.cancel()
         card.hide()
         let area = try await select()
-        let screens = NSScreen.screens
-        let snapshots = try await ScreenSnapshot.capture(on: screens)
-        guard let image = snapshots.lazy.compactMap({ $0.crop(area) }).first else {
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(area) }) else {
+            throw Failure.nothingCaptured
+        }
+        guard let image = try await ScreenSnapshot.capture(on: [screen]).first?.crop(area) else {
             throw Failure.nothingCaptured
         }
         let recognition = try await ImageText.recognize(image)
@@ -58,11 +59,10 @@ final class TextCapture {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(recognition.text, forType: .string)
         }
-        let visible = (screens.first { $0.frame.contains(area) } ?? NSScreen.main)?.visibleFrame
         card.show(
             found ? .copied(text: recognition.text, language: recognition.language) : .nothingFound
         ) { size in
-            Self.place(size, in: visible ?? CGRect(origin: .zero, size: size))
+            Self.place(size, in: screen.visibleFrame)
         }
         dismissal = Task { [card] in
             try? await Task.sleep(for: .seconds(Self.cardSeconds))
