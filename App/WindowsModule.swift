@@ -92,7 +92,7 @@ struct WindowsModule: Module {
 
     private func startSwitcher(context: ModuleContext) {
         guard let hotKeys else { return }
-        let switcher = WindowSwitcher(logger: context.logger) { switcherSettings().order }
+        let switcher = WindowSwitcher(logger: context.logger, settings: switcherSettings)
         context.own(.other, "window switcher") { switcher.stop() }
         do {
             for (shortcut, backward) in zip(Self.switcherShortcuts, [false, true]) {
@@ -120,7 +120,7 @@ struct WindowsModule: Module {
             do {
                 try TrackpadSwipe.install(
                     fingers: fingers, name: "window switcher swipe", context: context,
-                    onEvent: context.untilStopped(switcher.handle))
+                    onEvent: context.untilStopped(switcher.swiped))
                 return true
             } catch {
                 return false

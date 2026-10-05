@@ -26,6 +26,7 @@ final class SettingsFinder {
         "Gap between windows": ["padding", "margin", "spacing"],
         "Maximise": ["maximize", "full screen"],
         "Tap the trackpad when the choice changes": ["haptics"],
+        "Tap the trackpad as the selection moves": ["haptics"],
         "Next input source": ["language", "IME"],
     ]
     private static let separator = "\u{1F}"

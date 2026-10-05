@@ -4,6 +4,7 @@ import TouchPosition
 
 public struct TrackpadSwipe {
     static let stepDistance: CGFloat = 0.03
+    static let fingersToKeepSwiping = 2
 
     let fingers: Int
     private var anchor: CGPoint?
@@ -32,7 +33,7 @@ public struct TrackpadSwipe {
     }
 
     mutating func handle(_ points: [CGPoint], emit: (SwitcherKeys.Event) -> Void) {
-        guard points.count >= fingers else {
+        guard points.count >= (isSwiping ? Self.fingersToKeepSwiping : fingers) else {
             if isSwiping { emit(.chosen) }
             self = Self(fingers: fingers)
             return
@@ -43,6 +44,10 @@ public struct TrackpadSwipe {
             isBlocked = true
         }
         guard !isBlocked else { return }
+        guard points.count == fingers else {
+            anchor = nil
+            return
+        }
         let count = CGFloat(points.count)
         move(
             to: CGPoint(
