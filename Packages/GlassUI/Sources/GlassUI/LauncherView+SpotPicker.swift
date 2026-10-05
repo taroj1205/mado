@@ -77,7 +77,7 @@ extension LauncherView {
         }
         closeActions()
         closeSpotPicker()
-        report(.place(id, spot, before: nil))
+        report(.moving(widgetGrid.unit(of: id), to: spot, before: nil))
     }
 
     func pickerCommand(_ selector: Selector, moving id: String) -> Bool {

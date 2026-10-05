@@ -16,6 +16,11 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.spots = newValue } }
     }
 
+    public var widgetSizes: [String: Int] {
+        get { widgetGrid.sizes }
+        set { changeWidgets { widgetGrid.sizes = newValue } }
+    }
+
     public var widgetCatalogue: [WidgetGallery.Card] {
         get { gallery.catalogue }
         set { gallery.catalogue = newValue }
@@ -41,10 +46,11 @@ extension LauncherView {
         change()
         if let index = widgetGrid.shown.firstIndex(where: { $0.id == selected }) {
             selectedWidget = index
+            pickedWidgets = pickedWidgets.filter { id in widgetGrid.shown.contains { $0.id == id } }
         } else {
             selectWidget(nil)
         }
-        widgetGrid.highlight(selectedWidget)
+        widgetGrid.highlight(selectedWidget, with: pickedWidgets)
         showAction(of: selectedItem)
     }
 
@@ -55,8 +61,10 @@ extension LauncherView {
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
+        widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
+        widgetGrid.onResize = { [weak self] index, resize in self?.resizeWidget(index, resize) }
         placeEditing()
     }
 
@@ -66,7 +74,15 @@ extension LauncherView {
     }
 
     func selectWidget(_ index: Int?) {
-        guard index != selectedWidget else { return }
+        let picked = !pickedWidgets.isEmpty
+        pickedWidgets = []
+        guard index != selectedWidget else {
+            if picked {
+                widgetGrid.highlight(index, with: [])
+                showAction(of: selectedItem)
+            }
+            return
+        }
         if editingWidgets {
             closeSpotPicker()
         }
@@ -74,7 +90,7 @@ extension LauncherView {
             selectPill(nil)
         }
         selectedWidget = index
-        widgetGrid.highlight(index)
+        widgetGrid.highlight(index, with: [])
         results.hidesSelection = index != nil || editingWidgets
         if index != nil {
             closePreview()

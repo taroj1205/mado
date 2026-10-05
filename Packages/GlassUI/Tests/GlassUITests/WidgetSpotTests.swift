@@ -36,7 +36,7 @@ import Testing
         let floats = view.widgetGrid.floats.map(\.frame)
         expect(
             floats[0],
-            NSRect(x: 100 + 2.5 * (Self.width + 10), y: 592, width: Self.width, height: 78))
+            NSRect(x: 100 + 2 * (Self.width + 10), y: 592, width: Self.width, height: 78))
         expect(floats[1], NSRect(x: -140, y: 498, width: 220, height: 78))
         expect(floats[2], NSRect(x: -140, y: 299, width: 220, height: 78))
         expect(floats[3], NSRect(x: 880, y: 188, width: 220, height: 78))

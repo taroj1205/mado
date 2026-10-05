@@ -1,62 +1,6 @@
 public import AppKit
 
 public final class WidgetGrid: NSView {
-    public struct Widget: Sendable, Equatable {
-        static let wideSpan = 2
-
-        public let id: String
-        public let name: String
-        public let content: Content
-        public let action: String
-        public let spoken: String
-        public let isWide: Bool
-
-        var span: Int {
-            isWide ? Self.wideSpan : 1
-        }
-
-        var track: Track? {
-            if case .track(let playing) = content { playing } else { nil }
-        }
-
-        var isUnavailable: Bool {
-            if case .unavailable = content { true } else { false }
-        }
-
-        public init(
-            id: String, name: String, content: Content, action: String, spoken: String,
-            isWide: Bool = false
-        ) {
-            self.id = id
-            self.name = name
-            self.content = content
-            self.action = action
-            self.spoken = spoken
-            self.isWide = isWide
-        }
-
-        public init(
-            id: String, name: String, value: String, detail: String, action: String,
-            spoken: String, symbol: String? = nil, span: Span? = nil
-        ) {
-            self.init(
-                id: id, name: name,
-                content: .value(value, detail: detail, symbol: symbol, span: span),
-                action: action, spoken: spoken)
-        }
-
-        public init(id: String, name: String, meters: [Meter], action: String, spoken: String) {
-            self.init(
-                id: id, name: name, content: .meters(meters), action: action, spoken: spoken)
-        }
-
-        public init(id: String, name: String, track: Track, action: String, spoken: String) {
-            self.init(
-                id: id, name: name, content: .track(track), action: action, spoken: spoken,
-                isWide: true)
-        }
-    }
-
     public enum Content: Sendable, Equatable {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
@@ -103,7 +47,8 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    static let columns = 6
+    nonisolated static let columns = 6
+    nonisolated static let widest = 3
     static let dragType = NSPasteboard.PasteboardType("com.taroj1205.mado.widget")
     static let rowHeight: CGFloat = 78
     static let stripHeight: CGFloat = 72
@@ -123,9 +68,34 @@ public final class WidgetGrid: NSView {
     static let sideGap: CGFloat = 20
     nonisolated static let sides = 2
 
-    var widgets: [Widget] = [] {
+    var widgets: [Widget] {
+        get {
+            supplied.map { widget in
+                var sized = widget
+                sized.columns = (trial[widget.id] ?? sizes[widget.id]).map { columns in
+                    min(max(columns, widget.narrowest), Self.widest)
+                }
+                return sized
+            }
+        }
+        set { supplied = newValue }
+    }
+
+    var supplied: [Widget] = [] {
         didSet {
-            if widgets != oldValue { update() }
+            if supplied != oldValue { update() }
+        }
+    }
+
+    var sizes: [String: Int] = [:] {
+        didSet {
+            if sizes != oldValue { update() }
+        }
+    }
+
+    var trial: [String: Int] = [:] {
+        didSet {
+            if trial != oldValue { update() }
         }
     }
 
@@ -186,8 +156,10 @@ public final class WidgetGrid: NSView {
     let rails = WidgetRails()
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     var onPress: ((Int) -> Void)?
+    var onExtend: ((Int) -> Void)?
     var onSkip: ((Int, Skip) -> Void)?
     var onRemove: ((Int) -> Void)?
+    var onResize: ((Int, WidgetTile.Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
     var onDrop: ((String?) -> Bool)?
     var onDragEnd: (() -> Void)?
@@ -276,6 +248,7 @@ public final class WidgetGrid: NSView {
             tile.compact = tileLayout == .strip && !tile.floating
             tile.show(widget)
             tile.lifted = widget.id == dragged
+            tile.resizable = !Side.rails.contains(spot(of: widget).side)
         }
         dock.isHidden = !editing
         dockCaption.isHidden = !editing || !inPanel.isEmpty

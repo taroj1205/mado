@@ -23,8 +23,10 @@ extension WidgetGrid {
         let tile = WidgetTile(floating: floating)
         tile.editing = editing
         tile.onPress = { [weak self] in self?.onPress?(index) }
+        tile.onExtend = { [weak self] in self?.onExtend?(index) }
         tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
         tile.onRemove = { [weak self] in self?.onRemove?(index) }
+        tile.onResize = { [weak self] resize in self?.onResize?(index, resize) }
         tile.onDrag = { [weak self] id, point, source in self?.onDrag?(id, point, source) ?? [] }
         tile.onDrop = { [weak self] id in self?.onDrop?(id) ?? false }
         tile.onDragStart = { [weak self, weak tile] in self?.carry(tile) }
@@ -32,9 +34,9 @@ extension WidgetGrid {
         return tile
     }
 
-    func highlight(_ index: Int?) {
-        for (position, tile) in tiles.enumerated() {
-            tile.selected = position == index
+    func highlight(_ index: Int?, with picked: [String]) {
+        for (position, (tile, widget)) in zip(tiles, shown).enumerated() {
+            tile.selected = position == index || picked.contains(widget.id)
         }
     }
 }

@@ -1,11 +1,11 @@
 import AppKit
 
 extension WidgetGrid {
-    static func cells(of widgets: [Widget]) -> [(row: Int, columns: Range<Int>)] {
+    nonisolated static func cells(of widgets: [Widget]) -> [(row: Int, columns: Range<Int>)] {
         cells(spanning: widgets.map(\.span))
     }
 
-    static func cells(spanning spans: [Int]) -> [(row: Int, columns: Range<Int>)] {
+    nonisolated static func cells(spanning spans: [Int]) -> [(row: Int, columns: Range<Int>)] {
         var row = 0
         var column = 0
         return spans.map { span in

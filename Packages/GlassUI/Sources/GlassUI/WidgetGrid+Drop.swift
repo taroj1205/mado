@@ -6,44 +6,27 @@ extension WidgetGrid {
     private static let half: CGFloat = 0.5
     private static let slack: CGFloat = 0.5
     private static let railMargin: CGFloat = 40
-    private static let shelfRoom = 3
     private static let captionRoom: CGFloat = 30
     private static let refusedWidth: CGFloat = 120
     private static let crossWeight: CGFloat = 2
 
-    static func nearestSpot(to point: CGPoint, beside panel: CGRect) -> Spot? {
-        if panel.contains(point) { return .panel }
-        let distances = Spot.allCases.dropFirst().map { spot in
-            let anchor = anchorPoint(of: spot, beside: panel)
-            return (spot: spot, distance: hypot(anchor.x - point.x, anchor.y - point.y))
+    private static var cellSized: Widget {
+        Widget(id: "", name: "", content: .loading(title: ""), action: "", spoken: "")
+    }
+
+    static func slots(for group: [Widget]) -> [Spot] {
+        let block = Block(of: group, at: .aboveLeft)
+        let above = (0...max(Spot.rowsAbove - block.rows, 0)).flatMap { row in
+            (0...max(columns - block.width, 0)).map { Spot.above(column: $0, row: row) }
         }
-        return distances.filter { $0.distance < reach }.min { $0.distance < $1.distance }?.spot
+        return above
+            + Side.rails.flatMap { side in (0..<Spot.stops).map { Spot.beside(side, row: $0) } }
     }
 
     static func anchorPoint(of spot: Spot, beside panel: CGRect) -> CGPoint {
-        let cell = (panel.width - CGFloat(columns - 1) * floatingGap) / CGFloat(columns)
-        let rail = sideGap + sideWidth * half
-        let tile = rowHeight * half
-        let along = { (start: CGFloat, middle: CGFloat, end: CGFloat) in
-            switch spot.anchor {
-            case .start: start
-            case .middle: middle
-            case .end: end
-            }
-        }
-        return switch spot.side {
-        case .panel: CGPoint(x: panel.midX, y: panel.midY)
-
-        case .above:
-            CGPoint(
-                x: along(panel.minX + cell * half, panel.midX, panel.maxX - cell * half),
-                y: panel.maxY + lift + tile)
-
-        case .left, .right:
-            CGPoint(
-                x: spot.side == .left ? panel.minX - rail : panel.maxX + rail,
-                y: along(panel.maxY - tile, panel.midY, panel.minY + tile))
-        }
+        guard spot.side != .panel else { return CGPoint(x: panel.midX, y: panel.midY) }
+        let cell = frames(of: [cellSized], at: spot, beside: panel).first ?? .zero
+        return CGPoint(x: cell.midX, y: cell.midY)
     }
 
     static func fits(
@@ -54,12 +37,15 @@ extension WidgetGrid {
             return rows <= (layout == .strip ? 1 : maxPanelRows)
         }
         let side = target.side
+        let top =
+            panel.maxY + lift + CGFloat(Spot.rowsAbove) * (rowHeight + floatingGap) - floatingGap
         let frames = zip(placed, floatingFrames(of: placed, beside: panel))
             .filter { $0.0.spot.side == side }
             .map(\.1)
         let inside = frames.allSatisfy { frame in
             side == .above
-                || (frame.minY >= panel.minY - slack && frame.maxY <= panel.maxY + slack)
+                ? frame.maxY <= top + slack
+                : frame.minY >= panel.minY - slack && frame.maxY <= panel.maxY + slack
         }
         let apart = frames.indices.allSatisfy { index in
             frames[(index + 1)...].allSatisfy { other in
@@ -71,25 +57,50 @@ extension WidgetGrid {
 
     static func railsFrame(beside panel: CGRect) -> CGRect {
         let side = sideGap + sideWidth + railMargin
-        let top = lift + CGFloat(shelfRoom) * (rowHeight + floatingGap) + captionRoom
+        let top =
+            lift + CGFloat(Spot.rowsAbove) * (rowHeight + floatingGap) + captionRoom
         var frame = panel.insetBy(dx: -side, dy: -railMargin)
         frame.size.height += top - railMargin
         return frame
     }
 
     func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
-        let mover = listed.first { $0.id == id } ?? incoming.flatMap { $0.id == id ? $0 : nil }
-        guard let window = unsafe window, let mover else { return false }
-        var all = widgets.filter { $0.id != id }
+        let movable = listed.contains { $0.id == id } || incoming?.id == id
+        return movable && accepts(unit(of: id), at: target, before: other)
+    }
+
+    func accepts(_ unit: [String], at target: Spot, before other: String?) -> Bool {
+        let movers = members(unit)
+        var all = widgets.filter { !unit.contains($0.id) }
+        let taken = target != .panel && all.contains { spot(of: $0) == target }
+        guard movers.count == unit.count, !movers.isEmpty, !taken else { return false }
         all.insert(
-            mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
-        let spot = { (widget: Widget) in widget.id == id ? target : self.spot(of: widget) }
-        let placed = Spot.allCases.dropFirst().flatMap { candidate in
-            all.filter { spot($0) == candidate }.map { ($0, candidate) }
+            contentsOf: movers,
+            at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
+        return fits(all, checking: [target]) { unit.contains($0.id) ? target : self.spot(of: $0) }
+    }
+
+    func fits(_ all: [Widget], checking targets: [Spot], at spot: (Widget) -> Spot) -> Bool {
+        guard let window = unsafe window else { return false }
+        let placed = all.compactMap { widget -> Placed? in
+            let found = spot(widget)
+            return found == .panel ? nil : (widget, found)
         }
-        return Self.fits(
-            target, inPanel: all.filter { spot($0) == .panel }, placed: placed,
-            layout: tileLayout, beside: window.frame)
+        let inPanel = all.filter { spot($0) == .panel }
+        return targets.allSatisfy { target in
+            Self.fits(
+                target, inPanel: inPanel, placed: placed, layout: tileLayout,
+                beside: window.frame)
+        }
+    }
+
+    func landing(of id: String, near point: CGPoint, beside panel: CGRect) -> Spot? {
+        let group = members(unit(of: id))
+        guard let index = group.firstIndex(where: { $0.id == id }) else { return nil }
+        let near = Self.nearest(group, at: index, to: point, beside: panel)
+            .filter { $0.distance < Self.reach }
+            .map(\.spot)
+        return near.first { accepts(id, at: $0, before: nil) } ?? near.first
     }
 
     func neighbour(of index: Int, toward heading: Heading) -> Int? {
@@ -127,7 +138,7 @@ extension WidgetGrid {
         let hit = tileFrames(in: window).firstIndex { $0.contains(point) }.map { visible[$0] }
         let screen = window.convertPoint(toScreen: point)
         guard Self.railsFrame(beside: window.frame).contains(screen),
-            let target = hit.map(spot) ?? Self.nearestSpot(to: screen, beside: window.frame)
+            let target = target(for: id, over: hit, at: screen, beside: window.frame)
         else {
             refused = nil
             moving = nil
@@ -139,7 +150,7 @@ extension WidgetGrid {
             moving = nil
             order = []
         } else if target != home, target != moving {
-            return move(id, to: target, before: hit?.id)
+            return move(id, to: target, before: target == .panel ? hit?.id : nil)
         }
         refused = nil
         reorder(id, at: point, in: window)
@@ -173,14 +184,12 @@ extension WidgetGrid {
             window.addChildWindow(rails, ordered: .below)
         }
         let local = { (rect: CGRect) in rect.offsetBy(dx: -frame.minX, dy: -frame.minY) }
-        let taken = Set(placed.map(\.spot))
         let rows = CGFloat(max(1, Self.shelfRows(of: placed)))
         var model = WidgetRailsView.Model()
         model.panel = local(panel)
         model.shelf = rows * Self.rowHeight + (rows - 1) * Self.floatingGap
-        model.pucks = Spot.allCases.dropFirst().filter { !taken.contains($0) }.map { spot in
-            let point = Self.anchorPoint(of: spot, beside: panel)
-            return CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
+        model.pucks = pucks(beside: panel, rows: Int(rows)).map { point in
+            CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
         }
         model.hot = moving?.side
         model.ghost = ghost(in: window).map { ghost in
@@ -195,6 +204,25 @@ extension WidgetGrid {
             return WidgetRailsView.Mark(spot: spot, frame: local(rect))
         }
         rails.board.model = model
+    }
+
+    private func pucks(beside panel: CGRect, rows: Int) -> [CGPoint] {
+        let taken = Self.floatingFrames(of: placed, beside: panel).map { frame in
+            frame.insetBy(dx: -Self.floatingGap * Self.half, dy: -Self.floatingGap * Self.half)
+        }
+        return Self.slots(for: [Self.cellSized])
+            .filter { $0.side != .above || $0.row < rows }
+            .map { Self.anchorPoint(of: $0, beside: panel) }
+            .filter { point in !taken.contains { $0.contains(point) } }
+    }
+
+    private func target(
+        for id: String, over hit: Widget?, at screen: CGPoint, beside panel: CGRect
+    ) -> Spot? {
+        if let hit, spot(of: hit) == .panel || unit(of: id).contains(hit.id) {
+            return spot(of: hit)
+        }
+        return panel.contains(screen) ? .panel : landing(of: id, near: screen, beside: panel)
     }
 
     private func ghost(in window: NSWindow) -> (spot: Spot, frame: CGRect)? {
@@ -216,8 +244,9 @@ extension WidgetGrid {
             refused = target
             return false
         }
-        var ids = shown.map(\.id).filter { $0 != id }
-        ids.insert(id, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
+        let unit = unit(of: id)
+        var ids = shown.map(\.id).filter { !unit.contains($0) }
+        ids.insert(contentsOf: unit, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
         refused = nil
         moving = target
         order = ids
