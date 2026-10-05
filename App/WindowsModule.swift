@@ -94,6 +94,8 @@ struct WindowsModule: Module {
         guard let hotKeys else { return }
         let switcher = WindowSwitcher(logger: context.logger, settings: switcherSettings)
         context.own(.other, "window switcher") { switcher.stop() }
+        let watcher = FocusWatcher(onFocus: context.untilStopped(switcher.focused))
+        context.own(.other, "window focus watcher") { watcher.stop() }
         do {
             for (shortcut, backward) in zip(Self.switcherShortcuts, [false, true]) {
                 try hotKeys.register(

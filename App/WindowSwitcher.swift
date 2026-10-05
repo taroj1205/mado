@@ -22,6 +22,7 @@ final class WindowSwitcher {
     private var capturing: Task<Void, Never>?
     private var thumbnails: [CGWindowID: CGImage] = [:]
     private var askedForThumbnails = false
+    private var history = FocusHistory()
 
     var isOpen: Bool {
         if case .idle = phase { false } else { true }
@@ -38,8 +39,10 @@ final class WindowSwitcher {
     }
 
     @AccessibilityActor
-    private static func load(_ pids: [pid_t]) -> [WindowList.Window] {
-        WindowList.shared.load(from: pids)
+    private static func load(_ pids: [pid_t], front: pid_t?) -> (
+        list: [WindowList.Window], focused: CGWindowID?
+    ) {
+        (WindowList.shared.load(from: pids), front.flatMap(WindowList.focusedWindow))
     }
 
     @AccessibilityActor
@@ -113,6 +116,10 @@ final class WindowSwitcher {
         }
     }
 
+    func focused(_ number: CGWindowID) {
+        history.focused(number)
+    }
+
     func stop() {
         loading?.cancel()
         loading = nil
@@ -133,9 +140,11 @@ final class WindowSwitcher {
         let pids = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .map(\.processIdentifier)
+        let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
         loading = Task { [weak self] in
-            let list = await Self.load(pids)
+            let (list, focused) = await Self.load(pids, front: front)
             guard !Task.isCancelled else { return }
+            if let focused { self?.focused(focused) }
             self?.loaded(list)
         }
     }
@@ -146,7 +155,8 @@ final class WindowSwitcher {
             stop()
             return
         }
-        windows = settings().order == .byApp ? WindowList.groupedByApp(list) : list
+        let recent = history.ordered(list)
+        windows = settings().order == .byApp ? WindowList.groupedByApp(recent) : recent
         let numbers = Set(list.compactMap(\.number))
         thumbnails = thumbnails.filter { numbers.contains($0.key) }
         selected = Self.step(
@@ -216,6 +226,7 @@ final class WindowSwitcher {
             let window = windows.indices.contains(selected) ? windows[selected] : nil
             stop()
             guard let window else { return }
+            if let number = window.number { focused(number) }
             Task { [logger] in
                 do throws(WindowList.Failure) {
                     try await Self.focus(window.id)
