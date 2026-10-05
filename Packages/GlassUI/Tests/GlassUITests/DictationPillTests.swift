@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct DictationPillTests {
+@Suite(.silentWindows) struct DictationPillTests {
     private let pill = DictationPill()
 
     private var shown: [NSView] {

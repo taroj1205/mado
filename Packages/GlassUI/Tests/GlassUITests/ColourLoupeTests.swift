@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct ColourLoupeTests {
+@Suite(.silentWindows) struct ColourLoupeTests {
     static let screen = CGRect(x: 0, y: 0, width: 1_280, height: 800)
     static let card = CGSize(width: 240, height: 80)
 
