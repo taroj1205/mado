@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct RadialLabelTests {
+@Suite(.silentWindows) struct RadialLabelTests {
     private static let screen = NSRect(x: 0, y: 0, width: 1_440, height: 900)
     private let label = RadialLabel()
 

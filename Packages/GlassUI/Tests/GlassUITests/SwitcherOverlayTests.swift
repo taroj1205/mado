@@ -5,7 +5,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct SwitcherOverlayTests {
+@Suite(.silentWindows) struct SwitcherOverlayTests {
     static let card = CGSize(width: 168, height: 154)
     static let wide = CGSize(width: 1_140, height: 600)
 
