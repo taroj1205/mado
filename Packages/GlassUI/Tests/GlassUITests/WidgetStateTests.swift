@@ -60,6 +60,10 @@ import Testing
         view.layoutSubtreeIfNeeded()
         let strip = try #require(view.widgetGrid.tiles.first)
         #expect(visible(in: strip) == [strip.value, strip.detail])
+        view.widgetSpots = ["weather": .aboveLeft]
+        let above = view.widgetGrid.tiles.first(where: \.floating)
+        let floating = try #require(above)
+        #expect(visible(in: floating) == [floating.value, floating.detail, floating.span])
     }
 
     @Test func wideTilesSpanTwoColumnsAndTheNextTileWrapsWhenARowIsFull() {

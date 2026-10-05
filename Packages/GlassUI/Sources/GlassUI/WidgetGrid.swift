@@ -260,7 +260,7 @@ public final class WidgetGrid: NSView {
             tiles.filter { !$0.floating }.forEach(addSubview)
         }
         for (tile, widget) in zip(tiles, visible) {
-            tile.compact = layoutInUse == .strip
+            tile.compact = layoutInUse == .strip && !tile.floating
             tile.show(widget)
             tile.lifted = widget.id == dragged
         }
