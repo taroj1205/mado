@@ -75,7 +75,7 @@ extension LauncherView {
             widgetGrid.trailingAnchor.constraint(equalTo: trailingAnchor),
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
-        widgetGrid.onPress = { [weak self] index in self?.selectWidget(index) }
+        widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
@@ -163,9 +163,21 @@ extension LauncherView {
         return false
     }
 
+    func pressWidget(_ index: Int) {
+        selectWidget(index)
+        let widget = widgetGrid.shown[index]
+        if widget.isPlayer, !editingWidgets {
+            onWidget?(widget)
+        }
+    }
+
     func openWidget(_ index: Int) {
-        if !editingWidgets {
-            onWidget?(widgetGrid.shown[index])
+        guard !editingWidgets else { return }
+        let widget = widgetGrid.shown[index]
+        if widget.isPlayer {
+            onOpenPlayer?()
+        } else {
+            onWidget?(widget)
         }
     }
 

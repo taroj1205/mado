@@ -71,6 +71,31 @@ import Testing
         #expect(ran == ["weather"])
     }
 
+    @Test func aPlayerTilePlaysOnAClickAndOpensThePlayerOnADoubleClick() throws {
+        var ran: [String] = []
+        var opens = 0
+        view.onWidget = { ran.append($0.id) }
+        view.onOpenPlayer = { opens += 1 }
+        view.widgets = [
+            widgets[0],
+            .init(
+                id: "music", name: "Now Playing",
+                track: .init(
+                    title: "Low Tide", artist: "Harbour Lights", artwork: nil, isPlaying: true),
+                action: "Play / Pause", spoken: "Now playing"),
+        ]
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        tile.mouseDown(with: try click(tile, []))
+        #expect(ran == ["music"])
+        #expect(opens == 0)
+        tile.mouseDown(with: try click(tile, [], count: 2))
+        #expect(opens == 1)
+        view.opensWidgetsOnSingleClick = true
+        tile.mouseDown(with: try click(tile, []))
+        #expect(opens == 1)
+    }
+
     @Test func commandDraggingReordersTheInlineGridWithoutEditMode() {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }

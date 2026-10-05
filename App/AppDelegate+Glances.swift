@@ -49,6 +49,7 @@ extension AppDelegate {
                 runGlance(widgets.action(for: widget), for: widget.id)
             }
         }
+        launcherView.onOpenPlayer = { [weak self] in self?.widgets.openPlayer() }
         launcherView.onSkip = { [weak self] skip in
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)

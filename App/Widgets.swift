@@ -215,6 +215,17 @@ final class Widgets {
         }
     }
 
+    func openPlayer() {
+        Task {
+            guard let bundleID = playing?.bundleID else { return }
+            do {
+                try await Self.openApp(bundleID, titled: "Open").perform()
+            } catch {
+                Self.logger.error("Opening the player failed: \(error, privacy: .private)")
+            }
+        }
+    }
+
     func stop() {
         ticking?.cancel()
         ticking = nil

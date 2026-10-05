@@ -36,6 +36,7 @@ public final class LauncherView: NSView {
         didSet { arrangePills() }
     }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
+    public var onOpenPlayer: (() -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var onPage: ((WidgetGrid.Page) -> Void)?
     public var onSeek: ((Int) -> Void)?
