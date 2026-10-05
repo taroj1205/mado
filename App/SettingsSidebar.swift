@@ -141,7 +141,11 @@ final class SettingsSidebar: NSViewController {
             table.selectRowIndexes([page], byExtendingSelection: false)
             table.allowsEmptySelection = false
         } else if !query.isEmpty, let first = rows.indices.first(where: { target(at: $0) != nil }) {
-            table.selectRowIndexes([first], byExtendingSelection: false)
+            if table.selectedRow == first {
+                previewSelection()
+            } else {
+                table.selectRowIndexes([first], byExtendingSelection: false)
+            }
             table.scrollRowToVisible(first)
         } else {
             table.deselectAll(nil)

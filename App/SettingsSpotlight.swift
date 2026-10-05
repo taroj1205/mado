@@ -125,6 +125,7 @@ final class SettingsSpotlight {
             let native: NSView? =
                 controls[id]?.firstVisible(NSSegmentedControl.self)
                 ?? controls[id]?.firstVisible(NSTextField.self).flatMap { $0.isEditable ? $0 : nil }
+                ?? controls[id]?.firstVisible(NSButton.self).flatMap { $0.isEnabled ? $0 : nil }
             unsafe row.window?.makeFirstResponder(native)
             return
         }

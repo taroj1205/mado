@@ -61,8 +61,7 @@ extension SettingsSidebar: NSTableViewDataSource, NSTableViewDelegate {
     func tableViewSelectionDidChange(_: Notification) {
         guard !reindexing else { return }
         guard !searching else {
-            delegate?.sidebar(preview: target(at: table.selectedRow), matches: matches)
-            announce(row: table.selectedRow)
+            previewSelection()
             return
         }
         let selected = table.selectedRow
@@ -74,6 +73,11 @@ extension SettingsSidebar: NSTableViewDataSource, NSTableViewDelegate {
         table.enumerateAvailableRowViews { rowView, row in
             (rowView.view(atColumn: 0) as? SettingsPageCell)?.selected = row == table.selectedRow
         }
+    }
+
+    func previewSelection() {
+        delegate?.sidebar(preview: target(at: table.selectedRow), matches: matches)
+        announce(row: table.selectedRow)
     }
 
     private func announce(row: Int) {
