@@ -24,10 +24,10 @@ enum LauncherResult {
     }
 
     private static let openApp = "Open Application"
-    private static let answerID = "calculator"
+    static let answerID = "calculator"
     private static let fileLimit = 20
     private static let searchSymbol = "magnifyingglass"
-    private static let answerSymbol = "plus.forwardslash.minus"
+    static let answerSymbol = "plus.forwardslash.minus"
 
     var id: String {
         switch self {
@@ -232,7 +232,7 @@ enum LauncherResult {
             } ?? (shows(.dictionary) ? DictionaryAnswer.section(for: query) : nil)
     }
 
-    private static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
+    static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
         Calculator.answer(for: query, rates: sources.rates, settings: sources.answers)
     }
 

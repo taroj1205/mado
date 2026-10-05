@@ -74,8 +74,11 @@ extension AppDelegate {
             if let emoji = emojiPicker.query(in: query) {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
-            if showsAgenda(for: query) {
-                return await calendarAgenda.sections(at: .now)
+            let headings = calendarHeadings(for: query)
+            if !headings.isEmpty {
+                let answer = LauncherResult.dateSection(for: query, in: sources)
+                let events = await calendarAgenda.sections(for: headings, at: .now)
+                return [answer].compactMap(\.self) + events
             }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
@@ -134,7 +137,11 @@ extension AppDelegate {
 
     func show(_ sections: [ResultList.Section]) {
         let home = emojiGridHome
+        let showsCalendar =
+            scope == .root && !calendarHeadings(for: launcherView.field.stringValue).isEmpty
         launcherView.capsuleSlots = capsuleSlots(showingGrid: home != nil)
+        launcherView.showCalendar(
+            showsCalendar ? { [calendarAgenda] in calendarAgenda.month(for: $0) } : nil)
         launcherView.show(sections, gridHome: home)
         (launcherView.context, launcherView.contextSymbol) =
             switch scope {
@@ -150,7 +157,7 @@ extension AppDelegate {
             case .calculator:
                 (CalculatorHistory.title, CalculatorHistory.symbol)
 
-            case .root where showsAgenda(for: launcherView.field.stringValue):
+            case .root where showsCalendar:
                 (CalendarAgenda.title, CalendarAgenda.symbol)
 
             case .root:
@@ -158,8 +165,8 @@ extension AppDelegate {
             }
     }
 
-    private func showsAgenda(for query: String) -> Bool {
-        CalendarAgenda.isOn(in: modules) && Agenda.matches(query)
+    private func calendarHeadings(for query: String) -> [Agenda.Heading] {
+        CalendarAgenda.isOn(in: modules) ? CalendarAgenda.headings(for: query, at: .now) : []
     }
 
     private func clipboardRunningChanged() {
