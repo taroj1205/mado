@@ -19,6 +19,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     let tabs: NSTabViewController
     let sidebar: SettingsSidebar
+    let finder: SettingsFinder
     var home: Home?
     weak var spotlit: SettingsPageController?
 
@@ -45,7 +46,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             addWidgets: addWidgets, speechModels: speechModels, statusItem: statusItem)
         let pages = Self.pages(context)
         tabs = pages
-        let finder = SettingsFinder(context: context) {
+        finder = SettingsFinder(context: context) {
             pages.tabViewItems.compactMap { ($0.viewController as? SettingsPageController)?.shown }
         }
         sidebar = SettingsSidebar(finder: finder)
@@ -120,6 +121,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         NSRunningApplication.current.activate(
             from: NSWorkspace.shared.frontmostApplication ?? .current, options: [])
         super.showWindow(sender)
+    }
+
+    func open(_ place: SettingsSearch.Place, entry: String?) {
+        showWindow(nil)
+        sidebar.go(to: .init(place: place, entry: entry, choice: false))
     }
 
     func refresh() {

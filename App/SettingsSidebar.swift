@@ -216,6 +216,10 @@ final class SettingsSidebar: NSViewController {
 
     func go(at row: Int) {
         guard let target = target(at: row) else { return }
+        go(to: target)
+    }
+
+    func go(to target: Target) {
         page = SettingsPage.all.firstIndex { $0.title == target.place.page } ?? page
         if let entry = target.entry {
             finder.visit(entry)

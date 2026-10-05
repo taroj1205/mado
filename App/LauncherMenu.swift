@@ -51,7 +51,7 @@ struct LauncherMenu {
         case .file(let file):
             main += [.openWith(file.url)] + Self.pathEntries(for: file.url)
 
-        case .command, .pane, .quicklink:
+        case .command, .pane, .quicklink, .setting:
             break
         }
         self.init(groups: [main, editor.edits(for: id).map(Entry.edit), quit], recordsUse: true)
