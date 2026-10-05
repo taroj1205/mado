@@ -44,10 +44,8 @@ final class ColourPicker {
 
     private func pick() async throws {
         guard !capturing, !loupe.isVisible else { return }
-        guard CGPreflightScreenCaptureAccess() else {
-            if !CGRequestScreenCaptureAccess() {
-                NSWorkspace.shared.open(PermissionManager.settingsURL(for: .screenRecording))
-            }
+        guard CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess() else {
+            NSWorkspace.shared.open(PermissionManager.settingsURL(for: .screenRecording))
             throw Failure.screenRecordingDenied
         }
         capturing = true
