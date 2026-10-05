@@ -148,6 +148,7 @@ import Testing
             Issue.record("Could not make a key event for \(keyCode)")
             return
         }
+        if view.handle(event) { return }
         if modifiers.contains(.command), panel.performKeyEquivalent(with: event) { return }
         panel.sendEvent(event)
     }

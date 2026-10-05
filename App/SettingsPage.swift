@@ -18,7 +18,7 @@ struct SettingsPage {
         let inputKeys: InputSourceKeys
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
-        let gallery: WidgetGalleryWindow
+        let addWidgets: @MainActor () -> Void
     }
 
     struct Tab {
@@ -182,7 +182,7 @@ struct SettingsPage {
     }
 
     private static func galleryButton(_ context: Context) -> SettingsButton {
-        let button = SettingsButton("Add Widgets…") { context.gallery.show() }
+        let button = SettingsButton("Add Widgets…") { context.addWidgets() }
         button.isEnabled = context.modules != nil
         return button
     }

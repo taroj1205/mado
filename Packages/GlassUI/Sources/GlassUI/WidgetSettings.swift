@@ -11,6 +11,12 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         case move(String, before: String?)
         case place(String, WidgetGrid.Spot, before: String?)
         case remove(String)
+
+        var id: String {
+            switch self {
+            case .add(let id), .move(let id, _), .place(let id, _, _), .remove(let id): id
+            }
+        }
     }
 
     private var custom: Bool
@@ -71,7 +77,8 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             custom = true
 
         case let .place(id, spot, target):
-            guard added(from: available).contains(id) else { return }
+            guard available.contains(id) else { return }
+            apply(.add(id), from: available)
             spots[id] = spot
             apply(.move(id, before: target), from: available)
 

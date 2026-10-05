@@ -29,19 +29,13 @@ extension LauncherView {
     func showAction(of item: ResultList.Item?) {
         let action =
             editingWidgets
-            ? Self.doneTitle
+            ? nil
             : selectedPill.map { statusBar.pills[$0].action }
                 ?? selectedWidget.map { widgetGrid.shown[$0].action }
                 ?? item?.action
         actionLabel.stringValue = action ?? ""
-        let slots: [CapsuleSlot] =
-            if editingWidgets {
-                [.primary]
-            } else if selectedPill != nil || selectedWidget != nil {
-                CapsuleSlot.standard
-            } else {
-                capsuleSlots
-            }
+        let slots =
+            selectedPill != nil || selectedWidget != nil ? CapsuleSlot.standard : capsuleSlots
         let groups = slots.map { capsuleGroup($0, primary: action, for: item) }
         arrangeCapsule(groups)
         actionCapsule.isHidden = action == nil || groups.allSatisfy(\.isEmpty)
@@ -91,15 +85,18 @@ extension LauncherView {
             closeCustomiser()
         }
         widgetGrid.isHidden = !showsWidgets
+        showWidgetTools()
+        if editingWidgets {
+            contextPill.show(nil as String?, symbol: nil)
+            return
+        }
         if let selected = gridContext() {
             contextPill.show(selected.text, glyph: selected.glyph)
             return
         }
         let hintsPreview = (browsing || previewing) && selectedItem?.file != nil
         let hint: (text: String?, symbol: String?) =
-            if editingWidgets {
-                (Self.editHint, Self.editSymbol)
-            } else if hintsPreview {
+            if hintsPreview {
                 (Self.previewHint, Self.previewSymbol)
             } else {
                 (context, contextSymbol)

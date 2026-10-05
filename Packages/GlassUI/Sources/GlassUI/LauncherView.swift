@@ -38,8 +38,8 @@ public final class LauncherView: NSView {
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
-    public var onAddWidgets: (() -> Void)?
-    public var onEndEditingWidgets: (() -> Void)?
+    public var onUndoWidgetEdit: (() -> Void)?
+    public var onWidgetEditing: ((Bool) -> Void)?
     public internal(set) var editingWidgets = false
     public var context: String? {
         didSet { showContext() }
@@ -67,6 +67,9 @@ public final class LauncherView: NSView {
     var gridHome: String?
     var filter: NSPopUpButton?
     let editBar = WidgetEditBar()
+    let gallery = WidgetGallery()
+    let doneButton = CapsuleButton.accent("Done", keys: ["↵"], height: LauncherView.doneHeight)
+    var widgetNote: (text: String, undoable: Bool)?
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
@@ -168,8 +171,8 @@ public final class LauncherView: NSView {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if choosingAction, let actionPanel {
-            return actionPanel.performShortcut(event) || super.performKeyEquivalent(with: event)
+        if choosingAction || editingWidgets {
+            return overlayShortcut(event) || super.performKeyEquivalent(with: event)
         }
         if handleModifiedKey(event) || holdsForResults(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,
@@ -197,10 +200,6 @@ public final class LauncherView: NSView {
         dragWidget(
             sender.draggingPasteboard.string(forType: WidgetGrid.dragType),
             at: sender.draggingLocation, from: sender.draggingSource)
-    }
-
-    override public func draggingExited(_: (any NSDraggingInfo)?) {
-        changeWidgets { widgetGrid.incoming = nil }
     }
 
     override public func draggingEnded(_: any NSDraggingInfo) {
