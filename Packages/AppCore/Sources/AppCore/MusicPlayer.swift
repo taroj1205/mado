@@ -100,6 +100,8 @@ public actor MusicPlayer {
     private var source: Source?
     private var artwork: (id: String, data: Data?)?
 
+    public var appBundleID: String? { source?.bundleID }
+
     public init() {
         self.init(send: Self.toApp, load: Self.fromWeb)
     }

@@ -39,6 +39,10 @@ extension WidgetGrid {
                 rows: resized.rows)
         }
 
+        var isPlayer: Bool {
+            track != nil || verse != nil
+        }
+
         var isMonth: Bool {
             if case .month = content { true } else { false }
         }

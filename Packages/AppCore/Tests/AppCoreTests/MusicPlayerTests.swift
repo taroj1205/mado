@@ -156,6 +156,16 @@ import Testing
         #expect(await player.position() == 73.5)
     }
 
+    @Test func theShownAppIsTheOneToOpen() async {
+        #expect(await player.appBundleID == nil)
+        _ = await player.track()
+        #expect(await player.appBundleID == Self.music)
+        playSpotify()
+        apps.answers[Self.music] = nil
+        _ = await player.track()
+        #expect(await player.appBundleID == Self.spotify)
+    }
+
     @Test func aPausedTrackStaysButAStoppedPlayerOrAMissingTrackShowsNothing() async {
         apps.answers[Self.music]?["pPlS"] = state("kPSp")
         #expect(await player.track()?.isPlaying == false)
