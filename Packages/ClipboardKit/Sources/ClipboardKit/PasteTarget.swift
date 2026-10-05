@@ -51,9 +51,11 @@ public struct PasteTarget {
     }
 
     public func insert(_ text: String) async throws {
+        let insertion = TextInsertion.standard
+        try await insertion.waitForRestore()
         try await activate()
         guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
-        try await TextInsertion.standard.paste(text)
+        try await insertion.paste(text)
     }
 
     public func paste(_ items: [any NSPasteboardWriting]) async throws {

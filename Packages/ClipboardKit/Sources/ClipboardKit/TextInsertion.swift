@@ -38,12 +38,13 @@ public struct TextInsertion {
         }
     }
 
-    private static var restoring = false
+    private static var restoringUntil: [NSPasteboard.Name: ContinuousClock.Instant] = [:]
 
     nonisolated static let keyLimit = 1_000
     private static let restoreMilliseconds = 500
     private static let pasteSeconds = 5
     private static let pollMilliseconds = 50
+    private static let restoreSlackSeconds = 10
     public static let standard = Self(
         pasteboard: .general, restoreDelay: .milliseconds(restoreMilliseconds),
         pasteTimeout: .seconds(pasteSeconds), post: Keystrokes.post)
@@ -72,6 +73,7 @@ public struct TextInsertion {
         _ typed: String, with expansion: SnippetTemplate.Expansion,
         if isCurrent: @MainActor () async -> Bool
     ) async throws -> Inserted? {
+        try await waitForRestore()
         let changeCount = pasteboard.changeCount
         let saved = savedItems()
         guard await isCurrent() else { return nil }
@@ -79,17 +81,17 @@ public struct TextInsertion {
     }
 
     public func paste(_ text: String) async throws {
-        while Self.restoring {
-            try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
-        }
+        try await waitForRestore()
         let plain = SnippetTemplate.Expansion(text: text, caretBack: 0, fieldRanges: [])
         let changeCount = pasteboard.changeCount
         let inserted = try put(
             plain, replacing: "", saved: savedItems(), changeCount: changeCount)
-        Self.restoring = true
-        Task {
-            await restore(inserted)
-            Self.restoring = false
+        Task { await restore(inserted) }
+    }
+
+    func waitForRestore() async throws {
+        while let until = Self.restoringUntil[pasteboard.name], ContinuousClock.now < until {
+            try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
         }
     }
 
@@ -119,6 +121,8 @@ public struct TextInsertion {
             throw error
         }
         let written = pasteboard.changeCount
+        let allowed = pasteTimeout + restoreDelay + .seconds(Self.restoreSlackSeconds)
+        Self.restoringUntil[pasteboard.name] = .now + allowed
         post(delete + paste + back)
         return Inserted(
             length: expansion.text.count, caretBack: caretBack, replaced: typed,
@@ -126,6 +130,7 @@ public struct TextInsertion {
     }
 
     public func restore(_ inserted: Inserted) async {
+        defer { Self.restoringUntil[pasteboard.name] = nil }
         let deadline = ContinuousClock.now + pasteTimeout
         while !inserted.text.wasRead, ContinuousClock.now < deadline {
             do {

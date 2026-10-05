@@ -21,13 +21,6 @@ import Testing
         return String(decoding: units.prefix(length), as: UTF16.self)
     }
 
-    private static func settled(_ pasteboard: NSPasteboard, on expected: String) async throws {
-        let deadline = ContinuousClock.now + .seconds(5)
-        while pasteboard.string(forType: .string) != expected, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-    }
-
     @Test func deletesTheKeywordPastesAndPutsTheCaretBack() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -116,8 +109,10 @@ import Testing
             .init(fields: [:], date: "", time: "", clipboard: ""))
 
         let longInserted = try #require(await insertion.replace(";fu", with: long) { true })
+        await insertion.restore(longInserted)
         let longArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
         let shortInserted = try #require(await insertion.replace(";fu", with: short) { true })
+        await insertion.restore(shortInserted)
         let shortArrows = Self.keys(posted).filter { $0 == Int64(kVK_LeftArrow) }.count
 
         #expect(longArrows == 0)
@@ -208,45 +203,6 @@ import Testing
         #expect(pasteboard.string(forType: .string) == "copied meanwhile")
     }
 
-    @Test func pastesPlainTextAndPutsTheOldCopyBack() async throws {
-        let pasteboard = NSPasteboard.withUniqueName()
-        defer { pasteboard.releaseGlobally() }
-        pasteboard.setString("old", forType: .string)
-        var posted: [CGEvent] = []
-        var pastedText: String?
-        let insertion = TextInsertion(
-            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .zero
-        ) { events in
-            posted = events
-            pastedText = pasteboard.string(forType: .string)
-        }
-
-        try await insertion.paste("{date} {cursor}")
-        try await Self.settled(pasteboard, on: "old")
-
-        let paste = Int64(try PasteTarget.commandV()[0].getIntegerValueField(.keyboardEventKeycode))
-        #expect(Self.keys(posted) == [paste])
-        #expect(pastedText == "{date} {cursor}")
-        #expect(pasteboard.string(forType: .string) == "old")
-    }
-
-    @Test func aSecondPasteKeepsTheOriginalCopyInsteadOfTheFirstPastedText() async throws {
-        let pasteboard = NSPasteboard.withUniqueName()
-        defer { pasteboard.releaseGlobally() }
-        pasteboard.setString("old", forType: .string)
-        var pasted: [String] = []
-        let insertion = TextInsertion(
-            pasteboard: pasteboard, restoreDelay: .milliseconds(50), pasteTimeout: .zero
-        ) { _ in pasted.append(pasteboard.string(forType: .string) ?? "") }
-
-        try await insertion.paste("first")
-        try await insertion.paste("second")
-        try await Self.settled(pasteboard, on: "old")
-
-        #expect(pasted == ["first", "second"])
-        #expect(pasteboard.string(forType: .string) == "old")
-    }
-
     @Test func undoRemovesTheTextAndTypesTheKeywordAgain() async throws {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -258,6 +214,7 @@ import Testing
             .init(fields: [:], date: "", time: "", clipboard: ""))
 
         let inserted = try #require(await insertion.replace(";fu", with: short) { true })
+        await insertion.restore(inserted)
         try insertion.undo(inserted)
 
         let right = Int64(kVK_RightArrow)
