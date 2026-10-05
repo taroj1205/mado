@@ -1,6 +1,12 @@
 import AppKit
 
 extension WidgetTile: NSDraggingSource {
+    enum Resize: Equatable {
+        case drag(CGFloat)
+        case drop
+        case step(Int)
+    }
+
     static let badgeSize: CGFloat = 22
     static let badgeOverhang: CGFloat = 8
     private static let gripSize: CGFloat = 14
@@ -29,7 +35,7 @@ extension WidgetTile: NSDraggingSource {
         }
         let centre = Self.badgeSize * Self.half - Self.badgeOverhang
         remove.onPress = { [weak self] in self?.onRemove?() }
-        for view in [remove, grip] {
+        for view in [remove, grip, resizer] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -42,14 +48,56 @@ extension WidgetTile: NSDraggingSource {
             grip.heightAnchor.constraint(equalToConstant: Self.gripSize),
             grip.topAnchor.constraint(equalTo: topAnchor, constant: Self.gripInset),
             grip.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.gripInset),
+            resizer.widthAnchor.constraint(equalToConstant: WidgetResizeHandle.size.width),
+            resizer.heightAnchor.constraint(equalToConstant: WidgetResizeHandle.size.height),
+            resizer.bottomAnchor.constraint(equalTo: bottomAnchor),
+            resizer.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
         showEditing()
+    }
+
+    func editingActions() -> [NSAccessibilityCustomAction] {
+        let widths = [("Make Wider", 1), ("Make Narrower", -1)].map { name, change in
+            NSAccessibilityCustomAction(name: name) { [weak self] in
+                self?.onResize?(.step(change))
+                return true
+            }
+        }
+        return [
+            NSAccessibilityCustomAction(name: "Remove") { [weak self] in
+                self?.onRemove?()
+                return true
+            },
+            NSAccessibilityCustomAction(name: "Add to Selection") { [weak self] in
+                self?.onExtend?()
+                return true
+            },
+        ] + (resizable ? widths : [])
     }
 
     func showEditing() {
         for view in [dash, remove, grip] {
             view.isHidden = !editing
         }
+        showGrip()
+        setAccessibilityCustomActions(customActions())
+    }
+
+    func showGrip() {
+        resizer.isHidden = !editing || !selected || !resizable
+        unsafe window?.invalidateCursorRects(for: resizer)
+    }
+
+    func beginResize(_ event: NSEvent) -> Bool {
+        guard resizable, resizer.frame.contains(convert(event.locationInWindow, from: nil)) else {
+            return false
+        }
+        resizeStart = screenX(of: event)
+        return true
+    }
+
+    func screenX(of event: NSEvent) -> CGFloat {
+        (unsafe window?.convertPoint(toScreen: event.locationInWindow) ?? event.locationInWindow).x
     }
 
     func showLifted() {
@@ -60,9 +108,16 @@ extension WidgetTile: NSDraggingSource {
     }
 
     func pressWhileEditing(_ event: NSEvent) {
-        if remove.frame.contains(convert(event.locationInWindow, from: nil)) {
+        let point = convert(event.locationInWindow, from: nil)
+        if remove.frame.contains(point) {
             dragStart = nil
             onRemove?()
+        } else if beginResize(event) {
+            dragStart = nil
+            onPress?()
+        } else if event.modifierFlags.contains(.shift) {
+            dragStart = nil
+            onExtend?()
         } else {
             dragStart = event
             onPress?()

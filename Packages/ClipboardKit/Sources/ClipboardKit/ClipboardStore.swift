@@ -1,5 +1,4 @@
 public import Foundation
-import UniformTypeIdentifiers
 
 public actor ClipboardStore {
     public struct Usage: Equatable, Sendable {
@@ -49,6 +48,10 @@ public actor ClipboardStore {
         """,
         "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;",
         "ALTER TABLE clips ADD COLUMN recognized INTEGER NOT NULL DEFAULT 0;",
+        """
+        ALTER TABLE clips ADD COLUMN digest BLOB;
+        CREATE INDEX IF NOT EXISTS clips_by_digest ON clips (digest);
+        """,
     ]
     private static let unpinnedIndex =
         "CREATE INDEX IF NOT EXISTS clips_unpinned_by_date ON clips (date) WHERE pinned = 0"
@@ -109,33 +112,6 @@ public actor ClipboardStore {
         let saved = list.flatMap { String(bytes: $0, encoding: .utf8) }
         let paths = saved?.split(separator: Clip.pathSeparator) ?? text.split(separator: "\n")
         return paths.map { URL(filePath: String($0)) }
-    }
-
-    public func add(_ clip: Clip, keeping retention: Retention) throws {
-        var image: String?
-        var data = clip.data
-        if clip.kind == .image, let bytes = data {
-            let name = clip.type.flatMap { UTType($0)?.preferredFilenameExtension }
-            let file = [UUID().uuidString, name].compactMap(\.self).joined(separator: ".")
-            try bytes.write(to: images.appending(path: file))
-            image = file
-            data = nil
-        }
-        do {
-            try database.run(
-                "INSERT INTO clips (kind, text, type, data, image, source, date)"
-                    + " VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [
-                    .text(clip.kind.rawValue), .text(clip.text), .text(clip.type), .blob(data),
-                    .text(image), .text(clip.source), .real(clip.date.timeIntervalSince1970),
-                ])
-        } catch {
-            if let image {
-                try? FileManager.default.removeItem(at: images.appending(path: image))
-            }
-            throw error
-        }
-        try prune(keeping: retention, now: clip.date)
     }
 
     public func prune(keeping retention: Retention, now: Date) throws {

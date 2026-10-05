@@ -1,6 +1,12 @@
 import AppKit
 
 final class WidgetEditBar: NSStackView {
+    enum Grouping {
+        case off
+        case group
+        case ungroup
+    }
+
     private static let gap: CGFloat = 10
     private static let nameSize: CGFloat = 13
     private static let nameGap: CGFloat = 10
@@ -15,12 +21,20 @@ final class WidgetEditBar: NSStackView {
     private static let hintGap: CGFloat = 8
     private static let hintSize: CGFloat = 13
     private static let undoHeight: CGFloat = 26
+    private static let nameGives = NSLayoutConstraint.Priority.windowSizeStayPut - 1
+    private static let hintGives = nameGives - 1
     static let moveSymbol = "arrow.up.and.down.and.arrow.left.and.right"
 
     let name = NSTextField(labelWithString: "")
     let move = CapsuleButton(
         "", keys: [], symbol: WidgetEditBar.moveSymbol, height: WidgetEditBar.buttonHeight)
+    let group = CapsuleButton(
+        "Group", keys: ["⌘", "G"], symbol: "square.on.square", height: WidgetEditBar.buttonHeight)
+    let ungroup = CapsuleButton(
+        "Ungroup", keys: ["⇧", "⌘", "G"], symbol: "square.on.square.dashed",
+        height: WidgetEditBar.buttonHeight)
     let remove = NSButton()
+    private let divider = FloatingCapsule.divider()
     let hintIcon = NSImageView()
     let hint = NSTextField(labelWithString: "")
     let undo = CapsuleButton(
@@ -29,17 +43,21 @@ final class WidgetEditBar: NSStackView {
     let inspector: GlassView
     let notice: GlassView
     var onMove: (() -> Void)?
+    var onGroup: (() -> Void)?
+    var onUngroup: (() -> Void)?
     var onRemove: (() -> Void)?
     var onUndo: (() -> Void)?
 
     init() {
         name.font = .systemFont(ofSize: Self.nameSize, weight: .semibold)
+        name.lineBreakMode = .byTruncatingTail
+        name.setContentCompressionResistancePriority(Self.nameGives, for: .horizontal)
         remove.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
         remove.symbolConfiguration = .init(pointSize: Self.removeSize, weight: .medium)
         remove.contentTintColor = .systemRed
         remove.isBordered = false
         remove.refusesFirstResponder = true
-        let tools = NSStackView(views: [name, move, FloatingCapsule.divider(), remove])
+        let tools = NSStackView(views: [name, move, group, ungroup, divider, remove])
         tools.setCustomSpacing(Self.nameGap, after: name)
         inspector = FloatingCapsule.make(
             tools, leading: Self.inspectorLeading, trailing: Self.inspectorTrailing)
@@ -48,7 +66,7 @@ final class WidgetEditBar: NSStackView {
         hint.font = .systemFont(ofSize: Self.hintSize, weight: .medium)
         hint.textColor = .secondaryLabelColor
         hint.lineBreakMode = .byTruncatingTail
-        hint.setContentCompressionResistancePriority(.defaultHigh + 1, for: .horizontal)
+        hint.setContentCompressionResistancePriority(Self.hintGives, for: .horizontal)
         hintStack = NSStackView(views: [hintIcon, hint, undo])
         hintStack.spacing = Self.hintGap
         notice = FloatingCapsule.make(
@@ -58,6 +76,8 @@ final class WidgetEditBar: NSStackView {
         remove.target = self
         remove.action = #selector(pressRemove)
         move.onPress = { [weak self] in self?.onMove?() }
+        group.onPress = { [weak self] in self?.onGroup?() }
+        ungroup.onPress = { [weak self] in self?.onUngroup?() }
         undo.onPress = { [weak self] in self?.onUndo?() }
         move.setAccessibilityLabel("Move to…")
         setViews([inspector, notice], in: .leading)
@@ -67,7 +87,7 @@ final class WidgetEditBar: NSStackView {
             remove.widthAnchor.constraint(equalToConstant: Self.buttonHeight),
             remove.heightAnchor.constraint(equalToConstant: Self.buttonHeight),
         ])
-        show(nil, moving: false)
+        show(nil, moving: false, count: 0, grouping: .off)
     }
 
     @available(*, unavailable)
@@ -75,17 +95,26 @@ final class WidgetEditBar: NSStackView {
         nil
     }
 
-    func show(_ widget: (name: String, spot: WidgetGrid.Spot)?, moving: Bool) {
+    func show(
+        _ widget: (name: String, spot: WidgetGrid.Spot)?, moving: Bool, count: Int,
+        grouping: Grouping
+    ) {
         inspector.isHidden = widget == nil
         guard let widget else { return }
-        name.stringValue = widget.name
+        let several = count > 1
+        name.stringValue = several ? "\(count) widgets" : widget.name
+        for view: NSView in [move, divider, remove] {
+            view.isHidden = several
+        }
+        group.isHidden = grouping != .group
+        ungroup.isHidden = grouping != .ungroup
         move.label.stringValue = widget.spot.title
         move.setAccessibilityValue(widget.spot.title)
         move.fillColor = moving ? .controlAccentColor : .clear
         move.label.textColor = moving ? .white : .labelColor
         move.icon.contentTintColor = move.label.textColor
         remove.setAccessibilityLabel("Remove \(widget.name)")
-        setAccessibilityLabel("\(widget.name) options")
+        setAccessibilityLabel("\(name.stringValue) options")
     }
 
     func show(hint text: String?, symbol: String, undoable: Bool) {

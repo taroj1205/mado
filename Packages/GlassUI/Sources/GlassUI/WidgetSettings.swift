@@ -10,11 +10,33 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         case add(String)
         case move(String, before: String?)
         case place(String, WidgetGrid.Spot, before: String?)
+        case group([String], WidgetGrid.Spot, before: String?)
+        case spread([String: WidgetGrid.Spot])
+        case resize(String, columns: Int)
         case remove(String)
 
         var id: String {
+            ids.first ?? ""
+        }
+
+        var ids: [String] {
             switch self {
-            case .add(let id), .move(let id, _), .place(let id, _, _), .remove(let id): id
+            case .add(let id), .move(let id, _), .place(let id, _, _), .resize(let id, _),
+                .remove(let id):
+                [id]
+
+            case let .group(members, _, _): members
+            case .spread(let spots): spots.keys.sorted()
+            }
+        }
+
+        static func moving(
+            _ ids: [String], to spot: WidgetGrid.Spot, before target: String?
+        ) -> Self {
+            if ids.count == 1, let single = ids.first {
+                .place(single, spot, before: target)
+            } else {
+                .group(ids, spot, before: target)
             }
         }
     }
@@ -22,11 +44,13 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     private var custom: Bool
     private var added: [String]
     private var spots: [String: WidgetGrid.Spot]
+    private var sizes: [String: Int]
 
     public init() {
         custom = false
         added = []
         spots = [:]
+        sizes = [:]
     }
 
     public init(from decoder: any Decoder) throws {
@@ -34,6 +58,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         custom = try values.decode(Bool.self, forKey: .custom)
         added = try values.decode([String].self, forKey: .added)
         spots = try values.decodeIfPresent([String: WidgetGrid.Spot].self, forKey: .spots) ?? [:]
+        sizes = try values.decodeIfPresent([String: Int].self, forKey: .sizes) ?? [:]
     }
 
     public func added(from available: [String]) -> [String] {
@@ -43,19 +68,37 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     }
 
     public func spots(
-        _ arrangement: Arrangement, from available: [String]
+        _ arrangement: Arrangement, from available: [String], wide: Set<String> = []
     ) -> [String: WidgetGrid.Spot] {
         let ids = added(from: available)
         let left = (ids.count + WidgetGrid.sides - 1) / WidgetGrid.sides
+        let cells = WidgetGrid.cells(
+            spanning: ids.map { wide.contains($0) ? WidgetGrid.Widget.wideSpan : 1 })
+        let rows = (cells.last?.row ?? 0) + 1
         return Dictionary(
-            uniqueKeysWithValues: ids.enumerated().map { index, id in
-                switch arrangement {
+            uniqueKeysWithValues: zip(ids, cells).enumerated().map { index, item in
+                let (id, cell) = item
+                return switch arrangement {
                 case .inPanel: (id, .panel)
-                case .above: (id, .aboveLeft)
-                case .around: (id, index < left ? .leftTop : .rightTop)
+
+                case .above:
+                    (id, .above(column: cell.columns.lowerBound, row: rows - 1 - cell.row))
+
+                case .around:
+                    (
+                        id,
+                        index < left
+                            ? .beside(.left, row: index) : .beside(.right, row: index - left)
+                    )
+
                 case .custom: (id, spots[id] ?? .panel)
                 }
             })
+    }
+
+    public func sizes(from available: [String]) -> [String: Int] {
+        let ids = added(from: available)
+        return sizes.filter { ids.contains($0.key) }
     }
 
     public mutating func keep(_ spots: [String: WidgetGrid.Spot]) {
@@ -65,16 +108,10 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     public mutating func apply(_ edit: Edit, from available: [String]) {
         switch edit {
         case .add(let id):
-            guard available.contains(id), !added(from: available).contains(id) else { return }
-            added = (custom ? added : available) + [id]
-            custom = true
+            add(id, from: available)
 
         case let .move(id, target):
-            guard id != target, added(from: available).contains(id) else { return }
-            var order = (custom ? added : available).filter { $0 != id }
-            order.insert(id, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
-            added = order
-            custom = true
+            move(id, before: target, from: available)
 
         case let .place(id, spot, target):
             guard available.contains(id) else { return }
@@ -82,11 +119,59 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             spots[id] = spot
             apply(.move(id, before: target), from: available)
 
+        case let .group(ids, spot, target):
+            gather(ids.filter(available.contains), at: spot, before: target, from: available)
+
+        case .spread(let moved):
+            let ids = added(from: available)
+            spots.merge(moved.filter { ids.contains($0.key) }) { _, spot in spot }
+
+        case let .resize(id, columns):
+            resize(id, to: columns, from: available)
+
         case .remove(let id):
-            guard added(from: available).contains(id) else { return }
-            added = (custom ? added : available).filter { $0 != id }
-            spots[id] = nil
-            custom = true
+            remove(id, from: available)
         }
+    }
+
+    private mutating func add(_ id: String, from available: [String]) {
+        guard available.contains(id), !added(from: available).contains(id) else { return }
+        added = (custom ? added : available) + [id]
+        custom = true
+    }
+
+    private mutating func move(_ id: String, before target: String?, from available: [String]) {
+        guard id != target, added(from: available).contains(id) else { return }
+        var order = (custom ? added : available).filter { $0 != id }
+        order.insert(id, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
+        added = order
+        custom = true
+    }
+
+    private mutating func resize(_ id: String, to columns: Int, from available: [String]) {
+        guard added(from: available).contains(id) else { return }
+        sizes[id] = columns
+    }
+
+    private mutating func remove(_ id: String, from available: [String]) {
+        guard added(from: available).contains(id) else { return }
+        added = (custom ? added : available).filter { $0 != id }
+        spots[id] = nil
+        sizes[id] = nil
+        custom = true
+    }
+
+    private mutating func gather(
+        _ ids: [String], at spot: WidgetGrid.Spot, before target: String?, from available: [String]
+    ) {
+        guard !ids.isEmpty else { return }
+        for id in ids {
+            apply(.add(id), from: available)
+            spots[id] = spot
+        }
+        var order = (custom ? added : available).filter { !ids.contains($0) }
+        order.insert(contentsOf: ids, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
+        added = order
+        custom = true
     }
 }

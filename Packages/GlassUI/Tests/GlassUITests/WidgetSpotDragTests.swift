@@ -21,17 +21,18 @@ import Testing
         view.layoutSubtreeIfNeeded()
     }
 
-    @Test func theNearestSpotIsThePanelInsideItAndAnAnchorWithinReachOutside() {
+    @Test func aWidgetLandsInTheSlotNearestThePointerAndNothingIsInReachFarAway() {
+        let grid = view.widgetGrid
         let launcher = Self.frame
-        #expect(WidgetGrid.nearestSpot(to: CGPoint(x: 500, y: 300), beside: launcher) == .panel)
-        #expect(
-            WidgetGrid.nearestSpot(to: CGPoint(x: 290, y: 437), beside: launcher) == .leftMiddle)
-        #expect(
-            WidgetGrid.nearestSpot(to: CGPoint(x: 1_290, y: 640), beside: launcher) == .rightTop)
-        #expect(
-            WidgetGrid.nearestSpot(to: CGPoint(x: launcher.midX, y: 740), beside: launcher)
-                == .aboveCentre)
-        #expect(WidgetGrid.nearestSpot(to: CGPoint(x: 100, y: 950), beside: launcher) == nil)
+        let land = { (across: CGFloat, height: CGFloat) in
+            grid.landing(of: "2", near: CGPoint(x: across, y: height), beside: launcher)
+        }
+        #expect(land(290, 437) == .leftMiddle)
+        #expect(land(270, 537) == .beside(.left, row: 1))
+        #expect(land(1_290, 640) == .rightTop)
+        #expect(land(720, 740) == .aboveCentre)
+        #expect(land(590, 820) == .above(column: 1, row: 1))
+        #expect(land(100, 950) == nil)
     }
 
     @Test func commandDraggingOntoAnEmptyRailMovesTheWidgetThere() {
@@ -74,8 +75,10 @@ import Testing
     @Test func thePreviewedSpotStaysDroppableAroundItsGhost() {
         start(dragging: 1)
         #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
-        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 530)), from: nil) == .move)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 470)), from: nil) == .move)
         #expect(view.widgetGrid.moving == .leftMiddle)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 530)), from: nil) == .move)
+        #expect(view.widgetGrid.moving == .beside(.left, row: 1))
     }
 
     @Test func aFullSpotAfterAGoodOneSaysThereIsNoRoom() {
@@ -127,8 +130,9 @@ import Testing
         widgets.apply(.place("clock", .aboveCentre, before: nil), from: available)
         #expect(widgets.added(from: available) == ["system", "battery", "clock"])
         #expect(
-            widgets.spots(.custom, from: available)
-                == ["clock": .aboveCentre, "system": .leftTop, "battery": .rightTop])
+            widgets.spots(.custom, from: available) == [
+                "clock": .aboveCentre, "system": .beside(.left, row: 1), "battery": .rightTop,
+            ])
     }
 
     @Test func editingKeepsEveryWidgetAtItsSpotAndShowsTheRails() {
@@ -141,7 +145,7 @@ import Testing
         let editing = view.widgetGrid.tiles.map(\.editing)
         #expect(!editing.contains(false))
         #expect(view.widgetGrid.rails.parent === panel)
-        #expect(view.widgetGrid.rails.board.model.pucks.count == 8)
+        #expect(view.widgetGrid.rails.board.model.pucks.count == 5 + 2 * WidgetGrid.Spot.stops)
         #expect(!view.widgetGrid.dock.isHidden)
         #expect(view.widgetGrid.frame.height > 0)
         let float = view.widgetGrid.floats[0]
@@ -170,8 +174,10 @@ import Testing
         #expect(view.widgetGrid.refused == .panel)
         #expect(!view.dropWidget("7"))
         #expect(edits.isEmpty)
-        view.widgetSpots = ["6": .leftTop, "7": .leftTop]
+        view.widgetSpots = ["6": .leftTop, "7": .leftBottom]
         #expect(view.widgetGrid.accepts("7", at: .panel, before: nil))
+        view.widgetSpots = ["6": .leftTop, "7": .leftTop]
+        #expect(!view.widgetGrid.accepts("7", at: .panel, before: nil))
     }
 
     @Test func aDraggedSideWidgetLeavesOnlyAGhostAtItsSpot() {

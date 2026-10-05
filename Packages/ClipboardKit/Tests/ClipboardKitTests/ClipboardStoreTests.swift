@@ -160,12 +160,12 @@ import Testing
     @Test func clearsEverythingButPinnedItems() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
-        let png = Data([0x89, 0x50, 0x4E, 0x47])
         for (index, text) in ["pinned", "copied", "kept image", "image"].enumerated() {
-            let date = Date(timeIntervalSince1970: Double(index))
             try await store.add(
                 text.hasSuffix("image")
-                    ? Clip(.image, text: text, type: .png, data: png, source: nil, date: date)
+                    ? Clip(
+                        .image, text: text, type: .png, data: Data(text.utf8), source: nil,
+                        date: Date(timeIntervalSince1970: Double(index)))
                     : Self.text(text, at: Double(index)),
                 keeping: Self.roomy)
         }

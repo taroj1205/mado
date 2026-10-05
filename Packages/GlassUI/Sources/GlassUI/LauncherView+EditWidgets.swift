@@ -3,7 +3,7 @@ import AppKit
 extension LauncherView {
     static let editTitle = "Edit Widgets"
     static let editPlaceholder = "Search widgets…"
-    static let editHint = "Click a widget to add it · drag one to any spot"
+    static let editHint = "Click a widget to add it · drag one anywhere · ⇧-click to group"
     static let editSymbol = "square.grid.2x2"
     static let doneHeight: CGFloat = 28
     private static let doneInset: CGFloat = 14
@@ -39,6 +39,8 @@ extension LauncherView {
         ])
         doneButton.onPress = { [weak self] in self?.finishEditingWidgets() }
         editBar.onMove = { [weak self] in self?.toggleSpotPicker() }
+        editBar.onGroup = { [weak self] in self?.groupWidgets() }
+        editBar.onUngroup = { [weak self] in self?.ungroupWidget() }
         editBar.onRemove = { [weak self] in self?.removeSelectedWidget() }
         editBar.onUndo = { [weak self] in _ = self?.undoWidgetEdit() }
         gallery.onPick = { [weak self] id in self?.pickFromGallery(id) }
@@ -95,18 +97,11 @@ extension LauncherView {
     }
 
     func report(_ edit: WidgetSettings.Edit) {
-        let id = edit.id
-        let name = widgetName(of: id)
-        let added = !widgetGrid.widgets.contains { $0.id == id }
+        let selected = selectedWidget.map { widgetGrid.shown[$0].id }
+        let id = selected.flatMap { edit.ids.contains($0) ? $0 : nil } ?? edit.id
+        let text = describe(edit)
         onWidgetEdit?(edit)
         guard editingWidgets else { return }
-        let text =
-            switch edit {
-            case .add: "\(name) added · \(WidgetGrid.Spot.panel.title)"
-            case .move: "\(name) moved"
-            case .remove: "\(name) removed"
-            case let .place(_, spot, _): "\(name) \(added ? "added" : "moved") · \(spot.title)"
-            }
         if edit != .remove(id), let index = widgetGrid.shown.firstIndex(where: { $0.id == id }) {
             selectWidget(index)
         }
@@ -122,8 +117,25 @@ extension LauncherView {
 
     func overlayShortcut(_ event: NSEvent) -> Bool {
         guard editingWidgets else { return actionPanel?.performShortcut(event) == true }
-        return event.modifierFlags.intersection(Self.modifierKeys) == .command
-            && event.charactersIgnoringModifiers == "z" && undoWidgetEdit()
+        let flags = event.modifierFlags.intersection(Self.modifierKeys)
+        switch (flags, event.charactersIgnoringModifiers?.lowercased()) {
+        case (.command, "z"): return undoWidgetEdit()
+
+        case (.command, "g"):
+            groupWidgets()
+            return true
+
+        case ([.command, .shift], "g"):
+            ungroupWidget()
+            return true
+
+        case (.command, "="), (.command, "-"):
+            guard let selectedWidget else { return false }
+            resizeWidget(selectedWidget, .step(event.charactersIgnoringModifiers == "=" ? 1 : -1))
+            return true
+
+        default: return false
+        }
     }
 
     func editCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
@@ -148,12 +160,8 @@ extension LauncherView {
 
     func handleWhileEditing(_ event: NSEvent) -> Bool {
         switch event.type {
-        case .keyDown where event.modifierFlags.intersection(Self.modifierKeys) == .option:
-            guard selectedWidget != nil, let heading = Self.heading(of: event) else {
-                return false
-            }
-            sendWidget(heading)
-            return true
+        case .keyDown:
+            return moveWidgetKey(event)
 
         case .leftMouseDown:
             let point = event.locationInWindow
@@ -165,6 +173,16 @@ extension LauncherView {
 
         default: return false
         }
+    }
+
+    private func moveWidgetKey(_ event: NSEvent) -> Bool {
+        guard selectedWidget != nil, let heading = Self.heading(of: event) else { return false }
+        switch event.modifierFlags.intersection(Self.modifierKeys) {
+        case .option: sendWidget(heading)
+        case .shift where field.stringValue.isEmpty: extendWidgetSelection(toward: heading)
+        default: return false
+        }
+        return true
     }
 
     func removeWidget(_ index: Int) {
@@ -183,7 +201,7 @@ extension LauncherView {
     func sendWidget(_ heading: WidgetGrid.Heading) {
         guard let selectedWidget else { return }
         let id = widgetGrid.shown[selectedWidget].id
-        guard let spot = widgetGrid.home(of: id).neighbour(toward: heading) else {
+        guard let spot = widgetGrid.next(from: id, toward: heading) else {
             NSSound.beep()
             return
         }
@@ -194,8 +212,18 @@ extension LauncherView {
         editBar.isHidden = !editingWidgets
         guard editingWidgets else { return }
         let widget = selectedWidget.map { widgetGrid.shown[$0] }
+        let picked = chosenWidgets
+        let grouping: WidgetEditBar.Grouping =
+            if picked.count > 1 {
+                .group
+            } else if let widget, widgetGrid.unit(of: widget.id).count > 1 {
+                .ungroup
+            } else {
+                .off
+            }
         editBar.show(
-            widget.map { ($0.name, widgetGrid.home(of: $0.id)) }, moving: spotPicker != nil)
+            widget.map { ($0.name, widgetGrid.home(of: $0.id)) }, moving: spotPicker != nil,
+            count: picked.count, grouping: grouping)
         let hint = widgetNote ?? (widget == nil ? (Self.editHint, false) : nil)
         editBar.show(
             hint: hint?.text, symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
@@ -233,16 +261,17 @@ extension LauncherView {
         let spot = widgetGrid.shown.first { $0.id == id }.map(widgetGrid.spot)
         let order = widgetGrid.shown.filter { widgetGrid.spot(of: $0) == spot }.map(\.id)
         let all = widgetGrid.widgets.map(\.id)
-        let before = order.firstIndex(of: id).map { index in
-            order.dropFirst(index + 1).first
-                ?? firstHidden(after: order.dropLast().last, shown: order)
-        }
         let arriving = widgetGrid.incoming?.id == id
+        let unit = arriving || spot == widgetGrid.home(of: id) ? [id] : widgetGrid.unit(of: id)
+        let before = order.lastIndex(where: unit.contains).map { index in
+            order.dropFirst(index + 1).first
+                ?? firstHidden(after: order.last { !unit.contains($0) }, shown: order)
+        }
         let edit: WidgetSettings.Edit? =
             if arriving {
                 spot.map { .place(id, $0, before: before.flatMap(\.self)) }
             } else if let spot, let before, spot != widgetGrid.home(of: id) {
-                .place(id, spot, before: before)
+                .moving(unit, to: spot, before: before)
             } else if order != all.filter(order.contains), let before {
                 .move(id, before: before)
             } else {
@@ -300,7 +329,29 @@ extension LauncherView {
             undoable: widgetNote?.undoable == true)
     }
 
-    private func note(_ text: String, undoable: Bool) {
+    private func describe(_ edit: WidgetSettings.Edit) -> String {
+        let name = widgetName(of: edit.id)
+        switch edit {
+        case .add: return "\(name) added · \(WidgetGrid.Spot.panel.title)"
+        case .move: return "\(name) moved"
+        case .remove: return "\(name) removed"
+
+        case let .place(id, spot, _):
+            let added = !widgetGrid.widgets.contains { $0.id == id }
+            return "\(name) \(added ? "added" : "moved") · \(spot.title)"
+
+        case let .group(ids, spot, _):
+            let moved = Set(widgetGrid.unit(of: edit.id)) == Set(ids)
+            return "\(moved ? "Group moved" : "\(ids.count) widgets grouped") · \(spot.title)"
+
+        case .spread: return "Ungrouped"
+
+        case let .resize(_, columns):
+            return "\(name) resized · \(columns) of \(WidgetGrid.columns) columns"
+        }
+    }
+
+    func note(_ text: String, undoable: Bool) {
         widgetNote = (text, undoable)
         showWidgetTools()
         unsafe NSAccessibility.post(
