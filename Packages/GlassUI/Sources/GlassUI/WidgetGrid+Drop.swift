@@ -78,9 +78,8 @@ extension WidgetGrid {
     }
 
     func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
-        guard let window = unsafe window, let mover = listed.first(where: { $0.id == id }) else {
-            return false
-        }
+        let mover = listed.first { $0.id == id } ?? incoming.flatMap { $0.id == id ? $0 : nil }
+        guard let window = unsafe window, let mover else { return false }
         var all = widgets.filter { $0.id != id }
         all.insert(
             mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
@@ -120,9 +119,9 @@ extension WidgetGrid {
 
     @discardableResult
     func preview(moving id: String, to point: NSPoint) -> Bool {
-        guard let window = unsafe window, shown.contains(where: { $0.id == id }) else {
-            return false
-        }
+        let arriving = incoming?.id == id
+        guard let window = unsafe window, arriving || shown.contains(where: { $0.id == id })
+        else { return false }
         dragged = id
         let visible = shown
         let hit = tileFrames(in: window).firstIndex { $0.contains(point) }.map { visible[$0] }
@@ -133,7 +132,7 @@ extension WidgetGrid {
             refused = nil
             return false
         }
-        let home = home(of: id)
+        let home = arriving ? nil : home(of: id)
         if target == home, moving != nil {
             moving = nil
             order = []
@@ -181,8 +180,8 @@ extension WidgetGrid {
             return CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
         }
         model.hot = moving?.side
-        model.ghost = moving.flatMap { spot in
-            ghost(in: window).map { WidgetRailsView.Mark(spot: spot, frame: local($0)) }
+        model.ghost = ghost(in: window).map { ghost in
+            WidgetRailsView.Mark(spot: ghost.spot, frame: local(ghost.frame))
         }
         model.refused = refused.map { spot in
             let point = Self.anchorPoint(of: spot, beside: panel)
@@ -195,15 +194,18 @@ extension WidgetGrid {
         rails.board.model = model
     }
 
-    private func ghost(in window: NSWindow) -> CGRect? {
-        guard let moving, let dragged else { return nil }
-        if moving == .panel {
-            guard let index = inPanel.firstIndex(where: { $0.id == dragged }) else { return nil }
+    private func ghost(in window: NSWindow) -> (spot: Spot, frame: CGRect)? {
+        guard let dragged else { return nil }
+        let spot = moving ?? home(of: dragged)
+        if spot == .panel {
+            guard moving != nil, let index = inPanel.firstIndex(where: { $0.id == dragged }) else {
+                return nil
+            }
             let frames = frames(spanning: inPanel.map(\.span))
-            return window.convertToScreen(convert(frames[index], to: nil))
+            return (spot, window.convertToScreen(convert(frames[index], to: nil)))
         }
         let frames = Self.floatingFrames(of: placed, beside: window.frame)
-        return placed.firstIndex { $0.widget.id == dragged }.map { frames[$0] }
+        return placed.firstIndex { $0.widget.id == dragged }.map { (spot, frames[$0]) }
     }
 
     private func move(_ id: String, to target: Spot, before other: String?) -> Bool {

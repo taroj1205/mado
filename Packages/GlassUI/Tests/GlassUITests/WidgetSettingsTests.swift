@@ -42,6 +42,16 @@ import Testing
         #expect(defaults == WidgetSettings())
     }
 
+    @Test func placingAWidgetThatIsNotAddedAddsItAtThatSpot() throws {
+        var widgets = try settings(#"{"custom": true, "added": ["clock", "system"]}"#)
+        widgets.apply(.place("battery", .leftTop, before: "system"), from: Self.available)
+        #expect(widgets.added(from: Self.available) == ["clock", "battery", "system"])
+        #expect(widgets.spots(.custom, from: Self.available)["battery"] == .leftTop)
+        let before = widgets
+        widgets.apply(.place("weather", .leftTop, before: nil), from: Self.available)
+        #expect(widgets == before)
+    }
+
     @Test func movingPutsTheWidgetBeforeItsTargetOrLast() {
         var widgets = WidgetSettings()
         widgets.apply(.move("battery", before: "clock"), from: Self.available)

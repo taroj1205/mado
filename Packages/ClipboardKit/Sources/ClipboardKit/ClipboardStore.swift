@@ -104,7 +104,7 @@ public actor ClipboardStore {
         }
     }
 
-    private static func files(_ kind: Clip.Kind, list: Data?, text: String) -> [URL] {
+    static func files(_ kind: Clip.Kind, list: Data?, text: String) -> [URL] {
         guard kind == .file else { return [] }
         let saved = list.flatMap { String(bytes: $0, encoding: .utf8) }
         let paths = saved?.split(separator: Clip.pathSeparator) ?? text.split(separator: "\n")

@@ -92,4 +92,36 @@ import Testing
         #expect(Self.clip { $0.setString(" \n", forType: .string) } == nil)
         #expect(Self.clip { $0.setData(Data([1]), forType: .pdf) } == nil)
     }
+
+    @Test func copiesBackWhatWasCopiedWithoutLandingInHistory() throws {
+        let rtf = Data(#"{\rtf1 {\b bold}}"#.utf8)
+        let files = [URL(filePath: "/tmp/a.txt"), URL(filePath: "/tmp/b c.txt")]
+        let writes: [(NSPasteboard) -> Void] = [
+            { $0.setString("12 Queen Street", forType: .string) },
+            { pasteboard in
+                pasteboard.setString("bold", forType: .string)
+                pasteboard.setData(rtf, forType: .rtf)
+            },
+            { $0.writeObjects(files.map { $0 as any NSPasteboardWriting }) },
+            { $0.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png) },
+        ]
+        for write in writes {
+            let clip = try #require(Self.clip(write))
+            let pasteboard = NSPasteboard.withUniqueName()
+            defer { pasteboard.releaseGlobally() }
+
+            try clip.copy(to: pasteboard)
+
+            #expect(Clip(reading: pasteboard, source: clip.source, at: Self.date) == clip)
+            #expect(pasteboard.types?.contains(PasteboardWatch.transientType) == true)
+        }
+    }
+
+    @Test func titlesFilesByTheirNames() throws {
+        let files = [URL(filePath: "/tmp/a.txt"), URL(filePath: "/tmp/b c.txt")]
+        let clip = try #require(
+            Self.clip { $0.writeObjects(files.map { $0 as any NSPasteboardWriting }) })
+
+        #expect(clip.title == "a.txt, b c.txt")
+    }
 }

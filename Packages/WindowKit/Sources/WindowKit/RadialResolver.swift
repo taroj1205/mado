@@ -31,6 +31,7 @@ public struct RadialResolver: Sendable {
 
     private let origin: CGPoint
     public private(set) var zone = Zone.cancel
+    public private(set) var step = 0
 
     public init(origin: CGPoint) {
         self.origin = origin
@@ -41,13 +42,22 @@ public struct RadialResolver: Sendable {
         let distance = hypot(offset.dx, offset.dy)
         let holeLimit = zone == .cancel ? Self.ringEntry : Self.holeEntry
         let ringLimit = if case .direction = zone { Self.outerExit } else { Self.outerEntry }
-        if distance < holeLimit {
-            zone = .cancel
-        } else if distance <= ringLimit {
-            zone = .ring
-        } else {
-            zone = .direction(direction(at: atan2(offset.dy, offset.dx) * Self.halfTurn / .pi))
+        let next: Zone =
+            if distance < holeLimit {
+                .cancel
+            } else if distance <= ringLimit {
+                .ring
+            } else {
+                .direction(direction(at: atan2(offset.dy, offset.dx) * Self.halfTurn / .pi))
+            }
+        if next != zone {
+            zone = next
+            step = 0
         }
+    }
+
+    public mutating func advanceStep() {
+        step += 1
     }
 
     private func direction(at degrees: CGFloat) -> Direction {

@@ -97,11 +97,19 @@ import Testing
         #expect(edits.isEmpty)
     }
 
-    @Test func aGalleryCardOnlyDropsInsideThePanel() {
+    @Test func aGalleryCardCanLandOnAnySpotAroundThePanel() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.widgetCatalogue = [.init(id: "new", name: "New", summary: "", group: .today)]
         view.editWidgets()
-        #expect(view.dragWidget("new", at: window(CGPoint(x: 290, y: 437)), from: nil).isEmpty)
-        #expect(view.widgetGrid.incoming == nil)
-        #expect(view.dragWidget("new", at: window(CGPoint(x: 500, y: 300)), from: nil) == .copy)
+        let card = try #require(view.gallery.cards.first)
+        #expect(view.dragWidget("new", at: window(CGPoint(x: 290, y: 437)), from: card) == .copy)
+        #expect(ids.last == "new")
+        #expect(view.widgetGrid.floats.count == 1)
+        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .leftMiddle)
+        #expect(view.dropWidget("new"))
+        #expect(edits == [.place("new", .leftMiddle, before: nil)])
+        #expect(view.widgetGrid.floats.isEmpty)
     }
 
     @Test func comingBackToItsOwnSpotPutsTheWidgetBackInPlace() {
@@ -164,6 +172,20 @@ import Testing
         #expect(edits.isEmpty)
         view.widgetSpots = ["6": .leftTop, "7": .leftTop]
         #expect(view.widgetGrid.accepts("7", at: .panel, before: nil))
+    }
+
+    @Test func aDraggedSideWidgetLeavesOnlyAGhostAtItsSpot() {
+        view.widgetSpots = ["2": .leftTop]
+        start(dragging: 6)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 637)), from: nil) == .move)
+        #expect(view.widgetGrid.floats.map(\.alphaValue) == [0])
+        #expect(view.widgetGrid.tiles[6].lifted)
+        #expect(!view.widgetGrid.tiles[6].slot.isHidden)
+        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .leftTop)
+        view.endWidgetDrag()
+        #expect(view.widgetGrid.floats.map(\.alphaValue) == [1])
+        #expect(view.widgetGrid.tiles[6].slot.isHidden)
+        #expect(view.widgetGrid.rails.board.model.ghost == nil)
     }
 
     private func start(dragging index: Int) {

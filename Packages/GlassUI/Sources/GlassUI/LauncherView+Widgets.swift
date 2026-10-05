@@ -16,6 +16,16 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.spots = newValue } }
     }
 
+    public var widgetCatalogue: [WidgetGallery.Card] {
+        get { gallery.catalogue }
+        set { gallery.catalogue = newValue }
+    }
+
+    public var widgetPreviews: [WidgetGrid.Widget] {
+        get { gallery.previews }
+        set { gallery.previews = newValue }
+    }
+
     public var widgetsFillPanel: Bool { widgetGrid.fillsPanel }
 
     public var widgetOverhang: CGFloat { widgetGrid.overhang }
@@ -47,7 +57,7 @@ extension LauncherView {
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
-        placeEditBar()
+        placeEditing()
     }
 
     func leavePillsAndWidgets() {
@@ -57,6 +67,9 @@ extension LauncherView {
 
     func selectWidget(_ index: Int?) {
         guard index != selectedWidget else { return }
+        if editingWidgets {
+            closeSpotPicker()
+        }
         if index != nil {
             selectPill(nil)
         }

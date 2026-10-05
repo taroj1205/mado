@@ -12,13 +12,15 @@ struct ClipboardModule: Module {
 
     static let id = "clipboard"
     static let commandIDs =
-        [ClipboardHistory.commandID, EmojiPicker.commandID] + TextTools.commandIDs
+        [ClipboardHistory.commandID, EmojiPicker.commandID, PasteStack.commandID]
+        + TextTools.commandIDs
     private static let pruneInterval: TimeInterval = 3_600
 
     let descriptor: ModuleDescriptor
     let settings: @MainActor () -> ClipboardSettings
     let screens: Screens
     let snippets: Snippets
+    let pasteStack = PasteStack()
 
     private static func recognizeImages(
         in store: ClipboardStore, for history: ClipboardHistory, logger: Logger
@@ -46,7 +48,9 @@ struct ClipboardModule: Module {
         context.run("recognize image text") {
             await Self.recognizeImages(in: store, for: screens.history, logger: logger)
         }
-        snippets.checkCopies(with: watchCopies(into: store, context: context))
+        let checkCopies = watchCopies(into: store, context: context)
+        pasteStack.start(context: context, checkCopies: checkCopies)
+        snippets.checkCopies(with: checkCopies)
         context.own(.other, "snippet copy check") { [snippets] in snippets.checkCopies(with: nil) }
         logger.debug("Started")
     }
@@ -60,6 +64,7 @@ struct ClipboardModule: Module {
     ) -> @MainActor () -> Void {
         let logger = context.logger
         let readSettings = settings
+        let stack = pasteStack
         return PasteboardWatch.install(name: "pasteboard watch", context: context) { sources in
             let apps = sources.isEmpty ? "an unknown app" : sources.joined(separator: " or ")
             let current = readSettings()
@@ -72,6 +77,7 @@ struct ClipboardModule: Module {
                 logger.debug("Skipped a copy with nothing to keep")
                 return
             }
+            stack.add(clip)
             let retention = current.retention
             context.run("save copy") {
                 do {

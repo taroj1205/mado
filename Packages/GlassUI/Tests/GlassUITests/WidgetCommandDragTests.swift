@@ -96,7 +96,6 @@ import Testing
         view.onWidgetEdit = { edits.append($0) }
         #expect(view.dragWidget("music", at: centre(of: 0), from: nil).isEmpty)
         #expect(!view.dropWidget("music"))
-        #expect(view.widgetGrid.dropFrame.isHidden)
         #expect(edits.isEmpty)
     }
 

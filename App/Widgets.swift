@@ -24,42 +24,14 @@ final class Widgets {
     private static let macName = "Mac"
     private static let owner = #/^\S+['’]s /#
     private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
-    private static let iconGrey: CGFloat = 0.227
-    private static let iconBlue: CGFloat = 0.235
-    private static let icon = NSColor(srgbRed: iconGrey, green: iconGrey, blue: iconBlue, alpha: 1)
-
-    private static let musicRed: CGFloat = 0.851
-    private static let musicGreen: CGFloat = 0.188
-    private static let musicBlue: CGFloat = 0.290
-    private static let musicIcon = NSColor(
-        srgbRed: musicRed, green: musicGreen, blue: musicBlue, alpha: 1)
-    private static let batteryRed: CGFloat = 0.188
-    private static let batteryGreen: CGFloat = 0.694
-    private static let batteryBlue: CGFloat = 0.345
-    private static let batteryIcon = NSColor(
-        srgbRed: batteryRed, green: batteryGreen, blue: batteryBlue, alpha: 1)
-    private static let weatherRed: CGFloat = 0.114
-    private static let weatherGreen: CGFloat = 0.435
-    private static let weatherBlue: CGFloat = 0.839
-    private static let weatherIcon = NSColor(
-        srgbRed: weatherRed, green: weatherGreen, blue: weatherBlue, alpha: 1)
-
     static let gallery: [WidgetGallery.Card] = [
+        .init(id: weather, name: "Weather", summary: "Now, high and low", group: .today),
+        .init(id: clockWidget, name: "Clock", summary: "Time and date", group: .today),
         .init(
-            id: weather, name: "Weather", summary: "Now, high and low", size: .small,
-            group: nil, symbol: "sun.max.fill", colour: weatherIcon),
-        .init(
-            id: clockWidget, name: "Clock", summary: "Time and date", size: .small,
-            group: .time, symbol: "clock.fill", colour: icon),
-        .init(
-            id: music, name: "Now Playing", summary: "Music controls", size: .wide, group: nil,
-            symbol: "heart.fill", colour: musicIcon),
-        .init(
-            id: battery, name: "Battery", summary: "Mac and devices", size: .small,
-            group: .system, symbol: "battery.100percent", colour: batteryIcon),
-        .init(
-            id: system, name: "System", summary: "CPU and memory", size: .small,
-            group: .system, symbol: "bolt.fill", colour: icon),
+            id: music, name: "Now Playing", summary: "Music controls", group: .media,
+            isWide: true),
+        .init(id: battery, name: "Battery", summary: "Mac and devices", group: .system),
+        .init(id: system, name: "System", summary: "CPU and memory", group: .system),
     ]
 
     static var ids: [String] {
@@ -84,7 +56,13 @@ final class Widgets {
 
     static func edit(_ edit: WidgetSettings.Edit, in modules: ModuleManager?) {
         var settings = WidgetSettings.load(from: modules)
-        if case .place = edit {
+        let spot: WidgetGrid.Spot? =
+            switch edit {
+            case .add: .panel
+            case let .place(_, spot, _): spot
+            case .move, .remove: nil
+            }
+        if let spot, spot != .panel || WidgetPlacement.load(from: modules) != .inPanel {
             do {
                 try WidgetPlacement.pin(&settings, of: ids, in: modules)
             } catch {
@@ -190,12 +168,7 @@ final class Widgets {
     }
 
     private static func unavailable(_ id: String) -> WidgetGrid.Widget? {
-        gallery.first { $0.id == id }.map { card in
-            .init(
-                id: id, name: card.name,
-                content: .unavailable(title: card.name, summary: card.summary), action: "",
-                spoken: "\(card.name): \(card.summary)", isWide: card.size != .small)
-        }
+        gallery.first { $0.id == id }?.placeholder
     }
 
     func action(for widget: WidgetGrid.Widget) -> CommandAction {
@@ -277,5 +250,6 @@ final class Widgets {
         let all = Self.current(
             at: .now, stats: stats, playing: playing, weather: weatherFeed.state)
         view.widgets = shown.compactMap { id in all.first { $0.id == id } ?? Self.unavailable(id) }
+        view.widgetPreviews = all
     }
 }
