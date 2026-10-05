@@ -23,6 +23,14 @@ import Testing
             date: Date(timeIntervalSince1970: seconds))
     }
 
+    private static func rich(
+        _ text: String, _ type: NSPasteboard.PasteboardType, _ body: String, at seconds: Double
+    ) -> Clip {
+        Clip(
+            .richText, text: text, type: type, data: Data(body.utf8), source: nil,
+            date: Date(timeIntervalSince1970: seconds))
+    }
+
     private func images() throws -> [String] {
         try FileManager.default.contentsOfDirectory(
             atPath: directory.appending(path: "Images").path)
@@ -44,26 +52,65 @@ import Testing
         #expect(entries[0].source == "com.apple.Safari")
     }
 
-    @Test func keepsCopiesThatDifferInKindOrFormatting() async throws {
+    @Test func keepsRichCopiesThatDifferInFormatting() async throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = try ClipboardStore(directory: directory)
         let clips = [
-            Self.text("bold", at: 1),
-            Clip(
-                .richText, text: "bold", type: .rtf, data: Data(#"{\rtf1 \b bold}"#.utf8),
-                source: nil, date: Date(timeIntervalSince1970: 2)),
-            Clip(
-                .richText, text: "bold", type: .rtf, data: Data(#"{\rtf1 \i bold}"#.utf8),
-                source: nil, date: Date(timeIntervalSince1970: 3)),
-            Clip(
-                .richText, text: "bold", type: .html, data: Data(#"{\rtf1 \i bold}"#.utf8),
-                source: nil, date: Date(timeIntervalSince1970: 4)),
+            Self.rich("bold", .rtf, #"{\rtf1 \b bold}"#, at: 1),
+            Self.rich("bold", .rtf, #"{\rtf1 \i bold}"#, at: 2),
+            Self.rich("bold", .html, #"{\rtf1 \i bold}"#, at: 3),
         ]
         for clip in clips {
             try await store.add(clip, keeping: Self.roomy)
         }
 
         #expect(try await store.search("", limit: 10).count == clips.count)
+    }
+
+    @Test func givesAPlainCopyTheFormattingOfALaterRichCopyOfTheSameText() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+
+        try await store.add(Self.text("319", at: 1), keeping: Self.roomy)
+        try await store.add(Self.text("other", at: 2), keeping: Self.roomy)
+        try await store.add(Self.rich("319", .html, "<b>319</b>", at: 3), keeping: Self.roomy)
+        let entries = try await store.search("", limit: 10)
+
+        #expect(entries.map(\.text) == ["319", "other"])
+        #expect(entries[0].kind == .richText)
+        #expect(entries[0].type == NSPasteboard.PasteboardType.html.rawValue)
+        #expect(entries[0].date == Date(timeIntervalSince1970: 3))
+        #expect(try await store.data(for: entries[0].id) == Data("<b>319</b>".utf8))
+
+        try await store.add(Self.rich("319", .html, "<b>319</b>", at: 4), keeping: Self.roomy)
+        #expect(try await store.search("", limit: 10).count == 2)
+    }
+
+    @Test func movesTheRichCopyToTheTopForALaterPlainCopyOfTheSameText() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+
+        try await store.add(Self.rich("319", .html, "<b>319</b>", at: 1), keeping: Self.roomy)
+        try await store.add(Self.text("other", at: 2), keeping: Self.roomy)
+        try await store.add(
+            Self.text("319", at: 3, from: "com.apple.Terminal"), keeping: Self.roomy)
+        let entries = try await store.search("", limit: 10)
+
+        #expect(entries.map(\.text) == ["319", "other"])
+        #expect(entries[0].kind == .richText)
+        #expect(entries[0].source == "com.apple.Terminal")
+    }
+
+    @Test func bringsAReusedEntryToTheTop() async throws {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try ClipboardStore(directory: directory)
+
+        try await store.add(Self.text("a", at: 1), keeping: Self.roomy)
+        let first = try #require(try await store.search("", limit: 1).first)
+        try await store.add(Self.text("b", at: 2), keeping: Self.roomy)
+        try await store.bringToTop(id: first.id, at: Date(timeIntervalSince1970: 3))
+
+        #expect(try await store.search("", limit: 10).map(\.text) == ["a", "b"])
     }
 
     @Test func reusesTheSavedImageAndItsTextForARepeatedImage() async throws {

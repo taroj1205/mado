@@ -27,6 +27,10 @@ extension WidgetGrid {
             if case .track(let playing) = content { playing } else { nil }
         }
 
+        var verse: Verse? {
+            if case .verse(let lyrics) = content { lyrics } else { nil }
+        }
+
         var railSize: Size {
             let columns = WidgetGrid.railColumns
             guard let resized else { return Size(columns: columns.widest, rows: size.rows) }
@@ -82,6 +86,12 @@ extension WidgetGrid {
             self.init(
                 id: id, name: name, content: .track(track), action: action, spoken: spoken,
                 isWide: true)
+        }
+
+        public init(id: String, name: String, verse: Verse, action: String, spoken: String) {
+            self.init(
+                id: id, name: name, content: .verse(verse), action: action, spoken: spoken,
+                isWide: true, isTall: true)
         }
 
         func usesFace(_ form: WidgetForm) -> Bool {
