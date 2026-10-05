@@ -73,7 +73,6 @@ public final class LauncherView: NSView {
     var widgetNote: (text: String, undoable: Bool)?
     var queryBeforeEditing: String?
     var selectedWidget: Int?
-    var pickedWidgets: [String] = []
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
     var spotPicker: WidgetSpotPicker?

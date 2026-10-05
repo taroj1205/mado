@@ -3,7 +3,7 @@ import AppKit
 extension LauncherView {
     var chosenWidgets: [String] {
         guard let selectedWidget else { return [] }
-        return [widgetGrid.shown[selectedWidget].id] + pickedWidgets
+        return [widgetGrid.shown[selectedWidget].id] + widgetGrid.picked
     }
 
     func extendWidgetSelection(_ index: Int) {
@@ -61,7 +61,7 @@ extension LauncherView {
             return
         }
         let primary = chosenWidgets.first
-        pickedWidgets = []
+        widgetGrid.picked = []
         report(.group(ids, spot, before: nil))
         reselect(primary)
     }
@@ -92,8 +92,8 @@ extension LauncherView {
     private func choose(_ chosen: some Collection<String>) {
         let shown = widgetGrid.shown.map(\.id)
         selectWidget(chosen.first.flatMap(shown.firstIndex(of:)))
-        pickedWidgets = Array(chosen.dropFirst())
-        widgetGrid.highlight(selectedWidget, with: pickedWidgets)
+        widgetGrid.picked = Array(chosen.dropFirst())
+        widgetGrid.highlight(selectedWidget)
         showWidgetTools()
     }
 }

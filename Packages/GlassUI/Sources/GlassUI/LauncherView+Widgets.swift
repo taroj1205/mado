@@ -46,11 +46,13 @@ extension LauncherView {
         change()
         if let index = widgetGrid.shown.firstIndex(where: { $0.id == selected }) {
             selectedWidget = index
-            pickedWidgets = pickedWidgets.filter { id in widgetGrid.shown.contains { $0.id == id } }
+            widgetGrid.picked = widgetGrid.picked.filter { id in
+                widgetGrid.shown.contains { $0.id == id }
+            }
         } else {
             selectWidget(nil)
         }
-        widgetGrid.highlight(selectedWidget, with: pickedWidgets)
+        widgetGrid.highlight(selectedWidget)
         showAction(of: selectedItem)
     }
 
@@ -74,11 +76,11 @@ extension LauncherView {
     }
 
     func selectWidget(_ index: Int?) {
-        let picked = !pickedWidgets.isEmpty
-        pickedWidgets = []
+        let picked = !widgetGrid.picked.isEmpty
+        widgetGrid.picked = []
         guard index != selectedWidget else {
             if picked {
-                widgetGrid.highlight(index, with: [])
+                widgetGrid.highlight(index)
                 showAction(of: selectedItem)
             }
             return
@@ -90,7 +92,7 @@ extension LauncherView {
             selectPill(nil)
         }
         selectedWidget = index
-        widgetGrid.highlight(index, with: [])
+        widgetGrid.highlight(index)
         results.hidesSelection = index != nil || editingWidgets
         if index != nil {
             closePreview()

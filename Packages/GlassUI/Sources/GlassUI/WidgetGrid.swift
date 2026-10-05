@@ -121,6 +121,8 @@ public final class WidgetGrid: NSView {
         }
     }
 
+    var picked: [String] = []
+
     var order: [String] = [] {
         didSet {
             if order != oldValue { update() }

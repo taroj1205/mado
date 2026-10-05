@@ -34,7 +34,7 @@ extension WidgetGrid {
         return tile
     }
 
-    func highlight(_ index: Int?, with picked: [String]) {
+    func highlight(_ index: Int?) {
         for (position, (tile, widget)) in zip(tiles, shown).enumerated() {
             tile.selected = position == index || picked.contains(widget.id)
         }
