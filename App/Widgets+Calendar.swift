@@ -14,6 +14,8 @@ extension Widgets {
         var schedule = Schedule.loading
         var scheduling: Task<Void, Never>?
         var monthShift = 0
+        var day: Date?
+        var searchesDays = false
         var monthEvents: [CalendarAgenda.Found] = []
         var monthFetching: Task<Void, Never>?
         var isOn = true
@@ -24,6 +26,7 @@ extension Widgets {
             monthFetching?.cancel()
             monthFetching = nil
             monthShift = 0
+            day = nil
         }
     }
 
@@ -37,14 +40,18 @@ extension Widgets {
     private static let cardEvents = 4
 
     static func month(
-        at date: Date, shift: Int, events: [CalendarAgenda.Found], opensDays: Bool
+        at date: Date, shift: Int, events: [CalendarAgenda.Found], calendars: Calendars
     ) -> WidgetGrid.Widget {
         let name = name(of: calendarWidget)
         let shown = Calendar.current.date(byAdding: .month, value: shift, to: date) ?? date
-        let spoken =
-            shift == 0
-            ? date.formatted(date: .complete, time: .omitted)
-            : shown.formatted(.dateTime.month(.wide).year())
+        let spoken: String
+        if let day = calendars.day {
+            spoken = day.formatted(date: .complete, time: .omitted)
+        } else if shift == 0 {
+            spoken = date.formatted(date: .complete, time: .omitted)
+        } else {
+            spoken = shown.formatted(.dateTime.month(.wide).year())
+        }
         return .init(
             id: calendarWidget, name: name,
             content: .month(
@@ -54,7 +61,8 @@ extension Widgets {
                     colours: Dictionary(
                         events.map { ($0.event.id, $0.colour ?? .controlAccentColor) }
                     ) { first, _ in first },
-                    opensDays: opensDays)),
+                    opensDays: calendars.isOn, searchesDays: calendars.searchesDays,
+                    day: calendars.day)),
             action: openCalendar, spoken: "\(name): \(spoken)", isWide: true, isTall: true)
     }
 
@@ -191,13 +199,36 @@ extension Widgets {
     }
 
     func page(_ page: WidgetGrid.Page, in view: LauncherView) {
+        let shift = calendars.monthShift
         switch page {
-        case .previous: calendars.monthShift -= 1
-        case .next: calendars.monthShift += 1
-        case .today: calendars.monthShift = 0
+        case .previous: step(by: -1)
+        case .next: step(by: 1)
+
+        case .today:
+            calendars.monthShift = 0
+            if calendars.day != nil { calendars.day = Calendar.current.startOfDay(for: .now) }
+
+        case .month: calendars.day = nil
+        case .day(let day): calendars.day = day
         }
         refresh(view)
-        refreshMonth(in: view)
+        if calendars.monthShift != shift { refreshMonth(in: view) }
+    }
+
+    private func step(by amount: Int) {
+        let calendar = Calendar.current
+        guard let day = calendars.day,
+            let next = calendar.date(byAdding: .day, value: amount, to: day)
+        else {
+            calendars.monthShift += amount
+            return
+        }
+        calendars.day = next
+        let first = { (date: Date) in
+            calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+        }
+        calendars.monthShift =
+            calendar.dateComponents([.month], from: first(.now), to: first(next)).month ?? 0
     }
 
     func refreshCalendars(in view: LauncherView) {
