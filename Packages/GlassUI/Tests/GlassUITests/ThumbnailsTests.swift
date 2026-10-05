@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Testing
 
 @testable import GlassUI
@@ -33,6 +34,30 @@ import Testing
         return url
     }
 
+    private func movie(_ name: String, width: Int, height: Int) async throws -> URL {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: name)
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+        let input = AVAssetWriterInput(
+            mediaType: .video,
+            outputSettings: [
+                AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: width,
+                AVVideoHeightKey: height,
+            ])
+        let frames = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: input, sourcePixelBufferAttributes: nil)
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+        var buffer: CVPixelBuffer?
+        unsafe CVPixelBufferCreate(nil, width, height, kCVPixelFormatType_32ARGB, nil, &buffer)
+        #expect(frames.append(try #require(buffer), withPresentationTime: .zero))
+        input.markAsFinished()
+        await writer.finishWriting()
+        #expect(writer.status == .completed)
+        return url
+    }
+
     private func cell() -> GlyphCell {
         let cell = GlyphCell()
         cell.thumbnails = Thumbnails()
@@ -40,25 +65,34 @@ import Testing
         return cell
     }
 
-    @Test func downsamplesSoTheShortSideFillsTheSquare() throws {
+    @Test func downsamplesSoTheShortSideFillsTheSquare() async throws {
         let wide = try image("wide.png", width: 400, height: 200)
         let tall = try image("tall.png", width: 100, height: 300)
         defer { try? FileManager.default.removeItem(at: folder) }
 
-        let fromWide = try #require(Thumbnails.decode(.init(url: wide, side: 48)))
-        let fromTall = try #require(Thumbnails.decode(.init(url: tall, side: 48)))
+        let fromWide = try #require(await Thumbnails.decode(.init(url: wide, side: 48)))
+        let fromTall = try #require(await Thumbnails.decode(.init(url: tall, side: 48)))
 
         #expect((fromWide.width, fromWide.height) == (96, 48))
         #expect((fromTall.width, fromTall.height) == (48, 144))
     }
 
-    @Test func aVeryWideImageStopsAtFourTimesTheSquare() throws {
+    @Test func aVeryWideImageStopsAtFourTimesTheSquare() async throws {
         let strip = try image("strip.png", width: 2_000, height: 100)
         defer { try? FileManager.default.removeItem(at: folder) }
 
-        let thumbnail = try #require(Thumbnails.decode(.init(url: strip, side: 48)))
+        let thumbnail = try #require(await Thumbnails.decode(.init(url: strip, side: 48)))
 
         #expect(thumbnail.width == 192)
+    }
+
+    @Test func takesAVideosFirstFrameWithinFourTimesTheSquare() async throws {
+        let video = try await movie("clip.mov", width: 320, height: 160)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        let frame = try #require(await Thumbnails.decode(.init(url: video, side: 16)))
+
+        #expect((frame.width, frame.height) == (64, 32))
     }
 
     @Test func aMissingOrUnreadableFileLoadsNothing() async throws {
