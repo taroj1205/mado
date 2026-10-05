@@ -52,8 +52,10 @@ public struct PasteTarget {
 
     public func insert(_ text: String) async throws {
         let insertion = TextInsertion.standard
-        try await insertion.waitForRestore()
-        try await activate()
+        repeat {
+            try await insertion.waitForRestore()
+            try await activate()
+        } while insertion.isRestoring
         guard CGPreflightPostEventAccess() else { throw Failure.notAllowed }
         try await insertion.paste(text)
     }

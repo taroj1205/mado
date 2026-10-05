@@ -54,6 +54,10 @@ public struct TextInsertion {
     let pasteTimeout: Duration
     let post: @MainActor ([CGEvent]) -> Void
 
+    var isRestoring: Bool {
+        Self.restoringUntil[pasteboard.name].map { ContinuousClock.now < $0 } ?? false
+    }
+
     private static func copy(_ item: NSPasteboardItem) -> NSPasteboardItem {
         let copy = NSPasteboardItem()
         for type in item.types {
@@ -89,8 +93,8 @@ public struct TextInsertion {
         Task { await restore(inserted) }
     }
 
-    func waitForRestore() async throws {
-        while let until = Self.restoringUntil[pasteboard.name], ContinuousClock.now < until {
+    public func waitForRestore() async throws {
+        while isRestoring {
             try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
         }
     }
@@ -132,16 +136,21 @@ public struct TextInsertion {
     public func restore(_ inserted: Inserted) async {
         defer { Self.restoringUntil[pasteboard.name] = nil }
         let deadline = ContinuousClock.now + pasteTimeout
-        while !inserted.text.wasRead, ContinuousClock.now < deadline {
+        while !inserted.text.wasRead, !isReplaced(inserted), ContinuousClock.now < deadline {
             do {
                 try await Task.sleep(for: .milliseconds(Self.pollMilliseconds))
             } catch {
                 break
             }
         }
+        guard !isReplaced(inserted) else { return }
         try? await Task.sleep(for: restoreDelay)
-        guard pasteboard.changeCount == inserted.changeCount else { return }
+        guard !isReplaced(inserted) else { return }
         put(back: inserted.saved)
+    }
+
+    private func isReplaced(_ inserted: Inserted) -> Bool {
+        pasteboard.changeCount != inserted.changeCount
     }
 
     private func put(back saved: [NSPasteboardItem]) {

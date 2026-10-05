@@ -77,4 +77,24 @@ import Testing
         #expect(pasted == ["Thanks! Bye", "later"])
         #expect(pasteboard.string(forType: .string) == "old")
     }
+
+    @Test func stopsWaitingOnceSomethingElseIsCopied() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("old", forType: .string)
+        let insertion = TextInsertion(
+            pasteboard: pasteboard, restoreDelay: .zero, pasteTimeout: .seconds(60)
+        ) { _ in
+            pasteboard.clearContents()
+            pasteboard.setString("newer", forType: .string)
+        }
+
+        try await insertion.paste("first")
+        let start = ContinuousClock.now
+        try await insertion.waitForRestore()
+
+        #expect(ContinuousClock.now - start < .seconds(5))
+        #expect(!insertion.isRestoring)
+        #expect(pasteboard.string(forType: .string) == "newer")
+    }
 }
