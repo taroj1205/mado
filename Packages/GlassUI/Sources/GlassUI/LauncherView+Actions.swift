@@ -126,7 +126,8 @@ extension LauncherView {
         let items = results.rows.lazy.compactMap { row in
             if case .item(let item) = row { item } else { nil }
         }
-        guard let item = items.first(where: { $0.shortcut == ["⌘", key] }) else { return false }
+        let keys = ["⌘", key.uppercased()]
+        guard let item = items.first(where: { $0.shortcut == keys }) else { return false }
         onRun?(item, 0)
         return true
     }

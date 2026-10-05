@@ -18,6 +18,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public var hotkey: Shortcut?
         public var isDimmed = false
         public var glyph: String?
+        public var event: Event?
+        public var prefersSelection = false
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
@@ -73,10 +75,15 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         var itemID: String? {
             if case .item(let item) = self { item.id } else { nil }
         }
+
+        var prefersSelection: Bool {
+            if case .item(let item) = self { item.prefersSelection } else { false }
+        }
     }
 
     static let rowHeight: CGFloat = 42
     static let compactRowHeight: CGFloat = 36
+    static let eventHeight: CGFloat = 44
     static let compactRadius: CGFloat = 8
     static let answerHeight: CGFloat = 116
     static let headerHeight: CGFloat = 32
@@ -96,7 +103,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             rows = Self.rows(for: sections)
             reloadRows(keeping: shown)
             let keptRow = kept.flatMap { id in rows.firstIndex { $0.itemID == id } }
-            if let row = keptRow ?? rows.firstIndex(where: \.isItem) {
+            let preferred = rows.firstIndex(where: \.prefersSelection)
+            if let row = keptRow ?? preferred ?? rows.firstIndex(where: \.isItem) {
                 table.selectRowIndexes([row], byExtendingSelection: false)
             }
             reveal(keptRow ?? 0, context: [], animated: false)
@@ -196,6 +204,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         case .colour: Self.colourHeight
         case .header: Self.headerHeight
         case .item(let item) where item.answer != nil: Self.answerHeight
+        case .item(let item) where item.event != nil: Self.eventHeight
         case .item: compact ? Self.compactRowHeight : Self.rowHeight
         }
     }

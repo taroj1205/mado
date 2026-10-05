@@ -40,6 +40,13 @@ extension ResultList {
             cell.show(item)
             return cell
         }
+        if let event = item.event {
+            let cell =
+                tableView.makeView(withIdentifier: EventCell.id, owner: nil)
+                as? EventCell ?? EventCell()
+            cell.show(item, event)
+            return cell
+        }
         if compact {
             let cell =
                 tableView.makeView(withIdentifier: GlyphCell.id, owner: nil)
