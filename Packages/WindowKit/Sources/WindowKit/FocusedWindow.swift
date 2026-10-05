@@ -95,7 +95,9 @@ public struct FocusedWindow {
 
     static func copy(_ name: String, of element: AXUIElement) throws(Failure) -> CFTypeRef {
         var value: CFTypeRef?
-        let error = unsafe AXUIElementCopyAttributeValue(element, name as CFString, &value)
+        let error = AccessibilityActor.call(on: element) {
+            unsafe AXUIElementCopyAttributeValue(element, name as CFString, &value)
+        }
         guard error == .success else { throw failure(error) }
         guard let value else { throw .noWindow }
         return value
@@ -135,7 +137,9 @@ public struct FocusedWindow {
     }
 
     private func set(_ name: String, _ value: CFTypeRef) throws(Failure) {
-        let error = AXUIElementSetAttributeValue(element, name as CFString, value)
+        let error = AccessibilityActor.call(on: element) {
+            AXUIElementSetAttributeValue(element, name as CFString, value)
+        }
         guard error == .success || Self.refusal(error) else { throw Self.failure(error) }
     }
 }
