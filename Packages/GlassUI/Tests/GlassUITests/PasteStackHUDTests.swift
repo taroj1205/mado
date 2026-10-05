@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct PasteStackHUDTests {
+@Suite(.silentWindows) struct PasteStackHUDTests {
     private let hud = PasteStackHUD()
 
     private static func texts(in view: NSView) -> [String] {

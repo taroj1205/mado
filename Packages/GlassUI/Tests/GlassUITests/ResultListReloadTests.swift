@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct ResultListReloadTests {
+@Suite(.silentWindows) struct ResultListReloadTests {
     @Test func newResultsReuseTheVisibleCells() throws {
         let list = shown([results("A", "B", "C")])
         let before = try #require(list.table.view(atColumn: 0, row: 1, makeIfNecessary: false))

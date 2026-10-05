@@ -4,7 +4,7 @@ import Testing
 @testable import GlassUI
 
 @MainActor
-@Suite struct SnapPreviewTests {
+@Suite(.silentWindows) struct SnapPreviewTests {
     private static let fadeChecks = 60
     private static let fadeCheckMilliseconds = 50
 
