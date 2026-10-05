@@ -23,11 +23,16 @@ import Testing
         show()
     }
 
-    private func show(shift: Int = 0, events: [Agenda.Event] = []) {
+    private func show(
+        shift: Int = 0, events: [Agenda.Event] = [], searchesDays: Bool = false, day: Date? = nil
+    ) {
         view.widgets = [
             .init(
                 id: "calendar", name: "Calendar",
-                content: .month(.init(today: today, shift: shift, events: events)),
+                content: .month(
+                    .init(
+                        today: today, shift: shift, events: events, searchesDays: searchesDays,
+                        day: day)),
                 action: "Open Calendar", spoken: "Calendar", isWide: true, isTall: true)
         ]
         view.layoutSubtreeIfNeeded()
@@ -77,7 +82,62 @@ import Testing
         return found
     }
 
-    @Test func clickingADayAsksForThatDayInTheSearchField() throws {
+    private func dayStart(_ day: Int) throws -> Date {
+        try #require(
+            Calendar.current.date(from: DateComponents(year: 2_026, month: 9, day: day)))
+    }
+
+    @Test func clickingADayAsksForThatDayWithoutTouchingTheSearchField() throws {
+        var seen: [WidgetGrid.Page] = []
+        view.onPage = { seen.append($0) }
+        var queries: [String] = []
+        view.onQuery = { queries.append($0) }
+        try click(point(of: 15))
+        #expect(seen == [.day(try dayStart(15))])
+        #expect(queries.isEmpty)
+        #expect(view.field.stringValue.isEmpty)
+        #expect(!tile.month.showsDay)
+    }
+
+    @Test func aPickedDayReplacesTheGridWithThatDaysEvents() throws {
+        let start = try #require(
+            Calendar.current.date(from: DateComponents(year: 2_026, month: 9, day: 15, hour: 10)))
+        let event = Agenda.Event(
+            id: "a", title: "Review", start: start, end: start.addingTimeInterval(3_600))
+        show(events: [event], day: try dayStart(15))
+        #expect(tile.month.showsDay)
+        #expect(tile.month.dayPage.day?.events.map(\.title) == ["Review"])
+        #expect(tile.month.dayPage.day?.number == "15")
+        show(events: [event])
+        #expect(!tile.month.showsDay)
+    }
+
+    @Test func aDayOutsideTheShownMonthLeavesTheGridInPlace() {
+        show(day: Calendar.current.date(byAdding: .year, value: 1, to: today))
+        #expect(!tile.month.showsDay)
+    }
+
+    @Test func theDayViewHasABackButtonAndStepsByDay() throws {
+        show(day: try dayStart(15))
+        var seen: [WidgetGrid.Page] = []
+        view.onPage = { seen.append($0) }
+        #expect(tile.month.hit(at: NSPoint(x: 6, y: 6)) == .page(.month))
+        #expect(tile.month.hit(at: NSPoint(x: 100, y: 80)) == nil)
+        try click(NSPoint(x: 6, y: 6))
+        #expect(seen == [.month])
+        let names = tile.accessibilityCustomActions()?.map(\.name)
+        #expect(names == ["Previous Day", "Next Day", "Back to Month", "Today"])
+    }
+
+    @Test func theDayViewOffersTodayOnlyAwayFromToday() throws {
+        show(day: try dayStart(30))
+        #expect(!controls().contains(.today))
+        show(day: try dayStart(15))
+        #expect(controls().contains(.today))
+    }
+
+    @Test func clickingADayAsksForThatDayInTheSearchFieldWhenSettingSaysSo() throws {
+        show(searchesDays: true)
         var queries: [String] = []
         view.onQuery = { queries.append($0) }
         try click(point(of: 15))

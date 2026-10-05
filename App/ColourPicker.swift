@@ -7,7 +7,6 @@ import WindowKit
 @MainActor
 final class ColourPicker {
     enum Failure: Error {
-        case screenRecordingDenied
         case nothingCaptured
     }
 
@@ -35,30 +34,17 @@ final class ColourPicker {
         loupe.onInput = { [weak self] input in self?.handle(input) }
     }
 
-    private static func displayID(of screen: NSScreen) -> CGDirectDisplayID? {
-        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
-    }
-
     private static func colour(of sample: PixelLoupe.Sample) -> Colour {
         Colour(red: sample.red, green: sample.green, blue: sample.blue)
     }
 
     private func pick() async throws {
         guard !capturing, !loupe.isVisible else { return }
-        guard CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess() else {
-            NSWorkspace.shared.open(PermissionManager.settingsURL(for: .screenRecording))
-            throw Failure.screenRecordingDenied
-        }
+        try ScreenCaptureAccess.require()
         capturing = true
         defer { capturing = false }
-        let images = try await ScreenSnapshot.capture()
         let screens = NSScreen.screens
-        pixels = PixelLoupe(
-            snapshots: screens.compactMap { screen in
-                Self.displayID(of: screen).flatMap { images[$0] }.map { image in
-                    PixelLoupe.Snapshot(image: image, frame: screen.frame)
-                }
-            })
+        pixels = PixelLoupe(snapshots: try await ScreenSnapshot.capture(on: screens))
         pixels.move(to: NSEvent.mouseLocation)
         guard pixels.sample != nil else { throw Failure.nothingCaptured }
         previous = NSWorkspace.shared.frontmostApplication

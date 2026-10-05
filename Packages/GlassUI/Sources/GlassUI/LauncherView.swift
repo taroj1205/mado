@@ -36,6 +36,7 @@ public final class LauncherView: NSView {
         didSet { arrangePills() }
     }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
+    public var onOpenPlayer: (() -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var onPage: ((WidgetGrid.Page) -> Void)?
     public var onSeek: ((Int) -> Void)?
@@ -63,6 +64,7 @@ public final class LauncherView: NSView {
     let contextPill = StatusPill()
     let statusBar = StatusBar()
     var selectedPill: Int?
+    var arrangedCapsule: ArrangedCapsule?
     var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()

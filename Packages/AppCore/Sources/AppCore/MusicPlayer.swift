@@ -20,6 +20,7 @@ public actor MusicPlayer {
         public var album = ""
         public var duration: TimeInterval?
         public var player = MusicPlayer.Player.music
+        public var bundleID = ""
     }
 
     public enum Control: Sendable {
@@ -189,7 +190,7 @@ public actor MusicPlayer {
             album: (try? string("pAlb", from: app)) ?? "",
             duration: (try? number("pDur", of: Self.currentTrack, from: app))
                 .map { $0 * app.durationUnit },
-            player: app.player)
+            player: app.player, bundleID: app.bundleID)
     }
 
     public func position() -> TimeInterval? {

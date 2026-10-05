@@ -170,4 +170,24 @@ import Testing
         view.layoutSubtreeIfNeeded()
         #expect(track.lookup.isHidden && !track.artist.isHidden)
     }
+
+    @Test func theLyricsWidgetOpensOnlyWhenOpenedAndTheNowPlayingTileOpensThePlayer() {
+        let lyrics = WidgetGrid.Widget(
+            id: "lyrics", name: "Lyrics",
+            verse: .init(
+                title: "Low Tide", artist: "Harbour Lights", artwork: nil, isPlaying: true,
+                status: .synced, lines: ["Line"], current: 0, progress: 0, remaining: nil),
+            action: "Show Lyrics", spoken: "Lyrics: Line")
+        var pressed: [String] = []
+        var players = 0
+        view.onWidget = { pressed.append($0.id) }
+        view.onOpenPlayer = { players += 1 }
+        view.widgets = [lyrics, song]
+        view.pressWidget(0)
+        view.openWidget(0)
+        view.pressWidget(1)
+        view.openWidget(1)
+        #expect(pressed == ["lyrics", "music"])
+        #expect(players == 1)
+    }
 }

@@ -113,9 +113,10 @@ final class SnippetExpander {
             return
         }
         let template = SnippetTemplate(snippet.text)
-        var values = SnippetTemplate.Values.now(
-            fields: [:], clipboard: NSPasteboard.general.string(forType: .string) ?? "")
         do {
+            try await TextInsertion.standard.waitForRestore()
+            var values = SnippetTemplate.Values.now(
+                fields: [:], clipboard: NSPasteboard.general.string(forType: .string) ?? "")
             if !template.fields.isEmpty {
                 let focused = await FocusedText.current(readingBack: typed.utf16.count)
                 guard await canReplace(typed, focused) else { return }

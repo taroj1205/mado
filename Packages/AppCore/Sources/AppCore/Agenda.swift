@@ -15,6 +15,10 @@ public struct Agenda: Sendable, Equatable {
             meeting?.service.rawValue ?? location
         }
 
+        public var hours: String {
+            (start..<end).formatted(.interval.hour().minute())
+        }
+
         public init(
             id: String, title: String, start: Date, end: Date, isAllDay: Bool = false,
             location: String = "", attendees: [String] = [], meeting: Meeting? = nil
@@ -108,18 +112,19 @@ public struct Agenda: Sendable, Equatable {
         }
     }
 
-    private static func shortName(_ name: String) -> String {
+    static func shortName(_ name: String) -> String {
         (try? PersonNameComponents(name))?.formatted(.name(style: .short)) ?? name
     }
 
-    public static func countdown(to start: Date, at now: Date) -> String {
+    public static func countdown(to start: Date, at now: Date, short: Bool = false) -> String {
         guard start > now else { return "now" }
         let minutes = Int((start.timeIntervalSince(now) / minute).rounded(.up))
         let (hours, rest) = minutes.quotientAndRemainder(dividingBy: minutesPerHour)
+        let unit = short ? "m" : "min"
         return switch (hours, rest) {
-        case (0, _): "in \(rest) min"
+        case (0, _): "in \(rest) \(unit)"
         case (_, 0): "in \(hours) h"
-        default: "in \(hours) h \(rest) min"
+        default: "in \(hours) h \(rest) \(unit)"
         }
     }
 

@@ -217,6 +217,17 @@ final class Widgets {
         Task { [nowPlaying] in await nowPlaying.perform(control) }
     }
 
+    func openPlayer() {
+        Task {
+            guard let bundleID = playing?.bundleID else { return }
+            do {
+                try await Self.openApp(bundleID, titled: "Open").perform()
+            } catch {
+                Self.logger.error("Opening the player failed: \(error, privacy: .private)")
+            }
+        }
+    }
+
     func stop() {
         ticking?.cancel()
         ticking = nil
@@ -232,7 +243,7 @@ final class Widgets {
         [
             Self.month(
                 at: .now, shift: calendars.monthShift, events: calendars.monthEvents,
-                opensDays: calendars.isOn)
+                calendars: calendars)
         ]
             + Self.current(
                 at: .now, stats: stats, media: mediaWidgets(), weather: weatherFeed.state,

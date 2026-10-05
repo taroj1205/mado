@@ -60,6 +60,7 @@ extension AppDelegate {
             self?.hideLauncher()
             self?.settingsWindow().open(.init(page: Self.mediaPage, tab: nil), entry: nil)
         }
+        launcherView.onOpenPlayer = { [weak self] in self?.widgets.openPlayer() }
         launcherView.onSkip = { [weak self] skip in
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next)
@@ -113,6 +114,7 @@ extension AppDelegate {
         widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
         widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
+        widgets.calendars.searchesDays = CalendarDayClick.searches(in: modules)
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }
