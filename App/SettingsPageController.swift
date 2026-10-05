@@ -196,7 +196,7 @@ final class SettingsPageController: NSViewController {
             return moduleRowID
         }
         return SettingsFinder.id(
-            page: page.title, tab: tabTitle, section: section.title, label: row.label)
+            page: page.title, tab: tabTitle, section: section.title, key: row.key)
     }
 
     private func box(_ sectionRows: [SettingsSection.Row], in section: SettingsSection) -> NSView {

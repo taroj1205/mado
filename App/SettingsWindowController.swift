@@ -126,6 +126,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 page.reload()
             }
         }
+        sidebar.reindex()
     }
 
     func windowDidBecomeKey(_: Notification) {

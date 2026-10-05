@@ -34,14 +34,14 @@ final class RadialMenuSettings: NSObject {
 
     private let logger = Log.logger("Settings")
     private let modules: ModuleManager?
-    private weak var editor: RadialEditor?
+    private let editors = NSHashTable<RadialEditor>.weakObjects()
 
     var sections: [SettingsSection] {
         let settings = RadialSettings.load(from: modules)
         let ringEditor = RadialEditor(groups: Self.groups)
         ringEditor.actions = Self.actions(settings)
         ringEditor.onPick = { [weak self] slot, id in self?.assign(id, to: slot) }
-        editor = ringEditor
+        editors.add(ringEditor)
         return [
             SettingsSection(
                 nil,
@@ -119,7 +119,7 @@ final class RadialMenuSettings: NSObject {
                 settings[keyPath: path] = defaults[keyPath: path]
             }
         }
-        editor?.actions = Self.actions(RadialSettings.load(from: modules))
+        showActions()
     }
 
     private func assign(_ id: String, to slot: RadialEditor.Slot) {
@@ -127,7 +127,14 @@ final class RadialMenuSettings: NSObject {
             return
         }
         save { $0[keyPath: path] = action }
-        editor?.actions = Self.actions(RadialSettings.load(from: modules))
+        showActions()
+    }
+
+    private func showActions() {
+        let actions = Self.actions(RadialSettings.load(from: modules))
+        for editor in editors.allObjects {
+            editor.actions = actions
+        }
     }
 
     private func save(_ change: (inout RadialSettings) -> Void) {

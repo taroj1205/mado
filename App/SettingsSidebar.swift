@@ -32,6 +32,7 @@ final class SettingsSidebar: NSViewController {
     var groups: [SettingsSearch.Group] = []
     var page = 0
     var fieldFocused = false
+    var reindexing = false
 
     var query: String {
         field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -61,6 +62,7 @@ final class SettingsSidebar: NSViewController {
     override func loadView() {
         table.style = .sourceList
         table.headerView = nil
+        table.allowsEmptySelection = false
         table.rowSizeStyle = .custom
         table.rowHeight = Self.rowHeight
         table.intercellSpacing = NSSize(width: 0, height: Self.rowGap)
@@ -132,6 +134,38 @@ final class SettingsSidebar: NSViewController {
     }
 
     func update() {
+        refill()
+        if !searching {
+            delegate?.sidebar(preview: nil, matches: [:])
+            table.selectRowIndexes([page], byExtendingSelection: false)
+            table.allowsEmptySelection = false
+        } else if !query.isEmpty, let first = rows.indices.first(where: { target(at: $0) != nil }) {
+            table.selectRowIndexes([first], byExtendingSelection: false)
+            table.scrollRowToVisible(first)
+        } else {
+            table.deselectAll(nil)
+            delegate?.sidebar(preview: nil, matches: [:])
+        }
+    }
+
+    func reindex() {
+        finder.invalidate()
+        guard searching else { return }
+        let kept = target(at: table.selectedRow)
+        reindexing = true
+        refill()
+        if let kept, let row = rows.indices.first(where: { target(at: $0) == kept }) {
+            table.selectRowIndexes([row], byExtendingSelection: false)
+        } else if searching {
+            table.deselectAll(nil)
+        }
+        reindexing = false
+        if !searching {
+            update()
+        }
+    }
+
+    private func refill() {
         groups = query.isEmpty ? [] : finder.groups(for: query)
         let recent = query.isEmpty && fieldFocused ? finder.recent : []
         if !query.isEmpty {
@@ -142,18 +176,9 @@ final class SettingsSidebar: NSViewController {
             rows = Self.pages
         }
         table.refusesFirstResponder = searching
+        table.allowsEmptySelection = true
         empty.show(query: query.isEmpty || !groups.isEmpty ? nil : query)
         table.reloadData()
-        if !searching {
-            delegate?.sidebar(preview: nil, matches: [:])
-            table.selectRowIndexes([page], byExtendingSelection: false)
-        } else if !query.isEmpty, let first = rows.indices.first(where: { target(at: $0) != nil }) {
-            table.selectRowIndexes([first], byExtendingSelection: false)
-            table.scrollRowToVisible(first)
-        } else {
-            table.deselectAll(nil)
-            delegate?.sidebar(preview: nil, matches: [:])
-        }
     }
 
     func move(by step: Int) {
@@ -183,6 +208,7 @@ final class SettingsSidebar: NSViewController {
 
     func go(at row: Int) {
         guard let target = target(at: row) else { return }
+        page = SettingsPage.all.firstIndex { $0.title == target.place.page } ?? page
         if let entry = target.entry {
             finder.visit(entry)
         }

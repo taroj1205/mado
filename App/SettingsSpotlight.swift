@@ -115,7 +115,10 @@ final class SettingsSpotlight {
             pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
             row.layer?.add(pulse, forKey: "land")
         }
-        guard let control = controls[id] as? any SearchFocusable else { return }
+        guard let control = controls[id]?.firstVisible((any SearchFocusable).self) else {
+            unsafe row.window?.makeFirstResponder(nil)
+            return
+        }
         control.takesSearchFocus = true
         if unsafe row.window?.makeFirstResponder(control) != true {
             control.takesSearchFocus = false

@@ -59,6 +59,7 @@ extension SettingsSidebar: NSTableViewDataSource, NSTableViewDelegate {
     }
 
     func tableViewSelectionDidChange(_: Notification) {
+        guard !reindexing else { return }
         guard !searching else {
             delegate?.sidebar(preview: target(at: table.selectedRow), matches: matches)
             announce(row: table.selectedRow)

@@ -41,12 +41,12 @@ final class SettingsFinder {
         history = SettingsSearch.load(from: context.modules)
     }
 
-    static func id(page: String, tab: String?, section: String?, label: String) -> String {
-        [page, tab ?? "", section ?? "", label].joined(separator: separator)
+    static func id(page: String, tab: String?, section: String?, key: String) -> String {
+        [page, tab ?? "", section ?? "", key].joined(separator: separator)
     }
 
     static func moduleID(page: String, name: String) -> String {
-        id(page: page, tab: nil, section: nil, label: name)
+        id(page: page, tab: nil, section: nil, key: name)
     }
 
     func invalidate() {
@@ -106,13 +106,13 @@ final class SettingsFinder {
         for section in sections {
             for row in section.rows {
                 let id = Self.id(
-                    page: page.title, tab: tabTitle, section: section.title, label: row.label)
-                let hotKey = row.control as? HotKeyButton
+                    page: page.title, tab: tabTitle, section: section.title, key: row.key)
+                let hotKey = row.control.firstVisible(HotKeyButton.self)
                 entries.append(
                     .init(
                         id: id, place: place, section: section.title, label: row.label,
                         keywords: Self.otherWords[row.label] ?? [],
-                        choices: (row.control as? SettingsPopUp)?.choiceTitles ?? [],
+                        choices: row.control.firstVisible(SettingsPopUp.self)?.choiceTitles ?? [],
                         isHotkey: hotKey != nil))
                 keys[id] = hotKey?.keycaps
             }
