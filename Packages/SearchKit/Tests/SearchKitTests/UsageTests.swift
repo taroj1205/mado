@@ -23,15 +23,15 @@ import Testing
         #expect(usage.bonus(for: "safari", at: now) == 16)
     }
 
-    @Test func topListsTheMostUsedFirst() {
+    @Test func rankedListsTheMostUsedFirstWithoutForgottenEntries() {
         var usage = Usage()
         for _ in 0..<3 { usage.record("Safari", at: daysAgo(30)) }
         for _ in 0..<4 { usage.record("Spaces", at: daysAgo(2)) }
         usage.record("Speed Test", at: daysAgo(1))
+        usage.record("Stocks", at: daysAgo(120))
 
-        #expect(usage.top(2, at: now) == ["Spaces", "Speed Test"])
-        #expect(usage.top(9, at: now) == ["Spaces", "Speed Test", "Safari"])
-        #expect(Usage().top(3, at: now).isEmpty)
+        #expect(usage.ranked(at: now) == ["Spaces", "Speed Test", "Safari"])
+        #expect(Usage().ranked(at: now).isEmpty)
     }
 
     @Test func ranksFixedHistoryByFrequencyAndRecency() {

@@ -16,10 +16,11 @@ extension LauncherResult {
             guard !typed else { return }
             let favouriteIDs = sources.items.favourites
             favourites = favouriteIDs.compactMap { LauncherResult.result(for: $0, in: sources) }
-            suggestions = usage.top(Self.suggestionLimit + favouriteIDs.count, at: now)
-                .filter { !favouriteIDs.contains($0) }
-                .prefix(Self.suggestionLimit)
-                .compactMap { LauncherResult.result(for: $0, in: sources) }
+            suggestions = Array(
+                usage.ranked(at: now).lazy
+                    .filter { !favouriteIDs.contains($0) }
+                    .compactMap { LauncherResult.result(for: $0, in: sources) }
+                    .prefix(Self.suggestionLimit))
             let shown = Set(favouriteIDs + suggestions.map(\.id))
             commands = sources.commands.filter { !shown.contains($0.id) }
                 .map(LauncherResult.command)
