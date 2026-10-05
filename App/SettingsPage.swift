@@ -21,6 +21,7 @@ struct SettingsPage {
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
         let speechModels: SpeechModelSettings
+        let statusItem: NSStatusItem?
     }
 
     struct Tab {
@@ -29,31 +30,7 @@ struct SettingsPage {
     }
 
     static let all: [Self] = [
-        Self("General", "gearshape") { context in
-            [
-                SettingsSection(
-                    "Launcher",
-                    [
-                        .init("Launcher hotkey", hotKeyPopUp(context.hotKeys, context.modules)),
-                        .init(
-                            "Launch at login",
-                            SettingsSwitch(
-                                read: { LaunchAtLogin.isEnabled },
-                                write: LaunchAtLogin.setEnabled)),
-                        .init(
-                            "Open when Mado starts",
-                            SettingsSwitch(
-                                read: { OpenOnLaunch.isEnabled(in: context.modules) },
-                                write: { try OpenOnLaunch.setEnabled($0, in: context.modules) })),
-                    ]),
-                SettingsSection(
-                    "Window",
-                    [
-                        .init("Show on", screenPopUp(context.modules)),
-                        .init("Keep last query", popUp(QueryLifetime.self, context.modules)),
-                    ]),
-            ]
-        },
+        Self("General", "gearshape") { general($0) },
         Self("Search", "magnifyingglass") { answers($0.modules, $0.rates) },
         Self(
             "Widgets", "square.grid.2x2",
@@ -174,7 +151,7 @@ struct SettingsPage {
         self.init(title, symbol, module: module, tabs: [Tab(title: title, sections: sections)])
     }
 
-    private static func popUp<Setting: LauncherSetting>(
+    static func popUp<Setting: LauncherSetting>(
         _: Setting.Type, _ modules: ModuleManager?
     ) -> SettingsPopUp {
         let popUp = SettingsPopUp {
@@ -223,43 +200,6 @@ struct SettingsPage {
                 }
             }
             return [SettingsPopUp.Section(title: nil, choices: choices)]
-        }
-        popUp.isEnabled = modules != nil
-        return popUp
-    }
-
-    private static func hotKeyPopUp(
-        _ hotKeys: LauncherHotKeys, _ modules: ModuleManager?
-    ) -> SettingsPopUp {
-        let popUp = SettingsPopUp {
-            let current = hotKeys.key
-            let choices = LauncherHotKeys.Key.allCases.map { key in
-                SettingsPopUp.Choice(title: key.title, isSelected: key == current) {
-                    try hotKeys.use(key)
-                }
-            }
-            return [SettingsPopUp.Section(title: nil, choices: choices)]
-        }
-        popUp.isEnabled = modules != nil
-        return popUp
-    }
-
-    private static func screenPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
-        let popUp = SettingsPopUp {
-            let current = LauncherScreen.load(from: modules)
-            let choice = { (screen: LauncherScreen) in
-                SettingsPopUp.Choice(
-                    title: screen.title, isSelected: screen.id == current.id,
-                    isEnabled: screen.isAvailable
-                ) { try screen.save(to: modules) }
-            }
-            return [
-                SettingsPopUp.Section(
-                    title: nil, choices: [choice(.mouse), choice(.activeWindow)]),
-                SettingsPopUp.Section(
-                    title: "Displays",
-                    choices: LauncherScreen.displays(keeping: current).map(choice)),
-            ]
         }
         popUp.isEnabled = modules != nil
         return popUp
