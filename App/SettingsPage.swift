@@ -23,6 +23,7 @@ struct SettingsPage {
         let speechModels: SpeechModelSettings
         let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
+        let menuBarAgenda: MenuBarAgendaItem
     }
 
     struct Tab {
@@ -107,7 +108,9 @@ struct SettingsPage {
             [SettingsSection("Dictation", []), context.speechModels.section]
         },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
-        Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),
+        Self(
+            "Notes", "note.text", module: module(NotesModule.id, "Notes & calendar", enabled: true)
+        ) { context in [MenuBarAgendaSettings.section(context.modules, context.menuBarAgenda)] },
         Self(
             "Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)
         ) { context in context.colourKeys.sections },

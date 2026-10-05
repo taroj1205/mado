@@ -26,6 +26,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
         items: ItemEditor, snippets: Snippets?, statusItem: NSStatusItem?,
+        menuBarAgenda: MenuBarAgendaItem,
         addWidgets: @escaping @MainActor () -> Void
     ) {
         let recorder = HotKeyPopover(items: items)
@@ -44,7 +45,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: addWidgets, speechModels: speechModels,
-            colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem)
+            colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
+            menuBarAgenda: menuBarAgenda)
         let pages = Self.pages(context)
         tabs = pages
         finder = SettingsFinder(context: context) {
