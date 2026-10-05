@@ -90,7 +90,7 @@ import Testing
     @Test func deleteRemovesTheSelectedWidgetAndArrowsMoveTheSelection() {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
-        view.pressWidget(1)
+        view.selectWidget(1)
         edit()
         press(kVK_Delete, "\u{7F}")
         #expect(edits == [.remove("weather")])

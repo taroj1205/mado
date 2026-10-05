@@ -43,8 +43,30 @@ import Testing
         tile.mouseUp(with: try click(tile, [.command]))
         #expect(tile.dragStart == nil)
         tile.mouseDown(with: try click(tile, []))
-        #expect(ran == ["weather"])
+        #expect(ran.isEmpty)
         #expect(tile.dragStart == nil)
+    }
+
+    @Test func aClickSelectsAWidgetAndADoubleClickRunsIt() throws {
+        var ran: [String] = []
+        view.onWidget = { ran.append($0.id) }
+        let tile = view.widgetGrid.tiles[1]
+        tile.mouseDown(with: try click(tile, []))
+        #expect(view.selectedWidget == 1)
+        #expect(ran.isEmpty)
+        tile.mouseDown(with: try click(tile, [], count: 2))
+        #expect(view.selectedWidget == 1)
+        #expect(ran == ["weather"])
+    }
+
+    @Test func theSingleClickSettingRunsAWidgetOnTheFirstClick() throws {
+        var ran: [String] = []
+        view.onWidget = { ran.append($0.id) }
+        view.opensWidgetsOnSingleClick = true
+        let tile = view.widgetGrid.tiles[1]
+        tile.mouseDown(with: try click(tile, []))
+        #expect(view.selectedWidget == 1)
+        #expect(ran == ["weather"])
     }
 
     @Test func commandDraggingReordersTheInlineGridWithoutEditMode() {
@@ -161,12 +183,14 @@ import Testing
         return tile.convert(NSPoint(x: tile.bounds.midX, y: tile.bounds.midY), to: nil)
     }
 
-    private func click(_ tile: WidgetTile, _ flags: NSEvent.ModifierFlags) throws -> NSEvent {
+    private func click(
+        _ tile: WidgetTile, _ flags: NSEvent.ModifierFlags, count: Int = 1
+    ) throws -> NSEvent {
         let point = tile.convert(NSPoint(x: tile.bounds.midX, y: tile.bounds.midY), to: nil)
         return try #require(
             NSEvent.mouseEvent(
                 with: .leftMouseDown, location: point, modifierFlags: flags, timestamp: 0,
-                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: count,
                 pressure: 1))
     }
 

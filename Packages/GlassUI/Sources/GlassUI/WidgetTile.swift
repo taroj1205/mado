@@ -48,6 +48,8 @@ final class WidgetTile: NSView {
     var resizeStart: CGFloat?
     var compact = false
     var onPress: (() -> Void)?
+    var onOpen: (() -> Void)?
+    var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onRemove: (() -> Void)?
@@ -212,7 +214,15 @@ final class WidgetTile: NSView {
             onSkip?(skip)
         } else {
             onPress?()
+            if opensOnSingleClick || event.clickCount > 1 || hitsAllow(event) {
+                onOpen?()
+            }
         }
+    }
+
+    private func hitsAllow(_ event: NSEvent) -> Bool {
+        !allow.isHiddenOrHasHiddenAncestor
+            && allow.bounds.contains(allow.convert(event.locationInWindow, from: nil))
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -250,6 +260,7 @@ final class WidgetTile: NSView {
 
     override func accessibilityPerformPress() -> Bool {
         onPress?()
+        onOpen?()
         return true
     }
 }

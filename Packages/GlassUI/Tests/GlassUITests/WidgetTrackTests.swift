@@ -68,7 +68,7 @@ import Testing
             return true
         }
         let artwork = try #require(cover.tiffRepresentation)
-        view.pressWidget(1)
+        view.selectWidget(1)
         view.widgets = [clock, song(isPlaying: false, artwork: artwork)]
         #expect(view.widgetGrid.tiles.last === tile)
         #expect(tile.track.disc.glyph.image !== pause)
@@ -117,12 +117,12 @@ import Testing
         var skips: [WidgetGrid.Skip] = []
         view.onSkip = { skips.append($0) }
         view.widgets = [clock, song(isPlaying: true)]
-        view.pressWidget(1)
+        view.selectWidget(1)
         press(kVK_LeftArrow, "\u{F702}", [.command])
         press(kVK_RightArrow, "\u{F703}", [.command])
         #expect(skips == [.previous, .next])
         #expect(view.selectedWidget == 1)
-        view.pressWidget(0)
+        view.selectWidget(0)
         press(kVK_RightArrow, "\u{F703}", [.command])
         #expect(skips == [.previous, .next])
         #expect(view.selectedWidget == nil)
