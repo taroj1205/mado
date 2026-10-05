@@ -20,7 +20,7 @@ public enum TimerQuery: Equatable, Sendable {
         let rest = Array(words.dropFirst())
         switch keyword {
         case "timer":
-            let (length, name) = Self.split(rest)
+            guard let (length, name) = Self.split(rest) else { return nil }
             self = .timer(length: length, name: name)
 
         case "stopwatch" where rest.isEmpty:
@@ -34,7 +34,7 @@ public enum TimerQuery: Equatable, Sendable {
         }
     }
 
-    private static func split(_ words: [String]) -> (length: TimeInterval?, name: String) {
+    private static func split(_ words: [String]) -> (length: TimeInterval?, name: String)? {
         var total: TimeInterval?
         var name: [String] = []
         var index = 0
@@ -47,8 +47,10 @@ public enum TimerQuery: Equatable, Sendable {
             }
             index += used
         }
-        let valid = total.map { $0.rounded() }.flatMap { $0 >= 1 && $0 <= longest ? $0 : nil }
-        return (valid, name.joined(separator: " "))
+        let label = name.joined(separator: " ")
+        guard let total else { return (nil, label) }
+        let whole = total.rounded()
+        return whole >= 1 && whole <= longest ? (whole, label) : nil
     }
 
     private static func duration(at index: Int, in words: [String]) -> (TimeInterval?, Int) {
@@ -83,6 +85,6 @@ public enum TimerQuery: Equatable, Sendable {
             else { return nil }
             total += value * size
         }
-        return total > 0 ? total : nil
+        return total
     }
 }

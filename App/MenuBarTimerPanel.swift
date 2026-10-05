@@ -40,7 +40,7 @@ final class MenuBarTimerPanel: NSView {
     private let caption = NSTextField(labelWithString: "")
     private let title = NSTextField(labelWithString: "")
     private let detail = NSTextField(labelWithString: "")
-    private var times: [Countdown.ID: NSTextField] = [:]
+    private var timeRows: [Countdown.ID: TimerPanelRow] = [:]
     private var shape: Shape?
 
     init(_ handlers: Handlers) {
@@ -86,12 +86,12 @@ final class MenuBarTimerPanel: NSView {
         title.stringValue = model.title
         detail.stringValue = model.detail
         ring.show(model.clock, fraction: model.fraction, state: model.state)
-        for row in model.rows { times[row.id]?.stringValue = row.time }
+        for row in model.rows { timeRows[row.id]?.show(time: row.time) }
     }
 
     private func rebuild(_ model: TimerPanel) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        times = [:]
+        timeRows = [:]
         stack.addArrangedSubview(modes(selected: model.mode))
         let info = NSStackView(views: [caption, title, detail])
         info.orientation = .vertical
@@ -129,7 +129,7 @@ final class MenuBarTimerPanel: NSView {
         let view = TimerPanelRow(symbol: "timer", text: row.name, isHint: false) { [handlers] in
             handlers.select(row.id)
         }
-        times[row.id] = view.time
+        timeRows[row.id] = view
         stack.addArrangedSubview(view)
         view.widthAnchor.constraint(equalToConstant: Self.inner).isActive = true
     }

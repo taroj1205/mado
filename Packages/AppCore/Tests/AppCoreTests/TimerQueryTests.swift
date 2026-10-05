@@ -13,15 +13,19 @@ import Testing
         #expect(TimerQuery("timer pasta 12 minutes") == .timer(length: 720, name: "pasta"))
         #expect(TimerQuery("timer 1.5h") == .timer(length: 5_400, name: ""))
         #expect(TimerQuery("timer 0.6s") == .timer(length: 1, name: ""))
-        #expect(TimerQuery("timer 0.4s") == .timer(length: nil, name: ""))
+        #expect(TimerQuery("timer 0.4s") == nil)
     }
 
     @Test func aTimerWithoutAUsableLengthHasNone() {
         #expect(TimerQuery("timer") == .timer(length: nil, name: ""))
         #expect(TimerQuery("timer tea") == .timer(length: nil, name: "tea"))
-        #expect(TimerQuery("timer 0m") == .timer(length: nil, name: "0m"))
-        #expect(TimerQuery("timer 101h") == .timer(length: nil, name: ""))
         #expect(TimerQuery("timer 5x") == .timer(length: nil, name: "5x"))
+    }
+
+    @Test func aSuppliedLengthThatCannotRunIsNotATimer() {
+        #expect(TimerQuery("timer 0m") == nil)
+        #expect(TimerQuery("timer 101h") == nil)
+        #expect(TimerQuery("timer tea 0") == nil)
     }
 
     @Test func theOtherKindsAreSpelledOut() {

@@ -8,11 +8,13 @@ final class TimerPanelRow: NSView {
     private static let textSize: CGFloat = 13
     private static let hintSize: CGFloat = 12.5
 
-    let time = NSTextField(labelWithString: "")
+    private let time = NSTextField(labelWithString: "")
+    private let name: String
     private let onPress: () -> Void
 
     init(symbol: String, text: String, isHint: Bool, onPress: @escaping () -> Void) {
         self.onPress = onPress
+        name = text
         super.init(frame: .zero)
         let icon = NSImageView(
             image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
@@ -50,6 +52,11 @@ final class TimerPanelRow: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    func show(time text: String) {
+        time.stringValue = text
+        setAccessibilityLabel("\(name), \(text)")
     }
 
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
