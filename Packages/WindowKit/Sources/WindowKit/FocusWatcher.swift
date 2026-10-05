@@ -75,8 +75,19 @@ public final class FocusWatcher {
 
     private func activated(_ pid: pid_t) {
         guard pid != getpid() else { return }
-        report(pid)
         watch(pid)
+        Task {
+            for attempt in 1...Self.attempts {
+                if let number = await WindowList.focusedWindow(of: pid) {
+                    if !isStopped { onFocus(number) }
+                    return
+                }
+                guard attempt < Self.attempts else { return }
+                try? await Task.sleep(for: Self.retryDelay)
+                guard !isStopped, NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+                else { return }
+            }
+        }
     }
 
     private func forget(_ pid: pid_t) {
