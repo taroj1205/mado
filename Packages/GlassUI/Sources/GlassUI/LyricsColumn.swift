@@ -141,12 +141,9 @@ final class LyricsColumn: NSView {
 
     private func paint() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            let primary = NSColor.labelColor.cgColor
-            fill.foregroundColor = primary
-            for (index, row) in rows.enumerated() {
-                row.foregroundColor =
-                    index == current ? NSColor.secondaryLabelColor.cgColor : primary
-            }
+            fill.foregroundColor = NSColor.labelColor.cgColor
+            let base = NSColor.secondaryLabelColor.cgColor
+            rows.forEach { $0.foregroundColor = base }
         }
     }
 

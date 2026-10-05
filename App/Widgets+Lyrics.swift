@@ -43,12 +43,12 @@ extension Widgets {
     }
 
     func seek(toLine line: Int, in view: LauncherView) {
-        guard let start = lyricsFeed.start(ofLine: line), let playing else { return }
+        guard let start = lyricsFeed.start(ofLine: line), playing != nil else { return }
         Task { [weak self, weak view] in
             do {
                 try await Self.player.seek(to: start)
                 guard let self, let view else { return }
-                lyricsFeed.moved(to: start, isPlaying: playing.isPlaying)
+                lyricsFeed.moved(to: start, isPlaying: playing?.isPlaying ?? false)
                 refresh(view)
             } catch {
                 Self.logger.error("Seek failed: \(error, privacy: .private)")
