@@ -105,6 +105,27 @@ import Testing
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal"])
     }
 
+    @Test func aNewCommandDragAfterALostOneStartsFromTheSavedOrder() throws {
+        var saved: [StatusBarLayout] = []
+        view.onStatusLayout = { saved.append($0) }
+        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        view.layoutSubtreeIfNeeded()
+        let disk = try #require(view.statusBar.views.first)
+        let vpn = try #require(view.statusBar.views.last)
+        let end = vpn.convert(NSPoint(x: vpn.bounds.maxX - 1, y: 1), to: nil)
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
+        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: end, [.command]))
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "vpn", "disk"])
+        vpn.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: vpn), [.command]))
+        let front = try #require(view.statusBar.views.first)
+        let start = front.convert(NSPoint(x: 1, y: 1), to: nil)
+        vpn.mouseDragged(with: try mouse(.leftMouseDragged, at: start, [.command]))
+        vpn.mouseUp(with: try mouse(.leftMouseUp, at: start, [.command]))
+        #expect(saved.count == 1)
+        #expect(view.statusBar.pills.map(\.id) == ["vpn", "disk", "thermal"])
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["vpn", "disk", "thermal"])
+    }
+
     @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
         let disk = try #require(view.statusBar.views.first)
         _ = try drag(disk)

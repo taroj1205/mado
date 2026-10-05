@@ -29,6 +29,7 @@ final class StatusPill: NSView {
     private(set) var symbol: String?
     private var dragging = false
     var onPress: (() -> Void)?
+    var onGrab: (() -> Void)?
     var onDrag: ((NSPoint) -> Void)?
     var onDrop: (() -> Void)?
 
@@ -139,9 +140,9 @@ final class StatusPill: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        dragging = onDrag != nil && event.modifierFlags.contains(.command)
+        dragging = onGrab != nil && event.modifierFlags.contains(.command)
         if dragging {
-            onDrag?(event.locationInWindow)
+            onGrab?()
         } else if let onPress {
             onPress()
         } else {

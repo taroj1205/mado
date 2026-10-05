@@ -67,9 +67,9 @@ public final class StatusBar: NSScrollView {
     var onMove: ((String, String?) -> Void)?
     let edges = CAGradientLayer()
     let customise = CustomiseButton()
-    private let stack = NSStackView()
+    let stack = NSStackView()
     private var followsSelection = false
-    private var dragStart: [String] = []
+    var dragStart: [String] = []
     private var heading: NSPoint?
     private var shadedAt: CGFloat?
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -79,7 +79,7 @@ public final class StatusBar: NSScrollView {
         stack.arrangedSubviews.compactMap { $0 as? StatusPill }
     }
 
-    private var shownIDs: [String] {
+    var shownIDs: [String] {
         views.compactMap(\.identifier?.rawValue)
     }
 
@@ -222,6 +222,7 @@ public final class StatusBar: NSScrollView {
             }
             onPress?(index)
         }
+        view.onGrab = { [weak self] in self?.grab() }
         view.onDrag = { [weak self, weak view] point in
             if let view { self?.drag(view, to: point) }
         }
@@ -232,37 +233,12 @@ public final class StatusBar: NSScrollView {
         return view
     }
 
-    private func rebuild() {
+    func rebuild() {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for pill in pills {
             stack.addArrangedSubview(makeView(for: pill))
         }
         stack.addArrangedSubview(customise)
-    }
-
-    private func drag(_ pill: StatusPill, to point: NSPoint) {
-        if dragStart.isEmpty {
-            dragStart = shownIDs
-        }
-        let along = stack.convert(point, from: nil).x
-        let index = views.count { $0 !== pill && $0.frame.midX < along }
-        guard views.firstIndex(of: pill) != index else { return }
-        stack.removeArrangedSubview(pill)
-        stack.insertArrangedSubview(pill, at: index)
-        stack.layoutSubtreeIfNeeded()
-    }
-
-    private func drop(_ id: String) {
-        let start = dragStart
-        guard !start.isEmpty else { return }
-        dragStart = []
-        let order = shownIDs
-        if order != start, let index = order.firstIndex(of: id) {
-            onMove?(id, order.dropFirst(index + 1).first)
-        }
-        if shownIDs != pills.map(\.id) {
-            rebuild()
-        }
     }
 
     private func show(_ pill: Pill, in view: StatusPill) {
