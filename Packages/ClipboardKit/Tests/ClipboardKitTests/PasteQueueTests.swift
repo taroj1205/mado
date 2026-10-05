@@ -21,13 +21,16 @@ import Testing
             queue.add(Self.clip(text))
         }
 
-        #expect(queue.takeNext()?.text == "Taro Yamada")
+        #expect(queue.next?.text == "Taro Yamada")
+        queue.advance()
         #expect(queue.waiting.map(\.text) == ["12 Queen Street", "Auckland 1010"])
         #expect(queue.pasted.map(\.text) == ["Taro Yamada"])
-        #expect(queue.takeNext()?.text == "12 Queen Street")
-        #expect(queue.takeNext()?.text == "Auckland 1010")
-        #expect(queue.takeNext() == nil)
-        #expect(queue.pasted.count == 3)
+        #expect(queue.next?.text == "12 Queen Street")
+        queue.advance()
+        queue.advance()
+        #expect(queue.next == nil)
+        queue.advance()
+        #expect(queue.pasted.map(\.text) == ["Taro Yamada", "12 Queen Street", "Auckland 1010"])
     }
 
     @Test func readsCommandVAsPasteAndEscapeAsClear() throws {

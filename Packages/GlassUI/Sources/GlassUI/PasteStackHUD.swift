@@ -170,14 +170,7 @@ public final class PasteStackHUD {
             rows.addArrangedSubview(view)
             view.widthAnchor.constraint(equalTo: rows.widthAnchor).isActive = true
         }
-        let size = content.fittingSize
-        let frame =
-            panel.isVisible
-            ? CGRect(
-                x: panel.frame.minX, y: panel.frame.maxY - size.height, width: size.width,
-                height: size.height)
-            : place(size)
-        panel.setFrame(frame, display: true)
+        panel.setFrame(place(content.fittingSize), display: true)
         panel.orderFrontRegardless()
     }
 

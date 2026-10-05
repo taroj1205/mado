@@ -43,17 +43,21 @@ import Testing
         #expect(hud.rows.arrangedSubviews.map(Self.texts) == [[PasteStackHUD.emptyHint]])
     }
 
-    @Test func growsDownFromWhereItWasPlaced() {
+    @Test func asksWhereToGoEachTimeItChangesSize() {
         let row = PasteStackHUD.Row(title: "Auckland 1010", state: .waiting)
-        hud.show([row], left: 1) { CGRect(origin: CGPoint(x: 100, y: 400), size: $0) }
+        var sizes: [CGSize] = []
+        let place = { (size: CGSize) in
+            sizes.append(size)
+            return CGRect(origin: CGPoint(x: 100, y: 400 - size.height), size: size)
+        }
+        hud.show([row], left: 1, placing: place)
         defer { hud.hide() }
-        let first = hud.panel.frame
 
-        hud.show([row, row, row], left: 3) { _ in .zero }
+        hud.show([row, row, row], left: 3, placing: place)
 
-        #expect(hud.panel.frame.minX == first.minX)
-        #expect(hud.panel.frame.maxY == first.maxY)
-        #expect(hud.panel.frame.height > first.height)
+        #expect(sizes.count == 2)
+        #expect(sizes[1].height > sizes[0].height)
+        #expect(hud.panel.frame == place(sizes[1]))
     }
 
     @Test func showsOnlyTheFirstRowsOfALongStack() {

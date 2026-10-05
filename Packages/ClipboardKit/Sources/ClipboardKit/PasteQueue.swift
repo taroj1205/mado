@@ -15,6 +15,10 @@ public struct PasteQueue: Sendable {
     public private(set) var waiting: [Clip]
     public private(set) var pasted: [Clip]
 
+    public var next: Clip? {
+        waiting.first
+    }
+
     public init() {
         waiting = []
         pasted = []
@@ -43,10 +47,8 @@ public struct PasteQueue: Sendable {
         waiting.append(clip)
     }
 
-    public mutating func takeNext() -> Clip? {
-        guard !waiting.isEmpty else { return nil }
-        let next = waiting.removeFirst()
-        pasted.append(next)
-        return next
+    public mutating func advance() {
+        guard !waiting.isEmpty else { return }
+        pasted.append(waiting.removeFirst())
     }
 }

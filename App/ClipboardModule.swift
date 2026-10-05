@@ -44,12 +44,13 @@ struct ClipboardModule: Module {
         screens.history.start(with: store, context: context)
         screens.textTools.start(with: store, context: context)
         screens.emoji.start(context: context)
-        pasteStack.start(context: context)
         keepPruned(store, in: context)
         context.run("recognize image text") {
             await Self.recognizeImages(in: store, for: screens.history, logger: logger)
         }
-        snippets.checkCopies(with: watchCopies(into: store, context: context))
+        let checkCopies = watchCopies(into: store, context: context)
+        pasteStack.start(context: context, checkCopies: checkCopies)
+        snippets.checkCopies(with: checkCopies)
         context.own(.other, "snippet copy check") { [snippets] in snippets.checkCopies(with: nil) }
         logger.debug("Started")
     }

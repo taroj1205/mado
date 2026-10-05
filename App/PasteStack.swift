@@ -15,11 +15,15 @@ final class PasteStack {
 
     private let hud = PasteStackHUD()
     private var queue: PasteQueue?
+    private var anchor: (rect: NSRect, screen: NSScreen?)?
     private var listening = false
+    private var checkCopies: (@MainActor () -> Void)?
 
-    func start(context: ModuleContext) {
+    func start(context: ModuleContext, checkCopies: @escaping @MainActor () -> Void) {
+        self.checkCopies = checkCopies
         context.own(.other, "paste stack") { [weak self] in
             self?.listening = false
+            self?.checkCopies = nil
             self?.end()
         }
         let begin = CommandAction(id: "start", title: "Start \(Self.title)") { [weak self] in
@@ -39,7 +43,7 @@ final class PasteStack {
     func add(_ clip: Clip) {
         guard queue != nil else { return }
         queue?.add(clip)
-        refresh(near: nil)
+        refresh()
     }
 
     private func watchKeys(in context: ModuleContext) {
@@ -65,8 +69,10 @@ final class PasteStack {
         }
         end()
         let caret = await FocusedText.current(readingBack: 0)?.caret
+        checkCopies?()
+        anchor = CaretAnchor.find(caret)
         queue = PasteQueue()
-        refresh(near: caret)
+        refresh()
     }
 
     private func handle(_ event: CGEvent) -> Bool {
@@ -79,7 +85,8 @@ final class PasteStack {
             return true
 
         case .paste:
-            guard let next = queue?.takeNext() else { return false }
+            checkCopies?()
+            guard let next = queue?.next else { return false }
             do {
                 try next.copy()
             } catch {
@@ -87,30 +94,32 @@ final class PasteStack {
                 NSSound.beep()
                 return true
             }
+            queue?.advance()
             if queue?.waiting.isEmpty == true {
                 end()
             } else {
-                refresh(near: nil)
+                refresh()
             }
             return false
         }
     }
 
-    private func refresh(near caret: CGRect?) {
-        guard let queue else { return }
+    private func refresh() {
+        guard let queue, let anchor else { return }
         let waiting = queue.waiting.enumerated().map { index, clip in
             PasteStackHUD.Row(title: clip.title, state: index == 0 ? .next : .waiting)
         }
         let pasted = queue.pasted.map { PasteStackHUD.Row(title: $0.title, state: .pasted) }
         hud.show(waiting + pasted, left: waiting.count) { size in
-            let (anchor, screen) = CaretAnchor.find(caret)
-            return ScreenGeometry.frame(
-                of: size, below: anchor, gap: Self.gap, in: screen?.visibleFrame ?? anchor)
+            ScreenGeometry.frame(
+                of: size, below: anchor.rect, gap: Self.gap,
+                in: anchor.screen?.visibleFrame ?? anchor.rect)
         }
     }
 
     private func end() {
         queue = nil
+        anchor = nil
         hud.hide()
     }
 }
