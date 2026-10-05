@@ -102,29 +102,29 @@ enum LauncherResult {
         let (filled, links) = quicklinks(for: trimmed, in: sources)
         let hoisted =
             aliased.isEmpty ? [] : files.filter { aliased.contains($0.path) }.map(Self.file)
+        let home = Home(in: sources, usage: usage, at: now, typed: typed)
         let candidates =
             typed
             ? sources.apps.apps.map(Self.app) + SettingsPane.all.map(Self.pane)
                 + sources.commands.map(Self.command) + links + hoisted
-            : sources.commands.filter { !items.favourites.contains($0.id) }.map(Self.command)
+            : home.commands
         let ranked =
             filled
             + items.rank(
                 candidates, by: query, bonus: { usage.bonus(for: $0, at: now) }, id: \.id,
                 keys: \.keys)
-        let favourites = typed ? [] : items.favourites.compactMap { result(for: $0, in: sources) }
         let item = { (result: Self) in
             result.item(icons: sources.apps, hotkey: items.hotkeys[result.id], at: now)
         }
         let found = await rankedFiles.prefix(fileLimit).map(Self.file)
-        let results = [
-            ResultList.Section(title: "Favourites", items: favourites.map(item)),
-            ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
-            ResultList.Section(
-                title: SettingsLink.kind,
-                items: settingResults(for: trimmed, in: sources).map(item)),
-            ResultList.Section(title: "Files", items: found.map(item)),
-        ]
+        let results =
+            home.sections(item) + [
+                ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
+                ResultList.Section(
+                    title: SettingsLink.kind,
+                    items: settingResults(for: trimmed, in: sources).map(item)),
+                ResultList.Section(title: "Files", items: found.map(item)),
+            ]
         guard let answer = answerSection(for: trimmed, in: sources) else {
             let isEmpty = typed && results.allSatisfy(\.items.isEmpty)
             return isEmpty ? [Fallback.section(for: trimmed, matched: false)] : results
