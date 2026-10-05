@@ -56,13 +56,7 @@ final class MenuBarAgendaItem: NSObject {
     }
 
     func run(_ action: CommandAction) {
-        Task { [logger] in
-            do {
-                try await action.perform()
-            } catch {
-                logger.error("\(action.id, privacy: .public) failed: \(error, privacy: .private)")
-            }
-        }
+        action.run(logging: logger)
     }
 
     private func show(_ found: [CalendarAgenda.Found], at now: Date) {
