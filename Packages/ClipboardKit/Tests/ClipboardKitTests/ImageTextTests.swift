@@ -104,7 +104,12 @@ import UniformTypeIdentifiers
         #expect(recognition.language == "en")
     }
 
-    @Test func namesJapaneseWhenThatIsWhatTheImageSays() async throws {
+    @Test(
+        .enabled(
+            if: hasNeuralEngine,
+            "Vision reads Japanese only in accurate mode, which throws on the CI runner"
+        ))
+    func namesJapaneseWhenThatIsWhatTheImageSays() async throws {
         let recognition = try await ImageText.recognize(
             Self.image(width: 1_440, height: 300, lines: ["東京駅で待ち合わせ", "改札口の前です"]))
 
