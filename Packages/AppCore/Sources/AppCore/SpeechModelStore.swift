@@ -59,6 +59,21 @@ public struct SpeechModelStore: Sendable {
         try await download(model, from: url, progress: progress)
     }
 
+    public func install(
+        _ model: SpeechModel, using fetch: (_ root: URL, _ folder: String) async throws -> Void
+    ) async throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let staging = directory.appending(path: ".staging-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try await fetch(staging, model.file)
+        try Task.checkCancellation()
+        var kept = staging.appending(path: model.file)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try kept.setResourceValues(values)
+        try FileManager.default.moveItem(at: kept, to: location(of: model))
+    }
+
     func download(
         _ model: SpeechModel, from url: URL, progress: @escaping @Sendable (Double) -> Void
     ) async throws {

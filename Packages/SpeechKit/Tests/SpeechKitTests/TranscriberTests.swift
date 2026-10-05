@@ -35,4 +35,17 @@ import Testing
             try await Transcriber().transcribe(Array(repeating: 0, count: 800), with: missing)
                 .isEmpty)
     }
+
+    @Test func parakeetModelsAreRecognisedByTheirFolderName() {
+        #expect(Parakeet.version(folder: "parakeet-tdt-0.6b-v3") != nil)
+        #expect(Parakeet.version(folder: "parakeet-ja") != nil)
+        #expect(Parakeet.version(folder: "ggml-large-v3-turbo.bin") == nil)
+    }
+
+    @Test func aMissingParakeetFolderFailsToLoad() async {
+        let missing = FileManager.default.temporaryDirectory.appending(path: "parakeet-ja")
+        await #expect(throws: (any Error).self) {
+            try await Transcriber().transcribe(Array(repeating: 0, count: 16_000), with: missing)
+        }
+    }
 }
