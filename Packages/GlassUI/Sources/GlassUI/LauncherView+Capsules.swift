@@ -63,7 +63,7 @@ extension LauncherView {
             ? nil
             : selectedPill.map { statusBar.pills[$0].action }
                 ?? selectedWidget.map { widgetGrid.shown[$0].action }
-                ?? item?.action
+                ?? mergePane.merge?.action ?? item?.action
         actionLabel.stringValue = action ?? ""
         let slots =
             selectedPill != nil || selectedWidget != nil ? CapsuleSlot.standard : capsuleSlots
@@ -123,6 +123,11 @@ extension LauncherView {
         }
         if let selected = gridContext() {
             contextPill.show(selected.text, glyph: selected.glyph)
+            return
+        }
+        if !results.checked.isEmpty {
+            let selected = StatusPill.styled(bold: "\(results.checked.count)", rest: " selected")
+            contextPill.show(selected, symbol: "checkmark")
             return
         }
         let hintsPreview = (browsing || previewing) && selectedItem?.file != nil

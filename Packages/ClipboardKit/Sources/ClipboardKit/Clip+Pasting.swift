@@ -64,6 +64,21 @@ extension Clip {
     }
 
     @MainActor
+    public static func savedTextItems(_ text: String, source: String?) -> [NSPasteboardItem] {
+        let item = NSPasteboardItem()
+        item.setString(text, forType: .string)
+        if let source {
+            item.setString(source, forType: PasteboardWatch.sourceType)
+        }
+        return [item]
+    }
+
+    @MainActor
+    public static func copyText(_ text: String, source: String?) throws {
+        try PasteTarget.write(savedTextItems(text, source: source), to: .general)
+    }
+
+    @MainActor
     public func copy(to pasteboard: NSPasteboard = .general) throws {
         try PasteTarget.write(
             Self.pasteboardItems(kind, text: text, type: type, data: data, files: files),

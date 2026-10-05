@@ -208,7 +208,7 @@ public final class SnippetEditor: NSView, NSTextFieldDelegate, NSTextViewDelegat
     }
 
     @objc
-    private func startNew() {
+    func startNew() {
         closeActions()
         list.select(nil)
         load(nil)

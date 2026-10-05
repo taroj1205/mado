@@ -64,6 +64,8 @@ extension LauncherView {
     public func leave() {
         guard let query = rootQuery else { return }
         rootQuery = nil
+        results.clearChecks()
+        showMerge(nil)
         showScope(placeholder: nil, chip: nil)
         show(filter: nil)
         split(nil)
@@ -82,6 +84,7 @@ extension LauncherView {
     func placeDetail(below separator: NSView) {
         for (pane, listWidth) in [
             (detail, DetailPane.listWidth), (comparisonPane, ComparisonPane.listWidth),
+            (mergePane, DetailPane.listWidth),
         ] as [(NSView, CGFloat)] {
             NSLayoutConstraint.activate([
                 pane.leadingAnchor.constraint(equalTo: leadingAnchor, constant: listWidth - 1),
@@ -195,7 +198,7 @@ extension LauncherView {
         let dates = if case .calendar = shown { true } else { false }
         results.compact = previews
         results.trailingInset = dates ? CalendarPane.width : 0
-        detail.isHidden = !previews
+        refreshDetailVisibility()
         comparisonPane.isHidden = !compares
         calendarPane.isHidden = !dates
         resultsTrailing.isActive = false

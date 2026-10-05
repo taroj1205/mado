@@ -51,6 +51,10 @@ extension ResultList {
         }
     }
 
+    private func check(of item: Item) -> GlyphCell.Check {
+        if checked.isEmpty { .off } else if checked.contains(item.id) { .checked } else { .empty }
+    }
+
     func height(of item: Item) -> CGFloat {
         if let widget = item.widget { return WidgetCell.height(for: widget) }
         if item.answer != nil { return Self.answerHeight }
@@ -84,7 +88,7 @@ extension ResultList {
             let cell =
                 tableView.makeView(withIdentifier: GlyphCell.id, owner: nil)
                 as? GlyphCell ?? GlyphCell()
-            cell.show(item)
+            cell.show(item, check: check(of: item))
             return cell
         }
         let cell =
