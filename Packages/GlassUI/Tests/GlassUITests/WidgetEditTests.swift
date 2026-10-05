@@ -95,6 +95,8 @@ import Testing
         press(kVK_Delete, "\u{7F}")
         #expect(edits == [.remove("weather")])
         #expect(view.editBar.hint.stringValue == "Weather removed")
+        view.layoutSubtreeIfNeeded()
+        #expect(view.editBar.hint.frame.width >= view.editBar.hint.intrinsicContentSize.width)
         press(kVK_RightArrow, "\u{F703}")
         press(kVK_RightArrow, "\u{F703}")
         #expect(view.selectedWidget == 2)

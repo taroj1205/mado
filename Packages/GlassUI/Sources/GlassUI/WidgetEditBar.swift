@@ -48,7 +48,7 @@ final class WidgetEditBar: NSStackView {
         hint.font = .systemFont(ofSize: Self.hintSize, weight: .medium)
         hint.textColor = .secondaryLabelColor
         hint.lineBreakMode = .byTruncatingTail
-        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        hint.setContentCompressionResistancePriority(.defaultHigh + 1, for: .horizontal)
         hintStack = NSStackView(views: [hintIcon, hint, undo])
         hintStack.spacing = Self.hintGap
         notice = FloatingCapsule.make(
