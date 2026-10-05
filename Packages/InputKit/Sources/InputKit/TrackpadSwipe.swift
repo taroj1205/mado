@@ -37,11 +37,20 @@ public struct TrackpadSwipe {
             self = Self(fingers: fingers)
             return
         }
-        isBlocked = isBlocked || points.count > fingers
+        if points.count > fingers {
+            if isSwiping { emit(.cancelled) }
+            isSwiping = false
+            isBlocked = true
+        }
         guard !isBlocked else { return }
         let count = CGFloat(points.count)
-        let center = CGPoint(
-            x: points.map(\.x).reduce(0, +) / count, y: points.map(\.y).reduce(0, +) / count)
+        move(
+            to: CGPoint(
+                x: points.map(\.x).reduce(0, +) / count, y: points.map(\.y).reduce(0, +) / count),
+            emit: emit)
+    }
+
+    private mutating func move(to center: CGPoint, emit: (SwitcherKeys.Event) -> Void) {
         guard let anchor else {
             anchor = center
             return

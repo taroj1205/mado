@@ -110,6 +110,17 @@ import Testing
         #expect(recorder.events.isEmpty)
     }
 
+    @Test func anExtraFingerDuringASwipeCancelsInsteadOfChoosing() {
+        let recorder = Recorder()
+        recorder.touch(3, across: 0.2)
+        recorder.touch(3, across: 0.2 + Self.step)
+        recorder.touch(4, across: 0.2 + Self.step)
+        recorder.touch(4, across: 0.2 + Self.step * 3)
+        recorder.touch(3, across: 0.2 + Self.step * 3)
+        recorder.lift()
+        #expect(recorder.events == [.stepped(backward: false), .cancelled])
+    }
+
     @Test func aFourFingerSwipeTriggersWhenSetToFour() {
         let recorder = Recorder()
         recorder.swipe = TrackpadSwipe(fingers: 4)
