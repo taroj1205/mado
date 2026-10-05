@@ -35,6 +35,9 @@ public final class HotKeyButton: NSView {
         }
         set { hotKey = newValue.map(HotKey.shortcut) }
     }
+    public var keycaps: [String] {
+        hotKey.map(HotKeyLabel.keycaps) ?? []
+    }
     public var onPress: (() -> Void)?
     public var showsRecording = false {
         didSet { render() }

@@ -15,6 +15,16 @@ final class SettingsPopUp: NSPopUpButton {
         let select: () throws -> Void
     }
 
+    var takesSearchFocus = false {
+        didSet { cell?.showsFirstResponder = takesSearchFocus }
+    }
+    var choiceTitles: [String] {
+        choices.map(\.title)
+    }
+    override var acceptsFirstResponder: Bool {
+        takesSearchFocus || super.acceptsFirstResponder
+    }
+
     private let logger = Log.logger("Settings")
     private let sections: () -> [Section]
     private var choices: [Choice] = []
@@ -32,6 +42,11 @@ final class SettingsPopUp: NSPopUpButton {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func resignFirstResponder() -> Bool {
+        takesSearchFocus = false
+        return super.resignFirstResponder()
     }
 
     func refresh() {

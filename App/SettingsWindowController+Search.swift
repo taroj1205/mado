@@ -1,0 +1,76 @@
+import AppKit
+import SearchKit
+
+extension SettingsWindowController: SettingsSidebarDelegate {
+    func sidebar(picked page: Int) {
+        tabs.selectedTabViewItemIndex = page
+    }
+
+    func sidebar(preview target: SettingsSidebar.Target?, matches: [String: [Int]]) {
+        guard let target else {
+            restoreHome()
+            return
+        }
+        if home == nil {
+            let index = tabs.selectedTabViewItemIndex
+            home = (index, page(at: index)?.tabTitle)
+        }
+        show(target, matches: matches, dimsOthers: target.entry != nil)
+    }
+
+    func sidebar(go target: SettingsSidebar.Target, matches: [String: [Int]]) {
+        home = nil
+        show(target, matches: matches, dimsOthers: false)
+        if let entry = target.entry {
+            spotlit?.spotlight.land(on: entry)
+        }
+    }
+
+    func sidebarEndedSearch() {
+        restoreHome()
+        spotlit?.spotlight.focus = nil
+        spotlit = nil
+        sidebar.select(page: tabs.selectedTabViewItemIndex)
+        sidebar.endSearch()
+    }
+
+    func endSearchIfActive() -> Bool {
+        guard sidebar.searching || spotlit != nil else { return false }
+        sidebarEndedSearch()
+        return true
+    }
+
+    @objc
+    func focusSearch(_: Any?) {
+        sidebar.focusField()
+    }
+
+    private func page(at index: Int) -> SettingsPageController? {
+        tabs.tabViewItems[index].viewController as? SettingsPageController
+    }
+
+    private func show(
+        _ target: SettingsSidebar.Target, matches: [String: [Int]], dimsOthers: Bool
+    ) {
+        guard let index = SettingsPage.all.firstIndex(where: { $0.title == target.place.page })
+        else { return }
+        tabs.selectedTabViewItemIndex = index
+        guard let page = page(at: index) else { return }
+        if spotlit !== page {
+            spotlit?.spotlight.focus = nil
+        }
+        page.show(tab: target.place.tab)
+        page.spotlight.focus = .init(
+            matches: matches, selected: target.entry, dimsOthers: dimsOthers)
+        spotlit = page
+    }
+
+    private func restoreHome() {
+        guard let home else { return }
+        self.home = nil
+        spotlit?.spotlight.focus = nil
+        spotlit = nil
+        tabs.selectedTabViewItemIndex = home.page
+        page(at: home.page)?.show(tab: home.tab)
+    }
+}

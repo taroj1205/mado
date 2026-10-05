@@ -32,6 +32,10 @@ enum MainMenu {
         ).keyEquivalentModifierMask = [.command, .option, .shift]
         edit.addItem(
             withTitle: "Select All", action: #selector(NSText.selectAll), keyEquivalent: "a")
+        edit.addItem(.separator())
+        edit.addItem(
+            withTitle: "Find…", action: #selector(SettingsWindowController.focusSearch),
+            keyEquivalent: "f")
 
         let menu = NSMenu()
         for submenu in [app, edit, window] {

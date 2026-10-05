@@ -37,6 +37,22 @@ import Testing
         #expect(rank("sp") == ["Disk Space", "Wasp", "Photoshop"])
     }
 
+    @Test func matchReportsTheLettersOfTheBestAlignment() {
+        #expect(Fuzzy.match("sp", in: "Disk Space")?.offsets == [5, 6])
+        #expect(Fuzzy.match("lnch", in: "Launch at login")?.offsets == [0, 3, 4, 5])
+        #expect(Fuzzy.match("cel", in: "Celsius (°C)")?.offsets == [0, 1, 2])
+        #expect(Fuzzy.match("fas", in: "Safari") == nil)
+        #expect(Fuzzy.match("memo", in: "メモ")?.offsets.isEmpty == true)
+    }
+
+    @Test func matchScoresLikeRank() {
+        let candidates = ["Disk Space", "Wasp", "Photoshop"]
+        let scores = candidates.map { Fuzzy.match("sp", in: $0)?.score ?? 0 }
+
+        #expect(rank("sp") == ["Disk Space", "Wasp", "Photoshop"])
+        #expect(scores == scores.sorted(by: >))
+    }
+
     @Test func matchesAnyKeyAndKeepsOrderOnTies() {
         let commands = [("Open Clipboard", ["paste"]), ("Window Left", ["tile"])]
         let ranked = { (query: String) in
