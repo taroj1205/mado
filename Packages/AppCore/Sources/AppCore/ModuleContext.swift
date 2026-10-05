@@ -1,3 +1,4 @@
+import AppKit
 public import CoreGraphics
 public import Foundation
 public import os
@@ -18,6 +19,7 @@ public final class ModuleContext {
     private let moduleID: String
     private let commands: CommandRegistry
     private let eventTap: EventTap
+    private let listenTap: EventTap
     private var entries: [UInt: Entry] = [:]
     private var nextID: UInt = 0
     private var generation = 0
@@ -28,10 +30,13 @@ public final class ModuleContext {
         entries.keys.sorted().compactMap { entries[$0]?.resource }
     }
 
-    init(moduleID: String, commands: CommandRegistry, eventTap: EventTap) {
+    init(
+        moduleID: String, commands: CommandRegistry, eventTap: EventTap, listenTap: EventTap
+    ) {
         self.moduleID = moduleID
         self.commands = commands
         self.eventTap = eventTap
+        self.listenTap = listenTap
         logger = Log.logger(moduleID)
         signposter = Log.signposter(moduleID)
     }
@@ -91,14 +96,24 @@ public final class ModuleContext {
         _ name: String, matching types: [CGEventType],
         swallow: @escaping @MainActor (CGEventType, CGEvent) -> Bool
     ) throws(ModuleError) {
-        try ownRoute(name, eventTap.add(types: types, swallow: swallow))
+        try ownRoute(name, on: eventTap, eventTap.add(types: types, swallow: swallow))
     }
 
     public func observeEvents(
         _ name: String, matching types: [CGEventType],
         observe: @escaping @MainActor (CGEventType, CGEvent) -> Void
     ) throws(ModuleError) {
-        try ownRoute(name, eventTap.observe(types: types, observe: observe))
+        try ownRoute(name, on: eventTap, eventTap.observe(types: types, observe: observe))
+    }
+
+    public func observeGestures(
+        _ name: String, observe: @escaping @MainActor (CGEvent) -> Void
+    ) throws(ModuleError) {
+        guard let gesture = CGEventType(rawValue: UInt32(NSEvent.EventType.gesture.rawValue)) else {
+            throw .eventTapRefused(name)
+        }
+        try ownRoute(
+            name, on: listenTap, listenTap.observe(types: [gesture]) { _, event in observe(event) })
     }
 
     public func run(_ name: String, operation: @escaping @MainActor @Sendable () async -> Void) {
@@ -128,11 +143,11 @@ public final class ModuleContext {
         }
     }
 
-    private func ownRoute(_ name: String, _ id: UInt?) throws(ModuleError) {
+    private func ownRoute(_ name: String, on tap: EventTap, _ id: UInt?) throws(ModuleError) {
         guard let id else {
             throw .eventTapRefused(name)
         }
-        own(.eventTap, name) { [eventTap] in eventTap.remove(id) }
+        own(.eventTap, name) { tap.remove(id) }
     }
 
     private func resource(_ kind: ResourceKind, _ name: String) -> ActiveResource {

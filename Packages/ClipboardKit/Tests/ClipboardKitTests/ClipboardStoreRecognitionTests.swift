@@ -31,7 +31,7 @@ import Testing
 
     private static func image(at seconds: TimeInterval) -> Clip {
         Clip(
-            .image, text: "", type: .png, data: png, source: nil,
+            .image, text: "", type: .png, data: png + Data("\(seconds)".utf8), source: nil,
             date: Date(timeIntervalSince1970: seconds))
     }
 

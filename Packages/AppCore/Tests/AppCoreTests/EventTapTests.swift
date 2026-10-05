@@ -183,7 +183,9 @@ struct EventTapTests {
 
     @Test func theContextOwnsItsRouteUntilReleased() throws {
         let tap = EventTap()
-        let context = ModuleContext(moduleID: "radial", commands: CommandRegistry(), eventTap: tap)
+        let context = ModuleContext(
+            moduleID: "radial", commands: CommandRegistry(), eventTap: tap,
+            listenTap: EventTap(options: .listenOnly))
         try context.tapEvents("trigger", matching: [.flagsChanged]) { _, _ in false }
         #expect(
             context.active == [ActiveResource(module: "radial", kind: .eventTap, name: "trigger")])
@@ -196,7 +198,9 @@ struct EventTapTests {
 
     @Test func anObserverIsOwnedLikeAnyOtherRoute() throws {
         let tap = EventTap()
-        let context = ModuleContext(moduleID: "keys", commands: CommandRegistry(), eventTap: tap)
+        let context = ModuleContext(
+            moduleID: "keys", commands: CommandRegistry(), eventTap: tap,
+            listenTap: EventTap(options: .listenOnly))
         var observed = 0
         try context.observeEvents("taps", matching: [.flagsChanged]) { _, _ in observed += 1 }
         #expect(context.active == [ActiveResource(module: "keys", kind: .eventTap, name: "taps")])
@@ -206,5 +210,26 @@ struct EventTapTests {
 
         context.releaseAll()
         #expect(tap.port == nil)
+    }
+
+    @Test func gesturesAreHeardOnTheListenOnlyTapUntilReleased() throws {
+        let tap = EventTap()
+        let listenTap = EventTap(options: .listenOnly)
+        let context = ModuleContext(
+            moduleID: "windows", commands: CommandRegistry(), eventTap: tap, listenTap: listenTap)
+        var heard = 0
+        try context.observeGestures("swipe") { _ in heard += 1 }
+        #expect(
+            context.active == [ActiveResource(module: "windows", kind: .eventTap, name: "swipe")])
+        #expect(tap.port == nil)
+        #expect(listenTap.port != nil)
+        let gesture = try #require(CGEventType(rawValue: 29))
+        let event = try #require(CGEvent(source: nil))
+        event.type = gesture
+        #expect(listenTap.handle(gesture, event))
+        #expect(heard == 1)
+
+        context.releaseAll()
+        #expect(listenTap.port == nil)
     }
 }

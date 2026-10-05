@@ -128,7 +128,7 @@ final class Dictation {
             stop()
             return
         }
-        pill.show(.transcribing(model: model.name), on: nil)
+        pill.show(.transcribing, on: nil)
         let file = models.location(of: model)
         work = Task { [weak self, transcriber] in
             do {

@@ -5,7 +5,7 @@ public final class DictationPill: NSObject {
     public enum State: Equatable, Sendable {
         case ready(hint: String)
         case listening(since: ContinuousClock.Instant)
-        case transcribing(model: String)
+        case transcribing
         case failed(String, fix: String?)
     }
 
@@ -136,11 +136,10 @@ public final class DictationPill: NSObject {
             stack.setAccessibilityLabel("Listening")
             return [dot, meter, clock]
 
-        case .transcribing(let model):
+        case .transcribing:
             title.stringValue = "Transcribing…"
-            detail.stringValue = "\(model) · on device"
-            stack.setAccessibilityLabel("Transcribing, \(model) on device")
-            return [spinner, title, detail]
+            stack.setAccessibilityLabel("Transcribing")
+            return [spinner, title]
 
         case let .failed(message, fixTitle):
             show(symbol: "exclamationmark.triangle", tint: .systemOrange)

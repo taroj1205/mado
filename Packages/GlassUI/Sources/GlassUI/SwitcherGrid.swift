@@ -37,6 +37,11 @@ struct SwitcherGrid: Equatable {
         return first
     }
 
+    func index(_ index: Int, movedBy rowCount: Int, count: Int) -> Int {
+        let target = min(index + rowCount * columns, count - 1)
+        return target >= 0 && target / columns != index / columns ? target : index
+    }
+
     func origin(of index: Int, firstRow: Int) -> CGPoint? {
         let row = index / columns - firstRow
         guard (0..<rows).contains(row) else { return nil }

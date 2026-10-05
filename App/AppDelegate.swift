@@ -268,7 +268,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             settings
             ?? SettingsWindowController(
                 modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-                snippets: snippets
+                snippets: snippets, statusItem: statusItem
             ) { [weak self] in self?.editWidgetsInLauncher() }
         settings = controller
         controller.showWindow(nil)
