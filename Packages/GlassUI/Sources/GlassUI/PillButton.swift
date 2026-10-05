@@ -1,6 +1,6 @@
-import AppKit
+public import AppKit
 
-final class PillButton: NSButton {
+public final class PillButton: NSButton {
     private static let titleSize: CGFloat = 13
     private static let symbolSize: CGFloat = 11
     private static let symbolGap: CGFloat = 6
@@ -11,24 +11,26 @@ final class PillButton: NSButton {
     private let height: CGFloat
     private let fill: NSColor
 
-    override var wantsUpdateLayer: Bool { true }
+    override public var wantsUpdateLayer: Bool { true }
 
-    override var isHighlighted: Bool {
+    override public var isHighlighted: Bool {
         didSet { needsDisplay = true }
     }
 
-    override var intrinsicContentSize: NSSize {
+    override public var intrinsicContentSize: NSSize {
         NSSize(
             width: ceil(attributedTitle.size().width) + Self.padding + Self.padding, height: height)
     }
 
-    override var focusRingMaskBounds: NSRect { bounds }
+    override public var focusRingMaskBounds: NSRect { bounds }
 
     convenience init(_ title: String, height: CGFloat) {
         self.init(title, height: height, symbol: nil, fill: .controlAccentColor, text: .white)
     }
 
-    init(_ title: String, height: CGFloat, symbol: String?, fill: NSColor, text: NSColor) {
+    public init(
+        _ title: String, height: CGFloat, symbol: String?, fill: NSColor, text: NSColor
+    ) {
         self.height = height
         self.fill = fill
         super.init(frame: .zero)
@@ -68,7 +70,7 @@ final class PillButton: NSButton {
         return NSAttributedString(attachment: attachment)
     }
 
-    override func updateLayer() {
+    override public func updateLayer() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             let pressed = fill.blended(withFraction: Self.pressedDarkening, of: .black) ?? fill
             layer?.backgroundColor = (isHighlighted ? pressed : fill).cgColor
@@ -77,7 +79,7 @@ final class PillButton: NSButton {
         layer?.cornerCurve = .continuous
     }
 
-    override func drawFocusRingMask() {
+    override public func drawFocusRingMask() {
         let radius = bounds.height * Self.half
         NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
     }

@@ -72,13 +72,7 @@ final class RadialMenuSettings: NSObject {
     }
 
     private func trigger(_ settings: RadialSettings) -> NSView {
-        let button = TriggerButton()
-        button.modifiers = settings.trigger
-        button.onChange = { [weak self, weak button] trigger in
-            guard let self else { return }
-            save { $0.trigger = trigger }
-            button?.modifiers = RadialSettings.load(from: modules).trigger
-        }
+        let button = WindowTrigger.radial.button(modules)
         let label = NSTextField(labelWithString: "Ring opens")
         label.textColor = .secondaryLabelColor
         let origin = NSSegmentedControl(
@@ -151,7 +145,7 @@ final class RadialMenuSettings: NSObject {
         var new = old
         change(&new)
         try modules?.setValue(new, for: RadialSettings.key)
-        if new.isEnabled != old.isEnabled || new.trigger != old.trigger {
+        if new.isEnabled != old.isEnabled {
             try modules?.restart(WindowsModule.id)
         }
     }

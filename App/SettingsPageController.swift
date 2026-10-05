@@ -8,7 +8,6 @@ final class SettingsPageController: NSViewController {
     private static let titleSize: CGFloat = 15
     private static let headerSize: CGFloat = 12
     static let headerInset: CGFloat = 4
-    private static let cornerRadius: CGFloat = 10
     private static let sectionSpacing: CGFloat = 14
     private static let headerSpacing: CGFloat = 6
     private static let leading: CGFloat = 20
@@ -200,39 +199,13 @@ final class SettingsPageController: NSViewController {
     }
 
     private func box(_ sectionRows: [SettingsSection.Row], in section: SettingsSection) -> NSView {
-        let rows = NSStackView()
-        rows.orientation = .vertical
-        rows.spacing = 0
-        rows.translatesAutoresizingMaskIntoConstraints = false
-        for (index, row) in sectionRows.enumerated() {
-            if index > 0 {
-                rows.addArrangedSubview(separator())
-            }
-            let (view, label) = rowView(row)
-            let id = rowID(row, in: section)
-            spotlight.add(row: view, label: label, control: row.control, id: id)
-            rows.addArrangedSubview(view)
-        }
-        for row in rows.arrangedSubviews {
-            row.widthAnchor.constraint(equalTo: rows.widthAnchor).isActive = true
-        }
-        let box = NSBox()
-        box.boxType = .custom
-        box.titlePosition = .noTitle
-        box.cornerRadius = Self.cornerRadius
-        box.fillColor = .quaternarySystemFill
-        box.borderColor = .separatorColor
-        box.wantsLayer = true
-        box.layer?.cornerRadius = Self.cornerRadius
-        box.layer?.masksToBounds = true
-        box.addSubview(rows)
-        NSLayoutConstraint.activate([
-            rows.topAnchor.constraint(equalTo: box.topAnchor),
-            rows.bottomAnchor.constraint(equalTo: box.bottomAnchor),
-            rows.leadingAnchor.constraint(equalTo: box.leadingAnchor),
-            rows.trailingAnchor.constraint(equalTo: box.trailingAnchor),
-        ])
-        return box
+        Self.box(
+            sectionRows.map { row in
+                let (view, label) = rowView(row)
+                spotlight.add(
+                    row: view, label: label, control: row.control, id: rowID(row, in: section))
+                return view
+            })
     }
 
     private func header(_ title: String, note: String?, accessory: NSView?) -> NSView {

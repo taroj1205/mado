@@ -33,6 +33,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
         let enterGuard = EnterGuardPage(modules: modules)
+        let speechModels = SpeechModelSettings(modules: modules)
         let context = SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
             apps: AppHotKeys(items: items, recorder: recorder),
@@ -40,7 +41,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
-            addWidgets: addWidgets)
+            addWidgets: addWidgets, speechModels: speechModels)
         tabs = Self.pages(context)
         sidebar = SettingsSidebar(finder: SettingsFinder(context: context))
         let window = Self.window(showing: Self.split(sidebar, tabs))
