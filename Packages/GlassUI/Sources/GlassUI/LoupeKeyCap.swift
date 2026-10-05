@@ -12,7 +12,6 @@ final class LoupeKeyCap: NSView {
     private static let lineWidth: CGFloat = 1
     private static let recordingLine: CGFloat = 2
     private static let recordingFill: CGFloat = 0.16
-    private static let dimmed: CGFloat = 0.45
     private static let half: CGFloat = 0.5
     private static let faceAlpha = (dark: 0.14, light: 0.95)
     private static let lipAlpha = (dark: 0.4, light: 0.16)
@@ -31,9 +30,6 @@ final class LoupeKeyCap: NSView {
     var onKey: ((Int) -> Void)?
     var letter = "" {
         didSet { render() }
-    }
-    var isDimmed = false {
-        didSet { alphaValue = isDimmed ? Self.dimmed : 1 }
     }
 
     private(set) var isRecording = false {
@@ -155,13 +151,15 @@ final class LoupeKeyCap: NSView {
                     height: size.height))
             return
         }
-        NSAttributedString(
-            string: direction.glyph,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: Self.glyphSize, weight: .medium),
-                .foregroundColor: NSColor.tertiaryLabelColor,
-            ]
-        ).draw(at: CGPoint(x: Self.legendInset, y: Self.legendInset * Self.half))
+        if letter != direction.glyph {
+            NSAttributedString(
+                string: direction.glyph,
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: Self.glyphSize, weight: .medium),
+                    .foregroundColor: NSColor.tertiaryLabelColor,
+                ]
+            ).draw(at: CGPoint(x: Self.legendInset, y: Self.legendInset * Self.half))
+        }
         let name = NSAttributedString(
             string: letter,
             attributes: [

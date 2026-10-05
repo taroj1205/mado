@@ -1,6 +1,12 @@
 import AppKit
 
 final class GlyphCell: NSTableCellView {
+    enum Check {
+        case off
+        case empty
+        case checked
+    }
+
     static let id = NSUserInterfaceItemIdentifier("glyph")
     private static let glyphSize: CGFloat = 16
     static let thumbnailSize: CGFloat = 24
@@ -12,10 +18,15 @@ final class GlyphCell: NSTableCellView {
     let glyph = NSImageView()
     let title = NSTextField(labelWithString: "")
     let thumbnail = ThumbnailView()
+    let check = CheckCircle()
     var thumbnails = Thumbnails.shared
     private(set) var loading: Task<Void, Never>?
     private var imageURL: URL?
     private var request: Thumbnails.Request?
+    private lazy var glyphLeading = glyph.leadingAnchor.constraint(
+        equalTo: leadingAnchor, constant: Self.inset)
+    private lazy var glyphAfterCheck = glyph.leadingAnchor.constraint(
+        equalTo: check.trailingAnchor, constant: Self.gap)
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -26,7 +37,8 @@ final class GlyphCell: NSTableCellView {
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         setAccessibilityChildren([])
         thumbnail.isHidden = true
-        for view in [glyph, title, thumbnail] {
+        check.isHidden = true
+        for view in [check, glyph, title, thumbnail] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
             view.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
@@ -34,7 +46,8 @@ final class GlyphCell: NSTableCellView {
         NSLayoutConstraint.activate([
             glyph.widthAnchor.constraint(equalToConstant: Self.glyphSize),
             glyph.heightAnchor.constraint(equalToConstant: Self.glyphSize),
-            glyph.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
+            glyphLeading,
+            check.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
             thumbnail.widthAnchor.constraint(equalToConstant: Self.thumbnailSize),
             thumbnail.heightAnchor.constraint(equalToConstant: Self.thumbnailSize),
             thumbnail.centerXAnchor.constraint(equalTo: glyph.centerXAnchor),
@@ -50,10 +63,21 @@ final class GlyphCell: NSTableCellView {
     }
 
     func show(_ item: ResultList.Item) {
+        show(item, check: .off)
+    }
+
+    func show(_ item: ResultList.Item, check state: Check) {
+        let isChecked = state == .checked
+        glyphLeading.isActive = state == .off
+        glyphAfterCheck.isActive = state != .off
+        check.isHidden = state == .off || !item.isCheckable
+        check.isChecked = isChecked
         glyph.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
         glyph.contentTintColor = item.tint ?? .secondaryLabelColor
         title.stringValue = item.title
-        let spoken = item.kind == item.title ? [item.title] : [item.title, item.kind]
+        let spoken =
+            (item.kind == item.title ? [item.title] : [item.title, item.kind])
+            + (isChecked ? ["selected"] : [])
         setAccessibilityLabel(spoken.filter { !$0.isEmpty }.joined(separator: ", "))
         imageURL = item.thumbnail
         loadThumbnail()

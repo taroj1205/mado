@@ -8,7 +8,14 @@ final class ResultRowView: NSTableRowView {
             ? .systemFill : .secondarySystemFill
     }
 
+    private static let checkedAlpha: CGFloat = 0.16
+    static let checkedFill = NSColor.controlAccentColor.withAlphaComponent(checkedAlpha)
+
     var radius = ResultRowView.radius
+
+    var isChecked = false {
+        didSet { needsDisplay = true }
+    }
 
     var trailingInset: CGFloat = 0 {
         didSet {
@@ -34,8 +41,20 @@ final class ResultRowView: NSTableRowView {
         }
     }
 
+    override func drawBackground(in dirtyRect: NSRect) {
+        super.drawBackground(in: dirtyRect)
+        if isChecked {
+            Self.checkedFill.setFill()
+            fillRow()
+        }
+    }
+
     override func drawSelection(in _: NSRect) {
         Self.fill.setFill()
+        fillRow()
+    }
+
+    private func fillRow() {
         let row = NSRect(
             x: 0, y: 0, width: bounds.width - trailingInset,
             height: bounds.height - ResultList.rowGap)

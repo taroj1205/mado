@@ -19,12 +19,15 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public var isDimmed = false
         public var glyph: String?
         public var event: Event?
+        public var widget: WidgetCard?
         public var prefersSelection = false
+        public let isCheckable: Bool
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,
             action: String, icon: NSImage? = nil, file: URL? = nil, thumbnail: URL? = nil,
-            answer: Answer? = nil, tint: NSColor? = nil, shortcut: [String] = []
+            answer: Answer? = nil, tint: NSColor? = nil, shortcut: [String] = [],
+            isCheckable: Bool = false
         ) {
             self.id = id
             self.title = title
@@ -38,26 +41,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             self.answer = answer
             self.tint = tint
             self.shortcut = shortcut
-        }
-    }
-
-    public struct Answer: Sendable, Equatable {
-        public let value: String
-        public let detail: String
-
-        public init(value: String, detail: String) {
-            self.value = value
-            self.detail = detail
-        }
-    }
-
-    public struct Notice: Sendable, Equatable {
-        public let title: String
-        public let detail: String
-
-        public init(title: String, detail: String) {
-            self.title = title
-            self.detail = detail
+            self.isCheckable = isCheckable
         }
     }
 
@@ -83,6 +67,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         var isAnswer: Bool {
             if case .item(let item) = self { item.answer != nil } else { false }
         }
+
+        var isWidget: Bool {
+            if case .item(let item) = self { item.widget != nil } else { false }
+        }
     }
 
     static let rowHeight: CGFloat = 42
@@ -105,6 +93,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             reloading = true
             let shown = rows.count
             rows = Self.rows(for: sections)
+            let pruned = pruneChecks()
             reloadRows(keeping: shown)
             let keptRow = kept.flatMap { id in rows.firstIndex { $0.itemID == id } }
             let preferred = rows.firstIndex(where: \.prefersSelection)
@@ -113,7 +102,9 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             }
             reveal(keptRow ?? preferred ?? 0, context: keptRow == nil ? [0] : [], animated: false)
             reloading = false
+            cursor = (nil, selectedItem?.id)
             onSelect?(selectedItem)
+            if pruned { notifyChecks() }
         }
     }
 
@@ -132,6 +123,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public var onSelect: ((Item?) -> Void)?
     public var onMove: (() -> Void)?
     public var onPick: ((String) -> Void)?
+    public var onCheck: (([String]) -> Void)?
+    var onChecksChanged: (() -> Void)?
 
     public var selectedItem: Item? {
         guard rows.indices.contains(table.selectedRow),
@@ -140,8 +133,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         return item
     }
 
+    public internal(set) var checked: [String] = []
     let table = NSTableView()
     private(set) var rows: [Row] = []
+    var cursor: (previous: String?, current: String?) = (nil, nil)
     private var reloading = false
     private var kept: String?
     var heading: NSPoint?
@@ -189,6 +184,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     @objc
     func rowClicked() {
+        checkClickedRow()
         onMove?()
     }
 
@@ -202,9 +198,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         case .card(let card): DefinitionCell.height(for: card, width: contentSize.width)
         case .colour: Self.colourHeight
         case .header: Self.headerHeight
-        case .item(let item) where item.answer != nil: Self.answerHeight
-        case .item(let item) where item.event != nil: Self.eventHeight
-        case .item: compact ? Self.compactRowHeight : Self.rowHeight
+        case .item(let item): height(of: item)
         }
     }
 
@@ -214,6 +208,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
     public func tableViewSelectionDidChange(_: Notification) {
         guard !reloading else { return }
+        cursor = (cursor.current, selectedItem?.id)
         onSelect?(selectedItem)
     }
 
@@ -222,6 +217,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
         view.radius = radius(ofRow: row)
+        view.isChecked = rows[row].itemID.map(checked.contains) ?? false
         view.trailingInset = rows[row].isAnswer ? 0 : trailingInset
         return view
     }

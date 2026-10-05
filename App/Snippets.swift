@@ -93,6 +93,11 @@ final class Snippets: NSObject, NSWindowDelegate, Module {
         close()
     }
 
+    func openNew(with text: String) {
+        open()
+        editor.beginNew(with: text)
+    }
+
     private func open() {
         target = .frontmost()
         let screen = LauncherScreen.load(from: modules).screen ?? NSScreen.main

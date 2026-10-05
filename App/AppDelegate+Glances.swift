@@ -55,6 +55,7 @@ extension AppDelegate {
             guard let self else { return }
             widgets.page(page, in: launcherView)
         }
+        widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
     }
 

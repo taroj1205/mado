@@ -45,14 +45,14 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
     }
 
     public enum Preset: CaseIterable, Sendable {
-        case off
+        case arrows
         case vim
         case wasd
         case ijkl
 
         public var title: String {
             switch self {
-            case .off: "Arrows only"
+            case .arrows: "Arrows only"
             case .vim: "Vim keys (HJKL)"
             case .wasd: "WASD"
             case .ijkl: "IJKL"
@@ -61,8 +61,8 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
 
         var letters: [Int] {
             switch self {
-            case .off: []
-            case .vim: LoupeKeys().letters
+            case .arrows: Direction.allCases.map(\.arrowKey)
+            case .vim: [kVK_ANSI_K, kVK_ANSI_H, kVK_ANSI_J, kVK_ANSI_L]
             case .wasd: [kVK_ANSI_W, kVK_ANSI_A, kVK_ANSI_S, kVK_ANSI_D]
             case .ijkl: [kVK_ANSI_I, kVK_ANSI_J, kVK_ANSI_K, kVK_ANSI_L]
             }
@@ -70,7 +70,7 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
 
         var hint: String {
             switch self {
-            case .off: "arrow keys"
+            case .arrows: "arrow keys"
             case .vim: "arrows or HJKL"
             case .wasd: "arrows or WASD"
             case .ijkl: "arrows or IJKL"
@@ -85,20 +85,19 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
         kVK_DownArrow: "The arrow keys always work.",
     ]
 
-    public var isEnabled: Bool
     private var top: Int
     private var left: Int
     private var bottom: Int
     private var right: Int
 
     public var preset: Preset? {
-        guard isEnabled else { return .off }
-        return Preset.allCases.first { $0.letters == letters }
+        Preset.allCases.first { $0.letters == letters }
     }
 
     var hint: String {
         if let preset { return preset.hint }
-        return "arrows or " + Direction.allCases.map(label(of:)).joined()
+        let extras = Direction.allCases.filter { self[$0] != $0.arrowKey }
+        return "arrows or " + extras.map(label(of:)).joined()
     }
 
     var letters: [Int] {
@@ -106,17 +105,15 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
     }
 
     public init() {
-        isEnabled = true
-        top = kVK_ANSI_K
-        left = kVK_ANSI_H
-        bottom = kVK_ANSI_J
-        right = kVK_ANSI_L
+        top = kVK_UpArrow
+        left = kVK_LeftArrow
+        bottom = kVK_DownArrow
+        right = kVK_RightArrow
     }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.init()
-        isEnabled = try values.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? isEnabled
         top = try values.decodeIfPresent(Int.self, forKey: .top) ?? top
         left = try values.decodeIfPresent(Int.self, forKey: .left) ?? left
         bottom = try values.decodeIfPresent(Int.self, forKey: .bottom) ?? bottom
@@ -128,14 +125,13 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
     }
 
     public mutating func choose(_ preset: Preset) {
-        isEnabled = preset != .off
         for (direction, key) in zip(Direction.allCases, preset.letters) {
             self[direction] = key
         }
     }
 
     public mutating func assign(_ keyCode: Int, to direction: Direction) -> String? {
-        if let refusal = Self.refusals[keyCode] {
+        if keyCode != direction.arrowKey, let refusal = Self.refusals[keyCode] {
             return refusal
         }
         if let other = Direction.allCases.first(where: { $0 != direction && self[$0] == keyCode }) {
@@ -143,7 +139,6 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
                 + "\(other.title.lowercased())."
         }
         self[direction] = keyCode
-        isEnabled = true
         return nil
     }
 
@@ -154,7 +149,7 @@ public struct LoupeKeys: Codable, Equatable, Sendable {
         default: break
         }
         return Direction.allCases.first { direction in
-            direction.arrowKey == keyCode || (isEnabled && self[direction] == keyCode)
+            direction.arrowKey == keyCode || self[direction] == keyCode
         }?.input
     }
 

@@ -5,6 +5,23 @@ import SearchKit
 
 @MainActor
 final class SettingsFinder {
+    @MainActor
+    struct Location {
+        let place: SettingsSearch.Place
+        let section: String?
+        let key: String?
+
+        init?(id: String) {
+            var fields = id.components(separatedBy: SettingsFinder.separator).makeIterator()
+            guard let page = fields.next(), let tab = fields.next(), let heading = fields.next(),
+                let label = fields.next(), fields.next() == nil
+            else { return nil }
+            place = SettingsSearch.Place(page: page, tab: tab.isEmpty ? nil : tab)
+            section = heading.isEmpty ? nil : heading
+            key = label.isEmpty ? nil : label
+        }
+    }
+
     struct Shown {
         let page: String
         let tab: String
@@ -54,6 +71,10 @@ final class SettingsFinder {
         [page, tab ?? "", section ?? "", key].joined(separator: separator)
     }
 
+    static func placeID(_ place: SettingsSearch.Place) -> String {
+        id(page: place.page, tab: place.tab, section: nil, key: "")
+    }
+
     static func moduleID(page: String, name: String) -> String {
         id(page: page, tab: nil, section: nil, key: name)
     }
@@ -65,6 +86,12 @@ final class SettingsFinder {
     func groups(for query: String) -> [SettingsSearch.Group] {
         indexIfNeeded()
         return history.groups(for: query, in: entries, places: places, at: .now)
+    }
+
+    func ids(for query: String) -> [String] {
+        groups(for: query).flatMap { group in
+            (group.isSelectable ? [Self.placeID(group.place)] : []) + group.suggestions.map(\.entry)
+        }
     }
 
     func keycaps(for entry: String) -> [String] {

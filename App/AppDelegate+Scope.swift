@@ -42,6 +42,12 @@ extension AppDelegate {
             if self?.scope == .clipboard { self?.launcherView.refreshDetail() }
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
+        launcherView.results.onCheck = { [weak self] ids in self?.checked(ids) }
+        launcherView.onEdit = { [weak self] item in self?.edit(item) }
+        launcherView.onSaveSnippet = { [weak self] text in
+            self?.hideLauncher()
+            self?.snippets?.openNew(with: text)
+        }
         textTools.onOpen = { [weak self] in self?.openTextTools() }
         textTools.onRead = { [weak self] in
             if self?.scope == .textTools { self?.searchAgain() }
@@ -71,6 +77,9 @@ extension AppDelegate {
             return history.sections(for: query)
 
         case .root:
+            let cards = widgets.sections(
+                for: query, enabled: modules?.isEnabled(Widgets.moduleID) != false,
+                in: launcherView)
             if let emoji = emojiPicker.query(in: query) {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
@@ -82,7 +91,7 @@ extension AppDelegate {
             }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
-            return await LauncherResult.sections(for: query, in: sources, usage: usage)
+            return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
         }
     }
 
@@ -93,9 +102,15 @@ extension AppDelegate {
         if CalendarAgenda.owns(item.id) {
             return LauncherMenu(keyed: calendarAgenda.actions(for: item.id))
         }
+        if Widgets.owns(item.id) {
+            return LauncherMenu(
+                keyed: [(widgets.action(forCard: item), LauncherView.Action.primaryKeys)])
+        }
         return switch scope {
         case .clipboard:
-            LauncherMenu(keyed: clipboardHistory.actions(for: item.id, pastingInto: pasteTarget))
+            LauncherMenu(
+                keyed: clipboardHistory.actions(
+                    for: item.id, pastingInto: pasteTarget, draft: launcherView.mergeDraft))
 
         case .textTools:
             LauncherMenu(keyed: textTools.actions(for: item.id))
@@ -185,6 +200,18 @@ extension AppDelegate {
             }
         }
         ClipboardModule.commandIDs.forEach(editor.refreshHotKey)
+    }
+
+    private func checked(_ ids: [String]) {
+        let merge =
+            scope == .clipboard ? clipboardHistory.merge(for: ids, pastingInto: pasteTarget) : nil
+        launcherView.showMerge(merge)
+    }
+
+    private func edit(_ item: ResultList.Item) {
+        guard scope == .clipboard else { return }
+        launcherView.showMerge(
+            clipboardHistory.edit(item, pastingInto: pasteTarget), focusing: true)
     }
 
     func openCalculatorHistory() {
