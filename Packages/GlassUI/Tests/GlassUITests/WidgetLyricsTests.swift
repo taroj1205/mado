@@ -38,7 +38,7 @@ import Testing
     }
 
     @Test func aLyricReplacesTheEyebrowAndArtistLinesOnTheTrackTile() throws {
-        view.widgetSizes = ["music": 3]
+        view.widgetSizes = ["music": .init(columns: 3)]
         view.widgets = [song(lyric: nil)]
         view.layoutSubtreeIfNeeded()
         let tile = try #require(view.widgetGrid.tiles.first)

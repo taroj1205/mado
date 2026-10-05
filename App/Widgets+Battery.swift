@@ -6,7 +6,7 @@ extension Widgets {
     static let batteryAction = "Battery Settings"
     private static let macName = "Mac"
     private static let owner = #/^\S+['’]s /#
-    private static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
+    static let timeLeft = Duration.TimeFormatStyle(pattern: .hourMinute)
 
     static func batteries(in stats: SystemStats) -> WidgetGrid.Widget? {
         let mac = stats.battery
@@ -17,7 +17,7 @@ extension Widgets {
                 id: battery, name: name(of: battery), value: percent(mac.level),
                 detail: status(of: mac),
                 action: batteryAction, spoken: "Battery: \(macStatus)",
-                symbol: StatusPills.symbol(for: mac))
+                symbol: StatusPills.symbol(for: mac), facts: batteryFacts(of: mac))
         }
         let spoken = [
             macStatus.map { "\(macName) \($0)" },
@@ -26,7 +26,8 @@ extension Widgets {
         return .init(
             id: battery, name: name(of: battery), meters: batteryMeters(in: stats),
             action: batteryAction,
-            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; "))")
+            spoken: "Battery: \(spoken.compactMap(\.self).joined(separator: "; ")))",
+            facts: mac.map(batteryFacts) ?? [])
     }
 
     static func batteryMeters(in stats: SystemStats) -> [WidgetGrid.Meter] {

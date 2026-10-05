@@ -5,7 +5,6 @@ final class WidgetTile: NSView {
     static let horizontal: CGFloat = 12
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
-    private static let lyricSpan = 3
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
     private static let meterGap: CGFloat = 8
@@ -25,20 +24,12 @@ final class WidgetTile: NSView {
     let meters = NSStackView()
     let track = WidgetTrack()
     let verse = WidgetLyrics()
+    let face = WidgetFace()
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    lazy var trackPlacement = [
-        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
-        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-        track.centerYAnchor.constraint(equalTo: centerYAnchor),
-    ]
-    lazy var versePlacement = [
-        verse.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
-        verse.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-        verse.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
-        verse.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
-    ]
+    private lazy var trackPlacement = trackConstraints()
+    lazy var versePlacement = verseConstraints()
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
@@ -51,18 +42,19 @@ final class WidgetTile: NSView {
     let floating: Bool
     private let looks: (resting: Look, picked: Look)
     private(set) var widgetID = ""
-    private var hasTrack = false
+    private(set) var widget: WidgetGrid.Widget?
+    var form = WidgetForm(size: .zero)
     var dragStart: NSEvent?
-    var resizeStart: CGFloat?
+    var resizeStart: NSPoint?
     var compact = false
     var onPress: (() -> Void)?
     var onOpen: (() -> Void)?
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onSeek: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
-    var onSeek: ((Int) -> Void)?
     var onRemove: (() -> Void)?
     var onResize: ((Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
@@ -89,7 +81,7 @@ final class WidgetTile: NSView {
         didSet { showLifted() }
     }
 
-    var resizable = false {
+    var resizes: Set<Axis> = [] {
         didSet { showEditing() }
     }
 
@@ -106,6 +98,9 @@ final class WidgetTile: NSView {
         wash.frame = bounds
         wash.autoresizingMask = [.width, .height]
         addSubview(wash)
+        face.autoresizingMask = [.width, .height]
+        face.isHidden = true
+        addSubview(face)
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
@@ -137,15 +132,6 @@ final class WidgetTile: NSView {
         nil
     }
 
-    static func tone(
-        _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
-    ) -> NSColor {
-        NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
-        }
-    }
-
     private func paint() {
         let look = selected ? looks.picked : looks.resting
         if editing {
@@ -159,19 +145,19 @@ final class WidgetTile: NSView {
     }
 
     func show(_ widget: WidgetGrid.Widget) {
+        self.widget = widget
+        form = WidgetForm(size: bounds.size)
         widgetID = widget.id
-        hasTrack = widget.track != nil
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
-        case let .track(playing): track.show(playing, fitsLyric: widget.span >= Self.lyricSpan)
+        case let .track(playing): track.show(playing)
         case let .verse(lyrics): verse.show(lyrics)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
-        wash.tint =
-            widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
+        wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
@@ -181,16 +167,29 @@ final class WidgetTile: NSView {
         }
         showMeters(readings)
         showTrack(widget.track != nil)
-        month.isInteractive = onPage != nil && !editing
         showVerse(widget.verse != nil)
+        month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
+        showFace()
     }
 
-    func customActions() -> [NSAccessibilityCustomAction] {
-        if editing { return editingActions() }
-        if !month.isHidden { return month.accessibilityActions() }
-        return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
+    override func layout() {
+        super.layout()
+        let next = WidgetForm(size: bounds.size)
+        if next != form {
+            form = next
+            showFace()
+        }
+    }
+
+    private func showTrack(_ shows: Bool) {
+        track.isHidden = !shows
+        if shows {
+            NSLayoutConstraint.activate(trackPlacement)
+        } else {
+            NSLayoutConstraint.deactivate(trackPlacement)
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -214,10 +213,10 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
-        } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
-            month.press(hit)
         } else if let line = lyricLine(at: event) {
             onSeek?(line)
+        } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
+            month.press(hit)
         } else {
             onPress?()
             openIfAsked(by: event)
@@ -234,7 +233,9 @@ final class WidgetTile: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         if let resizeStart {
-            onResize?(.drag(screenX(of: event) - resizeStart))
+            let point = screenPoint(of: event)
+            onResize?(
+                .drag(CGSize(width: point.x - resizeStart.x, height: resizeStart.y - point.y)))
             return
         }
         guard let start = dragStart, unsafe window != nil else { return }

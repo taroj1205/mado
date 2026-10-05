@@ -102,7 +102,7 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
             tile.trailingAnchor.constraint(equalTo: trailingAnchor),
             tile.heightAnchor.constraint(
                 equalToConstant: WidgetGrid.extent(
-                    of: widget.rows, size: WidgetGrid.rowHeight, gap: WidgetGrid.gap)),
+                    of: widget.size.rows, unit: WidgetGrid.rowHeight, gap: WidgetGrid.gap)),
             labels.topAnchor.constraint(equalTo: tile.bottomAnchor, constant: Self.labelGap),
             labels.leadingAnchor.constraint(equalTo: leadingAnchor),
             labels.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),

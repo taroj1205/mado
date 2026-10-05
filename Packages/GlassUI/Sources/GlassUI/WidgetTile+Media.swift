@@ -1,13 +1,13 @@
 import AppKit
 
 extension WidgetTile {
-    func showTrack(_ shows: Bool) {
-        track.isHidden = !shows
-        if shows {
-            NSLayoutConstraint.activate(trackPlacement)
-        } else {
-            NSLayoutConstraint.deactivate(trackPlacement)
-        }
+    func verseConstraints() -> [NSLayoutConstraint] {
+        [
+            verse.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
+            verse.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            verse.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
+            verse.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
+        ]
     }
 
     func showVerse(_ shows: Bool) {
@@ -16,13 +16,6 @@ extension WidgetTile {
             NSLayoutConstraint.activate(versePlacement)
         } else {
             NSLayoutConstraint.deactivate(versePlacement)
-        }
-    }
-
-    func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
-        NSAccessibilityCustomAction(name: name) { [weak self] in
-            self?.onSkip?(skip)
-            return true
         }
     }
 

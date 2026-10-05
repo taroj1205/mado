@@ -98,8 +98,7 @@ import Testing
         var edges: [CGFloat] = []
         for title in ["Hi", "A Rather Long Song Title That Cannot Possibly Fit In The Tile"] {
             track.show(
-                .init(title: title, artist: "Harbour Lights", artwork: nil, isPlaying: false),
-                fitsLyric: true)
+                .init(title: title, artist: "Harbour Lights", artwork: nil, isPlaying: false))
             host.layoutSubtreeIfNeeded()
             let next = track.convert(track.next.bounds, from: track.next)
             #expect(next.maxX <= host.bounds.maxX)

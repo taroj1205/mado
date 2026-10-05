@@ -28,4 +28,13 @@ extension WidgetTile {
     static let floatingLooks: (resting: Look, picked: Look) = (
         (.clear, .clear), (floatingSelectedFill, selectedEdge)
     )
+
+    static func tone(
+        _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
+    ) -> NSColor {
+        NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
+        }
+    }
 }

@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite struct WidgetResizeTests {
     private static let frame = NSRect(x: 400, y: 200, width: 760, height: 476)
-    private static let step = (760 - 5 * 10) / 6.0 + 10
+    private static let step = CGSize(width: (732 - 5 * 8) / 6.0 + 8, height: 78 + 8)
 
     private let panel = NSPanel(
         contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
@@ -21,7 +21,7 @@ import Testing
         view.layoutSubtreeIfNeeded()
     }
 
-    @Test func draggingTheHandleWidensTheTileInWholeColumnsAndLettingGoSavesIt() throws {
+    @Test func draggingTheHandleResizesTheTileInWholeCellsAndLettingGoSavesIt() throws {
         var edits: [WidgetSettings.Edit] = []
         view.onWidgetEdit = { edits.append($0) }
         view.editWidgets()
@@ -32,37 +32,77 @@ import Testing
         #expect(!tile.resizer.isHidden)
         #expect(
             tile.accessibilityCustomActions()?.map(\.name) == [
-                "Remove", "Add to Selection", "Make Wider", "Make Narrower",
+                "Remove", "Add to Selection", "Make Wider", "Make Narrower", "Make Taller",
+                "Make Shorter",
             ])
         let handle = tile.convert(
             NSPoint(x: tile.resizer.frame.midX, y: tile.resizer.frame.midY), to: nil)
         let narrow = tile.frame.width
         tile.mouseDown(with: try mouse(.leftMouseDown, at: handle))
         tile.mouseDragged(
-            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step * 0.4)))
+            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0.4, 0))))
         #expect(view.widgetGrid.trial.isEmpty)
         tile.mouseDragged(
-            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step * 0.6)))
-        #expect(view.widgetGrid.trial == ["1": 2])
+            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0.6, 0))))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 2)])
         view.layoutSubtreeIfNeeded()
         #expect(view.widgetGrid.tiles[0].frame.width > narrow * 2)
         #expect(edits.isEmpty)
         tile.mouseUp(with: try mouse(.leftMouseUp, at: handle))
-        #expect(edits == [.resize("1", columns: 2)])
+        #expect(edits == [.resize("1", .init(columns: 2))])
         #expect(view.widgetGrid.trial.isEmpty)
-        #expect(view.editBar.hint.stringValue == "Widget 1 resized · 2 of 6 columns")
+        #expect(view.editBar.hint.stringValue == "Widget 1 resized · Medium · 2 × 1")
         #expect(view.selectedWidget == 0)
+    }
+
+    @Test func draggingTheHandleDownMakesTheTileTallerAndTheOthersMakeRoom() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[0]
+        let handle = tile.convert(
+            NSPoint(x: tile.resizer.frame.midX, y: tile.resizer.frame.midY), to: nil)
+        let short = tile.frame.height
+        tile.mouseDown(with: try mouse(.leftMouseDown, at: handle))
+        tile.mouseDragged(
+            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0, -1))))
+        #expect(view.widgetGrid.trial.isEmpty)
+        tile.mouseDragged(
+            with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0.6, 0.6))))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 2, rows: 2)])
+        view.layoutSubtreeIfNeeded()
+        let tall = view.widgetGrid.tiles[0].frame
+        #expect(abs(tall.height - (2 * short + 8)) < 0.01)
+        #expect(view.widgetGrid.tiles[1].frame.minX > tall.maxX)
+        tile.mouseUp(with: try mouse(.leftMouseUp, at: handle))
+        #expect(edits == [.resize("1", .init(columns: 2, rows: 2))])
+        #expect(view.editBar.hint.stringValue == "Widget 1 resized · Large · 2 × 2")
+    }
+
+    @Test func aTallTileDoesNotFitAFullPanelAndTheFullestSizeThatFitsWins() {
+        view.widgets = (1...11).map(numbered)
+        view.editWidgets()
+        view.widgetGrid.stretch("1", by: Self.step.scaled(0, 2))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
+        view.widgetGrid.stretch("1", by: Self.step.scaled(0, 1))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
+        view.widgetGrid.stretch("1", by: Self.step.scaled(2, 2))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
+        view.widgets = (1...12).map(numbered)
+        #expect(view.widgetGrid.fitted("1", adding: (1, 1)) == nil)
     }
 
     @Test func wideningStopsAtTheWidestSizeThatStillFits() {
         view.widgets = (1...11).map(numbered)
         view.editWidgets()
-        view.widgetGrid.stretch("1", by: Self.step * 2)
-        #expect(view.widgetGrid.trial == ["1": 2])
-        view.widgetGrid.stretch("1", by: Self.step * -1)
+        view.widgetGrid.stretch("1", by: Self.step.scaled(2, 0))
+        #expect(view.widgetGrid.trial == ["1": .init(columns: 2)])
+        view.widgetGrid.stretch("1", by: Self.step.scaled(-1, 0))
         #expect(view.widgetGrid.trial.isEmpty)
         view.widgets = (1...12).map(numbered)
-        #expect(view.widgetGrid.fitted("1", adding: 1) == nil)
+        #expect(view.widgetGrid.fitted("1", adding: (1, 0)) == nil)
     }
 
     @Test func commandEqualsAndMinusGrowAndShrinkTheSelectedWidget() throws {
@@ -71,12 +111,26 @@ import Testing
         view.editWidgets()
         view.selectWidget(0)
         #expect(view.performKeyEquivalent(with: try key(kVK_ANSI_Equal, "=", [.command])))
-        #expect(edits == [.resize("1", columns: 2)])
+        #expect(edits == [.resize("1", .init(columns: 2))])
         #expect(view.performKeyEquivalent(with: try key(kVK_ANSI_Minus, "-", [.command])))
         #expect(edits.count == 1)
-        view.widgetSizes = ["1": 3]
+        view.widgetSizes = ["1": .init(columns: 3)]
         #expect(view.performKeyEquivalent(with: try key(kVK_ANSI_Minus, "-", [.command])))
-        #expect(edits.last == .resize("1", columns: 2))
+        #expect(edits.last == .resize("1", .init(columns: 2)))
+    }
+
+    @Test func optionCommandEqualsAndMinusMakeTheSelectedWidgetTallerAndShorter() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.editWidgets()
+        view.selectWidget(0)
+        let grow = try key(kVK_ANSI_Equal, "=", [.command, .option])
+        #expect(view.performKeyEquivalent(with: grow))
+        #expect(edits == [.resize("1", .init(columns: 1, rows: 2))])
+        view.widgetSizes = ["1": .init(columns: 1, rows: 2)]
+        let shrink = try key(kVK_ANSI_Minus, "-", [.command, .option])
+        #expect(view.performKeyEquivalent(with: shrink))
+        #expect(edits.last == .resize("1", .init(columns: 1)))
     }
 
     @Test func commandDraggingACornerResizesWithoutEditModeAndElsewhereItMoves() throws {
@@ -90,10 +144,11 @@ import Testing
             NSPoint(x: tile.bounds.maxX - 4, y: tile.bounds.minY + 4), to: nil)
         tile.mouseDown(with: try mouse(.leftMouseDown, at: corner, [.command]))
         #expect(tile.dragStart == nil)
-        tile.mouseDragged(with: try mouse(.leftMouseDragged, at: moved(corner, by: Self.step)))
-        #expect(view.widgetGrid.trial == ["2": 2])
+        tile.mouseDragged(
+            with: try mouse(.leftMouseDragged, at: moved(corner, by: Self.step.scaled(1, 0))))
+        #expect(view.widgetGrid.trial == ["2": .init(columns: 2)])
         tile.mouseUp(with: try mouse(.leftMouseUp, at: corner))
-        #expect(edits == [.resize("2", columns: 2)])
+        #expect(edits == [.resize("2", .init(columns: 2))])
         #expect(ran.isEmpty)
         let middle = tile.convert(NSPoint(x: tile.bounds.midX, y: tile.bounds.midY), to: nil)
         tile.mouseDown(with: try mouse(.leftMouseDown, at: middle, [.command]))
@@ -107,38 +162,58 @@ import Testing
         #expect(view.selectedWidget != nil)
     }
 
-    @Test func savedSizesStayBetweenTheWidgetsNarrowestAndHalfTheRow() {
+    @Test func savedSizesStayBetweenTheWidgetsSmallestAndTheLargestItsSpotAllows() {
         let track = WidgetGrid.Track(title: "Song", artist: "Band", artwork: nil, isPlaying: true)
         view.widgets =
             [.init(id: "music", name: "Now Playing", track: track, action: "", spoken: "")]
             + (1...3).map(numbered)
-        view.widgetSizes = ["music": 1, "1": 9, "2": 3]
-        #expect(view.widgetGrid.widgets.map(\.span) == [2, 3, 3, 1])
+        view.widgetSizes = [
+            "music": .init(columns: 1), "1": .init(columns: 9, rows: 9), "2": .init(columns: 3),
+            "3": .init(columns: 2, rows: 2),
+        ]
+        view.widgetSpots = ["3": .leftTop]
+        #expect(
+            view.widgetGrid.widgets.map(\.size) == [
+                .init(columns: 2), .init(columns: 3, rows: 2), .init(columns: 3),
+                .init(columns: 2, rows: 2),
+            ])
     }
 
-    @Test func tilesOnASideRailKeepTheirWidth() {
+    @Test func everyTileResizesBothWaysExceptInTheStripWhichOnlyChangesWidth() {
         view.widgetSpots = ["2": .leftTop, "3": .aboveLeft]
-        let resizable = Dictionary(
+        let axes = Dictionary(
             uniqueKeysWithValues: zip(view.widgetGrid.shown.map(\.id), view.widgetGrid.tiles)
-                .map { ($0, $1.resizable) })
-        #expect(resizable["1"] == true)
-        #expect(resizable["3"] == true)
-        #expect(resizable["2"] == false)
+                .map { ($0, $1.resizes) })
+        #expect(axes["1"] == [.horizontal, .vertical])
+        #expect(axes["3"] == [.horizontal, .vertical])
+        #expect(axes["2"] == [.horizontal, .vertical])
+        view.widgetSpots = [:]
+        view.widgetLayout = .strip
+        #expect(view.widgetGrid.tiles.allSatisfy { $0.resizes == [.horizontal] })
+    }
+
+    @Test func aRailTileResizesOnSquareUnitsAndAShelfTileStopsAtTwoRows() {
+        view.widgetSpots = ["1": .leftTop, "2": .aboveLeft]
+        view.editWidgets()
+        #expect(view.widgetGrid.fitted("1", adding: (2, 2)) == .init(columns: 3, rows: 3))
+        #expect(view.widgetGrid.fitted("1", adding: (-1, 1)) == .init(columns: 2, rows: 2))
+        #expect(view.widgetGrid.fitted("1", adding: (-2, 0)) == .init(columns: 2, rows: 1))
+        #expect(view.widgetGrid.fitted("2", adding: (0, 3)) == .init(columns: 1, rows: 2))
     }
 
     @Test func sizesAreSavedForAddedWidgetsAndGoWithARemovedOne() {
         let available = ["clock", "system"]
         var widgets = WidgetSettings()
-        widgets.apply(.resize("clock", columns: 3), from: available)
-        widgets.apply(.resize("weather", columns: 2), from: available)
-        #expect(widgets.sizes(from: available) == ["clock": 3])
+        widgets.apply(.resize("clock", .init(columns: 3, rows: 2)), from: available)
+        widgets.apply(.resize("weather", .init(columns: 2)), from: available)
+        #expect(widgets.sizes(from: available) == ["clock": .init(columns: 3, rows: 2)])
         widgets.apply(.remove("clock"), from: available)
         widgets.apply(.add("clock"), from: available)
         #expect(widgets.sizes(from: available).isEmpty)
     }
 
-    private func moved(_ point: NSPoint, by distance: CGFloat) -> NSPoint {
-        NSPoint(x: point.x + distance, y: point.y)
+    private func moved(_ point: NSPoint, by distance: CGSize) -> NSPoint {
+        NSPoint(x: point.x + distance.width, y: point.y - distance.height)
     }
 
     private func mouse(
@@ -166,5 +241,11 @@ import Testing
         .init(
             id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
             action: "Open \(number)", spoken: "Widget \(number)")
+    }
+}
+
+extension CGSize {
+    func scaled(_ across: CGFloat, _ down: CGFloat) -> CGSize {
+        CGSize(width: width * across, height: height * down)
     }
 }

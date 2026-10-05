@@ -63,6 +63,10 @@ public struct Weather: Decodable, Equatable, Sendable {
         case highs = "temperature_2m_max"
         case lows = "temperature_2m_min"
         case results = "results"
+        case apparent = "apparent_temperature"
+        case humidity = "relative_humidity_2m"
+        case wind = "wind_speed_10m"
+        case rain = "precipitation_probability_max"
     }
 
     private static let forecastAPI = "https://api.open-meteo.com/v1/forecast"
@@ -71,12 +75,17 @@ public struct Weather: Decodable, Equatable, Sendable {
     private static let success = 200
     private static let middle = 0.5
     private static let hour: TimeInterval = 3_600
+    private static let percent = 100.0
 
     public let temperature: Measurement<UnitTemperature>
     public let high: Measurement<UnitTemperature>
     public let low: Measurement<UnitTemperature>
     public let sky: Sky
     public let isDay: Bool
+    public let feelsLike: Measurement<UnitTemperature>?
+    public let humidity: Double?
+    public let wind: Measurement<UnitSpeed>?
+    public let rainChance: Double?
     public let hours: [Hour]
     public let timeZone: TimeZone
 
@@ -106,6 +115,17 @@ public struct Weather: Decodable, Equatable, Sendable {
         low = Measurement(value: lowest, unit: .celsius)
         sky = found
         isDay = try now.decode(Int.self, forKey: .isDay) != 0
+        feelsLike = try now.decodeIfPresent(Double.self, forKey: .apparent).map { degrees in
+            Measurement(value: degrees, unit: .celsius)
+        }
+        humidity = try now.decodeIfPresent(Double.self, forKey: .humidity).map { share in
+            share / Self.percent
+        }
+        wind = try now.decodeIfPresent(Double.self, forKey: .wind).map { speed in
+            Measurement(value: speed, unit: .kilometersPerHour)
+        }
+        let chances = try today.decodeIfPresent([Double?].self, forKey: .rain)
+        rainChance = chances?.first?.map { chance in chance / Self.percent }
         timeZone =
             try root.decodeIfPresent(Int.self, forKey: .offset)
             .flatMap { TimeZone(secondsFromGMT: $0) } ?? .current
@@ -143,8 +163,10 @@ public struct Weather: Decodable, Equatable, Sendable {
             forecastAPI,
             [
                 "latitude": rounded(place.latitude), "longitude": rounded(place.longitude),
-                "current": "temperature_2m,weather_code,is_day",
-                "daily": "temperature_2m_max,temperature_2m_min",
+                "current":
+                    "temperature_2m,weather_code,is_day,apparent_temperature,"
+                    + "relative_humidity_2m,wind_speed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
                 "hourly": "temperature_2m,weather_code,is_day", "timeformat": "unixtime",
                 "timezone": "auto", "forecast_days": "2",
             ])
