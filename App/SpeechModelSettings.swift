@@ -184,6 +184,12 @@ final class SpeechModelSettings: NSObject {
         download.percent?.stringValue = Self.percentText(fraction)
     }
 
+    private func saveModelInUse() {
+        var settings = DictationSettings.load(from: modules)
+        settings.model = store.model(preferring: settings.model)?.id
+        settings.save(to: modules)
+    }
+
     @objc
     private func fetch(_ sender: NSButton) {
         guard let model = model(for: sender), downloads[model.id] == nil else { return }
@@ -192,6 +198,7 @@ final class SpeechModelSettings: NSObject {
                 try await store.download(model) { fraction in
                     Task { @MainActor in self?.show(fraction, for: model.id) }
                 }
+                self?.saveModelInUse()
             } catch  where !Task.isCancelled {
                 self?.logger.error(
                     "Downloading \(model.id, privacy: .public) failed: \(error, privacy: .public)")
@@ -226,11 +233,7 @@ final class SpeechModelSettings: NSObject {
         guard let model = model(for: sender) else { return }
         do {
             try store.delete(model)
-            var settings = DictationSettings.load(from: modules)
-            if settings.model == model.id {
-                settings.model = nil
-                settings.save(to: modules)
-            }
+            saveModelInUse()
         } catch {
             logger.error(
                 "Deleting \(model.id, privacy: .public) failed: \(error, privacy: .public)")

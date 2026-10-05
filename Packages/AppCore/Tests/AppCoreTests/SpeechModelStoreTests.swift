@@ -44,6 +44,10 @@ import Testing
         #expect(try await download(model, from: source()) == [1])
         #expect(store.isInstalled(model))
         #expect(try Data(contentsOf: store.location(of: model)) == contents)
+        let values = try store.location(of: model).resourceValues(forKeys: [
+            .isExcludedFromBackupKey
+        ])
+        #expect(values.isExcludedFromBackup == true)
         try store.delete(model)
         #expect(!store.isInstalled(model))
     }
