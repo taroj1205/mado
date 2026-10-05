@@ -10,7 +10,7 @@ permissions:
 jobs:
   hunt:
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
       - run: |
           sysctl -n hw.ncpu hw.memsize machdep.cpu.brand_string
           defaults read -g AppleShowScrollBars || true
-          for i in $(seq 1 8); do
+          for i in $(seq 1 12); do
             xcodebuild test-without-building -xctestrun build/Build/Products/*.xctestrun \
               -destination 'platform=macOS' -parallel-testing-enabled YES \
               -resultBundlePath "r$i.xcresult" > "r$i.log" 2>&1 && echo "run $i passed" && continue

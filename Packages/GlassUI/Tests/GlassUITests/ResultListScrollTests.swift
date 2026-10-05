@@ -30,7 +30,7 @@ import Testing
         #expect(list.contentView.bounds.minY + ResultList.topInset == top)
     }
 
-    @Test func arrowsGlideTheListWithoutLeavingTheSelectionBehind() {
+    @Test func arrowsGlideTheListWithoutLeavingTheSelectionBehind() async throws {
         let list = shown(manyItems)
         list.reducesMotion = { false }
         let visible = list.table.rows(in: list.contentView.documentVisibleRect).length
@@ -45,9 +45,8 @@ import Testing
         let heading = list.heading
         #expect(heading != nil)
         #expect(list.contentView.bounds.minY < heading?.y ?? 0)
-        let deadline = Date(timeIntervalSinceNow: 10)
-        while list.heading != nil, list.contentView.bounds.origin != heading, Date() < deadline {
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+        for _ in 0..<500 where list.heading != nil && list.contentView.bounds.origin != heading {
+            try await Task.sleep(for: .milliseconds(20))
         }
         #expect(list.contentView.bounds.origin == heading)
         let next = list.table.rect(ofRow: list.table.selectedRow + 1)
