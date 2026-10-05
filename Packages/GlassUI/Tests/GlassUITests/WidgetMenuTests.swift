@@ -92,6 +92,19 @@ import Testing
         #expect(edits == [.moving(["weather"], to: .leftTop, before: nil)])
     }
 
+    @Test(arguments: [20.0, 200.0, 260.0, 330.0, 480.0, 700.0])
+    func theSpotPickerStaysInsideTheLauncherWhereverTheMenuOpens(menuX: Double) throws {
+        let window = try #require(unsafe view.window)
+        let spot = window.convertPoint(toScreen: view.convert(NSPoint(x: menuX, y: 300), to: nil))
+        view.openWidgetMenu(1, at: spot)
+        view.openSpotPicker(for: view.widgetGrid.shown[1])
+        view.layoutSubtreeIfNeeded()
+        let menu = try #require(view.widgetMenu).glass.frame
+        let picker = try #require(view.spotPicker).glass.frame
+        #expect(view.bounds.contains(picker))
+        #expect(!picker.intersects(menu))
+    }
+
     @Test func theKeyboardWalksTheMenuAndEscapeClosesIt() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }

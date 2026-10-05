@@ -68,15 +68,21 @@ extension LauncherView {
     func place(_ picker: WidgetSpotPicker, beside menu: WidgetMenu) {
         layoutSubtreeIfNeeded()
         let gap = WidgetSpotPicker.gap
-        let fitsRight =
-            bounds.width - menu.glass.frame.maxX - Self.capsuleInset
-            >= WidgetSpotPicker.size.width + gap
+        let room = WidgetSpotPicker.size.width + gap + Self.capsuleInset
+        let fitsRight = bounds.width - menu.glass.frame.maxX >= room
+        let fitsLeft = menu.glass.frame.minX >= room
+        let onLeft = !fitsRight && fitsLeft
+        if !fitsRight, !fitsLeft {
+            menu.glass.trailingAnchor.constraint(
+                lessThanOrEqualTo: trailingAnchor, constant: -room
+            ).isActive = true
+        }
         let side =
-            fitsRight
-            ? picker.glass.leadingAnchor.constraint(
-                equalTo: menu.glass.trailingAnchor, constant: gap)
-            : picker.glass.trailingAnchor.constraint(
+            onLeft
+            ? picker.glass.trailingAnchor.constraint(
                 equalTo: menu.glass.leadingAnchor, constant: -gap)
+            : picker.glass.leadingAnchor.constraint(
+                equalTo: menu.glass.trailingAnchor, constant: gap)
         let level = picker.glass.topAnchor.constraint(equalTo: menu.glass.topAnchor)
         level.priority = .defaultHigh
         NSLayoutConstraint.activate([
