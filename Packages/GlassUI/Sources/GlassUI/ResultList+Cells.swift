@@ -1,12 +1,31 @@
 import AppKit
 
 extension ResultList {
+    var answerRow: Int? { rows.firstIndex(where: \.isAnswer) }
+
+    var belowAnswer: CGFloat {
+        (answerRow.map { table.rect(ofRow: $0).maxY } ?? 0) + Self.topInset
+    }
+
     var rowRadius: CGFloat {
         compact ? Self.compactRadius : ResultRowView.radius
     }
 
+    static func rows(for sections: [Section]) -> [Row] {
+        sections.filter { !$0.items.isEmpty || $0.notice != nil }
+            .flatMap { section in
+                let above: [Row?] = [
+                    section.notice.map(Row.notice), section.card.map(Row.card),
+                    section.colour.map(Row.colour),
+                ]
+                let items = section.items.map(Row.item)
+                return above.compactMap(\.self) + (items.isEmpty ? [] : [.header(section.title)])
+                    + items
+            }
+    }
+
     func radius(ofRow row: Int) -> CGFloat {
-        if case .item(let item) = rows[row], item.answer != nil {
+        if rows[row].isAnswer {
             AnswerCell.radius
         } else {
             rowRadius

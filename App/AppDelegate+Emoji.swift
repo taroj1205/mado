@@ -16,7 +16,7 @@ extension AppDelegate {
         emojiPicker.onLoad = { [weak self] in self?.emojiChanged() }
         emojiPicker.onUnload = { [weak self] in self?.emojiChanged() }
         launcherView.emojiGrid.accessory = emojiPicker.toneAccessory
-        launcherView.onGridChange = { [weak self] _ in self?.fitLauncher() }
+        launcherView.onFit = { [weak self] in self?.fitLauncher() }
     }
 
     private func emojiChanged() {

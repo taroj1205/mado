@@ -53,7 +53,7 @@ import Testing
 
     @Test func showsTheGridInPlaceOfTheListAndStartsOnTheFirstMatch() {
         var grids: [Bool] = []
-        view.onGridChange = { grids.append($0) }
+        view.onFit = { grids.append(view.showsGrid) }
         view.capsuleSlots = [.keyed(LauncherView.Action.secondaryKeys), .primary, .actions]
         view.actions = { _ in [.init("Paste", keys: ["↵"]), .init("Copy", keys: ["⌘", "↵"])] }
 

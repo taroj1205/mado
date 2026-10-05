@@ -14,6 +14,7 @@ extension AppDelegate {
             width: Self.launcherWidth,
             height: gridHeight(
                 otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
+                    || launcherView.showsCalendarAnswer
                     ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 

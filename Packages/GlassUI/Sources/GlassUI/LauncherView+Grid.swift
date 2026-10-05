@@ -35,7 +35,7 @@ extension LauncherView {
             emojiGrid.show(sections, keeping: id)
         }
         if changed {
-            onGridChange?(showsGrid)
+            onFit?()
         }
     }
 

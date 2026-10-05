@@ -24,10 +24,10 @@ enum LauncherResult {
     }
 
     private static let openApp = "Open Application"
-    static let answerID = "calculator"
+    private static let answerID = "calculator"
     private static let fileLimit = 20
     private static let searchSymbol = "magnifyingglass"
-    static let answerSymbol = "plus.forwardslash.minus"
+    private static let answerSymbol = "plus.forwardslash.minus"
 
     var id: String {
         switch self {
@@ -249,7 +249,7 @@ enum LauncherResult {
             icon: NSWorkspace.shared.icon(forFile: file.path), file: file.url)
     }
 
-    private static func item(for answer: Calculator.Answer) -> ResultList.Item {
+    static func item(for answer: Calculator.Answer) -> ResultList.Item {
         ResultList.Item(
             id: answerID, title: answer.expression, subtitle: answer.expressionDetail,
             kind: answer.kind, symbol: "", action: "Copy Answer",
