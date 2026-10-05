@@ -70,20 +70,20 @@ import Testing
             (kVK_ANSI_A, nil),
         ]
         for (code, input) in expected {
-            #expect(LoupePanel.input(for: try Self.key(code, in: panel), in: panel) == input)
+            #expect(panel.input(for: try Self.key(code, in: panel)) == input)
         }
     }
 
     @Test func movingReportsTheScreenPointAndReleasingPicks() throws {
         let panel = LoupePanel(frame: CGRect(x: 100, y: 50, width: 400, height: 300))
         let moved = try Self.mouse(.mouseMoved, at: CGPoint(x: 10, y: 20))
-        #expect(LoupePanel.input(for: moved, in: panel) == .moved(CGPoint(x: 110, y: 70)))
+        #expect(panel.input(for: moved) == .moved(CGPoint(x: 110, y: 70)))
         let dragged = try Self.mouse(.leftMouseDragged, at: CGPoint(x: 4, y: 5))
-        #expect(LoupePanel.input(for: dragged, in: panel) == .moved(CGPoint(x: 104, y: 55)))
+        #expect(panel.input(for: dragged) == .moved(CGPoint(x: 104, y: 55)))
         let release = try Self.mouse(.leftMouseUp, at: .zero)
-        #expect(LoupePanel.input(for: release, in: panel) == .picked)
+        #expect(panel.input(for: release) == .picked)
         let press = try Self.mouse(.leftMouseDown, at: .zero)
-        #expect(LoupePanel.input(for: press, in: panel) == nil)
+        #expect(panel.input(for: press) == nil)
     }
 
     @Test func showsTheReadingAroundTheSampledPixel() throws {

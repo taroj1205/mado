@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         modules = makeModules()
+        colourPicker.keys = { [weak self] in ColourPickerSettings.load(from: self?.modules).keys }
         HyperGlyph.isShown = RemapSettings.load(from: modules).showsHyperGlyph
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
