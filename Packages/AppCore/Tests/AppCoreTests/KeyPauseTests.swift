@@ -201,7 +201,8 @@ import Testing
 
     @Test func aContextStartsKeyFeaturesOnlyWhileTheyAreOn() {
         let context = ModuleContext(
-            moduleID: "keyboard", commands: CommandRegistry(), eventTap: EventTap())
+            moduleID: "keyboard", commands: CommandRegistry(), eventTap: EventTap(),
+            listenTap: EventTap(options: .listenOnly))
         var started = 0
         context.keysPaused = true
         context.startKeyFeatures { started += 1 }

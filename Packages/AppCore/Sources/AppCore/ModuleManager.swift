@@ -1,3 +1,4 @@
+import CoreGraphics
 import os
 
 @MainActor
@@ -21,6 +22,7 @@ public final class ModuleManager {
     private let logger = Log.logger("Modules")
     private let store: SettingsStore
     let eventTap = EventTap()
+    let listenTap = EventTap(options: .listenOnly)
     private var settings: Settings
     private var states: States
     private var registered: [Registered] = []
@@ -35,7 +37,9 @@ public final class ModuleManager {
         let loaded = try store.load()
         settings = loaded
         states = try loaded.value(States.self, for: Self.settingsKey) ?? States()
-        eventTap.onUnresponsive = { [weak self] in self?.setKeysPaused(true) }
+        for tap in [eventTap, listenTap] {
+            tap.onUnresponsive = { [weak self] in self?.setKeysPaused(true) }
+        }
     }
 
     public func register(_ module: any Module) throws {
@@ -43,7 +47,8 @@ public final class ModuleManager {
         guard !registered.contains(where: { $0.module.descriptor.id == id }) else {
             throw ModuleError.duplicateModule(id)
         }
-        let context = ModuleContext(moduleID: id, commands: commands, eventTap: eventTap)
+        let context = ModuleContext(
+            moduleID: id, commands: commands, eventTap: eventTap, listenTap: listenTap)
         context.keysPaused = keysPaused
         registered.append(Registered(module: module, context: context, isRunning: false))
     }
@@ -101,6 +106,7 @@ public final class ModuleManager {
         guard paused != keysPaused else { return }
         keysPaused = paused
         eventTap.isPaused = paused
+        listenTap.isPaused = paused
         for index in registered.indices {
             let context = registered[index].context
             let id = registered[index].module.descriptor.id
