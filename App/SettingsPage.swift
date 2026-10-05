@@ -20,6 +20,7 @@ struct SettingsPage {
         let remaps: RemapsSettings
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
+        let speechModels: SpeechModelSettings
     }
 
     struct Tab {
@@ -116,7 +117,9 @@ struct SettingsPage {
                 Tab(title: "Enter Guard") { $0.enterGuard.sections },
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),
-        Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)),
+        Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)) { context in
+            [SettingsSection("Dictation", []), context.speechModels.section]
+        },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),
         Self("Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)),

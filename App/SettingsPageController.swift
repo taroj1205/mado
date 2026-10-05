@@ -12,8 +12,6 @@ final class SettingsPageController: NSViewController {
     private static let rowHeight: CGFloat = 40
     private static let iconMargin: CGFloat = 18
     private static let iconGap: CGFloat = 10
-    private static let rowPadding: CGFloat = 12
-    private static let cornerRadius: CGFloat = 10
     private static let sectionSpacing: CGFloat = 14
     private static let headerSpacing: CGFloat = 6
     private static let leading: CGFloat = 20
@@ -166,33 +164,7 @@ final class SettingsPageController: NSViewController {
     }
 
     private func box(_ sectionRows: [SettingsSection.Row]) -> NSView {
-        let rows = NSStackView()
-        rows.orientation = .vertical
-        rows.spacing = 0
-        rows.translatesAutoresizingMaskIntoConstraints = false
-        for (index, row) in sectionRows.enumerated() {
-            if index > 0 {
-                rows.addArrangedSubview(separator())
-            }
-            rows.addArrangedSubview(rowView(row))
-        }
-        for row in rows.arrangedSubviews {
-            row.widthAnchor.constraint(equalTo: rows.widthAnchor).isActive = true
-        }
-        let box = NSBox()
-        box.boxType = .custom
-        box.titlePosition = .noTitle
-        box.cornerRadius = Self.cornerRadius
-        box.fillColor = .quaternarySystemFill
-        box.borderColor = .separatorColor
-        box.addSubview(rows)
-        NSLayoutConstraint.activate([
-            rows.topAnchor.constraint(equalTo: box.topAnchor),
-            rows.bottomAnchor.constraint(equalTo: box.bottomAnchor),
-            rows.leadingAnchor.constraint(equalTo: box.leadingAnchor),
-            rows.trailingAnchor.constraint(equalTo: box.trailingAnchor),
-        ])
-        return box
+        Self.box(sectionRows.map(rowView))
     }
 
     private func header(_ title: String, note: String?, accessory: NSView?) -> NSView {
@@ -250,14 +222,5 @@ final class SettingsPageController: NSViewController {
         let height = max(Self.rowHeight, (row.icon?.fittingSize.height ?? 0) + Self.iconMargin)
         view.heightAnchor.constraint(equalToConstant: height).isActive = true
         return view
-    }
-
-    private func separator() -> NSView {
-        let line = NSBox()
-        line.boxType = .separator
-        let inset = NSStackView(views: [line])
-        inset.edgeInsets = NSEdgeInsets(
-            top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
-        return inset
     }
 }
