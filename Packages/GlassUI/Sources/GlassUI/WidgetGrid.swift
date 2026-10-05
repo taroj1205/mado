@@ -163,7 +163,12 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    var dragged: String?
+    var dragged: String? {
+        didSet {
+            if dragged != oldValue { update() }
+        }
+    }
+
     var moving: Spot? {
         didSet {
             if moving != oldValue { update() }

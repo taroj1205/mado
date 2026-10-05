@@ -95,10 +95,12 @@ extension WidgetGrid {
             return
         }
         placeRails(beside: window)
+        let placed = placed
         let frames = Self.floatingFrames(of: placed, beside: window.frame)
-        for (float, frame) in zip(floats, frames) {
+        for (float, (frame, item)) in zip(floats, zip(frames, placed)) {
             let margin = editing ? -WidgetFloatFrame.margin : 0
             float.setFrame(frame.insetBy(dx: margin, dy: margin), display: false)
+            float.alphaValue = item.widget.id == dragged ? 0 : 1
             if float.parent !== window {
                 window.addChildWindow(float, ordered: .above)
             }

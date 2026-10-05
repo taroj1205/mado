@@ -174,6 +174,20 @@ import Testing
         #expect(view.widgetGrid.accepts("7", at: .panel, before: nil))
     }
 
+    @Test func aDraggedSideWidgetLeavesOnlyAGhostAtItsSpot() {
+        view.widgetSpots = ["2": .leftTop]
+        start(dragging: 6)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 637)), from: nil) == .move)
+        #expect(view.widgetGrid.floats.map(\.alphaValue) == [0])
+        #expect(view.widgetGrid.tiles[6].lifted)
+        #expect(!view.widgetGrid.tiles[6].slot.isHidden)
+        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .leftTop)
+        view.endWidgetDrag()
+        #expect(view.widgetGrid.floats.map(\.alphaValue) == [1])
+        #expect(view.widgetGrid.tiles[6].slot.isHidden)
+        #expect(view.widgetGrid.rails.board.model.ghost == nil)
+    }
+
     private func start(dragging index: Int) {
         view.widgetGrid.tiles[index].onDragStart?()
     }
