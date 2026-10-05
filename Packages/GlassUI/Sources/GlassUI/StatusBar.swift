@@ -103,6 +103,7 @@ public final class StatusBar: NSScrollView {
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             fit,
         ])
+        registerForDraggedTypes([StatusPill.dragType])
         wantsLayer = true
         edges.startPoint = CGPoint(x: 0, y: Self.middle)
         edges.endPoint = CGPoint(x: 1, y: Self.middle)
@@ -131,6 +132,20 @@ public final class StatusBar: NSScrollView {
             }
         }
         super.scrollWheel(with: event)
+    }
+
+    override public func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        draggingUpdated(sender)
+    }
+
+    override public func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        drag(
+            sender.draggingPasteboard.string(forType: StatusPill.dragType),
+            to: sender.draggingLocation)
+    }
+
+    override public func performDragOperation(_: any NSDraggingInfo) -> Bool {
+        true
     }
 
     func highlight(_ index: Int?) {
@@ -223,9 +238,6 @@ public final class StatusBar: NSScrollView {
             onPress?(index)
         }
         view.onGrab = { [weak self] in self?.grab() }
-        view.onDrag = { [weak self, weak view] point in
-            if let view { self?.drag(view, to: point) }
-        }
         view.onDrop = { [weak self] in self?.drop(pill.id) }
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)

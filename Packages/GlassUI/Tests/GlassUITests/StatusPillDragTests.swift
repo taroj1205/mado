@@ -28,13 +28,13 @@ import Testing
         let thermal = try #require(view.statusBar.views.last)
         let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
         disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
-        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
+        carry(disk, to: past)
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "disk"])
         view.pills = ["disk", "thermal"].map { id in
             .init(id: id, name: id, symbol: "cpu", value: id, action: "Open \(id)")
         }
         #expect(view.statusBar.views.map(\.text) == ["thermal", "disk"])
-        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        release(disk)
         #expect(view.statusBar.pills.map(\.id) == ["thermal", "disk"])
         #expect(saved.count == 1)
         #expect(ran.isEmpty)
@@ -57,21 +57,21 @@ import Testing
     @Test func theSelectedPillKeepsItsHighlightWhileItIsDragged() throws {
         view.selectPill(0)
         let disk = try #require(view.statusBar.views.first)
-        let past = try drag(disk)
+        _ = try drag(disk)
         view.pills = pills(["disk", "thermal"], value: "2")
         let selected = view.statusBar.views.filter(\.selected).map(\.identifier?.rawValue)
         #expect(selected == ["disk"])
-        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        release(disk)
     }
 
     @Test func aPillThatAppearsMidDragKeepsTheReorder() throws {
         var saved: [StatusBarLayout] = []
         view.onStatusLayout = { saved.append($0) }
         let disk = try #require(view.statusBar.views.first)
-        let past = try drag(disk)
+        _ = try drag(disk)
         view.pills = pills(["disk", "thermal", "vpn"], value: "1")
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "disk"])
-        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        release(disk)
         #expect(saved.count == 1)
         #expect(view.statusBar.pills.map(\.id) == ["thermal", "vpn", "disk"])
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "vpn", "disk"])
@@ -86,8 +86,8 @@ import Testing
         disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
         view.pills = pills(["disk", "thermal", "vpn"], value: "1")
         #expect(view.statusBar.views.contains { $0 === disk })
-        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
-        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        carry(disk, to: past)
+        release(disk)
         #expect(saved.count == 1)
         #expect(view.statusBar.pills.map(\.id) == ["thermal", "vpn", "disk"])
     }
@@ -114,13 +114,13 @@ import Testing
         let vpn = try #require(view.statusBar.views.last)
         let end = vpn.convert(NSPoint(x: vpn.bounds.maxX - 1, y: 1), to: nil)
         disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
-        disk.mouseDragged(with: try mouse(.leftMouseDragged, at: end, [.command]))
+        carry(disk, to: end)
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "vpn", "disk"])
         vpn.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: vpn), [.command]))
         let front = try #require(view.statusBar.views.first)
         let start = front.convert(NSPoint(x: 1, y: 1), to: nil)
-        vpn.mouseDragged(with: try mouse(.leftMouseDragged, at: start, [.command]))
-        vpn.mouseUp(with: try mouse(.leftMouseUp, at: start, [.command]))
+        carry(vpn, to: start)
+        release(vpn)
         #expect(saved.count == 1)
         #expect(view.statusBar.pills.map(\.id) == ["vpn", "disk", "thermal"])
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["vpn", "disk", "thermal"])
@@ -137,6 +137,33 @@ import Testing
         #expect(selected == ["disk"])
     }
 
+    @Test func aLiftedPillLeavesADashedSlotWhereItWas() throws {
+        let disk = try #require(view.statusBar.views.first)
+        #expect(disk.slot.isHidden)
+        #expect(disk.glass.alphaValue == 1)
+        disk.lifted = true
+        #expect(!disk.slot.isHidden)
+        #expect(disk.glass.alphaValue == 0)
+        disk.lifted = false
+        #expect(disk.slot.isHidden)
+        #expect(disk.glass.alphaValue == 1)
+    }
+
+    @Test func theCardUnderThePointerIsTheSamePictureTheWidgetsGet() throws {
+        let disk = try #require(view.statusBar.views.first)
+        let card = DragCard.make(of: disk, showing: disk, radius: 12)
+        #expect(card.image?.size == card.frame.size)
+        #expect(card.frame.width > disk.bounds.width)
+        #expect(card.frame.midX == disk.bounds.midX)
+    }
+
+    @Test func aDragThatIsNotAPillIsRefused() {
+        #expect(view.statusBar.drag("disk", to: .zero).isEmpty)
+        #expect(view.statusBar.drag(nil, to: .zero).isEmpty)
+        view.statusBar.grab()
+        #expect(view.statusBar.drag("missing", to: .zero).isEmpty)
+    }
+
     @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
         let disk = try #require(view.statusBar.views.first)
         _ = try drag(disk)
@@ -151,8 +178,16 @@ import Testing
         let thermal = try #require(view.statusBar.views.last)
         let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
         pill.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: pill), [.command]))
-        pill.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
+        carry(pill, to: past)
         return past
+    }
+
+    private func carry(_ pill: StatusPill, to point: NSPoint) {
+        #expect(view.statusBar.drag(pill.identifier?.rawValue, to: point) == .move)
+    }
+
+    private func release(_ pill: StatusPill) {
+        view.statusBar.drop(pill.identifier?.rawValue ?? "")
     }
 
     private func pills(_ ids: [String], value: String) -> [StatusBar.Pill] {
