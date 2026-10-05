@@ -101,9 +101,6 @@ public struct SpeechModel: Equatable, Sendable {
     private static let mediumMemory: Int64 = 2_100_000_000
     private static let largeMemory: Int64 = 3_900_000_000
     private static let turboMemory: Int64 = 1_900_000_000
-    private static let englishNote = "English only."
-    private static let eightBitNote = "Half the size."
-    private static let fiveBitNote = "A third of the size, slightly less accurate."
     private static let prefix = "ggml-"
     private static let suffix = ".bin"
     private static let english = ".en"
@@ -159,15 +156,27 @@ public struct SpeechModel: Equatable, Sendable {
         accuracy =
             fiveBit ? Level(rawValue: family.accuracy.rawValue - 1) ?? .lowest : family.accuracy
         languages = englishOnly ? 1 : family.languages
-        let variant = fiveBit ? Self.fiveBitNote : isCompressed ? Self.eightBitNote : nil
-        summary = [family.summary, englishOnly ? Self.englishNote : nil, variant]
-            .compactMap(\.self).joined(separator: " ")
+        summary = Self.summary(
+            of: family, englishOnly: englishOnly, compressed: isCompressed, fiveBit: fiveBit)
         memory = isCompressed ? nil : family.memory
         name = [
             "Whisper", family.name, englishOnly ? "English" : nil,
             quantization.map { "Q\($0.prefix(1))" },
         ]
         .compactMap(\.self).joined(separator: " ")
+    }
+
+    private static func summary(
+        of family: Family, englishOnly: Bool, compressed: Bool, fiveBit: Bool
+    ) -> String {
+        let label = englishOnly ? "\(family.name) for English only" : family.name
+        if fiveBit {
+            return "\(label), compressed to a third of the size and slightly less accurate."
+        }
+        if compressed {
+            return "\(label), compressed to half the size."
+        }
+        return englishOnly ? "\(label). It can’t transcribe Japanese." : family.summary
     }
 
     private static func catalog() -> [Self] {
@@ -184,5 +193,14 @@ public struct SpeechModel: Equatable, Sendable {
                 "The speech model catalog failed to load: \(error, privacy: .public)")
             return []
         }
+    }
+
+    public func advantage(over other: Self) -> String? {
+        let moreAccurate = accuracy.rawValue > other.accuracy.rawValue
+        let faster = speed.rawValue > other.speed.rawValue
+        if moreAccurate {
+            return faster ? "more accurate and faster" : "more accurate"
+        }
+        return faster && accuracy == other.accuracy ? "as accurate and faster" : nil
     }
 }

@@ -202,7 +202,7 @@ extension SpeechModelSettings {
         return stack
     }
 
-    private func progress(of download: Download, for model: SpeechModel) -> [NSView] {
+    func progress(of download: Download, for model: SpeechModel) -> [NSView] {
         let bar = NSProgressIndicator()
         bar.style = .bar
         bar.controlSize = .small
@@ -213,8 +213,8 @@ extension SpeechModelSettings {
         let percent = Self.text(Self.percentText(download.fraction))
         percent.font = .monospacedDigitSystemFont(ofSize: Self.textSize, weight: .regular)
         percent.alignment = .right
-        download.bar = bar
-        download.percent = percent
+        download.bars.add(bar)
+        download.percents.add(percent)
         let cancel = symbolButton(
             "xmark", size: Self.cancelSize, label: "Cancel download of \(model.name)",
             for: model, #selector(cancel))

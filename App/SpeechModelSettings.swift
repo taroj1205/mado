@@ -7,8 +7,8 @@ final class SpeechModelSettings: NSObject {
     final class Download {
         let task: Task<Void, Never>
         var fraction = 0.0
-        weak var bar: NSProgressIndicator?
-        weak var percent: NSTextField?
+        let bars = NSHashTable<NSProgressIndicator>.weakObjects()
+        let percents = NSHashTable<NSTextField>.weakObjects()
 
         init(task: Task<Void, Never>) {
             self.task = task
@@ -67,8 +67,12 @@ final class SpeechModelSettings: NSObject {
     private func show(_ fraction: Double, for id: String) {
         guard let download = downloads[id], fraction > download.fraction else { return }
         download.fraction = fraction
-        download.bar?.doubleValue = fraction
-        download.percent?.stringValue = Self.percentText(fraction)
+        for bar in download.bars.allObjects {
+            bar.doubleValue = fraction
+        }
+        for percent in download.percents.allObjects {
+            percent.stringValue = Self.percentText(fraction)
+        }
     }
 
     private func saveModelInUse() {

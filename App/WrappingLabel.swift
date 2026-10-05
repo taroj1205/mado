@@ -8,10 +8,10 @@ final class WrappingLabel: NSTextField {
         setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
-    override func layout() {
-        super.layout()
-        guard preferredMaxLayoutWidth != bounds.width else { return }
-        preferredMaxLayoutWidth = bounds.width
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        guard preferredMaxLayoutWidth != newSize.width else { return }
+        preferredMaxLayoutWidth = newSize.width
         invalidateIntrinsicContentSize()
     }
 }

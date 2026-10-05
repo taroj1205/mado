@@ -66,14 +66,13 @@ public struct SpeechModelStore: Sendable {
         let session = URLSession(
             configuration: .ephemeral, delegate: transfer, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
-        let file = try await transfer.start(session.downloadTask(with: url))
+        var file = try await transfer.start(session.downloadTask(with: url))
         defer { try? FileManager.default.removeItem(at: file) }
         guard try await Self.sha256(of: file) == model.sha256 else { throw Failure.corrupt }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        var installed = location(of: model)
-        try FileManager.default.moveItem(at: file, to: installed)
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
-        try installed.setResourceValues(values)
+        try file.setResourceValues(values)
+        try FileManager.default.moveItem(at: file, to: location(of: model))
     }
 }

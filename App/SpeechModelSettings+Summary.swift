@@ -10,6 +10,7 @@ extension SpeechModelSettings {
     private static let cardInset: CGFloat = 14
     private static let cardSpacing: CGFloat = 12
     private static let lineSpacing: CGFloat = 3
+    private static let actionWidth: CGFloat = 200
 
     private static func emptyBody(_ recommended: SpeechModel?) -> String {
         let start = recommended.map { " \($0.name) is the best start for Japanese and English." }
@@ -29,34 +30,38 @@ extension SpeechModelSettings {
         return image
     }
 
-    func summaryCard(inUse: SpeechModel?) -> NSView {
-        let recommended = SpeechModel.all.first(where: \.isRecommended)
+    private static func cardText(
+        inUse: SpeechModel?, recommended: SpeechModel?, advantage: String?
+    ) -> NSView {
         let title = NSTextField(
             labelWithString: inUse.map { "Using \($0.name)" } ?? "No speech model yet")
-        title.font = .systemFont(ofSize: Self.titleSize, weight: .semibold)
+        title.font = .systemFont(ofSize: titleSize, weight: .semibold)
         var lines: [NSView] = [
-            title,
-            Self.body(inUse?.summary ?? Self.emptyBody(recommended), color: .secondaryLabelColor),
+            title, body(inUse?.summary ?? emptyBody(recommended), color: .secondaryLabelColor),
         ]
-        var views: [NSView] = [Self.icon(inUse == nil ? "arrow.down.circle" : "waveform")]
-        if let recommended, inUse != recommended, downloads[recommended.id] == nil {
-            if inUse != nil {
-                lines.append(
-                    Self.body(
-                        "Tip: \(recommended.name) is more accurate, especially in Japanese.",
-                        color: .controlAccentColor))
-            }
-            views.append(cardButton(for: recommended))
+        if let recommended, let advantage {
+            lines.append(
+                body("Tip: \(recommended.name) is \(advantage).", color: .controlAccentColor))
         }
         let text = NSStackView(views: lines)
         text.orientation = .vertical
         text.alignment = .leading
-        text.spacing = Self.lineSpacing
+        text.spacing = lineSpacing
         for line in lines {
             line.widthAnchor.constraint(equalTo: text.widthAnchor).isActive = true
         }
         text.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        views.insert(text, at: 1)
+        return text
+    }
+
+    func summaryCard(inUse: SpeechModel?) -> NSView {
+        let recommended = SpeechModel.all.first(where: \.isRecommended)
+        let advantage = recommended.flatMap { model in inUse.flatMap(model.advantage) }
+        let text = Self.cardText(inUse: inUse, recommended: recommended, advantage: advantage)
+        var views: [NSView] = [Self.icon(inUse == nil ? "arrow.down.circle" : "waveform"), text]
+        if let recommended, inUse == nil || advantage != nil {
+            views.append(cardAction(for: recommended))
+        }
         let stack = NSStackView(views: views)
         stack.spacing = Self.cardSpacing
         stack.alignment = .centerY
@@ -69,6 +74,15 @@ extension SpeechModelSettings {
         )
         .isActive = true
         return SettingsPageController.box([stack])
+    }
+
+    private func cardAction(for model: SpeechModel) -> NSView {
+        let views =
+            downloads[model.id].map { progress(of: $0, for: model) } ?? [cardButton(for: model)]
+        let action = NSStackView()
+        action.setViews(views, in: .trailing)
+        action.widthAnchor.constraint(equalToConstant: Self.actionWidth).isActive = true
+        return action
     }
 
     private func cardButton(for model: SpeechModel) -> NSView {

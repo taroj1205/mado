@@ -100,14 +100,27 @@ import Testing
         #expect(english.isFiveBit)
         #expect(
             english.summary
-                == "Fast. Good for English, weaker in Japanese. English only. "
-                + "A third of the size, slightly less accurate.")
+                == "Small for English only, compressed to a third of the size and slightly less "
+                + "accurate.")
         let turbo = try SpeechModel(file: "ggml-large-v3-turbo-q8_0.bin", size: 1, sha256: "")
         #expect(turbo.name == "Whisper Large v3 Turbo Q8")
         #expect(turbo.accuracy == .highest && turbo.languages == 100 && !turbo.isRecommended)
-        #expect(!turbo.isFiveBit && turbo.summary.hasSuffix("much faster. Half the size."))
+        #expect(!turbo.isFiveBit && turbo.summary == "Large v3 Turbo, compressed to half the size.")
         let full = try SpeechModel(file: "ggml-large-v3-turbo.bin", size: 1, sha256: "")
         #expect(full.memory == 1_900_000_000 && full.speed == .medium)
+        let englishSmall = try SpeechModel(file: "ggml-small.en.bin", size: 1, sha256: "")
+        #expect(englishSmall.summary == "Small for English only. It can’t transcribe Japanese.")
+    }
+
+    @Test func aTipOnlyClaimsWhatTheRatingsShow() throws {
+        let model = { (file: String) in try SpeechModel(file: file, size: 1, sha256: "") }
+        let turbo = try model("ggml-large-v3-turbo.bin")
+        #expect(try turbo.advantage(over: model("ggml-small.bin")) == "more accurate")
+        #expect(try turbo.advantage(over: model("ggml-large-v3.bin")) == "as accurate and faster")
+        #expect(try turbo.advantage(over: model("ggml-medium.bin")) == "more accurate and faster")
+        #expect(try turbo.advantage(over: model("ggml-tiny.bin")) == "more accurate")
+        #expect(turbo.advantage(over: turbo) == nil)
+        #expect(try turbo.advantage(over: model("ggml-large-v3-turbo-q8_0.bin")) == nil)
         #expect(throws: (any Error).self) {
             try SpeechModel(file: "ggml-huge.bin", size: 1, sha256: "")
         }
