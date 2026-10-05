@@ -57,6 +57,8 @@ import Testing
         tile.mouseDown(with: try click(tile, [], count: 2))
         #expect(view.selectedWidget == 1)
         #expect(ran == ["weather"])
+        tile.mouseDown(with: try click(tile, [], count: 3))
+        #expect(ran == ["weather"])
     }
 
     @Test func theSingleClickSettingRunsAWidgetOnTheFirstClick() throws {

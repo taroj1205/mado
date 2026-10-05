@@ -12,11 +12,12 @@ extension WidgetTile {
     private static let dotSize: CGFloat = 8
     private static let dotGap: CGFloat = 7
     private static let half: CGFloat = 0.5
+    private static let doubleClick = 2
 
     func openIfAsked(by event: NSEvent) {
         let point = allow.convert(event.locationInWindow, from: nil)
         let onAllow = !allow.isHiddenOrHasHiddenAncestor && allow.bounds.contains(point)
-        if opensOnSingleClick || event.clickCount > 1 || onAllow {
+        if opensOnSingleClick || event.clickCount == Self.doubleClick || onAllow {
             onOpen?()
         }
     }
