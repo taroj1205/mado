@@ -18,9 +18,6 @@ final class Widgets {
     static let music = "music"
     static let lyrics = "lyrics"
     static let weather = "weather"
-    static let listenSeconds = 2.0
-    static let followSeconds = 0.25
-    static let player = MusicPlayer()
     static let logger = Log.logger("Widgets")
     static let battery = "battery"
     static let gallery: [WidgetGallery.Card] = [
@@ -66,12 +63,21 @@ final class Widgets {
     var searched: [WidgetQuery.Kind] = []
     var delivered: [ResultList.Item] = []
     var onSearchedChange: (() -> Void)?
-    var playing: MusicPlayer.Track?
+    let nowPlaying: NowPlaying
+    private weak var view: LauncherView?
     private var ticking: Task<Void, Never>?
-    var listening: Task<Void, Never>?
-    var following: Task<Void, Never>?
-    var lyricsEnabled = false
-    let lyricsFeed = LyricsFeed()
+
+    var lyricsFeed: LyricsFeed {
+        LyricsFeed(nowPlaying: nowPlaying)
+    }
+
+    var playing: MusicPlayer.Track? {
+        nowPlaying.track
+    }
+
+    init(nowPlaying: NowPlaying) {
+        self.nowPlaying = nowPlaying
+    }
 
     static func added(in modules: ModuleManager?) -> [String] {
         WidgetSettings.load(from: modules).added(from: ids)
@@ -169,6 +175,7 @@ final class Widgets {
 
     func show(in view: LauncherView) {
         stop()
+        self.view = view
         weatherFeed.onChange = { [weak self, weak view] in
             guard let self, let view else { return }
             refresh(view)
@@ -187,7 +194,11 @@ final class Widgets {
                 refresh(view)
             }
         }
-        listen(in: view)
+        nowPlaying.start(.launcher)
+    }
+
+    func refreshWhileShown() {
+        if let view { refresh(view) }
     }
 
     func show(_ ids: [String], in view: LauncherView) {
@@ -202,26 +213,15 @@ final class Widgets {
         refresh(view)
     }
 
-    func control(_ control: MusicPlayer.Control, in view: LauncherView) {
-        Task { [weak self, weak view] in
-            do {
-                let found = try await Self.player.perform(control)
-                guard let self, let view else { return }
-                playing = found
-                refresh(view)
-            } catch {
-                Self.logger.error("Music control failed: \(error, privacy: .private)")
-            }
-        }
+    func control(_ control: MusicPlayer.Control) {
+        Task { [nowPlaying] in await nowPlaying.perform(control) }
     }
 
     func stop() {
         ticking?.cancel()
         ticking = nil
-        listening?.cancel()
-        listening = nil
-        following?.cancel()
-        following = nil
+        nowPlaying.stop(.launcher)
+        view = nil
         calendars.stop()
         weatherFeed.cancel()
         searched = []

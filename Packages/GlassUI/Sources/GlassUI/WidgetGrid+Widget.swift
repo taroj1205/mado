@@ -31,6 +31,10 @@ extension WidgetGrid {
             if case .verse(let lyrics) = content { lyrics } else { nil }
         }
 
+        var isMedia: Bool {
+            track != nil || verse != nil
+        }
+
         var railSize: Size {
             let columns = WidgetGrid.railColumns
             guard let resized else { return Size(columns: columns.widest, rows: size.rows) }

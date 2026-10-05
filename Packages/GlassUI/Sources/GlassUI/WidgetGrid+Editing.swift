@@ -36,6 +36,10 @@ extension WidgetGrid {
         tile.onDrop = { [weak self] id in self?.onDrop?(id) ?? false }
         tile.onDragStart = { [weak self, weak tile] in self?.carry(tile) }
         tile.onDragEnd = { [weak self] in self?.onDragEnd?() }
+        tile.onDragOff = { [weak self, weak tile] point in
+            self?.dragOff(tile?.widgetID, at: point)
+        }
+        tile.onMenu = { [weak self] in self?.onMenu?(index) }
         return tile
     }
 

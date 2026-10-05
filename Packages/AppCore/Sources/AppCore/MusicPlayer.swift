@@ -6,6 +6,11 @@ public actor MusicPlayer {
     typealias Send = @Sendable (NSAppleEventDescriptor, String) throws -> NSAppleEventDescriptor
     typealias Load = @Sendable (URL) async throws -> Data
 
+    public enum Player: String, CaseIterable, Sendable {
+        case music = "apple_music"
+        case spotify = "spotify"
+    }
+
     public struct Track: Equatable, Sendable {
         public let id: String
         public let title: String
@@ -14,6 +19,7 @@ public actor MusicPlayer {
         public var artwork: Data?
         public var album = ""
         public var duration: TimeInterval?
+        public var player = MusicPlayer.Player.music
     }
 
     public enum Control: Sendable {
@@ -44,15 +50,17 @@ public actor MusicPlayer {
 
     struct Source: Equatable, Sendable {
         static let music = Source(
-            bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook")
+            bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook",
+            player: .music)
         static let spotify = Source(
             bundleID: "com.spotify.client", trackID: "ID  ", artwork: .link, suite: "spfy",
-            durationUnit: MusicPlayer.millisecond)
+            player: .spotify, durationUnit: MusicPlayer.millisecond)
 
         let bundleID: String
         let trackID: String
         let artwork: Artwork
         let suite: String
+        let player: MusicPlayer.Player
         var durationUnit = 1.0
     }
 
@@ -180,7 +188,8 @@ public actor MusicPlayer {
             id: id, title: title, artist: artist, isPlaying: state != Self.paused,
             album: (try? string("pAlb", from: app)) ?? "",
             duration: (try? number("pDur", of: Self.currentTrack, from: app))
-                .map { $0 * app.durationUnit })
+                .map { $0 * app.durationUnit },
+            player: app.player)
     }
 
     public func position() -> TimeInterval? {

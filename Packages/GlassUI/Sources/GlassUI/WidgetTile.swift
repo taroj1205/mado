@@ -28,7 +28,7 @@ final class WidgetTile: NSView {
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    private lazy var trackPlacement = trackConstraints()
+    lazy var trackPlacement = trackConstraints()
     lazy var versePlacement = verseConstraints()
     private let box = NSBox()
     let lines = NSStackView()
@@ -39,10 +39,12 @@ final class WidgetTile: NSView {
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let resizer = WidgetResizeHandle()
+    let more = WidgetMoreButton()
+    let hover = WidgetHoverArea()
     let floating: Bool
     private let looks: (resting: Look, picked: Look)
-    private(set) var widgetID = ""
-    private(set) var widget: WidgetGrid.Widget?
+    var widgetID = ""
+    var widget: WidgetGrid.Widget?
     var form = WidgetForm(size: .zero)
     var dragStart: NSEvent?
     var resizeStart: NSPoint?
@@ -61,12 +63,19 @@ final class WidgetTile: NSView {
     var onDrop: ((String?) -> Bool)?
     var onDragStart: (() -> Void)?
     var onDragEnd: (() -> Void)?
+    var onDragOff: ((NSPoint) -> Void)?
+    var onMenu: (() -> Void)?
 
     var selected = false {
         didSet {
             paint()
             showGrip()
+            showMore()
         }
+    }
+
+    var hovered = false {
+        didSet { showMore() }
     }
 
     var editing = false {
@@ -104,6 +113,7 @@ final class WidgetTile: NSView {
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
+        arrangeMenu()
         month.onDay = { [weak self] query in self?.onDay?(query) }
         month.onPage = { [weak self] page in self?.onPage?(page) }
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
@@ -144,51 +154,12 @@ final class WidgetTile: NSView {
         setAccessibilitySelected(selected)
     }
 
-    func show(_ widget: WidgetGrid.Widget) {
-        self.widget = widget
-        form = WidgetForm(size: bounds.size)
-        widgetID = widget.id
-        var readings: [WidgetGrid.Meter] = []
-        var symbol: String?
-        switch widget.content {
-        case let .value(_, _, name, _): symbol = name
-        case let .meters(list): readings = list
-        case let .track(playing): track.show(playing)
-        case let .verse(lyrics): verse.show(lyrics)
-        case .month, .event, .loading, .notice, .permission, .unavailable: break
-        }
-        wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
-        let visible = showLines(of: widget.content)
-        for row in lines.arrangedSubviews {
-            row.isHidden = !visible.contains(row)
-        }
-        icon.image = symbol.flatMap { name in
-            NSImage(systemSymbolName: name, accessibilityDescription: nil)
-        }
-        showMeters(readings)
-        showTrack(widget.track != nil)
-        showVerse(widget.verse != nil)
-        month.isInteractive = onPage != nil && !editing
-        setAccessibilityLabel(widget.spoken)
-        setAccessibilityCustomActions(customActions())
-        showFace()
-    }
-
     override func layout() {
         super.layout()
         let next = WidgetForm(size: bounds.size)
         if next != form {
             form = next
             showFace()
-        }
-    }
-
-    private func showTrack(_ shows: Bool) {
-        track.isHidden = !shows
-        if shows {
-            NSLayoutConstraint.activate(trackPlacement)
-        } else {
-            NSLayoutConstraint.deactivate(trackPlacement)
         }
     }
 
@@ -211,7 +182,9 @@ final class WidgetTile: NSView {
             return
         }
         let point = track.convert(event.locationInWindow, from: nil)
-        if !track.isHidden, let skip = track.skip(at: point) {
+        if !more.isHidden, more.frame.contains(convert(event.locationInWindow, from: nil)) {
+            onMenu?()
+        } else if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
         } else if let line = lyricLine(at: event) {
             onSeek?(line)
@@ -221,6 +194,12 @@ final class WidgetTile: NSView {
             onPress?()
             openIfAsked(by: event)
         }
+    }
+
+    override func rightMouseDown(with _: NSEvent) {
+        guard !editing else { return }
+        onPress?()
+        onMenu?()
     }
 
     override func scrollWheel(with event: NSEvent) {

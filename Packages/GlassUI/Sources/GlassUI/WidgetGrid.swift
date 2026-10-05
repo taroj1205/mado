@@ -160,6 +160,8 @@ public final class WidgetGrid: NSView {
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
     var onDrop: ((String?) -> Bool)?
     var onDragEnd: (() -> Void)?
+    var onMenu: ((Int) -> Void)?
+    var onPinOff: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []
     let dock = DashedOutline(

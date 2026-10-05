@@ -10,17 +10,20 @@ extension LauncherView {
         move.opens = true
         var remove = Action(Self.removeTitle, isDestructive: true)
         remove.group = 1
-        let entries: [(action: Action, run: () -> Void)] = [
-            (
-                Action(widget.action, keys: Action.primaryKeys),
-                { [weak self] in self?.onWidget?(widget) }
-            ),
-            (move, { [weak self] in self?.openSpotPicker(for: widget) }),
-            (Action(Self.editTitle), { [weak self] in self?.editWidgets() }),
-            (remove, { [weak self] in self?.report(.remove(widget.id)) }),
-        ]
-        present(entries.map(\.action), for: widget.name) { index in entries[index].run() }
-        actionPanel?.onOpen = { index in entries[index].run() }
+        let pin = pinAction(for: widget).map { [($0, nil as (() -> Void)?)] } ?? []
+        let entries: [(action: Action, run: (() -> Void)?)] =
+            [
+                (
+                    Action(widget.action, keys: Action.primaryKeys),
+                    { [weak self] in self?.onWidget?(widget) }
+                ),
+                (move, { [weak self] in self?.openSpotPicker(for: widget) }),
+            ] + pin + [
+                (Action(Self.editTitle), { [weak self] in self?.editWidgets() }),
+                (remove, { [weak self] in self?.report(.remove(widget.id)) }),
+            ]
+        present(entries.map(\.action), for: widget.name) { index in entries[index].run?() }
+        actionPanel?.onOpen = { index in entries[index].run?() }
     }
 
     func openSpotPicker(for widget: WidgetGrid.Widget) {

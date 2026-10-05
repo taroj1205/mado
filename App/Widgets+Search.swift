@@ -17,6 +17,7 @@ extension Widgets {
         case .battery: battery
         case .system: system
         case .calendar: calendarWidget
+        case .lyrics: lyrics
         }
     }
 
@@ -61,7 +62,7 @@ extension Widgets {
     }
 
     private func items(among all: [WidgetGrid.Widget]) -> [ResultList.Item] {
-        searched.map { kind in
+        searched.filter { $0 != .lyrics }.map { kind in
             let id = Self.id(of: kind)
             let widget = all.first { $0.id == id }
             let (card, action) = card(for: kind, widget: widget)

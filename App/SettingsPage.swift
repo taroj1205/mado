@@ -20,6 +20,7 @@ struct SettingsPage {
         let remaps: RemapsSettings
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
+        let lyricsChanged: LyricsSettingsEditor.Change
         let speechModels: SpeechModelSettings
         let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
@@ -53,7 +54,10 @@ struct SettingsPage {
                 WeatherSettings.section(context.modules),
             ]
         },
-        Self("Media", "music.note") { [LyricsSettings.section($0.modules)] },
+        Self("Media", "music.note") { context in
+            LyricsSettings.sections(
+                LyricsSettingsEditor(modules: context.modules, changed: context.lyricsChanged))
+        },
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)

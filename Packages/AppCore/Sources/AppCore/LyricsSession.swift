@@ -29,6 +29,10 @@ public final class LyricsSession {
     private var fetching: (id: String, task: Task<Void, Never>)?
     private var tried: (id: String, at: TimeInterval)?
 
+    public var length: TimeInterval? {
+        duration
+    }
+
     public var lyrics: Lyrics? {
         if case .found(let found) = state { found } else { nil }
     }
@@ -63,6 +67,10 @@ public final class LyricsSession {
         let retryable = state == .failed && now - (tried?.at ?? 0) >= Self.retryAfter
         if tried?.id == track.id, !retryable { return }
         fetch(track, at: now)
+    }
+
+    public func position(at now: TimeInterval) -> TimeInterval {
+        clock.position(at: now)
     }
 
     public func moment(at now: TimeInterval) -> Lyrics.Moment? {

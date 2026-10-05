@@ -39,6 +39,8 @@ public final class LauncherView: NSView {
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
     public var onPage: ((WidgetGrid.Page) -> Void)?
     public var onSeek: ((Int) -> Void)?
+    public var onPinLyrics: ((LyricsPin?) -> Void)?
+    public var pinnedLyrics: LyricsPin?
     public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
     public var onUndoWidgetEdit: (() -> Void)?
     public var onEdit: ((ResultList.Item) -> Void)?
@@ -67,6 +69,7 @@ public final class LauncherView: NSView {
     let comparisonPane = ComparisonPane()
     let mergePane = MergePane()
     let calendarPane = CalendarPane()
+    let lyricsPane = LyricsPane()
     let chip = ScopeChip()
     var shownDetail: Detail?
     var fittedForCalendarAnswer = false
@@ -118,7 +121,7 @@ public final class LauncherView: NSView {
         addLayoutGuide(bar)
         for view in [
             icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
-            mergePane, calendarPane, emojiGrid,
+            mergePane, calendarPane, emojiGrid, lyricsPane,
         ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -136,6 +139,7 @@ public final class LauncherView: NSView {
         placeWidgets(below: separator)
         placeDetail(below: separator)
         placeGrid(below: separator)
+        placeLyrics(below: separator)
         placeCapsules()
         placeMerge()
     }
@@ -151,8 +155,9 @@ public final class LauncherView: NSView {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if choosingAction || editingWidgets {
-            return overlayShortcut(event) || super.performKeyEquivalent(with: event)
+        if choosingAction || editingWidgets || showsLyrics {
+            return overlayShortcut(event) || lyricsKeyEquivalent(event)
+                || super.performKeyEquivalent(with: event)
         }
         if handleModifiedKey(event) || holdsForResults(event) { return true }
         guard event.modifierFlags.intersection(Self.modifierKeys) == .command,

@@ -29,6 +29,7 @@ final class WidgetTrack: NSView {
     private static let stackedArt: CGFloat = 64
     private static let shortestLines: CGFloat = 70
     private static let half: CGFloat = 0.5
+    private static let lookupBar = (width: 150.0, height: 8.0)
     static let short = (title: 14.0, artist: 12.0, skip: 11.0, space: 3.0)
     private static let tall = (title: 16.0, artist: 13.0, skip: 15.0, space: 10.0)
 
@@ -37,6 +38,7 @@ final class WidgetTrack: NSView {
     let artist = NSTextField(labelWithString: "")
     let paused = NSTextField(labelWithString: "")
     let lyric = LyricLine()
+    let lookup = WidgetSkeleton(fraction: 1, height: lookupBar.height)
     let equalizer = WidgetEqualizer()
     let disc = WidgetDisc()
     let previous = WidgetTrack.symbol("backward.fill")
@@ -57,7 +59,7 @@ final class WidgetTrack: NSView {
     override var isFlipped: Bool { true }
 
     private var showsLyric: Bool {
-        shown?.lyric != nil && !form.tall && form.reach == .wide
+        (shown?.lyric != nil || shown?.lookingUp == true) && !form.tall && form.reach == .wide
     }
 
     init() {
@@ -77,11 +79,12 @@ final class WidgetTrack: NSView {
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
-        for view in [cover, disc, lyric] {
+        for view in [cover, disc, lyric, lookup] {
             view.translatesAutoresizingMaskIntoConstraints = true
         }
         lyric.isHidden = true
-        [cover, eyebrow, title, artist, lyric, previous, disc, next].forEach(addSubview)
+        lookup.isHidden = true
+        [cover, eyebrow, title, artist, lyric, lookup, previous, disc, next].forEach(addSubview)
         restyle()
     }
 
@@ -164,7 +167,8 @@ final class WidgetTrack: NSView {
         let visible = showsLyric
         eyebrow.isHidden = visible
         artist.isHidden = visible
-        lyric.isHidden = !visible
+        lyric.isHidden = !visible || shown?.lyric == nil
+        lookup.isHidden = !visible || shown?.lookingUp != true
         guard let shown else { return }
         if visible {
             title.attributedStringValue = Self.heading(shown)
@@ -233,6 +237,10 @@ final class WidgetTrack: NSView {
             lyric.frame = NSRect(
                 x: frame.minX, y: frame.minY + titleHeight + Self.lineGap, width: frame.width,
                 height: lyric.intrinsicContentSize.height)
+            lookup.frame = NSRect(
+                x: frame.minX,
+                y: lyric.frame.midY - Self.lookupBar.height * Self.half,
+                width: min(frame.width, Self.lookupBar.width), height: Self.lookupBar.height)
             return
         }
         let eyebrowWidth = min(eyebrow.fittingSize.width, frame.width)

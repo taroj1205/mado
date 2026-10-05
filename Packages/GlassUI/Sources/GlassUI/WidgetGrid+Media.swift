@@ -32,11 +32,14 @@ extension WidgetGrid {
         public let current: Int?
         public let progress: Double
         public let remaining: Double?
+        public let position: TimeInterval?
+        public let duration: TimeInterval?
 
         public init(
             title: String, artist: String, artwork: Data?, isPlaying: Bool, status: LyricsStatus,
             lines: [String] = [], current: Int? = nil, progress: Double = 0,
-            remaining: Double? = nil
+            remaining: Double? = nil, position: TimeInterval? = nil,
+            duration: TimeInterval? = nil
         ) {
             self.title = title
             self.artist = artist
@@ -47,6 +50,8 @@ extension WidgetGrid {
             self.current = current
             self.progress = progress
             self.remaining = remaining
+            self.position = position
+            self.duration = duration
         }
     }
 
@@ -56,15 +61,18 @@ extension WidgetGrid {
         public let artwork: Data?
         public let isPlaying: Bool
         public let lyric: Lyric?
+        public let lookingUp: Bool
 
         public init(
-            title: String, artist: String, artwork: Data?, isPlaying: Bool, lyric: Lyric? = nil
+            title: String, artist: String, artwork: Data?, isPlaying: Bool, lyric: Lyric? = nil,
+            lookingUp: Bool = false
         ) {
             self.title = title
             self.artist = artist
             self.artwork = artwork
             self.isPlaying = isPlaying
             self.lyric = lyric
+            self.lookingUp = lookingUp
         }
     }
 }

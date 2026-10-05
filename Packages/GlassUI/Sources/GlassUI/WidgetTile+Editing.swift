@@ -83,6 +83,7 @@ extension WidgetTile: NSDraggingSource {
             view.isHidden = !editing
         }
         showGrip()
+        showMore()
         month.isInteractive = onPage != nil && !editing
         setAccessibilityCustomActions(customActions())
     }
@@ -144,9 +145,10 @@ extension WidgetTile: NSDraggingSource {
         context == .withinApplication ? .move : []
     }
 
-    func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation: NSDragOperation) {
+    func draggingSession(_: NSDraggingSession, endedAt point: NSPoint, operation: NSDragOperation) {
         if operation.isEmpty {
             onDragEnd?()
+            onDragOff?(point)
         }
     }
 

@@ -18,13 +18,17 @@ final class LyricLine: NSView {
         min(base.attributedStringValue.size().width, bounds.width)
     }
 
-    init() {
+    convenience init() {
+        self.init(size: Self.size, weight: .medium)
+    }
+
+    init(size: CGFloat, weight: NSFont.Weight) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         base.textColor = .secondaryLabelColor
         fill.textColor = .labelColor
         for label in [base, fill] {
-            label.font = .systemFont(ofSize: Self.size, weight: .medium)
+            label.font = .systemFont(ofSize: size, weight: weight)
             label.lineBreakMode = .byTruncatingTail
             label.translatesAutoresizingMaskIntoConstraints = false
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

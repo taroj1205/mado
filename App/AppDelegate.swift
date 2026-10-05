@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launch: OSSignpostIntervalState
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
-    private(set) var settings: SettingsWindowController?
+    var settings: SettingsWindowController?
     private(set) var snippets: Snippets?
     private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
@@ -26,7 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let files = FileIndex()
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
-    let widgets = Widgets()
+    let nowPlaying = NowPlaying()
+    lazy var widgets = Widgets(nowPlaying: nowPlaying)
+    lazy var lyricsStage = LyricsStage(
+        nowPlaying: nowPlaying, modules: { [weak self] in self?.modules },
+        statusItem: { [weak self] in self?.statusItem },
+        restoreIcon: { [weak self] in self?.keysPausedChanged() })
     var widgetUndo: WidgetSnapshot?
     private(set) var usage = Usage()
     private(set) var history = CalculatorHistory()
@@ -37,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let calendarAgenda = CalendarAgenda()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
-    private lazy var hotKeys = LauncherHotKeys(
+    lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
     lazy var editor = ItemEditor(
@@ -68,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
         statusItem = makeStatusItem(settings: #selector(showSettings))
         launcher = makeLauncher()
+        connectLyrics()
         search = makeSearch()
         searchAgain()
         apps.onChange = { [weak self] in self?.searchAgain() }
@@ -261,20 +267,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
         }
-    }
-
-    func settingsWindow() -> SettingsWindowController {
-        if let settings { return settings }
-        let controller = SettingsWindowController(
-            modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-            snippets: snippets, statusItem: statusItem
-        ) { [weak self] in self?.editWidgetsInLauncher() }
-        settings = controller
-        return controller
-    }
-
-    @objc
-    func showSettings() {
-        settingsWindow().showWindow(nil)
     }
 }
