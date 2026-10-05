@@ -2,6 +2,12 @@ import AppKit
 import SearchKit
 
 extension SettingsWindowController: SettingsSidebarDelegate {
+    struct Home {
+        let page: Int
+        let tab: String?
+        let scroll: NSPoint
+    }
+
     func sidebar(picked page: Int) {
         tabs.selectedTabViewItemIndex = page
     }
@@ -13,7 +19,8 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         }
         if home == nil {
             let index = tabs.selectedTabViewItemIndex
-            home = (index, page(at: index)?.tabTitle)
+            let page = page(at: index)
+            home = Home(page: index, tab: page?.tabTitle, scroll: page?.scrollOrigin ?? .zero)
         }
         show(target, matches: matches, dimsOthers: target.entry != nil)
     }
@@ -49,6 +56,15 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         sidebar.focusField()
     }
 
+    func endSearchOnTabPicks() {
+        for index in tabs.tabViewItems.indices {
+            page(at: index)?.onPickTab = { [weak self] in
+                self?.home = nil
+                _ = self?.endSearchIfActive()
+            }
+        }
+    }
+
     private func page(at index: Int) -> SettingsPageController? {
         tabs.tabViewItems[index].viewController as? SettingsPageController
     }
@@ -75,6 +91,8 @@ extension SettingsWindowController: SettingsSidebarDelegate {
         spotlit?.spotlight.focus = nil
         spotlit = nil
         tabs.selectedTabViewItemIndex = home.page
-        page(at: home.page)?.show(tab: home.tab)
+        let page = page(at: home.page)
+        page?.show(tab: home.tab)
+        page?.scrollOrigin = home.scroll
     }
 }

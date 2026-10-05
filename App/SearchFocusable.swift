@@ -14,6 +14,8 @@ extension SettingsButton: SearchFocusable {}
 
 extension HotKeyButton: SearchFocusable {}
 
+extension TriggerButton: SearchFocusable {}
+
 extension NSView {
     func firstVisible<View>(_ type: View.Type) -> View? {
         guard !isHidden else { return nil }

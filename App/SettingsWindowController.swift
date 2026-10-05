@@ -19,7 +19,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     let tabs: NSTabViewController
     let sidebar: SettingsSidebar
-    var home: (page: Int, tab: String?)?
+    var home: Home?
     weak var spotlit: SettingsPageController?
 
     init(
@@ -51,6 +51,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let window = Self.window(showing: Self.split(sidebar, pages))
         super.init(window: window)
         sidebar.delegate = self
+        endSearchOnTabPicks()
         window.delegate = self
         window.onEscape = { [weak self] in self?.endSearchIfActive() ?? false }
         ignoredApps.onChange = { [weak self] in self?.reload() }

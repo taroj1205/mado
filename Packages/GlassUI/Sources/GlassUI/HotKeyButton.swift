@@ -5,7 +5,7 @@ import Carbon.HIToolbox
 public final class HotKeyButton: NSView {
     private static let height: CGFloat = 26
     static let inset: CGFloat = 7
-    private static let radius: CGFloat = 8
+    static let radius: CGFloat = 8
     private static let keyRadius: CGFloat = 5
     private static let keySize: CGFloat = 18
     static let keyGap: CGFloat = 3

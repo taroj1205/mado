@@ -95,9 +95,7 @@ final class SettingsSuggestionCell: NSTableCellView {
         capsBox.isHidden =
             keycaps.isEmpty || titleWidth + capsWidth > width - Self.indent - Self.trailing
         note.isHidden = suggestion.note == nil
-        setAccessibilityLabel(
-            [suggestion.title.string, suggestion.place.page, suggestion.place.tab]
-                .compactMap(\.self).joined(separator: ", "))
+        setAccessibilityLabel(suggestion.spoken)
         render()
     }
 
@@ -121,5 +119,13 @@ final class SettingsSuggestionCell: NSTableCellView {
                 (selected ? NSColor.white : .labelColor)
                 .withAlphaComponent(fill).cgColor
         }
+    }
+}
+
+extension SettingsSearch.Suggestion {
+    var spoken: String {
+        let note = note?.string == place.title ? nil : note?.string
+        return [title.string, note, place.page, place.tab].compactMap(\.self)
+            .joined(separator: ", ")
     }
 }

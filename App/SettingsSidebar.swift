@@ -159,6 +159,7 @@ final class SettingsSidebar: NSViewController {
             table.selectRowIndexes([row], byExtendingSelection: false)
         } else if searching {
             table.deselectAll(nil)
+            delegate?.sidebar(preview: nil, matches: [:])
         }
         reindexing = false
         if !searching {

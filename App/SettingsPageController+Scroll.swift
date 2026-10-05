@@ -5,6 +5,19 @@ extension SettingsPageController {
         override var isFlipped: Bool { true }
     }
 
+    var scrollOrigin: NSPoint {
+        get { stack.enclosingScrollView?.contentView.bounds.origin ?? .zero }
+        set {
+            guard let scroll = stack.enclosingScrollView else { return }
+            scroll.documentView?.layoutSubtreeIfNeeded()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                scroll.contentView.animator().setBoundsOrigin(newValue)
+            }
+            scroll.reflectScrolledClipView(scroll.contentView)
+        }
+    }
+
     static func scrolling(_ stack: NSStackView, insets: NSEdgeInsets) -> NSScrollView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         let document = Document()

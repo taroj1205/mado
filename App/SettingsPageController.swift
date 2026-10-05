@@ -16,7 +16,7 @@ final class SettingsPageController: NSViewController {
 
     private let page: SettingsPage
     private let context: SettingsPage.Context
-    private let stack = NSStackView()
+    let stack = NSStackView()
     private var tab: Int
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
@@ -24,6 +24,7 @@ final class SettingsPageController: NSViewController {
     private var moduleToggle: NSView?
     let spotlight = SettingsSpotlight()
     private(set) var shown: SettingsFinder.Shown?
+    var onPickTab: (() -> Void)?
 
     var tabTitle: String? {
         page.tabs.count > 1 ? page.tabs[tab].title : nil
@@ -158,6 +159,7 @@ final class SettingsPageController: NSViewController {
     @objc
     private func pickTab(_ picker: NSSegmentedControl) {
         tab = picker.selectedSegment
+        onPickTab?()
         reload()
     }
 

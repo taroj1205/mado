@@ -117,14 +117,16 @@ final class SettingsFinder {
             for row in section.rows {
                 let id = Self.id(
                     page: page.title, tab: tabTitle, section: section.title, key: row.key)
-                let hotKey = row.control.firstVisible(HotKeyButton.self)
+                let keycaps =
+                    row.control.firstVisible(HotKeyButton.self)?.keycaps
+                    ?? row.control.firstVisible(TriggerButton.self)?.keycaps
                 entries.append(
                     .init(
                         id: id, place: place, section: section.title, label: row.label,
                         keywords: Self.otherWords[row.label] ?? [],
                         choices: row.control.firstVisible(SettingsPopUp.self)?.choiceTitles ?? [],
-                        isHotkey: hotKey != nil))
-                keys[id] = hotKey?.keycaps
+                        isHotkey: keycaps != nil))
+                keys[id] = keycaps
             }
         }
     }

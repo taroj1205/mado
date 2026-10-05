@@ -81,8 +81,7 @@ extension SettingsSidebar: NSTableViewDataSource, NSTableViewDelegate {
         let spoken: String
         switch rows[row] {
         case .suggestion(let suggestion):
-            spoken = [suggestion.title.string, suggestion.place.page, suggestion.place.tab]
-                .compactMap(\.self).joined(separator: ", ")
+            spoken = suggestion.spoken
 
         case .group(let group):
             spoken = group.title.string

@@ -25,6 +25,14 @@ import Testing
                 isARepeat: false, keyCode: UInt16(keyCode)))
     }
 
+    private func key(_ keyCode: Int) throws -> NSEvent {
+        try #require(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: 0, context: nil, characters: " ", charactersIgnoringModifiers: " ",
+                isARepeat: false, keyCode: UInt16(keyCode)))
+    }
+
     private func escape() throws -> NSEvent {
         try #require(
             NSEvent.keyEvent(
@@ -73,6 +81,24 @@ import Testing
             HotKeyLabel.keycaps(.shortcut(Shortcut(keyCode: 0, modifiers: [.function, .control])))
                 .prefix(2) == ["fn", "⌃"])
         #expect(!button.isRecording)
+    }
+
+    @Test func searchFocusWaitsForSpaceBeforeRecording() throws {
+        var saved: [Shortcut.Modifiers] = []
+        button.onChange = { saved.append($0) }
+        button.takesSearchFocus = true
+        window.makeFirstResponder(button)
+        #expect(!button.isRecording)
+        #expect(button.focusRingMaskBounds == button.bounds)
+
+        button.flagsChanged(with: try flags(kVK_Command, .command))
+        button.flagsChanged(with: try flags(kVK_Command, []))
+        #expect(saved.isEmpty)
+
+        button.keyDown(with: try key(kVK_Space))
+        #expect(button.isRecording)
+        #expect(!button.takesSearchFocus)
+        #expect(button.keycaps == ["fn"])
     }
 
     @Test func escapeCancelsAndKeepsTheTrigger() throws {
