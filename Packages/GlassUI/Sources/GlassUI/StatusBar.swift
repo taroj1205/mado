@@ -48,19 +48,18 @@ public final class StatusBar: NSScrollView {
     var pills: [Pill] = [] {
         didSet {
             guard pills != oldValue else { return }
-            if pills.map(\.id) == oldValue.map(\.id) {
-                for view in views {
-                    if let pill = pills.first(where: { $0.id == view.identifier?.rawValue }) {
-                        show(pill, in: view)
-                    }
-                }
+            if !holdsMouse() {
+                dragStart = []
+            }
+            if dragStart.isEmpty, pills.map(\.id) != oldValue.map(\.id) {
+                rebuild()
                 return
             }
-            stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for (index, pill) in pills.enumerated() {
-                stack.addArrangedSubview(makeView(for: pill, at: index))
+            for view in views {
+                if let pill = pills.first(where: { $0.id == view.identifier?.rawValue }) {
+                    show(pill, in: view)
+                }
             }
-            stack.addArrangedSubview(customise)
         }
     }
 
@@ -70,12 +69,18 @@ public final class StatusBar: NSScrollView {
     let customise = CustomiseButton()
     private let stack = NSStackView()
     private var followsSelection = false
+    private var dragStart: [String] = []
     private var heading: NSPoint?
     private var shadedAt: CGFloat?
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    var holdsMouse = { NSEvent.pressedMouseButtons != 0 }
 
     var views: [StatusPill] {
         stack.arrangedSubviews.compactMap { $0 as? StatusPill }
+    }
+
+    private var shownIDs: [String] {
+        views.compactMap(\.identifier?.rawValue)
     }
 
     init() {
@@ -129,11 +134,13 @@ public final class StatusBar: NSScrollView {
     }
 
     func highlight(_ index: Int?) {
-        for (position, view) in views.enumerated() {
-            if position == index, !view.selected {
+        let id = index.flatMap { pills.indices.contains($0) ? pills[$0].id : nil }
+        for view in views {
+            let selected = id != nil && view.identifier?.rawValue == id
+            if selected, !view.selected {
                 followsSelection = true
             }
-            view.selected = position == index
+            view.selected = selected
         }
         settle()
     }
@@ -220,7 +227,18 @@ public final class StatusBar: NSScrollView {
         return view
     }
 
+    private func rebuild() {
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for (index, pill) in pills.enumerated() {
+            stack.addArrangedSubview(makeView(for: pill, at: index))
+        }
+        stack.addArrangedSubview(customise)
+    }
+
     private func drag(_ pill: StatusPill, to point: NSPoint) {
+        if dragStart.isEmpty {
+            dragStart = shownIDs
+        }
         let along = stack.convert(point, from: nil).x
         let index = views.count { $0 !== pill && $0.frame.midX < along }
         guard views.firstIndex(of: pill) != index else { return }
@@ -230,9 +248,16 @@ public final class StatusBar: NSScrollView {
     }
 
     private func drop(_ id: String) {
-        let order = views.compactMap(\.identifier?.rawValue)
-        guard order != pills.map(\.id), let index = order.firstIndex(of: id) else { return }
-        onMove?(id, order.dropFirst(index + 1).first)
+        let start = dragStart
+        guard !start.isEmpty else { return }
+        dragStart = []
+        let order = shownIDs
+        if order != start, let index = order.firstIndex(of: id) {
+            onMove?(id, order.dropFirst(index + 1).first)
+        }
+        if shownIDs != pills.map(\.id) {
+            rebuild()
+        }
     }
 
     private func show(_ pill: Pill, in view: StatusPill) {

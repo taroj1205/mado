@@ -15,6 +15,7 @@ import Testing
         view.pills = ["disk", "thermal"].map { id in
             .init(id: id, name: id, symbol: "cpu", value: "1", action: "Open \(id)")
         }
+        view.statusBar.holdsMouse = { true }
         view.layoutSubtreeIfNeeded()
     }
 
@@ -51,6 +52,49 @@ import Testing
         disk.mouseUp(with: try mouse(.leftMouseUp, at: point, [.command]))
         #expect(saved.isEmpty)
         #expect(view.selectedPill == nil)
+    }
+
+    @Test func theSelectedPillKeepsItsHighlightWhileItIsDragged() throws {
+        view.selectPill(0)
+        let disk = try #require(view.statusBar.views.first)
+        let past = try drag(disk)
+        view.pills = pills(["disk", "thermal"], value: "2")
+        let selected = view.statusBar.views.filter(\.selected).map(\.identifier?.rawValue)
+        #expect(selected == ["disk"])
+        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+    }
+
+    @Test func aPillThatAppearsMidDragKeepsTheReorder() throws {
+        var saved: [StatusBarLayout] = []
+        view.onStatusLayout = { saved.append($0) }
+        let disk = try #require(view.statusBar.views.first)
+        let past = try drag(disk)
+        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "disk"])
+        disk.mouseUp(with: try mouse(.leftMouseUp, at: past, [.command]))
+        #expect(saved.count == 1)
+        #expect(view.statusBar.pills.map(\.id) == ["thermal", "vpn", "disk"])
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["thermal", "vpn", "disk"])
+    }
+
+    @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
+        let disk = try #require(view.statusBar.views.first)
+        _ = try drag(disk)
+        view.statusBar.holdsMouse = { false }
+        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal", "vpn"])
+    }
+
+    private func drag(_ pill: StatusPill) throws -> NSPoint {
+        let thermal = try #require(view.statusBar.views.last)
+        let past = thermal.convert(NSPoint(x: thermal.bounds.maxX - 1, y: 1), to: nil)
+        pill.mouseDown(with: try mouse(.leftMouseDown, at: past, [.command]))
+        pill.mouseDragged(with: try mouse(.leftMouseDragged, at: past, [.command]))
+        return past
+    }
+
+    private func pills(_ ids: [String], value: String) -> [StatusBar.Pill] {
+        ids.map { id in .init(id: id, name: id, symbol: "cpu", value: value, action: "Open \(id)") }
     }
 
     private func mouse(
