@@ -50,16 +50,15 @@ import Testing
         }
     }
 
-    @Test func arrowsGlideThePillsAndTheFadeFollows() {
+    @Test func arrowsGlideThePillsAndTheFadeFollows() async throws {
         bar.reducesMotion = { false }
         show(12)
         bar.highlight(11)
         #expect(clip.bounds.minX == 0)
         #expect(alphas == [1, 0])
         let end = bar.documentView?.frame.maxX
-        let deadline = Date(timeIntervalSinceNow: 10)
-        while clip.bounds.maxX != end, Date() < deadline {
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+        for _ in 0..<500 where clip.bounds.maxX != end {
+            try await Task.sleep(for: .milliseconds(20))
         }
         #expect(clip.bounds.maxX == end)
         #expect(alphas == [0, 1])
