@@ -40,7 +40,10 @@ extension WidgetGrid {
     }
 
     func limited(_ size: Size, for widget: Widget) -> Size {
-        let side = home(of: widget.id).side
+        limited(size, for: widget, on: home(of: widget.id).side)
+    }
+
+    func limited(_ size: Size, for widget: Widget, on side: Side) -> Size {
         let range = side.isRail ? Self.railColumns : (widget.smallest.columns, Self.widest)
         return Size(
             columns: min(max(size.columns, range.0), range.1),

@@ -82,7 +82,7 @@ extension WidgetGrid {
         let inside = found.allSatisfy { frame in
             side == .above
                 ? frame.maxY <= panel.maxY + shelf + slack
-                : frame.minY >= panel.minY - reach - slack
+                : frame.minY >= panel.minY - shelf - slack
         }
         let apart = found.indices.allSatisfy { index in
             found[(index + 1)...].allSatisfy { other in
@@ -103,7 +103,11 @@ extension WidgetGrid {
     }
 
     func accepts(_ unit: [String], at target: Spot, before other: String?) -> Bool {
-        let movers = members(unit)
+        let movers = members(unit).map { widget in
+            var sized = widget
+            sized.resized = sizes[widget.id].map { limited($0, for: widget, on: target.side) }
+            return sized
+        }
         var all = widgets.filter { !unit.contains($0.id) }
         let taken = target != .panel && all.contains { spot(of: $0) == target }
         let tallInStrip =

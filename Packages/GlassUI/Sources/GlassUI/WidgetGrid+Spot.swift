@@ -273,7 +273,9 @@ extension WidgetGrid {
         }
         let rows =
             tileLayout == .strip
-            ? Self.cells(of: panelWidgets, in: .strip).count { $0.row == 0 } : nil
+            ? Self.cells(spanning: panelPlacements(of: panelWidgets)).firstIndex { $0.row > 0 }
+                ?? panelWidgets.count
+            : nil
         let around = Set(arranged.map(spot)).filter { $0.side != .panel }.sorted().flatMap { spot in
             arranged.filter { self.spot(of: $0) == spot }
         }

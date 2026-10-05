@@ -171,6 +171,29 @@ import Testing
         #expect(!view.widgetGrid.accepts("7", at: .beside(.left, row: 0), before: nil))
     }
 
+    @Test func aBelowTileMayUseAnyRowOfTheShelfAndATwoRowTileMayStartOnTheSecond() {
+        view.widgetSizes = ["2": .init(columns: 1, rows: 2)]
+        let grid = view.widgetGrid
+        #expect(grid.accepts("1", at: .below(column: 0, row: 2), before: nil))
+        #expect(grid.accepts("1", at: .below(column: 0, row: 1), before: nil))
+        #expect(grid.accepts("2", at: .below(column: 0, row: 1), before: nil))
+    }
+
+    @Test func theStripKeepsOnlyTheTilesThatStayOnItsRowOnceThePinsAreApplied() {
+        view.widgetSizes = ["1": .wide, "2": .wide, "3": .wide]
+        view.widgetSpots = ["1": .cell(column: 1, row: 0)]
+        view.widgetLayout = .strip
+        #expect(view.widgetGrid.inPanel.map(\.id) == ["1", "2"])
+        #expect(view.widgetGrid.panelCells.allSatisfy { $0.row == 0 })
+    }
+
+    @Test func aTileIsValidatedAgainstTheLimitsOfTheSideItMovesTo() {
+        view.widgetSpots = ["1": .leftTop]
+        view.widgetSizes = ["1": .init(columns: 2, rows: 3)]
+        #expect(view.widgetGrid.accepts("1", at: .cell(column: 0, row: 0), before: nil))
+        #expect(view.widgetGrid.accepts("1", at: .belowLeft, before: nil))
+    }
+
     private func numbered(_ number: Int) -> WidgetGrid.Widget {
         .init(
             id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
