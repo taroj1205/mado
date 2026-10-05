@@ -79,12 +79,25 @@ public struct Agenda: Sendable, Equatable {
         return others > 0 ? "\(shown) +\(others)" : shown
     }
 
-    public func days(at now: Date, calendar: Calendar) -> [Day] {
-        let today = calendar.startOfDay(for: now)
-        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+    private static func style(_ base: Date.FormatStyle, in calendar: Calendar) -> Date.FormatStyle {
+        var style = base
         style.calendar = calendar
         style.timeZone = calendar.timeZone
-        let date = today.formatted(style)
+        return style
+    }
+
+    public static func time(of event: Event, at now: Date, calendar: Calendar) -> String {
+        guard !event.isAllDay else { return "All day" }
+        let base: Date.FormatStyle =
+            event.start < calendar.startOfDay(for: now)
+            ? .dateTime.weekday(.abbreviated) : .init(date: .omitted, time: .shortened)
+        return event.start.formatted(style(base, in: calendar))
+    }
+
+    public func days(at now: Date, calendar: Calendar) -> [Day] {
+        let today = calendar.startOfDay(for: now)
+        let date = today.formatted(
+            Self.style(.dateTime.weekday(.abbreviated).day().month(.abbreviated), in: calendar))
         return zip(0..<Self.dayCount, ["Today · \(date)", "Tomorrow"]).compactMap { offset, title in
             guard let start = calendar.date(byAdding: .day, value: offset, to: today),
                 let end = calendar.date(byAdding: .day, value: 1, to: start)

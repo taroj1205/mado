@@ -52,6 +52,27 @@ import Testing
         #expect(span == DateInterval(start: today, duration: 48 * Self.hour))
     }
 
+    @Test func eventsCarriedOverFromAnEarlierDayShowTheDayTheyStarted() {
+        var weekday = Date.FormatStyle.dateTime.weekday(.abbreviated)
+        weekday.timeZone = calendar.timeZone
+        var clock = Date.FormatStyle(date: .omitted, time: .shortened)
+        clock.timeZone = calendar.timeZone
+        let lastNight = event("last-night", at: -1, hours: 3)
+        let review = event("review", at: 14.5)
+        let tonight = event("tonight", at: 23)
+        let holiday = event("holiday", at: -24, hours: 72, allDay: true)
+
+        #expect(
+            Agenda.time(of: lastNight, at: now, calendar: calendar)
+                == lastNight.start.formatted(weekday))
+        #expect(
+            Agenda.time(of: review, at: now, calendar: calendar) == review.start.formatted(clock))
+        #expect(
+            Agenda.time(of: tonight, at: now, calendar: calendar) == tonight.start.formatted(clock))
+        #expect(Agenda.time(of: holiday, at: now, calendar: calendar) == "All day")
+        #expect(lastNight.start.formatted(weekday) != now.formatted(weekday))
+    }
+
     @Test func theNextEventCountsDownAndNamesWhoIsComing() {
         let zoom = meeting("https://zoom.us/j/1")
         let standUp = event(

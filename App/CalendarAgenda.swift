@@ -86,16 +86,16 @@ final class CalendarAgenda {
     }
 
     private static func item(
-        id: String, for event: Agenda.Event, detail: String, colour: NSColor?, joins: Bool
+        id: String, for found: Found, time: String, detail: String, joins: Bool
     ) -> ResultList.Item {
+        let event = found.event
         var item = ResultList.Item(
             id: id, title: event.title, subtitle: detail, kind: "", symbol: "",
             action: event.meeting == nil ? openTitle : joinTitle,
             shortcut: joins ? joinKeys : [])
         item.event = ResultList.Event(
-            time: event.isAllDay
-                ? "All day" : event.start.formatted(date: .omitted, time: .shortened),
-            colour: colour ?? .controlAccentColor, hasMeeting: event.meeting != nil)
+            time: time, colour: found.colour ?? .controlAccentColor,
+            hasMeeting: event.meeting != nil)
         return item
     }
 
@@ -125,7 +125,6 @@ final class CalendarAgenda {
     }
 
     func sections(at now: Date) async -> [ResultList.Section] {
-        shown = [:]
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
             let request = ResultList.Item(
                 id: Self.allowID, title: "Allow Calendar Access",
@@ -136,6 +135,7 @@ final class CalendarAgenda {
         let calendar = Calendar.current
         guard let span = Agenda.span(around: now, calendar: calendar) else { return [] }
         let fetched = await events.found(in: span)
+        guard !Task.isCancelled else { return [] }
         let found = Dictionary(uniqueKeysWithValues: fetched.map { ($0.event.id, $0) })
         let agenda = Agenda(events: found.values.map(\.event))
         let days = agenda.days(at: now, calendar: calendar)
@@ -146,15 +146,16 @@ final class CalendarAgenda {
         }
         let next = agenda.next(at: now)
         let meeting = agenda.nextMeeting(at: now)
+        var listed: [String: Found] = [:]
         var preferred = false
-        return days.enumerated().map { index, day in
+        let sections = days.enumerated().map { index, day in
             let items = day.events.compactMap { event -> ResultList.Item? in
                 guard let source = found[event.id] else { return nil }
                 let id = "\(Self.prefix)\(index).\(event.id)"
-                shown[id] = source
+                listed[id] = source
                 var row = Self.item(
-                    id: id, for: event, detail: agenda.detail(of: event, at: now),
-                    colour: source.colour, joins: event == meeting)
+                    id: id, for: source, time: Agenda.time(of: event, at: now, calendar: calendar),
+                    detail: agenda.detail(of: event, at: now), joins: event == meeting)
                 row.isDimmed = event.hasEnded(at: now)
                 row.prefersSelection = !preferred && event == next
                 preferred = preferred || row.prefersSelection
@@ -162,6 +163,8 @@ final class CalendarAgenda {
             }
             return ResultList.Section(title: day.title, items: items)
         }
+        shown = listed
+        return sections
     }
 
     func actions(for id: String) -> [(action: CommandAction, keys: [String])] {
