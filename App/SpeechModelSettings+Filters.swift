@@ -116,17 +116,25 @@ extension SpeechModelSettings {
         _ title: String, _ key: WritableKeyPath<SpeechModelFilter, Value>,
         titled: (Value) -> String, to menu: NSMenu
     ) {
-        menu.addItem(.sectionHeader(title: title))
+        let current = filter[keyPath: key]
+        let isDefault = current == Value.allCases.first
+        let parent = NSMenuItem(
+            title: isDefault ? title : "\(title): \(titled(current))", action: nil,
+            keyEquivalent: "")
+        parent.state = isDefault ? .off : .on
+        let submenu = NSMenu()
         for value in Value.allCases {
             var picked = filter
             picked[keyPath: key] = value
             let item = NSMenuItem(
                 title: titled(value), action: #selector(pickFilter), keyEquivalent: "")
             item.target = self
-            item.state = filter[keyPath: key] == value ? .on : .off
+            item.state = current == value ? .on : .off
             item.representedObject = picked
-            menu.addItem(item)
+            submenu.addItem(item)
         }
+        parent.submenu = submenu
+        menu.addItem(parent)
     }
 
     @objc
