@@ -68,7 +68,7 @@ extension Widgets {
                         detail: detail, colour: colour)),
                 action: event.meeting == nil
                     ? CalendarAgenda.openTitle : CalendarAgenda.joinTitle,
-                spoken: "\(name): \(event.title), \(hours), \(countdown)", isWide: true)
+                spoken: "\(name): \(event.title), \(detail), \(countdown)", isWide: true)
 
         case .tomorrow(let event):
             let detail =
