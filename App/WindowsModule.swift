@@ -19,6 +19,7 @@ struct WindowsModule: Module {
     let switcherSettings: @MainActor () -> SwitcherSettings
     let radialRing = OverlayPanel()
     let radialPreview = SnapPreview()
+    let radialLabel = RadialLabel()
 
     func start(context: ModuleContext) {
         registerLayouts(context: context)
@@ -51,7 +52,7 @@ struct WindowsModule: Module {
     private func startRadialMenu(trigger: Shortcut.Modifiers, context: ModuleContext) {
         let radialMenu = RadialMenu(
             logger: context.logger, panel: radialRing, preview: radialPreview,
-            settings: radialSettings
+            label: radialLabel, settings: radialSettings
         ) { layoutSettings().gap }
         context.own(.other, "radial menu") { radialMenu.stop() }
         context.installWhenTrusted("radial trigger") {
