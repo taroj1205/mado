@@ -36,7 +36,6 @@ extension ClipboardStore.Entry {
         }
     }
 
-    private static let titleLimit = 200
     private static let quickCount = 100_000
     private static let counting = "…"
     private static let hexDigits = 6
@@ -46,21 +45,7 @@ extension ClipboardStore.Entry {
     private static let greenShift = 8
 
     public var title: String {
-        switch kind {
-        case .image:
-            return kind.title
-
-        case .file:
-            return files.map(\.lastPathComponent).joined(separator: ", ")
-
-        case .text, .richText, .url, .color:
-            var line = ""
-            text.enumerateLines { candidate, stop in
-                line = candidate.trimmingCharacters(in: .whitespaces)
-                stop = !line.isEmpty
-            }
-            return String(line.prefix(Self.titleLimit))
-        }
+        Clip.title(kind, text: text, files: files)
     }
 
     public var preview: String {
@@ -197,33 +182,7 @@ extension ClipboardStore.Entry {
 
     @MainActor
     func pasteboardItems(data: Data?) throws -> [NSPasteboardItem] {
-        let items: [NSPasteboardItem]
-        switch kind {
-        case .file:
-            items = files.map { file in
-                let item = NSPasteboardItem()
-                item.setString(file.absoluteString, forType: .fileURL)
-                return item
-            }
-
-        case .image:
-            guard let image, let type else { throw PasteTarget.Failure.notWritten }
-            let item = NSPasteboardItem()
-            item.setData(try Data(contentsOf: image), forType: .init(type))
-            items = [item]
-
-        case .text, .richText, .url, .color:
-            let item = NSPasteboardItem()
-            item.setString(text, forType: .string)
-            if kind == .url {
-                item.setString(text, forType: .URL)
-            }
-            if let type, let data {
-                item.setData(data, forType: .init(type))
-            }
-            items = [item]
-        }
-        items.first?.setData(Data(), forType: PasteboardWatch.transientType)
-        return items
+        let content = kind == .image ? try image.map { try Data(contentsOf: $0) } : data
+        return try Clip.pasteboardItems(kind, text: text, type: type, data: content, files: files)
     }
 }

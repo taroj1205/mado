@@ -12,11 +12,6 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
     private lazy var panel = makePanel()
     private var finish: ((Result<[String: String], CancellationError>) -> Void)?
 
-    private static func appKitRect(_ quartz: CGRect) -> NSRect {
-        let primary = NSScreen.screens.first?.frame ?? .zero
-        return ScreenGeometry.appKitRect(fromQuartz: quartz, primary: primary)
-    }
-
     func ask(
         _ snippet: Snippet, _ template: SnippetTemplate, values: SnippetTemplate.Values,
         under caret: CGRect?
@@ -51,11 +46,7 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         form.show(
             name: snippet.name, keyword: snippet.keyword,
             fields: template.fields.map { FillInForm.Field(name: $0.name, options: $0.options) })
-        let anchor =
-            caret.map(Self.appKitRect) ?? NSRect(origin: NSEvent.mouseLocation, size: .zero)
-        let screen =
-            NSScreen.screens.first { $0.frame.intersects(anchor.insetBy(dx: -1, dy: -1)) }
-            ?? NSScreen.main
+        let (anchor, screen) = CaretAnchor.find(caret)
         form.maxHeight = screen?.visibleFrame.height
         panel.setFrame(
             ScreenGeometry.frame(
