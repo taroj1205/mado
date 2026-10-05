@@ -14,6 +14,7 @@ final class ColourPicker {
     static let commandID = "system.pick-colour"
     private static let byte: CGFloat = 255
 
+    var keys: () -> LoupeKeys = { LoupeKeys() }
     private let loupe = ColourLoupe()
     private var pixels = PixelLoupe(snapshots: [])
     private var capturing = false
@@ -61,6 +62,7 @@ final class ColourPicker {
         pixels.move(to: NSEvent.mouseLocation)
         guard pixels.sample != nil else { throw Failure.nothingCaptured }
         previous = NSWorkspace.shared.frontmostApplication
+        loupe.keys = keys()
         NSApp.activate()
         NSCursor.hide()
         loupe.show(on: screens)

@@ -25,7 +25,7 @@ extension ResultList {
     }
 
     func radius(ofRow row: Int) -> CGFloat {
-        if rows[row].isAnswer {
+        if rows[row].isAnswer || rows[row].isWidget {
             AnswerCell.radius
         } else {
             rowRadius
@@ -55,7 +55,21 @@ extension ResultList {
         if checked.isEmpty { .off } else if checked.contains(item.id) { .checked } else { .empty }
     }
 
+    func height(of item: Item) -> CGFloat {
+        if let widget = item.widget { return WidgetCell.height(for: widget) }
+        if item.answer != nil { return Self.answerHeight }
+        if item.event != nil { return Self.eventHeight }
+        return compact ? Self.compactRowHeight : Self.rowHeight
+    }
+
     func cell(for item: Item, in tableView: NSTableView) -> NSView {
+        if let widget = item.widget {
+            let cell =
+                tableView.makeView(withIdentifier: WidgetCell.id, owner: nil)
+                as? WidgetCell ?? WidgetCell()
+            cell.show(widget)
+            return cell
+        }
         if item.answer != nil {
             let cell =
                 tableView.makeView(withIdentifier: AnswerCell.id, owner: nil)

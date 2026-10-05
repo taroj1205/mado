@@ -21,6 +21,7 @@ struct SettingsPage {
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
         let speechModels: SpeechModelSettings
+        let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
     }
 
@@ -103,7 +104,9 @@ struct SettingsPage {
         },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self("Notes", "note.text", module: module("notes", "Notes & calendar", enabled: true)),
-        Self("Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)),
+        Self(
+            "Utilities", "bolt", module: module("utilities", "Utilities", enabled: true)
+        ) { context in context.colourKeys.sections },
         Self("Extensions", "storefront"),
         Self("Shortcuts", "command"),
         Self("Permissions", "lock.shield"),

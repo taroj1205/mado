@@ -77,6 +77,9 @@ extension AppDelegate {
             return history.sections(for: query)
 
         case .root:
+            let cards = widgets.sections(
+                for: query, enabled: modules?.isEnabled(Widgets.moduleID) != false,
+                in: launcherView)
             if let emoji = emojiPicker.query(in: query) {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
@@ -88,7 +91,7 @@ extension AppDelegate {
             }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
-            return await LauncherResult.sections(for: query, in: sources, usage: usage)
+            return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
         }
     }
 
@@ -98,6 +101,10 @@ extension AppDelegate {
         }
         if CalendarAgenda.owns(item.id) {
             return LauncherMenu(keyed: calendarAgenda.actions(for: item.id))
+        }
+        if Widgets.owns(item.id) {
+            return LauncherMenu(
+                keyed: [(widgets.action(forCard: item), LauncherView.Action.primaryKeys)])
         }
         return switch scope {
         case .clipboard:

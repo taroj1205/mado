@@ -80,6 +80,9 @@ import Testing
         ("90m - 2h", "−30 min", "-0.5 hours · -30 minutes"),
         ("2h30m + 1d", "1 d 2 h 30 min", "26.5 hours · 1,590 minutes"),
         ("1.5h + 30m", "2 h", "2 hours · 120 minutes"),
+        ("10h / 2", "5 h", "5 hours · 300 minutes"),
+        ("1h 30m ÷ 3", "30 min", "0.5 hours · 30 minutes"),
+        ("2 weeks / 4", "3 d 12 h", "84 hours · 5,040 minutes"),
     ])
     func durationsAddUp(query: String, result: String, detail: String) throws {
         let answer = Calculator.answer(for: query, now: try Self.date(Self.today))
@@ -135,7 +138,12 @@ import Testing
         "days until 1 jan 2020", "days until 32 dec", "days until 25 de",
         "9am + 1" + String(repeating: "0", count: 400) + "d",
         "in 99999999999999999999 days", "9am + 9223372036854775807s",
-        "1s - 9223372036854775808s",
+        "1s - 9223372036854775808s", "days since 1 jan 2030", "days between 1 jan and",
+        "salt and pepper", "foo - 2 days", "1 jan + 2h", "1 jan 2027 + 30", "mon - 2 days",
+        "in 999999 years", "1 jan 2027 + 999999 years", "days between 30 feb and 1 mar",
+        "1h / 0", "business days", "business days until 1 jan 2020", "days in mars",
+        "days in a week", "days in", "is a leap year", "10 business days", "0.5 business days ago",
+        "10 business days from 30 feb",
     ])
     func invalidTimesHaveNoAnswer(query: String) throws {
         #expect(Calculator.answer(for: query, now: try Self.date(Self.today)) == nil)

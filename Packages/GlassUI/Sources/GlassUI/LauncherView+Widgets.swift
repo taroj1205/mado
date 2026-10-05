@@ -102,6 +102,7 @@ extension LauncherView {
 
     func skipTrack(_ index: Int, _ skip: WidgetGrid.Skip) {
         selectWidget(index)
+        widgetGrid.tiles[index].track.pulse(skip)
         onSkip?(skip)
     }
 
