@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 enum DragCard {
     private static let edge: CGFloat = 1.5
     private static let alpha: CGFloat = 0.92

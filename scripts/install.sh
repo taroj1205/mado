@@ -8,7 +8,7 @@ if [ -z "${MADO_BUILD_LOCKED:-}" ]; then
 fi
 app=/Applications/Mado.app
 xcodegen generate --quiet
-xcodebuild build -project Mado.xcodeproj -scheme Mado -configuration Release -destination generic/platform=macOS -derivedDataPath build -quiet
+xcodebuild build -project Mado.xcodeproj -scheme Mado -configuration Release -destination generic/platform=macOS -derivedDataPath build ARCHS="$(uname -m)" LM_SKIP_METADATA_EXTRACTION=YES -quiet
 pkill -x Mado || true
 while pgrep -x Mado >/dev/null; do sleep 0.1; done
 rm -rf "$app"
