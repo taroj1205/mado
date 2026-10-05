@@ -27,6 +27,20 @@ import Testing
         #expect(stack.arrangedSubviews == [quit])
     }
 
+    @Test func hoveringARowSelectsItAndKeyboardMovesOnFromThere() throws {
+        let list = ActionList()
+        let rows = ["Open", "Move", "Remove"].map(row)
+        list.show(rows, groups: [0, 1, 2], label: "Widget")
+        let move = try #require(
+            NSEvent.mouseEvent(
+                with: .mouseMoved, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: 0, context: nil, eventNumber: 0, clickCount: 0, pressure: 0))
+        rows[2].mouseMoved(with: move)
+        #expect(rows.map(\.isSelected) == [false, false, true])
+        list.moveSelection(by: -1)
+        #expect(rows.map(\.isSelected) == [false, true, false])
+    }
+
     @Test func theSelectionScrollsIntoViewAndANewListStartsAtTheTop() {
         let list = ActionList()
         list.frame = NSRect(x: 0, y: 0, width: 304, height: 100)
