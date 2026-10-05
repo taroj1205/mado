@@ -1,3 +1,4 @@
+import AppCore
 import GlassUI
 
 enum WidgetPlacement: String, LauncherSetting {
@@ -26,5 +27,15 @@ enum WidgetPlacement: String, LauncherSetting {
         case .around: .around
         case .custom: .custom
         }
+    }
+
+    @MainActor
+    static func pin(
+        _ settings: inout WidgetSettings, of ids: [String], in modules: ModuleManager?
+    ) throws {
+        let placement = load(from: modules)
+        guard placement != .custom else { return }
+        settings.keep(settings.spots(placement.arrangement, from: ids))
+        try custom.save(to: modules)
     }
 }

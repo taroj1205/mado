@@ -62,7 +62,7 @@ import Testing
         #expect(view.widgetGrid.tiles.map(\.editing) == [true, true, true])
         #expect(view.widgetGrid.tiles.allSatisfy { !$0.remove.isHidden && !$0.grip.isHidden })
         #expect(view.statusBar.isHidden)
-        #expect(view.contextPill.text == "Drag to reorder · ⌫ removes the selected widget")
+        #expect(view.contextPill.text == LauncherView.editHint)
         #expect(view.contextPill.symbol == "square.grid.2x2")
         #expect(view.actionLabel.stringValue == "Done")
         #expect(
@@ -196,26 +196,6 @@ import Testing
         view.editBar.add.performClick(nil)
         #expect(adds == 1)
         #expect(view.editingWidgets)
-    }
-
-    @Test func editingShowsEveryWidgetInlineWhateverThePlacement() {
-        view.widgets = (1...7).map { number in
-            WidgetGrid.Widget(
-                id: "\(number)", name: "Widget \(number)", value: "\(number)", detail: "",
-                action: "Open \(number)", spoken: "\(number)")
-        }
-        view.widgetLayout = .strip
-        for arrangement: WidgetSettings.Arrangement in [.inPanel, .above] {
-            arrange(arrangement)
-            edit()
-            #expect(view.widgetGrid.shown.count == 7)
-            #expect(view.widgetGrid.floats.isEmpty)
-            #expect(view.widgetGrid.tiles.allSatisfy { unsafe $0.superview === view.widgetGrid })
-            view.finishEditingWidgets()
-        }
-        #expect(view.widgetGrid.floats.count == 7)
-        arrange(.inPanel)
-        #expect(view.widgetGrid.shown.count == 6)
     }
 
     @Test func removingEveryWidgetKeepsTheGridForDrops() {

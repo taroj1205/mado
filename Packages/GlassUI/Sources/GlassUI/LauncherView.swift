@@ -199,7 +199,7 @@ public final class LauncherView: NSView {
     }
 
     override public func draggingExited(_: (any NSDraggingInfo)?) {
-        endWidgetDrag()
+        changeWidgets { widgetGrid.incoming = nil }
     }
 
     override public func draggingEnded(_: any NSDraggingInfo) {

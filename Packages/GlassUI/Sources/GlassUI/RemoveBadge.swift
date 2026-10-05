@@ -12,6 +12,8 @@ final class RemoveBadge: NSView {
     private static let shadowAlpha: CGFloat = 0.4
     private static let half: CGFloat = 0.5
 
+    var onPress: (() -> Void)?
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         let shade = NSShadow()
@@ -24,6 +26,14 @@ final class RemoveBadge: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with _: NSEvent) {
+        onPress?()
     }
 
     override func draw(_: NSRect) {

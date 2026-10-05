@@ -9,6 +9,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     public enum Edit: Equatable, Sendable {
         case add(String)
         case move(String, before: String?)
+        case place(String, WidgetGrid.Spot, before: String?)
         case remove(String)
     }
 
@@ -51,6 +52,10 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             })
     }
 
+    public mutating func keep(_ spots: [String: WidgetGrid.Spot]) {
+        self.spots.merge(spots) { _, kept in kept }
+    }
+
     public mutating func apply(_ edit: Edit, from available: [String]) {
         switch edit {
         case .add(let id):
@@ -64,6 +69,11 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             order.insert(id, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
             added = order
             custom = true
+
+        case let .place(id, spot, target):
+            guard added(from: available).contains(id) else { return }
+            spots[id] = spot
+            apply(.move(id, before: target), from: available)
 
         case .remove(let id):
             guard added(from: available).contains(id) else { return }

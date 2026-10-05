@@ -117,12 +117,23 @@ import Testing
         #expect(edits == [.move("battery", before: nil)])
     }
 
-    @Test func aTileDraggedOverAnotherSpotKeepsItsPlace() throws {
+    @Test func aTileDraggedOntoAnotherSpotMovesThereBeforeTheTileUnderIt() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
         arrange(.around)
         let other = view.widgetGrid.floats[2].frame
-        let over = try #require(view.widgetGrid.tiles[0].onDrag)
-        #expect(over("clock", NSPoint(x: other.midX, y: other.midY), nil).isEmpty)
-        #expect(ids == widgets.map(\.id))
+        let tile = view.widgetGrid.tiles[0]
+        tile.onDragStart?()
+        #expect(view.widgetGrid.rails.parent === panel)
+        let over = try #require(tile.onDrag)
+        #expect(over("clock", NSPoint(x: other.midX, y: other.midY), nil) == .move)
+        #expect(ids == ["weather", "clock", "battery", "system"])
+        #expect(view.widgetGrid.spot(of: widgets[0]) == .rightTop)
+        #expect(view.widgetGrid.rails.board.model.ghost?.spot == .rightTop)
+        #expect(view.widgetGrid.rails.board.label.title == "Right · Top")
+        #expect(tile.onDrop?("clock") == true)
+        #expect(edits == [.place("clock", .rightTop, before: "battery")])
+        #expect(!view.widgetGrid.rails.isVisible)
     }
 
     @Test func aDragThatEndsNowherePutsTheFloatsBack() {
