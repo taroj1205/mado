@@ -1,4 +1,5 @@
 import AppCore
+import SearchKit
 
 extension AppDelegate {
     var appCommands: [Command] {
@@ -27,6 +28,8 @@ extension AppDelegate {
                     }
                 ],
                 keywords: ["widgets", "gallery", "new"]),
+            CalculatorHistory.command { [weak self] in self?.openCalculatorHistory() },
+            textCapture.command,
         ]
     }
 }
