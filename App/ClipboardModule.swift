@@ -45,7 +45,13 @@ struct ClipboardModule: Module {
         screens.textTools.start(with: store, context: context)
         screens.emoji.start(context: context)
         keepPruned(store, in: context)
-        context.run("recognize image text") {
+        context.run("merge repeated copies and recognize image text") {
+            do {
+                try await store.mergeSavedDuplicates()
+                screens.history.entriesChanged()
+            } catch {
+                logger.error("Merging repeated copies failed: \(error, privacy: .public)")
+            }
             await Self.recognizeImages(in: store, for: screens.history, logger: logger)
         }
         let checkCopies = watchCopies(into: store, context: context)
