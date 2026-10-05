@@ -54,6 +54,12 @@ import Testing
         #expect(grid.rows == 1)
     }
 
+    @Test func opensWithoutTheWindowAnimation() {
+        let overlay = SwitcherOverlay()
+        #expect(overlay.panel.animationBehavior == .none)
+        #expect(overlay.hint.animationBehavior == .none)
+    }
+
     @Test func showsTheSelectedCardAndCountOnTheScreen() throws {
         let overlay = SwitcherOverlay()
         let screen = try #require(NSScreen.screens.first)

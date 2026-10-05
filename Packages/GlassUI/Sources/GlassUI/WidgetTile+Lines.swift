@@ -8,6 +8,10 @@ extension WidgetTile {
     private static let detailSize: CGFloat = 11.5
     private static let headlineSize: CGFloat = 14
     private static let requestSize: CGFloat = 13
+    private static let countdownGap: CGFloat = 4
+    private static let dotSize: CGFloat = 8
+    private static let dotGap: CGFloat = 7
+    private static let half: CGFloat = 0.5
 
     func arrangeLines() {
         reason.font = .systemFont(ofSize: Self.noteSize)
@@ -45,7 +49,27 @@ extension WidgetTile {
                 })
     }
 
+    func arrangeCalendar() {
+        countdown.font = .systemFont(ofSize: Self.titleSize, weight: .medium)
+        countdown.textColor = .secondaryLabelColor
+        countdown.translatesAutoresizingMaskIntoConstraints = false
+        [countdown, month].forEach(addSubview)
+        NSLayoutConstraint.activate([
+            countdown.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.horizontal),
+            countdown.firstBaselineAnchor.constraint(equalTo: title.firstBaselineAnchor),
+            title.trailingAnchor.constraint(
+                lessThanOrEqualTo: countdown.leadingAnchor, constant: -Self.countdownGap),
+            month.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
+            month.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
+            month.topAnchor.constraint(equalTo: topAnchor, constant: Self.vertical),
+            month.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.vertical),
+        ])
+    }
+
     func showLines(of content: WidgetGrid.Content) -> [NSView] {
+        countdown.stringValue = ""
+        showMonth(of: content)
         switch content {
         case let .value(text, line, _, range):
             showValue(text)
@@ -54,8 +78,15 @@ extension WidgetTile {
             span.show(range)
             return [value, detail, span]
 
-        case .meters, .track:
+        case .meters, .track, .month:
             return []
+
+        case let .event(name, next):
+            showTitle(name)
+            countdown.stringValue = next.countdown
+            showEvent(next)
+            showDetail(next.detail, size: Self.noteSize)
+            return [title, headline, detail]
 
         case let .loading(name):
             showTitle(name)
@@ -98,6 +129,51 @@ extension WidgetTile {
                 .foregroundColor: NSColor.secondaryLabelColor,
                 .kern: Self.titleKern,
             ])
+    }
+
+    func showMeters(_ readings: [WidgetGrid.Meter]) {
+        if meters.arrangedSubviews.count != readings.count {
+            meters.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            for _ in readings {
+                let meter = WidgetMeter()
+                meters.addArrangedSubview(meter)
+                meter.widthAnchor.constraint(equalTo: meters.widthAnchor).isActive = true
+            }
+        }
+        for (view, meter) in zip(meters.arrangedSubviews, readings) {
+            (view as? WidgetMeter)?.show(meter)
+        }
+    }
+
+    private func showMonth(of content: WidgetGrid.Content) {
+        guard case .month(let grid) = content else {
+            month.isHidden = true
+            return
+        }
+        month.show(grid)
+        month.isHidden = false
+    }
+
+    private func showEvent(_ next: WidgetGrid.Event) {
+        let font = NSFont.systemFont(ofSize: Self.headlineSize, weight: .semibold)
+        let dot = NSImage(
+            size: NSSize(width: Self.dotSize + Self.dotGap, height: Self.dotSize), flipped: false
+        ) { _ in
+            next.colour.setFill()
+            NSBezierPath(ovalIn: NSRect(x: 0, y: 0, width: Self.dotSize, height: Self.dotSize))
+                .fill()
+            return true
+        }
+        let attachment = NSTextAttachment()
+        attachment.image = dot
+        attachment.bounds = NSRect(
+            origin: NSPoint(x: 0, y: (font.capHeight - Self.dotSize) * Self.half), size: dot.size)
+        let line = NSMutableAttributedString(attachment: attachment)
+        line.append(NSAttributedString(string: next.title))
+        line.addAttributes(
+            [.font: font, .foregroundColor: NSColor.labelColor],
+            range: NSRange(location: 0, length: line.length))
+        headline.attributedStringValue = line
     }
 
     func showHeadline(_ line: String, size: CGFloat) {

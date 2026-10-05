@@ -47,6 +47,8 @@ public final class SwitcherOverlay {
 
     public init() {
         panel.ignoresMouseEvents = false
+        panel.animationBehavior = .none
+        hint.animationBehavior = .none
         panel.glass.contentView = grid
         let border = GlassBorder(radius: Self.radius)
         border.frame = panel.glass.container.bounds

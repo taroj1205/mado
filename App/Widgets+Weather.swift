@@ -132,14 +132,7 @@ extension Widgets {
             }
 
         default:
-            return CommandAction(id: "open", title: title) {
-                guard
-                    let app = NSWorkspace.shared.urlForApplication(
-                        withBundleIdentifier: Self.weatherApp)
-                else { throw CocoaError(.fileNoSuchFile) }
-                _ = try await NSWorkspace.shared.openApplication(
-                    at: app, configuration: NSWorkspace.OpenConfiguration())
-            }
+            return Self.openApp(Self.weatherApp, titled: title)
         }
     }
 }

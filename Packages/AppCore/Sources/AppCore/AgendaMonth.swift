@@ -15,6 +15,7 @@ public struct AgendaMonth: Sendable, Equatable {
     public let name: String
     public let year: String
     public let weekdays: [String]
+    public let initials: [String]
     public let days: [Day]
     public let focused: Int
 }
@@ -46,8 +47,7 @@ extension Agenda {
         }
     }
 
-    private static func weekdays(in calendar: Calendar) -> [String] {
-        let symbols = calendar.shortStandaloneWeekdaySymbols
+    private static func weekdays(_ symbols: [String], in calendar: Calendar) -> [String] {
         let first = (calendar.firstWeekday - 1) % symbols.count
         return Array(symbols[first...] + symbols[..<first])
     }
@@ -72,7 +72,9 @@ extension Agenda {
         return AgendaMonth(
             name: focus.formatted(Self.style(.dateTime.month(.wide), in: calendar)),
             year: focus.formatted(Self.style(.dateTime.year(), in: calendar)),
-            weekdays: Self.weekdays(in: calendar), days: days,
+            weekdays: Self.weekdays(calendar.shortStandaloneWeekdaySymbols, in: calendar),
+            initials: Self.weekdays(calendar.veryShortStandaloneWeekdaySymbols, in: calendar),
+            days: days,
             focused: days.firstIndex { $0.start == focus } ?? 0)
     }
 }
