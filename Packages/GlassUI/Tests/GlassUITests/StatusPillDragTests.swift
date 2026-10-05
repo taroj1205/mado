@@ -126,6 +126,17 @@ import Testing
         #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["vpn", "disk", "thermal"])
     }
 
+    @Test func aRebuildAtTheDropKeepsTheSelectedPillHighlighted() throws {
+        view.selectPill(0)
+        let disk = try #require(view.statusBar.views.first)
+        disk.mouseDown(with: try mouse(.leftMouseDown, at: centre(of: disk), [.command]))
+        view.pills = pills(["disk", "thermal", "vpn"], value: "1")
+        disk.mouseUp(with: try mouse(.leftMouseUp, at: centre(of: disk), [.command]))
+        #expect(view.statusBar.views.map(\.identifier?.rawValue) == ["disk", "thermal", "vpn"])
+        let selected = view.statusBar.views.filter(\.selected).map(\.identifier?.rawValue)
+        #expect(selected == ["disk"])
+    }
+
     @Test func aDragWhoseMouseUpNeverCameStopsHoldingTheBar() throws {
         let disk = try #require(view.statusBar.views.first)
         _ = try drag(disk)

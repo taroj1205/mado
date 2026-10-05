@@ -234,11 +234,15 @@ public final class StatusBar: NSScrollView {
     }
 
     func rebuild() {
+        let selected = views.first(where: \.selected)?.identifier
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for pill in pills {
             stack.addArrangedSubview(makeView(for: pill))
         }
         stack.addArrangedSubview(customise)
+        for view in views where selected != nil && view.identifier == selected {
+            view.selected = true
+        }
     }
 
     private func show(_ pill: Pill, in view: StatusPill) {
