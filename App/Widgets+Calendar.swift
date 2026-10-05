@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import SearchKit
 
 extension Widgets {
     enum Schedule {
@@ -15,6 +16,8 @@ extension Widgets {
     private static let openCalendar = "Open Calendar"
     private static let allowCalendar = "Allow Calendar Access"
     private static let nothingToday = "Nothing else today"
+    private static let noEventsToday = "No events today"
+    private static let cardEvents = 4
 
     static func month(at date: Date) -> WidgetGrid.Widget {
         let name = name(of: calendarWidget)
@@ -84,6 +87,56 @@ extension Widgets {
         }
     }
 
+    static func today(in schedule: Schedule, at date: Date) -> ResultList.WidgetCard {
+        let name = name(of: calendarWidget)
+        switch schedule {
+        case .loading:
+            return .init(
+                body: .message(headline: "Loading…", detail: ""), spoken: "\(name): loading")
+
+        case .blocked:
+            let detail = "To show today’s events"
+            return .init(
+                body: .message(headline: "Allow calendar access", detail: detail),
+                spoken: "\(name): allow calendar access. \(detail)")
+
+        case .found(let found):
+            return events(of: found, at: date)
+        }
+    }
+
+    private static func events(
+        of found: [CalendarAgenda.Found], at date: Date
+    ) -> ResultList.WidgetCard {
+        let name = name(of: calendarWidget)
+        let calendar = Calendar.current
+        let today = Agenda.heading(for: date, at: date, calendar: calendar)
+        let day = Agenda(events: found.map(\.event)).days(under: [today], calendar: calendar)
+        let events = day.flatMap(\.events)
+        let left = events.filter { !$0.hasEnded(at: date) }
+        guard !left.isEmpty else {
+            let headline = events.isEmpty ? noEventsToday : nothingToday
+            return .init(
+                body: .message(headline: headline, detail: ""), spoken: "\(name): \(headline)")
+        }
+        var lines = left.prefix(cardEvents).map { event in
+            ResultList.WidgetLine(
+                time: Agenda.time(of: event, listedFrom: today.start, calendar: calendar),
+                title: event.title,
+                colour: found.first { $0.event.id == event.id }?.colour ?? .controlAccentColor)
+        }
+        let spoken = lines.map { "\($0.title), \($0.time)" }
+        if left.count > cardEvents {
+            lines.append(
+                .init(
+                    time: "", title: "\(left.count - cardEvents) more",
+                    colour: .tertiaryLabelColor))
+        }
+        return .init(
+            body: .events(lines),
+            spoken: "\(name): \(left.count) left today. \(spoken.joined(separator: "; "))")
+    }
+
     static func openApp(_ bundleID: String, titled title: String) -> CommandAction {
         CommandAction(id: "open", title: title) {
             guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
@@ -96,7 +149,7 @@ extension Widgets {
     func refreshSchedule(in view: LauncherView) {
         scheduling?.cancel()
         scheduling = nil
-        guard shown.contains(Self.upNext) else { return }
+        guard shown.contains(Self.upNext) || searched.contains(.calendar) else { return }
         guard CalendarAgenda.hasAccess else {
             schedule = .blocked
             return

@@ -51,6 +51,7 @@ extension AppDelegate {
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
+        widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
     }
 
