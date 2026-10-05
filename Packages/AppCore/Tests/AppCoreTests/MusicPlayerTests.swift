@@ -123,7 +123,7 @@ import Testing
             await player.track()
                 == .init(
                     id: "A1B2", title: "Low Tide", artist: "Harbour Lights", isPlaying: true,
-                    artwork: Data([0xFF, 0xD8])))
+                    artwork: Data([0xFF, 0xD8]), bundleID: Self.music))
     }
 
     @Test func theAlbumDurationAndPositionComeFromThePlayingApp() async {
@@ -156,14 +156,11 @@ import Testing
         #expect(await player.position() == 73.5)
     }
 
-    @Test func theShownAppIsTheOneToOpen() async {
-        #expect(await player.appBundleID == nil)
-        _ = await player.track()
-        #expect(await player.appBundleID == Self.music)
+    @Test func aTrackCarriesTheAppItCameFrom() async {
+        #expect(await player.track()?.bundleID == Self.music)
         playSpotify()
         apps.answers[Self.music] = nil
-        _ = await player.track()
-        #expect(await player.appBundleID == Self.spotify)
+        #expect(await player.track()?.bundleID == Self.spotify)
     }
 
     @Test func aPausedTrackStaysButAStoppedPlayerOrAMissingTrackShowsNothing() async {

@@ -14,6 +14,7 @@ public actor MusicPlayer {
         public var artwork: Data?
         public var album = ""
         public var duration: TimeInterval?
+        public var bundleID = ""
     }
 
     public enum Control: Sendable {
@@ -100,8 +101,6 @@ public actor MusicPlayer {
     private var source: Source?
     private var artwork: (id: String, data: Data?)?
 
-    public var appBundleID: String? { source?.bundleID }
-
     public init() {
         self.init(send: Self.toApp, load: Self.fromWeb)
     }
@@ -182,7 +181,8 @@ public actor MusicPlayer {
             id: id, title: title, artist: artist, isPlaying: state != Self.paused,
             album: (try? string("pAlb", from: app)) ?? "",
             duration: (try? number("pDur", of: Self.currentTrack, from: app))
-                .map { $0 * app.durationUnit })
+                .map { $0 * app.durationUnit },
+            bundleID: app.bundleID)
     }
 
     public func position() -> TimeInterval? {

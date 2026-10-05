@@ -217,7 +217,7 @@ final class Widgets {
 
     func openPlayer() {
         Task {
-            guard let bundleID = await Self.player.appBundleID else { return }
+            guard let bundleID = playing?.bundleID else { return }
             do {
                 try await Self.openApp(bundleID, titled: "Open").perform()
             } catch {
