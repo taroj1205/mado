@@ -62,6 +62,7 @@ public final class LauncherView: NSView {
     let contextPill = StatusPill()
     let statusBar = StatusBar()
     var selectedPill: Int?
+    var arrangedCapsule: ArrangedCapsule?
     var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()
