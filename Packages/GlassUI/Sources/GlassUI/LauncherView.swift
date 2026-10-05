@@ -70,6 +70,7 @@ public final class LauncherView: NSView {
     let gallery = WidgetGallery()
     let doneButton = CapsuleButton.accent("Done", keys: ["↵"], height: LauncherView.doneHeight)
     var widgetNote: (text: String, undoable: Bool)?
+    var queryBeforeEditing: String?
     var selectedWidget: Int?
     private(set) var preview: FilePreview?
     var actionPanel: ActionPanel?
@@ -221,6 +222,7 @@ public final class LauncherView: NSView {
     public func endBrowsing() {
         afterResults = nil
         finishEditingWidgets()
+        restoreQueryBeforeEditing()
         browsing = false
         leavePillsAndWidgets()
         closePreview()

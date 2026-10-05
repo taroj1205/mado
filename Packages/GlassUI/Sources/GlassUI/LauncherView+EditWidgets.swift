@@ -53,9 +53,13 @@ extension LauncherView {
     }
 
     public func editWidgets() {
-        guard !editingWidgets, !waitsForResults(then: { $0.editWidgets() }), homeShown else {
-            return
+        guard !editingWidgets else { return }
+        if !scoped, !field.stringValue.isEmpty {
+            queryBeforeEditing = field.stringValue
+            field.stringValue = ""
+            onQuery?("")
         }
+        guard !waitsForResults(then: { $0.editWidgets() }), homeShown else { return }
         closeActions()
         closePreview()
         closeCustomiser()
@@ -74,12 +78,20 @@ extension LauncherView {
         closeSpotPicker()
         widgetNote = nil
         field.stringValue = shownQuery.text
+        restoreQueryBeforeEditing()
         gallery.query = ""
         changeWidgets { widgetGrid.editing = false }
         showEditing()
         unsafe window?.makeFirstResponder(field)
         onWidgetEditing?(false)
         onQuery?(field.stringValue)
+    }
+
+    func restoreQueryBeforeEditing() {
+        if let queryBeforeEditing, field.stringValue.isEmpty {
+            field.stringValue = queryBeforeEditing
+        }
+        queryBeforeEditing = nil
     }
 
     func report(_ edit: WidgetSettings.Edit) {

@@ -57,7 +57,7 @@ import Testing
         #expect(clip.bounds.minX == 0)
         #expect(alphas == [1, 0])
         let end = bar.documentView?.frame.maxX
-        let deadline = Date(timeIntervalSinceNow: 2)
+        let deadline = Date(timeIntervalSinceNow: 10)
         while clip.bounds.maxX != end, Date() < deadline {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
         }

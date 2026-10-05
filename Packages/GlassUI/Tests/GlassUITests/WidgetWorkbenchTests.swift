@@ -141,6 +141,35 @@ import Testing
         #expect(edits.count == 1)
     }
 
+    @Test func aKeptQueryStepsAsideForEditModeAndComesBackAfterwards() {
+        var queries: [String] = []
+        view.onQuery = { queries.append($0) }
+        view.field.stringValue = "safari"
+        view.show(view.results.sections)
+        view.editWidgets()
+        #expect(queries == [""])
+        #expect(view.field.stringValue.isEmpty)
+        #expect(!view.editingWidgets)
+        view.show(view.results.sections)
+        #expect(view.editingWidgets)
+        view.finishEditingWidgets()
+        #expect(view.field.stringValue == "safari")
+        #expect(queries == ["", "safari"])
+        view.show(view.results.sections)
+        view.editWidgets()
+        #expect(view.field.stringValue.isEmpty)
+        view.endBrowsing()
+        #expect(!view.editingWidgets)
+        #expect(view.field.stringValue == "safari")
+        view.show(view.results.sections)
+        view.editWidgets()
+        #expect(!view.editingWidgets)
+        type("x")
+        #expect(view.field.stringValue == "x")
+        view.show(view.results.sections)
+        #expect(!view.editingWidgets)
+    }
+
     @Test func resultsArrivingDuringEditModeStayOutOfTheWayAndLeavingSearchesAgain() {
         var queries: [String] = []
         view.onQuery = { queries.append($0) }

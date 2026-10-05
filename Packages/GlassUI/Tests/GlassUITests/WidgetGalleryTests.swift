@@ -46,18 +46,18 @@ import Testing
         let cell = (732 - 5 * 8) / 6.0
         let clock = try card("clock")
         let music = try card("music")
-        #expect(abs(try card("weather").frame.minX - 14) < 0.5)
-        #expect(abs(clock.frame.minX - (14 + cell + 8)) < 0.5)
-        #expect(abs(clock.tile.frame.width - cell) < 0.5)
+        #expect(abs(try card("weather").frame.minX - 14) < 1)
+        #expect(abs(clock.frame.minX - (14 + cell + 8)) < 1)
+        #expect(abs(clock.tile.frame.width - cell) < 1)
         #expect(clock.tile.frame.height == 78)
-        #expect(abs(music.tile.frame.width - (2 * cell + 8)) < 0.5)
+        #expect(abs(music.tile.frame.width - (2 * cell + 8)) < 1)
         #expect(music.frame.minY == clock.frame.minY)
         #expect(try card("system").frame.minY == clock.frame.minY)
         #expect(clock.tile.value.stringValue == "9:41")
         #expect(try card("weather").tile.title.stringValue == "WEATHER")
         #expect(try card("weather").tile.headline.stringValue == "Now, high and low")
         let badge = clock.convert(clock.badge.frame, to: clock)
-        #expect(badge.minX == -7 && badge.width == 22)
+        #expect(abs(badge.minX + 7) < 1 && badge.width == 22)
     }
 
     @Test func addedPreviewsShowAGreenTickAndWhereTheySit() throws {

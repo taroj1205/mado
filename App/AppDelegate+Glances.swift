@@ -68,8 +68,11 @@ extension AppDelegate {
     }
 
     func editWidgetsInLauncher() {
+        guard modules?.isEnabled(Widgets.moduleID) != false else {
+            NSSound.beep()
+            return
+        }
         hideLauncher()
-        launcherView.field.stringValue = ""
         showLauncher()
         launcherView.editWidgets()
     }
