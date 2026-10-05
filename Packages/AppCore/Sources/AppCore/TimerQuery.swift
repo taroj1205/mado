@@ -35,6 +35,7 @@ public enum TimerQuery: Equatable, Sendable {
     }
 
     private static func split(_ words: [String]) -> (length: TimeInterval?, name: String)? {
+        guard !words.contains(where: isNegative) else { return nil }
         var total: TimeInterval?
         var name: [String] = []
         var index = 0
@@ -51,6 +52,10 @@ public enum TimerQuery: Equatable, Sendable {
         guard let total else { return (nil, label) }
         let whole = total.rounded()
         return whole >= 1 && whole <= longest ? (whole, label) : nil
+    }
+
+    private static func isNegative(_ word: String) -> Bool {
+        word.hasPrefix("-") && Scanner(string: word).scanDouble() != nil
     }
 
     private static func duration(at index: Int, in words: [String]) -> (TimeInterval?, Int) {

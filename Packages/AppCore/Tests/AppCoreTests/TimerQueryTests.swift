@@ -26,6 +26,9 @@ import Testing
         #expect(TimerQuery("timer 0m") == nil)
         #expect(TimerQuery("timer 101h") == nil)
         #expect(TimerQuery("timer tea 0") == nil)
+        #expect(TimerQuery("timer -5m") == nil)
+        #expect(TimerQuery("timer 10m -5") == nil)
+        #expect(TimerQuery("timer 10m -tea") == .timer(length: 600, name: "-tea"))
     }
 
     @Test func theOtherKindsAreSpelledOut() {
