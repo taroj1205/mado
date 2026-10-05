@@ -79,14 +79,54 @@ import Testing
         #expect(store.model(preferring: turbo.id) == small)
     }
 
-    @Test func theCatalogListsEveryWhisperFile() {
+    @Test func theCatalogListsEveryWhisperFileAndBothParakeetModels() {
         let all = SpeechModel.all
-        #expect(all.count == 33)
+        let whisper = all.filter { $0.engine == .whisper }
+        #expect(whisper.count == 33 && all.count == 35)
         #expect(Set(all.map(\.name)).count == all.count)
-        #expect(all.allSatisfy { $0.sha256.count == 64 && $0.size > 0 })
+        #expect(whisper.allSatisfy { $0.sha256?.count == 64 && $0.size > 0 })
         #expect(all.filter(\.isRecommended).map(\.id) == ["large-v3-turbo"])
-        #expect(all.filter(\.isMeasured).map(\.id) == ["large-v3-turbo", "small"])
+        #expect(
+            Set(all.filter(\.isMeasured).map(\.id))
+                == ["large-v3-turbo", "small", "parakeet-tdt-v3", "parakeet-tdt-ja"])
         #expect(all.first?.isRecommended == true)
+    }
+
+    @Test func parakeetModelsAreFoldersThatAreFastAndLight() throws {
+        let parakeet = SpeechModel.all.filter { $0.engine == .parakeet }
+        #expect(parakeet.map(\.id) == ["parakeet-tdt-v3", "parakeet-tdt-ja"])
+        #expect(parakeet.allSatisfy { $0.url == nil && $0.speed == .highest && !$0.isEnglishOnly })
+        let turbo = try #require(SpeechModel.all.first { $0.id == "large-v3-turbo" })
+        #expect(parakeet.allSatisfy { ($0.memory ?? .max) < (turbo.memory ?? 0) })
+        #expect(parakeet.map(\.file) == ["parakeet-tdt-0.6b-v3", "parakeet-ja"])
+        #expect(parakeet.map(\.isJapaneseOnly) == [false, true])
+        #expect(parakeet.map(\.languages) == [25, 1])
+        #expect(turbo.advantage(over: parakeet[0]) == "more accurate")
+    }
+
+    @Test func aFolderModelIsInstalledOnlyOnceItIsWhole() async throws {
+        let model = try #require(SpeechModel.all.first { $0.id == "parakeet-tdt-ja" })
+        await #expect(throws: CocoaError.self) {
+            try await store.install(model) { root, folder in
+                try FileManager.default.createDirectory(
+                    at: root.appending(path: folder), withIntermediateDirectories: true)
+                throw CocoaError(.fileReadUnknown)
+            }
+        }
+        #expect(!store.isInstalled(model))
+        try await store.install(model) { root, folder in
+            let target = root.appending(path: folder)
+            try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+            try contents.write(to: target.appending(path: "vocab.json"))
+        }
+        #expect(store.isInstalled(model))
+        #expect(
+            try Data(contentsOf: store.location(of: model).appending(path: "vocab.json"))
+                == contents)
+        #expect(
+            try FileManager.default.contentsOfDirectory(atPath: store.directory.path()).count == 1)
+        try store.delete(model)
+        #expect(!store.isInstalled(model))
     }
 
     @Test func aFileNameGivesTheModelItsNameAndRatings() throws {
@@ -127,7 +167,7 @@ import Testing
     }
 
     @Test func everyModelIsPinnedToARevision() throws {
-        for model in SpeechModel.all {
+        for model in SpeechModel.all where model.engine == .whisper {
             let url = try #require(model.url)
             #expect(url.host() == "huggingface.co")
             #expect(url.lastPathComponent == model.file)

@@ -7,35 +7,13 @@ public actor Transcriber {
         case failed(code: Int32)
     }
 
-    @safe
-    private final class Context {
-        let model: URL
-        let pointer: OpaquePointer
-
-        init(model: URL) throws {
-            var params = unsafe whisper_context_default_params()
-            unsafe params.use_gpu = true
-            guard
-                let loaded = unsafe whisper_init_from_file_with_params(
-                    model.path(percentEncoded: false), params)
-            else { throw Failure.notLoaded }
-            self.model = model
-            unsafe pointer = loaded
-        }
-
-        deinit {
-            unsafe whisper_free(pointer)
-        }
-    }
-
     public static let sampleRate = Double(WHISPER_SAMPLE_RATE)
-    private static let language = "auto"
     private static let shortestSeconds = 0.1
 
-    private var context: Context?
+    private var loaded: (model: URL, task: Task<any Engine, any Error>)?
 
     public init() {
-        context = nil
+        loaded = nil
     }
 
     static func text(_ segments: [String]) -> String {
@@ -45,33 +23,38 @@ public actor Transcriber {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    public func load(_ model: URL) throws {
-        guard context?.model != model else { return }
-        context = nil
-        context = try Context(model: model)
+    private static func engine(for model: URL) async throws -> any Engine {
+        guard let version = Parakeet.version(folder: model.lastPathComponent) else {
+            return try WhisperEngine(model: model)
+        }
+        return try await ParakeetEngine(folder: model, version: version)
+    }
+
+    private func engine(for model: URL) async throws -> any Engine {
+        if let loaded, loaded.model == model { return try await loaded.task.value }
+        loaded?.task.cancel()
+        let task = Task { try await Self.engine(for: model) }
+        loaded = (model, task)
+        do {
+            return try await task.value
+        } catch {
+            if loaded?.task == task { loaded = nil }
+            throw error
+        }
+    }
+
+    public func load(_ model: URL) async throws {
+        _ = try await engine(for: model)
     }
 
     public func unload() {
-        context = nil
+        loaded?.task.cancel()
+        loaded = nil
     }
 
-    public func transcribe(_ samples: [Float], with model: URL) throws -> String {
+    public func transcribe(_ samples: [Float], with model: URL) async throws -> String {
         defer { unload() }
         guard Double(samples.count) >= Self.sampleRate * Self.shortestSeconds else { return "" }
-        try load(model)
-        guard let pointer = unsafe context?.pointer else { throw Failure.notLoaded }
-        var params = unsafe whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH)
-        unsafe params.print_progress = false
-        let code = Self.language.withCString { language in
-            unsafe params.language = language
-            return samples.withUnsafeBufferPointer { buffer in
-                unsafe whisper_full(pointer, params, buffer.baseAddress, Int32(buffer.count))
-            }
-        }
-        guard code == 0 else { throw Failure.failed(code: code) }
-        return Self.text(
-            unsafe (0..<whisper_full_n_segments(pointer)).map { index in
-                unsafe String(cString: whisper_full_get_segment_text(pointer, index))
-            })
+        return try await engine(for: model).transcribe(samples)
     }
 }
