@@ -13,7 +13,8 @@ final class WidgetEditBar: NSStackView {
     var onAdd: (() -> Void)?
     var onDone: (() -> Void)?
     var onRemove: (() -> Void)?
-    var onStep: ((Int) -> Void)?
+    var onStep: ((WidgetGrid.Heading) -> Void)?
+    var onSend: ((WidgetGrid.Heading) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -38,7 +39,21 @@ final class WidgetEditBar: NSStackView {
         nil
     }
 
+    private static func heading(of event: NSEvent) -> WidgetGrid.Heading? {
+        switch event.specialKey {
+        case .upArrow: .top
+        case .downArrow: .bottom
+        case .leftArrow: .left
+        case .rightArrow: .right
+        default: nil
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.option), let heading = Self.heading(of: event) {
+            onSend?(heading)
+            return
+        }
         interpretKeyEvents([event])
     }
 
@@ -51,11 +66,19 @@ final class WidgetEditBar: NSStackView {
     }
 
     override func moveLeft(_: Any?) {
-        onStep?(-1)
+        onStep?(.left)
     }
 
     override func moveRight(_: Any?) {
-        onStep?(1)
+        onStep?(.right)
+    }
+
+    override func moveUp(_: Any?) {
+        onStep?(.top)
+    }
+
+    override func moveDown(_: Any?) {
+        onStep?(.bottom)
     }
 
     override func insertNewline(_: Any?) {

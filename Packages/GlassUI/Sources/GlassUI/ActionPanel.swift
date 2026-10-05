@@ -20,6 +20,8 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     let field = NSTextField()
     private let list = ActionList()
     var onRun: ((Int) -> Void)?
+    var onOpen: ((Int) -> Void)?
+    var onCommand: ((Selector) -> Bool)?
     var onClose: (() -> Void)?
     private var title = ""
     private var actions: [LauncherView.Action] = []
@@ -87,6 +89,7 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     func control(_: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        if !textView.hasMarkedText(), onCommand?(selector) == true { return true }
         switch selector {
         case #selector(NSResponder.moveUp): list.moveSelection(by: -1)
         case #selector(NSResponder.moveDown): list.moveSelection(by: 1)
@@ -153,7 +156,8 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     private func row(for index: Int) -> ActionRow {
         let action = actions[index]
         let row = ActionRow(
-            title: action.title, keys: action.keys, icon: nil, isDestructive: action.isDestructive)
+            title: action.title, keys: action.keys, icon: nil, isDestructive: action.isDestructive,
+            detail: action.detail, opens: action.opens)
         row.onPress = { [weak self] in self?.run(index) }
         return row
     }
@@ -168,6 +172,10 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
     }
 
     private func run(_ index: Int) {
+        if actions[index].opens {
+            onOpen?(index)
+            return
+        }
         guard let choose = actions[index].choices else {
             onRun?(index)
             return

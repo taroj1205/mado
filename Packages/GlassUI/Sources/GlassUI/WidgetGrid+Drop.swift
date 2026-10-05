@@ -9,6 +9,7 @@ extension WidgetGrid {
     private static let shelfRoom = 3
     private static let captionRoom: CGFloat = 30
     private static let refusedWidth: CGFloat = 120
+    private static let crossWeight: CGFloat = 2
 
     static func nearestSpot(to point: CGPoint, beside panel: CGRect) -> Spot? {
         if panel.contains(point) { return .panel }
@@ -45,12 +46,70 @@ extension WidgetGrid {
         }
     }
 
+    static func fits(
+        _ target: Spot, inPanel: [Widget], placed: [Placed], layout: Layout?, beside panel: CGRect
+    ) -> Bool {
+        if target == .panel {
+            let rows = cells(of: inPanel).last.map { $0.row + 1 } ?? 0
+            return rows <= (layout == .strip ? 1 : maxPanelRows)
+        }
+        let side = target.side
+        let frames = zip(placed, floatingFrames(of: placed, beside: panel))
+            .filter { $0.0.spot.side == side }
+            .map(\.1)
+        let inside = frames.allSatisfy { frame in
+            side == .above
+                || (frame.minY >= panel.minY - slack && frame.maxY <= panel.maxY + slack)
+        }
+        let apart = frames.indices.allSatisfy { index in
+            frames[(index + 1)...].allSatisfy { other in
+                !frames[index].insetBy(dx: slack, dy: slack).intersects(other)
+            }
+        }
+        return inside && apart
+    }
+
     static func railsFrame(beside panel: CGRect) -> CGRect {
         let side = sideGap + sideWidth + railMargin
         let top = lift + CGFloat(shelfRoom) * (rowHeight + floatingGap) + captionRoom
         var frame = panel.insetBy(dx: -side, dy: -railMargin)
         frame.size.height += top - railMargin
         return frame
+    }
+
+    func accepts(_ id: String, at target: Spot, before other: String?) -> Bool {
+        guard let window = unsafe window, let mover = listed.first(where: { $0.id == id }) else {
+            return false
+        }
+        var all = widgets.filter { $0.id != id }
+        all.insert(
+            mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
+        let spot = { (widget: Widget) in widget.id == id ? target : self.spot(of: widget) }
+        let placed = Spot.allCases.dropFirst().flatMap { candidate in
+            all.filter { spot($0) == candidate }.map { ($0, candidate) }
+        }
+        return Self.fits(
+            target, inPanel: all.filter { spot($0) == .panel }, placed: placed,
+            layout: tileLayout, beside: window.frame)
+    }
+
+    func neighbour(of index: Int, toward heading: Heading) -> Int? {
+        guard let window = unsafe window, shown.indices.contains(index) else { return nil }
+        let frames = tileFrames(in: window)
+        let from = CGPoint(x: frames[index].midX, y: frames[index].midY)
+        let scored = frames.indices.filter { $0 != index }.compactMap { other in
+            let gap = CGPoint(x: frames[other].midX - from.x, y: frames[other].midY - from.y)
+            let (along, across) =
+                switch heading {
+                case .right: (gap.x, gap.y)
+                case .left: (-gap.x, gap.y)
+                case .top: (gap.y, gap.x)
+                case .bottom: (-gap.y, gap.x)
+                }
+            return along > Self.slack && abs(across) <= along
+                ? (index: other, score: along + Self.crossWeight * abs(across)) : nil
+        }
+        return scored.min { $0.score < $1.score }?.index
     }
 
     func carry(_ tile: WidgetTile?) {
@@ -79,7 +138,7 @@ extension WidgetGrid {
             moving = nil
             order = []
         } else if target != home, target != moving {
-            return move(id, to: target, before: hit?.id, beside: window.frame)
+            return move(id, to: target, before: hit?.id)
         }
         refused = nil
         return reorder(id, at: point, in: window) || editing || moving == target
@@ -147,20 +206,16 @@ extension WidgetGrid {
         return placed.firstIndex { $0.widget.id == dragged }.map { frames[$0] }
     }
 
-    private func move(
-        _ id: String, to target: Spot, before other: String?, beside panel: CGRect
-    ) -> Bool {
-        let previous = (moving, order)
-        var ids = shown.map(\.id).filter { $0 != id }
-        ids.insert(id, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
-        moving = target
-        order = ids
-        guard fits(target, beside: panel) else {
-            (moving, order) = previous
+    private func move(_ id: String, to target: Spot, before other: String?) -> Bool {
+        guard accepts(id, at: target, before: other) else {
             refused = target
             return false
         }
+        var ids = shown.map(\.id).filter { $0 != id }
+        ids.insert(id, at: other.flatMap(ids.firstIndex) ?? ids.endIndex)
         refused = nil
+        moving = target
+        order = ids
         return true
     }
 
@@ -179,26 +234,5 @@ extension WidgetGrid {
         }
         order = ids
         return target != nil
-    }
-
-    private func fits(_ target: Spot, beside panel: CGRect) -> Bool {
-        if target == .panel {
-            let rows = Self.cells(spanning: inPanel.map(\.span)).last.map { $0.row + 1 } ?? 0
-            return layoutInUse != .grid || rows <= Self.maxPanelRows
-        }
-        let side = target.side
-        let frames = zip(placed, Self.floatingFrames(of: placed, beside: panel))
-            .filter { $0.0.spot.side == side }
-            .map(\.1)
-        let inside = frames.allSatisfy { frame in
-            side == .above
-                || (frame.minY >= panel.minY - Self.slack && frame.maxY <= panel.maxY + Self.slack)
-        }
-        let apart = frames.indices.allSatisfy { index in
-            frames[(index + 1)...].allSatisfy { other in
-                !frames[index].insetBy(dx: Self.slack, dy: Self.slack).intersects(other)
-            }
-        }
-        return inside && apart
     }
 }

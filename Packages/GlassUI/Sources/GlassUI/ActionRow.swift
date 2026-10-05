@@ -14,16 +14,24 @@ final class ActionRow: NSBox {
     private static let selectedKeyAlpha = 0.22
     private static let highlightWidth: CGFloat = 0.5
     private static let highlightAlpha = 0.45
+    private static let detailSize: CGFloat = 12
+    private static let detailAlpha = 0.8
+    private static let chevronSize: CGFloat = 11
 
     let label: NSTextField
     let keycaps: [Keycap]
+    let detail = NSTextField(labelWithString: "")
+    let chevron = NSImageView()
     let isDestructive: Bool
     var onPress: (() -> Void)?
     var isSelected = false {
         didSet { restyle() }
     }
 
-    init(title text: String, keys: [String], icon: NSImage?, isDestructive: Bool) {
+    init(
+        title text: String, keys: [String], icon: NSImage?, isDestructive: Bool,
+        detail value: String?, opens: Bool
+    ) {
         label = NSTextField(labelWithString: text)
         keycaps = keys.map { Keycap($0, radius: Self.keyRadius, size: Self.keySize) }
         self.isDestructive = isDestructive
@@ -35,7 +43,12 @@ final class ActionRow: NSBox {
         label.font = .systemFont(ofSize: Self.fontSize)
         label.lineBreakMode = .byTruncatingTail
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let shortcut = NSStackView(views: keycaps)
+        detail.stringValue = value ?? ""
+        detail.font = .systemFont(ofSize: Self.detailSize)
+        chevron.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil)
+        chevron.symbolConfiguration = .init(pointSize: Self.chevronSize, weight: .semibold)
+        let extras: [NSView] = (value == nil ? [] : [detail]) + (opens ? [chevron] : [])
+        let shortcut = NSStackView(views: extras + keycaps)
         shortcut.spacing = Self.keyGap
         for view in [label, shortcut] {
             view.translatesAutoresizingMaskIntoConstraints = false
@@ -52,8 +65,14 @@ final class ActionRow: NSBox {
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.menuItem)
-        setAccessibilityLabel(text)
+        setAccessibilityLabel(value.map { "\(text) \($0)" } ?? text)
         restyle()
+    }
+
+    convenience init(title text: String, keys: [String], icon: NSImage?, isDestructive: Bool) {
+        self.init(
+            title: text, keys: keys, icon: icon, isDestructive: isDestructive, detail: nil,
+            opens: false)
     }
 
     @available(*, unavailable)
@@ -116,6 +135,9 @@ final class ActionRow: NSBox {
     private func restyle() {
         fillColor = isSelected ? .controlAccentColor : .clear
         label.textColor = isSelected ? .white : isDestructive ? .systemRed : .labelColor
+        detail.textColor =
+            isSelected ? .white.withAlphaComponent(Self.detailAlpha) : .secondaryLabelColor
+        chevron.contentTintColor = isSelected ? .white : .secondaryLabelColor
         for keycap in keycaps {
             keycap.fillColor =
                 isSelected

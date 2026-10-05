@@ -27,6 +27,8 @@ extension LauncherView {
         public let isDestructive: Bool
         public let choices: (@MainActor () -> [ActionChoice])?
         public var group = 0
+        public var detail: String?
+        public var opens = false
 
         public init(
             _ title: String, keys: [String] = [], isDestructive: Bool = false,
@@ -68,7 +70,8 @@ extension LauncherView {
         case .leftMouseDown:
             let point = event.locationInWindow
             let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
-            if !onToggle, actionPanel?.contains(point) != true {
+            let inPicker = spotPicker?.contains(point) == true
+            if !onToggle, !inPicker, actionPanel?.contains(point) != true {
                 closeActions()
             }
             return false
@@ -131,15 +134,7 @@ extension LauncherView {
 
     func showActions() {
         if let index = selectedWidget {
-            let widget = widgetGrid.shown[index]
-            let choices = [Action(widget.action, keys: Action.primaryKeys), Action(Self.editTitle)]
-            present(choices, for: widget.name) { [weak self] choice in
-                if choice == 0 {
-                    self?.onWidget?(widget)
-                } else {
-                    self?.editWidgets()
-                }
-            }
+            showActions(for: widgetGrid.shown[index])
             return
         }
         if waitsForResults(then: { $0.showActions() }) { return }
@@ -150,7 +145,7 @@ extension LauncherView {
         }
     }
 
-    private func present(_ choices: [Action], for title: String, run: @escaping (Int) -> Void) {
+    func present(_ choices: [Action], for title: String, run: @escaping (Int) -> Void) {
         closePreview()
         let menu = actionPanel ?? ActionPanel()
         menu.onRun = { [weak self] index in
@@ -158,6 +153,8 @@ extension LauncherView {
             run(index)
         }
         menu.onClose = { [weak self] in self?.actionsClosed() }
+        menu.onOpen = nil
+        menu.onCommand = nil
         actionPanel = menu
         actionsToggle.fillColor = ResultRowView.fill
         menu.show(choices, for: title, above: actionCapsule, gap: Self.capsuleInset)
@@ -176,6 +173,7 @@ extension LauncherView {
     }
 
     private func actionsClosed() {
+        closeSpotPicker()
         actionsToggle.fillColor = .clear
         unsafe window?.makeFirstResponder(field)
         field.currentEditor()?.selectedRange = NSRange(

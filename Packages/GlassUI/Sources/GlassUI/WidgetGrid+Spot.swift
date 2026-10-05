@@ -13,9 +13,22 @@ extension WidgetGrid {
         case rightMiddle = "right_middle"
         case rightBottom = "right_bottom"
 
+        private static let neighbours: [Self: [Heading: Self]] = [
+            .panel: [.top: .aboveCentre, .left: .leftMiddle, .right: .rightMiddle],
+            .aboveLeft: [.left: .leftTop, .right: .aboveCentre, .bottom: .panel],
+            .aboveCentre: [.left: .aboveLeft, .right: .aboveRight, .bottom: .panel],
+            .aboveRight: [.left: .aboveCentre, .right: .rightTop, .bottom: .panel],
+            .leftTop: [.top: .aboveLeft, .bottom: .leftMiddle, .right: .panel],
+            .leftMiddle: [.top: .leftTop, .bottom: .leftBottom, .right: .panel],
+            .leftBottom: [.top: .leftMiddle, .right: .panel],
+            .rightTop: [.top: .aboveRight, .bottom: .rightMiddle, .left: .panel],
+            .rightMiddle: [.top: .rightTop, .bottom: .rightBottom, .left: .panel],
+            .rightBottom: [.top: .rightMiddle, .left: .panel],
+        ]
+
         public var title: String {
             switch self {
-            case .panel: "In the Panel"
+            case .panel: "In the panel"
             case .aboveLeft: "Above · Left"
             case .aboveCentre: "Above · Centre"
             case .aboveRight: "Above · Right"
@@ -44,6 +57,17 @@ extension WidgetGrid {
             case .aboveRight, .leftBottom, .rightBottom: .end
             }
         }
+
+        public func neighbour(toward heading: Heading) -> Self? {
+            Self.neighbours[self]?[heading]
+        }
+    }
+
+    public enum Heading: Sendable {
+        case top
+        case bottom
+        case left
+        case right
     }
 
     enum Side {
@@ -59,11 +83,13 @@ extension WidgetGrid {
         case end
     }
 
+    var listed: [Widget] { editing ? widgets : widgets.filter { !$0.isUnavailable } }
+
     var shown: [Widget] {
         guard let layoutInUse else { return [] }
-        let listed = editing ? widgets : widgets.filter { !$0.isUnavailable }
+        let available = listed
         let arranged =
-            order.isEmpty ? listed : order.compactMap { id in listed.first { $0.id == id } }
+            order.isEmpty ? available : order.compactMap { id in available.first { $0.id == id } }
         let panelWidgets = arranged.filter { spot(of: $0) == .panel }
         let rows =
             layoutInUse == .strip ? Self.cells(of: panelWidgets).count { $0.row == 0 } : nil
