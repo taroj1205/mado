@@ -86,6 +86,30 @@ import Testing
         #expect(tile.wash.isHidden)
     }
 
+    @Test func theControlsStayPutWhateverTheTitleLength() {
+        let track = WidgetTrack()
+        let host = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 52))
+        host.addSubview(track)
+        host.widthAnchor.constraint(equalToConstant: 420).isActive = true
+        NSLayoutConstraint.activate([
+            track.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            track.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+        ])
+        var edges: [CGFloat] = []
+        for title in ["Hi", "A Rather Long Song Title That Cannot Possibly Fit In The Tile"] {
+            track.show(
+                .init(title: title, artist: "Harbour Lights", artwork: nil, isPlaying: false))
+            host.layoutSubtreeIfNeeded()
+            let next = track.convert(track.next.bounds, from: track.next)
+            #expect(next.maxX <= host.bounds.maxX)
+            let previous = track.convert(track.previous.bounds, from: track.previous)
+            #expect(track.convert(track.title.bounds, from: track.title).maxX < previous.minX)
+            edges.append(track.convert(track.disc.bounds, from: track.disc).minX)
+        }
+        #expect(abs(edges[0] - edges[1]) < 0.01)
+        #expect(edges[0] > 300)
+    }
+
     @Test func prevAndNextSkipAndSelectTheTileWhileTheRestPlaysOrPauses() throws {
         var skips: [WidgetGrid.Skip] = []
         var pressed: [String] = []
