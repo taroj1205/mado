@@ -1,5 +1,5 @@
 import CryptoKit
-import Foundation
+public import Foundation
 import UniformTypeIdentifiers
 
 extension ClipboardStore {
@@ -61,10 +61,16 @@ extension ClipboardStore {
 
     public func add(_ clip: Clip, keeping retention: Retention) throws {
         let digest = Self.digest(of: clip)
-        if try !moveToTop(clip, matching: digest) {
+        if try !moveToTop(clip, matching: digest), try !foldIntoSameText(clip, digest: digest) {
             try insert(clip, digest: digest)
         }
         try prune(keeping: retention, now: clip.date)
+    }
+
+    public func bringToTop(id: Int64, at date: Date) throws {
+        try database.run(
+            "UPDATE clips SET date = ? WHERE id = ?",
+            [.real(date.timeIntervalSince1970), .integer(Int(id))])
     }
 
     private func insert(_ clip: Clip, digest: Data) throws {
@@ -122,5 +128,37 @@ extension ClipboardStore {
             [.real(clip.date.timeIntervalSince1970), .text(clip.source), .blob(digest)]
         ) { $0.integer(0) }
         .isEmpty
+    }
+
+    private func foldIntoSameText(_ clip: Clip, digest: Data) throws -> Bool {
+        let newestSameText = """
+            (SELECT id FROM clips WHERE kind = ? AND text = ?
+                ORDER BY date DESC, id DESC LIMIT 1)
+            """
+        let date = Database.Value.real(clip.date.timeIntervalSince1970)
+        let saved: [Int64]
+        switch clip.kind {
+        case .text:
+            saved = try database.rows(
+                "UPDATE clips SET date = ?, source = ? WHERE id = \(newestSameText) RETURNING id",
+                [date, .text(clip.source), .text(Clip.Kind.richText.rawValue), .text(clip.text)]
+            ) { $0.integer(0) }
+
+        case .richText:
+            saved = try database.rows(
+                """
+                UPDATE clips SET kind = ?, type = ?, data = ?, digest = ?, date = ?, source = ?
+                    WHERE id = \(newestSameText) RETURNING id
+                """,
+                [
+                    .text(clip.kind.rawValue), .text(clip.type), .blob(clip.data), .blob(digest),
+                    date, .text(clip.source), .text(Clip.Kind.text.rawValue), .text(clip.text),
+                ]
+            ) { $0.integer(0) }
+
+        case .image, .file, .url, .color:
+            return false
+        }
+        return !saved.isEmpty
     }
 }
