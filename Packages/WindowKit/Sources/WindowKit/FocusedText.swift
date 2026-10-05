@@ -79,8 +79,10 @@ public struct FocusedText: Sendable {
         var range = range
         guard let parameter = unsafe AXValueCreate(.cfRange, &range) else { return nil }
         var value: CFTypeRef?
-        let error = unsafe AXUIElementCopyParameterizedAttributeValue(
-            element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value)
+        let error = AccessibilityActor.call(on: element) {
+            unsafe AXUIElementCopyParameterizedAttributeValue(
+                element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value)
+        }
         guard error == .success else { return nil }
         return value as? String
     }
@@ -90,8 +92,10 @@ public struct FocusedText: Sendable {
         var range = range
         guard let parameter = unsafe AXValueCreate(.cfRange, &range) else { return nil }
         var value: CFTypeRef?
-        let error = unsafe AXUIElementCopyParameterizedAttributeValue(
-            element, kAXBoundsForRangeParameterizedAttribute as CFString, parameter, &value)
+        let error = AccessibilityActor.call(on: element) {
+            unsafe AXUIElementCopyParameterizedAttributeValue(
+                element, kAXBoundsForRangeParameterizedAttribute as CFString, parameter, &value)
+        }
         guard error == .success, let value else { return nil }
         return rect(value)
     }
