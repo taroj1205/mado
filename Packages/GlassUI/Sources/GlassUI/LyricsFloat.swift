@@ -20,7 +20,7 @@ public final class LyricsFloat {
     public var onMove: ((LyricsCorner, NSScreen) -> Void)?
     public var onDismiss: (() -> Void)?
     public var pointer: @MainActor () -> NSPoint = { NSEvent.mouseLocation }
-    var buttons = { NSEvent.pressedMouseButtons }
+    var clicks = { LyricsFloat.systemClicks() }
     var now = { ContinuousClock.now }
     var screens = { NSScreen.screens }
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -37,6 +37,7 @@ public final class LyricsFloat {
     var hoverSince: ContinuousClock.Instant?
     var drag: Drag?
     var target: NSRect?
+    var seenClicks = 0
     private var poll: Task<Void, Never>?
     public private(set) var isShown = false
 
@@ -80,6 +81,9 @@ public final class LyricsFloat {
         }
         if (place == .desktop) != (self.place == .desktop) {
             window.orderOut(nil)
+        }
+        if !isShown || place != self.place {
+            seenClicks = clicks()
         }
         self.place = place
         self.look = look

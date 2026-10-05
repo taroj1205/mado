@@ -17,6 +17,7 @@ extension LyricsStage {
             button.addSubview(line)
         }
         button.image = nil
+        unsafe button.window?.sharingType = settings.hidesInSharing ? .none : .readOnly
         line.show(verse)
         item.length = line.naturalWidth + Self.barPadding
         if isCardOpen, let screen = unsafe button.window?.screen {
@@ -32,6 +33,7 @@ extension LyricsStage {
             return
         }
         line.removeFromSuperview()
+        unsafe button.window?.sharingType = .readOnly
         item.length = NSStatusItem.squareLength
         item.menu = menu
         menu = nil

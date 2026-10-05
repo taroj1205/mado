@@ -17,6 +17,12 @@ extension LauncherView: NSTextFieldDelegate {
             closeCustomiser()
             return true
         }
+        if widgetMenu != nil {
+            if selector == #selector(NSResponder.insertNewline), textView.hasMarkedText() {
+                return false
+            }
+            if widgetMenuCommand(selector) { return true }
+        }
         if editingWidgets { return editCommand(selector, in: textView) }
         if showsLyrics, lyricsCommand(selector, in: textView) { return true }
         if let pill = selectedPill { return pillCommand(selector, from: pill, in: textView) }

@@ -91,21 +91,31 @@ extension AppDelegate {
             }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
+            let timers = timerSections(for: query)
+            if !timers.isEmpty { return timers }
             return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
         }
     }
 
-    func menu(for item: ResultList.Item) -> LauncherMenu {
+    private func ownedMenu(for item: ResultList.Item) -> LauncherMenu? {
         if EmojiPicker.owns(item.id) {
             return LauncherMenu(keyed: emojiPicker.actions(for: item.id, pastingInto: pasteTarget))
         }
         if CalendarAgenda.owns(item.id) {
             return LauncherMenu(keyed: calendarAgenda.actions(for: item.id))
         }
+        if LauncherTimers.owns(item.id) {
+            return LauncherMenu(keyed: timerActions(for: item))
+        }
         if Widgets.owns(item.id) {
             return LauncherMenu(
                 keyed: [(widgets.action(forCard: item), LauncherView.Action.primaryKeys)])
         }
+        return nil
+    }
+
+    func menu(for item: ResultList.Item) -> LauncherMenu {
+        if let owned = ownedMenu(for: item) { return owned }
         return switch scope {
         case .clipboard:
             LauncherMenu(

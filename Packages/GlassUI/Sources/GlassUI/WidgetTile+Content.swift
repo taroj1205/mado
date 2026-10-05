@@ -29,7 +29,6 @@ extension WidgetTile {
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
         showFace()
-        showMore()
     }
 
     func showTrack(_ shows: Bool) {
@@ -39,5 +38,17 @@ extension WidgetTile {
         } else {
             NSLayoutConstraint.deactivate(trackPlacement)
         }
+    }
+
+    func paint() {
+        let look = selected ? looks.picked : looks.resting
+        if editing {
+            box.fillColor = selected ? Self.selectedFill : Self.editFill
+            box.borderColor = .clear
+        } else {
+            box.fillColor = look.fill
+            box.borderColor = look.edge
+        }
+        setAccessibilitySelected(selected)
     }
 }

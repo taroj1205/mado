@@ -44,7 +44,7 @@ extension WidgetGrid {
         }
 
         var isPlayer: Bool {
-            track != nil || verse != nil
+            track != nil
         }
 
         var isMonth: Bool {

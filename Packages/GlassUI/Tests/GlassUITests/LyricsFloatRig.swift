@@ -16,7 +16,7 @@ final class LyricsFloatRig {
 
     let float = LyricsFloat()
     var point = away
-    var buttons = 0
+    var clicks = 0
     var clock = ContinuousClock.now
     var look = LyricsLook.line
     var verse = synced
@@ -35,7 +35,7 @@ final class LyricsFloatRig {
 
     init() {
         float.pointer = { [weak self] in self?.point ?? Self.away }
-        float.buttons = { [weak self] in self?.buttons ?? 0 }
+        float.clicks = { [weak self] in self?.clicks ?? 0 }
         float.now = { [weak self] in self?.clock ?? .now }
         float.reducesMotion = { true }
         float.card.reducesMotion = { true }

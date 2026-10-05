@@ -30,6 +30,12 @@ extension LauncherView {
         return action
     }
 
+    func presentPin(for widget: WidgetGrid.Widget) {
+        guard let pin = pinAction(for: widget) else { return }
+        present([pin], for: widget.name) { [weak self] _ in self?.closeActions() }
+        actionPanel?.choose(0)
+    }
+
     func pinOffPanel() {
         onPinLyrics?(.island)
     }

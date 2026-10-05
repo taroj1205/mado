@@ -103,3 +103,7 @@ extension EnterGuardSettings: StoredValue {
 extension WidgetSettings: StoredValue {
     static let key = "widgets"
 }
+
+extension Timers: StoredValue {
+    static let key = "timers"
+}

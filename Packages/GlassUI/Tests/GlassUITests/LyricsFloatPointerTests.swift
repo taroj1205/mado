@@ -173,10 +173,11 @@ struct LyricsFloatPointerTests {
         rig.show(.menuBar(anchor: item))
         defer { float.hide(animated: false) }
         #expect(float.frame == LyricsGeometry.drop(LyricsLook.card.size, below: item, in: visible))
-        rig.buttons = 1
+        rig.clicks += 1
         rig.hover(NSPoint(x: item.midX, y: item.midY))
         rig.hover(middle)
         #expect(float.isShown)
+        rig.clicks += 1
         rig.hover(NSPoint(x: visible.minX + 5, y: visible.minY + 5))
         #expect(!float.isShown)
         #expect(rig.dismissals == 1)

@@ -70,9 +70,14 @@ extension LauncherView {
             let point = event.locationInWindow
             let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
             let inPicker = spotPicker?.contains(point) == true
-            if !onToggle, !inPicker, actionPanel?.contains(point) != true {
+            let inMenu = widgetMenu?.contains(point) == true
+            if !onToggle, !inPicker, !inMenu, actionPanel?.contains(point) != true {
                 closeActions()
             }
+            return false
+
+        case .rightMouseDown where widgetMenu?.contains(event.locationInWindow) != true:
+            closeWidgetMenu()
             return false
 
         default:
@@ -147,6 +152,7 @@ extension LauncherView {
 
     func present(_ choices: [Action], for title: String, run: @escaping (Int) -> Void) {
         closePreview()
+        closeWidgetMenu()
         let menu = actionPanel ?? ActionPanel()
         menu.onRun = { [weak self] index in
             self?.closeActions()
@@ -170,6 +176,7 @@ extension LauncherView {
 
     func closeActions() {
         actionPanel?.close()
+        closeWidgetMenu()
     }
 
     private func actionsClosed() {

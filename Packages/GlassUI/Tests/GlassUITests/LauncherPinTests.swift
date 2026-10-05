@@ -53,7 +53,8 @@ import Testing
         view.showActions()
         #expect(
             try titles() == [
-                "Play / Pause", "Move…", "Pin to screen", "Edit Widgets", "Remove Widget",
+                "Play / Pause", "Move…", "Pin to screen", "Edit Widgets", "Add Widgets…",
+                "Remove Widget",
             ])
         #expect(try rows()[2].detail.stringValue == "Corner card")
     }
@@ -99,47 +100,6 @@ import Testing
         #expect(picked.count == 1 && picked[0] == nil)
     }
 
-    @Test func theMoreButtonShowsOnlyOnASelectedOrHoveredMediaTile() throws {
-        view.widgets = [clock, song]
-        let media = try #require(view.widgetGrid.tiles.last)
-        let other = try #require(view.widgetGrid.tiles.first)
-        #expect(media.more.isHidden && other.more.isHidden)
-        view.selectWidget(1)
-        #expect(!media.more.isHidden)
-        view.selectWidget(0)
-        #expect(media.more.isHidden && other.more.isHidden)
-        media.hovered = true
-        #expect(!media.more.isHidden)
-        other.hovered = true
-        #expect(other.more.isHidden)
-        media.editing = true
-        #expect(media.more.isHidden)
-    }
-
-    @Test func clickingTheMoreButtonOpensTheTilesActions() throws {
-        var ignored: [LyricsPin?] = []
-        view.onPinLyrics = { ignored.append($0) }
-        view.widgets = [song]
-        view.layoutSubtreeIfNeeded()
-        let tile = try #require(view.widgetGrid.tiles.first)
-        view.selectWidget(0)
-        let centre = tile.convert(
-            NSPoint(x: tile.more.frame.midX, y: tile.more.frame.midY), to: nil)
-        tile.mouseDown(with: try click(.leftMouseDown, at: centre))
-        #expect(view.choosingAction)
-        #expect(try titles().contains("Pin to screen"))
-    }
-
-    @Test func rightClickingATileSelectsItAndOpensItsActions() throws {
-        view.widgets = [clock, song]
-        view.layoutSubtreeIfNeeded()
-        let tile = try #require(view.widgetGrid.tiles.first)
-        tile.rightMouseDown(with: try click(.rightMouseDown, at: NSPoint(x: 40, y: 480)))
-        #expect(view.selectedWidget == 0)
-        #expect(view.choosingAction)
-        #expect(try titles().first == "Open Clock")
-    }
-
     @Test func draggingAMediaTileFarOffThePanelPinsAnIslandButNearOrOtherTilesDoNot() {
         var picked: [LyricsPin?] = []
         view.onPinLyrics = { picked.append($0) }
@@ -183,34 +143,47 @@ import Testing
         view.onWidget = { pressed.append($0.id) }
         view.onOpenPlayer = { players += 1 }
         view.widgets = [lyrics, song]
-        view.pressWidget(0)
+        view.tapWidget(0)
         view.openWidget(0)
-        view.pressWidget(1)
+        view.tapWidget(1)
         view.openWidget(1)
         #expect(pressed == ["lyrics", "music"])
         #expect(players == 1)
     }
 
-    @Test func theMoreButtonCanBePressedThroughAccessibility() throws {
+    @Test func theWidgetMenuOffersPinToScreenOnlyForMediaTiles() throws {
         var ignored: [LyricsPin?] = []
         view.onPinLyrics = { ignored.append($0) }
-        view.widgets = [song]
+        view.pinnedLyrics = .island
+        view.widgets = [clock, song]
         view.layoutSubtreeIfNeeded()
-        let tile = try #require(view.widgetGrid.tiles.first)
-        #expect(tile.more.accessibilityPerformPress())
-        #expect(view.choosingAction)
-        #expect(try titles().contains("Pin to screen"))
+        view.openWidgetMenu(0, at: .zero)
+        let clockTitles = try #require(view.widgetMenu).rows.map(\.label.stringValue)
+        #expect(!clockTitles.contains("Pin to screen"))
+        view.closeWidgetMenu()
+        view.openWidgetMenu(1, at: .zero)
+        let rows = try #require(view.widgetMenu).rows
+        let pin = try #require(rows.first { $0.label.stringValue == "Pin to screen" })
+        #expect(pin.detail.stringValue == "Island")
+        #expect(pin.accessibilityPerformPress())
+        #expect(view.widgetMenu == nil && view.choosingAction)
+        #expect(
+            try titles() == ["Island", "Corner card", "Menu bar line", "Desktop type", "Unpin"])
     }
 
-    @Test func rightClickingTheNowPlayingTileOpensItsActionsWithoutTogglingPlayback() throws {
-        var triggered = 0
-        view.onWidget = { _ in triggered += 1 }
-        view.widgets = [song]
+    @Test func pressingTheLyricsTileThroughAccessibilityOpensTheLyrics() throws {
+        let lyrics = WidgetGrid.Widget(
+            id: "lyrics", name: "Lyrics",
+            verse: .init(
+                title: "Low Tide", artist: "Harbour Lights", artwork: nil, isPlaying: true,
+                status: .synced, lines: ["Line"], current: 0, progress: 0, remaining: nil),
+            action: "Show Lyrics", spoken: "Lyrics: Line")
+        var opened: [String] = []
+        view.onWidget = { opened.append($0.id) }
+        view.widgets = [lyrics]
         view.layoutSubtreeIfNeeded()
         let tile = try #require(view.widgetGrid.tiles.first)
-        tile.rightMouseDown(with: try click(.rightMouseDown, at: NSPoint(x: 40, y: 480)))
-        #expect(view.selectedWidget == 0)
-        #expect(view.choosingAction)
-        #expect(triggered == 0)
+        #expect(tile.accessibilityPerformPress())
+        #expect(opened == ["lyrics"])
     }
 }

@@ -16,8 +16,15 @@ extension WidgetTile {
 
     func pressForAccessibility() {
         onPress?()
+        tap()
         if widget?.isPlayer != true {
             onOpen?()
+        }
+    }
+
+    func tap() {
+        if widget?.isPlayer == true {
+            onTap?()
         }
     }
 

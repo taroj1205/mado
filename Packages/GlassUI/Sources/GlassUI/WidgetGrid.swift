@@ -146,11 +146,17 @@ public final class WidgetGrid: NSView {
     let rails = WidgetRails()
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     var onPress: ((Int) -> Void)?
+    var onTap: ((Int) -> Void)?
     var onOpen: ((Int) -> Void)?
     var opensOnSingleClick = false {
         didSet { tiles.forEach { $0.opensOnSingleClick = opensOnSingleClick } }
     }
     var onExtend: ((Int) -> Void)?
+    var onMenu: ((Int, NSPoint) -> Void)?
+    var onHold: ((Int, NSPoint) -> Void)?
+    var beginsDrag: (WidgetTile, NSEvent, NSPoint) -> Void = { tile, event, grab in
+        tile.beginDrag(with: event, grabbedAt: grab)
+    }
     var onSkip: ((Int, Skip) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((Int, Page) -> Void)?
@@ -160,7 +166,6 @@ public final class WidgetGrid: NSView {
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
     var onDrop: ((String?) -> Bool)?
     var onDragEnd: (() -> Void)?
-    var onMenu: ((Int) -> Void)?
     var onPinOff: (() -> Void)?
     private(set) var tiles: [WidgetTile] = []
     private(set) var floats: [GlassPanel] = []

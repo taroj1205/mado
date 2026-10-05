@@ -20,6 +20,14 @@ extension AppDelegate {
                     }
                 ],
                 keywords: ["widgets", "arrange", "customize", "customise"]),
+            Command(
+                id: "widgets.add", name: "Add Widgets", icon: "plus.square",
+                actions: [
+                    CommandAction(id: "add", title: "Add Widgets") { [weak self] in
+                        self?.editWidgetsInLauncher()
+                    }
+                ],
+                keywords: ["widgets", "gallery", "new"]),
             CalculatorHistory.command { [weak self] in self?.openCalculatorHistory() },
             textCapture.command,
         ]

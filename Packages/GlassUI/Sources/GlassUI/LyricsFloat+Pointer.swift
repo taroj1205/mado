@@ -9,6 +9,13 @@ extension LyricsFloat {
         }
     }
 
+    static func systemClicks() -> Int {
+        let kinds: [CGEventType] = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        return kinds.reduce(0) { total, kind in
+            total + Int(CGEventSource.counterForEventType(.combinedSessionState, eventType: kind))
+        }
+    }
+
     func tick() {
         guard isShown, let place, place != .desktop else { return }
         let point = pointer()
@@ -17,7 +24,10 @@ extension LyricsFloat {
         if panel.ignoresMouseEvents != passes {
             panel.ignoresMouseEvents = passes
         }
-        guard case .menuBar(let anchor) = place, buttons() != 0,
+        let total = clicks()
+        let clicked = total != seenClicks
+        seenClicks = total
+        guard case .menuBar(let anchor) = place, clicked,
             !panel.frame.contains(point), !anchor.contains(point)
         else { return }
         hide(animated: true)

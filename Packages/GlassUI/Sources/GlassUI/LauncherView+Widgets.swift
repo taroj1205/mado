@@ -79,20 +79,23 @@ extension LauncherView {
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
+        widgetGrid.onTap = { [weak self] index in self?.tapWidget(index) }
+        widgetGrid.onMenu = { [weak self] index, point in self?.openWidgetMenu(index, at: point) }
+        widgetGrid.onHold = { [weak self] index, grab in self?.holdWidget(index, grabbedAt: grab) }
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
-        widgetGrid.onDay = { [weak self] query in self?.replaceQuery(with: query) }
+        widgetGrid.onDay = { [weak self] query in
+            self?.closeWidgetMenu()
+            self?.replaceQuery(with: query)
+        }
         widgetGrid.onPage = { [weak self] index, page in self?.pageMonth(index, page) }
         widgetGrid.onSeek = { [weak self] index, line in
+            self?.closeWidgetMenu()
             self?.selectWidget(index)
             self?.onSeek?(line)
         }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
-        widgetGrid.onMenu = { [weak self] index in
-            self?.selectWidget(index)
-            self?.showActions()
-        }
         widgetGrid.onPinOff = { [weak self] in self?.pinOffPanel() }
         widgetGrid.onResize = { [weak self] index, resize in self?.resizeWidget(index, resize) }
         placeEditing()
@@ -113,6 +116,7 @@ extension LauncherView {
             }
             return
         }
+        closeWidgetMenu()
         if editingWidgets {
             closeSpotPicker()
         }
@@ -129,12 +133,14 @@ extension LauncherView {
     }
 
     func skipTrack(_ index: Int, _ skip: WidgetGrid.Skip) {
+        closeWidgetMenu()
         selectWidget(index)
         widgetGrid.tiles[index].track.pulse(skip)
         onSkip?(skip)
     }
 
     func pageMonth(_ index: Int, _ page: WidgetGrid.Page) {
+        closeWidgetMenu()
         selectWidget(index)
         onPage?(page)
     }
@@ -172,9 +178,13 @@ extension LauncherView {
     }
 
     func pressWidget(_ index: Int) {
+        closeWidgetMenu()
         selectWidget(index)
+    }
+
+    func tapWidget(_ index: Int) {
         let widget = widgetGrid.shown[index]
-        if widget.track != nil, !editingWidgets {
+        if widget.isPlayer, !editingWidgets {
             onWidget?(widget)
         }
     }
@@ -182,7 +192,7 @@ extension LauncherView {
     func openWidget(_ index: Int) {
         guard !editingWidgets else { return }
         let widget = widgetGrid.shown[index]
-        if widget.track != nil {
+        if widget.isPlayer {
             onOpenPlayer?()
         } else {
             onWidget?(widget)

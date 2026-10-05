@@ -33,7 +33,7 @@ import Testing
             spoken: id.capitalized)
     }
 
-    @Test func commandKOnAWidgetOffersItsActionMoveEditAndRemove() throws {
+    @Test func commandKOnAWidgetOffersItsActionMoveEditAddAndRemove() throws {
         var ran: [String] = []
         view.onWidget = { ran.append($0.id) }
         press(kVK_UpArrow, "\u{F700}")
@@ -45,7 +45,7 @@ import Testing
         #expect(menu.header.stringValue == "Weather")
         #expect(
             menu.rows.map(\.label.stringValue)
-                == ["Open Weather", "Move…", "Edit Widgets", "Remove Widget"])
+                == ["Open Weather", "Move…", "Edit Widgets", "Add Widgets…", "Remove Widget"])
         #expect(menu.rows[1].detail.stringValue == "In the panel")
         #expect(try #require(menu.rows.first).accessibilityPerformPress())
         #expect(ran == ["weather"])

@@ -24,8 +24,11 @@ extension WidgetGrid {
         tile.editing = editing
         tile.opensOnSingleClick = opensOnSingleClick
         tile.onPress = { [weak self] in self?.onPress?(index) }
+        tile.onTap = { [weak self] in self?.onTap?(index) }
         tile.onOpen = { [weak self] in self?.onOpen?(index) }
         tile.onExtend = { [weak self] in self?.onExtend?(index) }
+        tile.onMenu = { [weak self] point in self?.onMenu?(index, point) }
+        tile.onHold = { [weak self] grab in self?.onHold?(index, grab) }
         tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
         tile.onDay = { [weak self] query in self?.onDay?(query) }
         tile.onPage = { [weak self] page in self?.onPage?(index, page) }
@@ -39,7 +42,6 @@ extension WidgetGrid {
         tile.onDragOff = { [weak self, weak tile] point in
             self?.dragOff(tile?.widgetID, at: point)
         }
-        tile.onMenu = { [weak self] in self?.onMenu?(index) }
         return tile
     }
 
