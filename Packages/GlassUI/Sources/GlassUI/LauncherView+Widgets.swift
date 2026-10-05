@@ -46,6 +46,14 @@ extension LauncherView {
         homeShown && (editingWidgets || !widgetGrid.shown.isEmpty)
     }
 
+    private static func page(for key: NSEvent.SpecialKey?) -> WidgetGrid.Page? {
+        switch key {
+        case .leftArrow: .previous
+        case .rightArrow: .next
+        default: nil
+        }
+    }
+
     func changeWidgets(_ change: () -> Void) {
         let selected = selectedWidget.map { widgetGrid.shown[$0].id }
         change()
@@ -71,6 +79,8 @@ extension LauncherView {
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
+        widgetGrid.onDay = { [weak self] query in self?.replaceQuery(with: query) }
+        widgetGrid.onPage = { [weak self] index, page in self?.pageMonth(index, page) }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
         widgetGrid.onResize = { [weak self] index, resize in self?.resizeWidget(index, resize) }
         placeEditing()
@@ -112,6 +122,11 @@ extension LauncherView {
         onSkip?(skip)
     }
 
+    func pageMonth(_ index: Int, _ page: WidgetGrid.Page) {
+        selectWidget(index)
+        onPage?(page)
+    }
+
     func handleModifiedKey(_ event: NSEvent) -> Bool {
         guard !editingWidgets, !event.modifierFlags.isDisjoint(with: Self.modifierKeys) else {
             return false
@@ -132,6 +147,12 @@ extension LauncherView {
                 return true
 
             default: break
+            }
+        }
+        if command, let widget = selectedWidget, widgetGrid.shown[widget].isMonth {
+            if let page = Self.page(for: event.specialKey) {
+                pageMonth(widget, page)
+                return true
             }
         }
         leavePillsAndWidgets()

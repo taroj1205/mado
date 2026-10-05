@@ -7,8 +7,9 @@ if [ -z "${MADO_BUILD_LOCKED:-}" ]; then
   exec lockf -k "$git_dir/mado-build.lock" scripts/install.sh "$@"
 fi
 app=/Applications/Mado.app
+arch=$([ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = 1 ] && echo arm64 || echo x86_64)
 xcodegen generate --quiet
-xcodebuild build -project Mado.xcodeproj -scheme Mado -configuration Release -destination generic/platform=macOS -derivedDataPath build -quiet
+xcodebuild build -project Mado.xcodeproj -scheme Mado -configuration Release -destination generic/platform=macOS -derivedDataPath build ARCHS="$arch" LM_SKIP_METADATA_EXTRACTION=YES -quiet
 pkill -x Mado || true
 while pgrep -x Mado >/dev/null; do sleep 0.1; done
 rm -rf "$app"

@@ -2,6 +2,11 @@ import Foundation
 import os
 
 public struct SpeechModel: Equatable, Sendable {
+    public enum Engine: Sendable {
+        case whisper
+        case parakeet
+    }
+
     public enum Level: Int, Sendable {
         case lowest = 1
         case low = 2
@@ -106,14 +111,16 @@ public struct SpeechModel: Equatable, Sendable {
     private static let english = ".en"
     private static let quantized = "-q"
 
-    public static let all = catalog()
+    public static let all = catalog() + parakeet
 
     public let id: String
     public let name: String
     let file: String
     public let size: Int64
-    let sha256: String
+    let sha256: String?
+    public let engine: Engine
     public let isEnglishOnly: Bool
+    public let isJapaneseOnly: Bool
     public let isCompressed: Bool
     let isFiveBit: Bool
     public let isMeasured: Bool
@@ -125,7 +132,8 @@ public struct SpeechModel: Equatable, Sendable {
     public let memory: Int64?
 
     var url: URL? {
-        URL(string: "\(Self.repository)\(Self.revision)/\(file)")
+        guard engine == .whisper else { return nil }
+        return URL(string: "\(Self.repository)\(Self.revision)/\(file)")
     }
 
     init(file: String, size: Int64, sha256: String) throws {
@@ -145,7 +153,9 @@ public struct SpeechModel: Equatable, Sendable {
         self.file = file
         self.size = size
         self.sha256 = sha256
+        engine = .whisper
         isEnglishOnly = englishOnly
+        isJapaneseOnly = false
         isCompressed = quantization != nil
         let fullSize = !englishOnly && !isCompressed
         isMeasured = fullSize && (family == .small || family == .turbo)

@@ -36,13 +36,19 @@ import Testing
         filter.language = .multilingual
         filter.version = .compressed
         #expect(ids(filter) == ["tiny-q8_0", "tiny-q5_1", "base-q8_0", "base-q5_1"])
+        filter = SpeechModelFilter()
+        filter.language = .japaneseOnly
+        #expect(ids(filter) == ["parakeet-tdt-ja"])
+        filter.language = .multilingual
+        filter.query = "parakeet"
+        #expect(ids(filter) == ["parakeet-tdt-v3"])
     }
 
     @Test func speedAndAccuracyKeepModelsAtOrAboveTheLevel() {
         var filter = SpeechModelFilter()
         filter.speed = .highest
         let fastest = SpeechModel.all.filter { filter.matches($0, isInstalled: false) }
-        #expect(fastest.count == 12 && fastest.allSatisfy { $0.speed == .highest })
+        #expect(fastest.count == 14 && fastest.allSatisfy { $0.speed == .highest })
         filter.accuracy = .high
         #expect(ids(filter).isEmpty)
         filter = SpeechModelFilter()
@@ -59,8 +65,8 @@ import Testing
             return filter.shown(SpeechModel.all) { _ in false }.prefix(3).map(\.id)
         }
         #expect(
-            first(.bestOverall) == ["large-v3-turbo", "large-v3-turbo-q8_0", "large-v3-turbo-q5_0"])
-        #expect(first(.fastest) == ["base", "base-q8_0", "base.en"])
+            first(.bestOverall) == ["large-v3-turbo", "large-v3-turbo-q8_0", "parakeet-tdt-v3"])
+        #expect(first(.fastest) == ["parakeet-tdt-v3", "parakeet-tdt-ja", "base"])
         #expect(first(.mostAccurate).first == "large-v3-turbo")
         #expect(first(.smallest).first == "tiny-q5_1")
         #expect(first(.recommended) == SpeechModel.all.prefix(3).map(\.id))

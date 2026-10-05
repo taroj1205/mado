@@ -54,6 +54,7 @@ final class WidgetTrack: NSView {
         lines.spacing = Self.lineGap
         let controls = NSStackView(views: [previous, disc, next])
         controls.spacing = Self.buttonGap
+        controls.setContentHuggingPriority(.required, for: .horizontal)
         controls.setContentCompressionResistancePriority(.required, for: .horizontal)
         layOut(lines, controls)
     }
@@ -83,7 +84,7 @@ final class WidgetTrack: NSView {
             lines.leadingAnchor.constraint(equalTo: cover.trailingAnchor, constant: Self.coverGap),
             lines.centerYAnchor.constraint(equalTo: centerYAnchor),
             controls.leadingAnchor.constraint(
-                equalTo: lines.trailingAnchor, constant: Self.controlsGap),
+                greaterThanOrEqualTo: lines.trailingAnchor, constant: Self.controlsGap),
             controls.trailingAnchor.constraint(equalTo: trailingAnchor),
             controls.centerYAnchor.constraint(equalTo: centerYAnchor),
             topAnchor.constraint(equalTo: cover.topAnchor),

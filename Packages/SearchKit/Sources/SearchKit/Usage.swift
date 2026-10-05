@@ -36,6 +36,14 @@ public struct Usage: Codable, Equatable, Sendable {
         Int((Self.bonusPerDoubling * log2(1 + weight(of: id, at: now))).rounded())
     }
 
+    public func ranked(at now: Date) -> [String] {
+        entries.keys
+            .map { (id: $0, weight: weight(of: $0, at: now)) }
+            .filter { $0.weight >= Self.forgottenWeight }
+            .sorted { ($1.weight, $0.id) < ($0.weight, $1.id) }
+            .map(\.id)
+    }
+
     public mutating func record(_ id: String, at now: Date) {
         let weight = weight(of: id, at: now) + 1
         let count = (entries[id]?.count ?? 0) + 1

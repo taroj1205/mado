@@ -52,6 +52,8 @@ final class WidgetTile: NSView {
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onDay: ((String) -> Void)?
+    var onPage: ((WidgetGrid.Page) -> Void)?
     var onRemove: (() -> Void)?
     var onResize: ((Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
@@ -98,6 +100,8 @@ final class WidgetTile: NSView {
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
+        month.onDay = { [weak self] query in self?.onDay?(query) }
+        month.onPage = { [weak self] page in self?.onPage?(page) }
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -166,12 +170,14 @@ final class WidgetTile: NSView {
         }
         showMeters(readings)
         showTrack(widget.track != nil)
+        month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
     }
 
     func customActions() -> [NSAccessibilityCustomAction] {
         if editing { return editingActions() }
+        if !month.isHidden { return month.accessibilityActions() }
         return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
     }
 
@@ -212,17 +218,20 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
+            month.press(hit)
         } else {
             onPress?()
-            if opensOnSingleClick || event.clickCount > 1 || hitsAllow(event) {
-                onOpen?()
-            }
+            openIfAsked(by: event)
         }
     }
 
-    private func hitsAllow(_ event: NSEvent) -> Bool {
-        !allow.isHiddenOrHasHiddenAncestor
-            && allow.bounds.contains(allow.convert(event.locationInWindow, from: nil))
+    override func scrollWheel(with event: NSEvent) {
+        if month.isInteractive, !month.isHidden {
+            month.scroll(event)
+        } else {
+            super.scrollWheel(with: event)
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {

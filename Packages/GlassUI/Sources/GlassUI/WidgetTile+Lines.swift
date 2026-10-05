@@ -13,6 +13,14 @@ extension WidgetTile {
     private static let dotGap: CGFloat = 7
     private static let half: CGFloat = 0.5
 
+    func openIfAsked(by event: NSEvent) {
+        let point = allow.convert(event.locationInWindow, from: nil)
+        let onAllow = !allow.isHiddenOrHasHiddenAncestor && allow.bounds.contains(point)
+        if opensOnSingleClick || event.clickCount > 1 || onAllow {
+            onOpen?()
+        }
+    }
+
     func arrangeLines() {
         reason.font = .systemFont(ofSize: Self.noteSize)
         detail.textColor = .secondaryLabelColor

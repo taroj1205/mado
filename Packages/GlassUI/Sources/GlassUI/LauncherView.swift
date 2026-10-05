@@ -37,6 +37,7 @@ public final class LauncherView: NSView {
     }
     public var onWidget: ((WidgetGrid.Widget) -> Void)?
     public var onSkip: ((WidgetGrid.Skip) -> Void)?
+    public var onPage: ((WidgetGrid.Page) -> Void)?
     public var onWidgetEdit: ((WidgetSettings.Edit) -> Void)?
     public var onUndoWidgetEdit: (() -> Void)?
     public var onEdit: ((ResultList.Item) -> Void)?

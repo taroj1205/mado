@@ -53,6 +53,10 @@ extension AppDelegate {
             guard let self else { return }
             widgets.control(skip == .previous ? .previous : .next, in: launcherView)
         }
+        launcherView.onPage = { [weak self] page in
+            guard let self else { return }
+            widgets.page(page, in: launcherView)
+        }
         widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
     }
@@ -93,6 +97,7 @@ extension AppDelegate {
         let enabled = modules?.isEnabled(Widgets.moduleID) != false
         widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
+        widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

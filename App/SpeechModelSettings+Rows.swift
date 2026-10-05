@@ -4,7 +4,8 @@ import GlassUI
 
 extension SpeechModelSettings {
     private static let footnote =
-        "Speed and accuracy for Small and Large v3 Turbo come from Mado’s own tests. "
+        "Speed and accuracy for Small, Large v3 Turbo and the two Parakeet models come from "
+        + "Mado’s own tests. "
         + "The rest are estimated from each model’s size."
     private static let spacing: CGFloat = 8
     private static let lineSpacing: CGFloat = 2
@@ -70,11 +71,16 @@ extension SpeechModelSettings {
         return box
     }
 
+    private static func languages(_ model: SpeechModel) -> String? {
+        if model.isEnglishOnly { return nil }
+        return model.isJapaneseOnly ? "Japanese only" : "\(model.languages) languages"
+    }
+
     private static func meta(_ model: SpeechModel) -> String {
         [
             bytes(model.size),
             model.memory.map { "uses \(bytes($0)) of memory" },
-            model.isEnglishOnly ? nil : "\(model.languages) languages",
+            languages(model),
         ]
         .compactMap(\.self).joined(separator: " · ")
     }
