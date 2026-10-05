@@ -126,10 +126,12 @@ extension WidgetGrid {
         let visible = shown
         let hit = tileFrames(in: window).firstIndex { $0.contains(point) }.map { visible[$0] }
         let screen = window.convertPoint(toScreen: point)
-        guard
+        guard Self.railsFrame(beside: window.frame).contains(screen),
             let target = hit.map(spot) ?? Self.nearestSpot(to: screen, beside: window.frame)
         else {
             refused = nil
+            moving = nil
+            order = []
             return false
         }
         let home = arriving ? nil : home(of: id)
@@ -140,7 +142,8 @@ extension WidgetGrid {
             return move(id, to: target, before: hit?.id)
         }
         refused = nil
-        return reorder(id, at: point, in: window) || editing || moving == target
+        reorder(id, at: point, in: window)
+        return true
     }
 
     func tileFrames(in window: NSWindow) -> [NSRect] {
@@ -221,10 +224,10 @@ extension WidgetGrid {
         return true
     }
 
-    private func reorder(_ id: String, at point: NSPoint, in window: NSWindow) -> Bool {
+    private func reorder(_ id: String, at point: NSPoint, in window: NSWindow) {
         let visible = shown
         var ids = visible.map(\.id)
-        guard let from = ids.firstIndex(of: id) else { return false }
+        guard let from = ids.firstIndex(of: id) else { return }
         let frames = tileFrames(in: window)
         let spot = spot(of: visible[from])
         let target = frames.indices.first { index in
@@ -235,6 +238,5 @@ extension WidgetGrid {
             ids.insert(id, at: target)
         }
         order = ids
-        return target != nil
     }
 }

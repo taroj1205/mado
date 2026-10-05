@@ -27,7 +27,11 @@ final class StatusPill: NSView {
     let glass: GlassView
     private let highlight = NSBox()
     private(set) var symbol: String?
+    private var dragging = false
     var onPress: (() -> Void)?
+    var onGrab: (() -> Void)?
+    var onDrag: ((NSPoint) -> Void)?
+    var onDrop: (() -> Void)?
 
     var text: String {
         label.stringValue
@@ -136,10 +140,26 @@ final class StatusPill: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        if let onPress {
+        dragging = onGrab != nil && event.modifierFlags.contains(.command)
+        if dragging {
+            onGrab?()
+        } else if let onPress {
             onPress()
         } else {
             super.mouseDown(with: event)
+        }
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        if dragging {
+            onDrag?(event.locationInWindow)
+        }
+    }
+
+    override func mouseUp(with _: NSEvent) {
+        if dragging {
+            dragging = false
+            onDrop?()
         }
     }
 
