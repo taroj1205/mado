@@ -2,7 +2,15 @@ import AppKit
 
 @MainActor
 enum StatusMenu {
-    private static let slashWidth: CGFloat = 1.5
+    private static let iconSize: CGFloat = 16
+    private static let artboard: CGFloat = 18
+    private static let edge: CGFloat = 2.75
+    private static let radius: CGFloat = 3
+    private static let lineWidth: CGFloat = 1.5
+    private static let gapInset: CGFloat = 2
+    private static let gapWidth: CGFloat = 4
+    private static let slashInset: CGFloat = 2.6
+    private static let half: CGFloat = 0.5
 
     static func makeItem(
         target: AnyObject, open: Selector, settings: Selector, pauseKeys: Selector, hide: Selector
@@ -33,24 +41,58 @@ enum StatusMenu {
         return item
     }
 
-    static func icon(keysPaused: Bool) -> NSImage? {
-        let name = keysPaused ? "Mado, keyboard features paused" : "Mado"
-        guard let symbol = NSImage(systemSymbolName: "macwindow", accessibilityDescription: name)
-        else { return nil }
-        guard keysPaused else { return symbol }
-        let slashed = NSImage(size: symbol.size, flipped: false) { rect in
-            symbol.draw(in: rect)
-            let slash = NSBezierPath()
-            slash.move(to: NSPoint(x: rect.minX, y: rect.minY))
-            slash.line(to: NSPoint(x: rect.maxX, y: rect.maxY))
-            slash.lineWidth = slashWidth
-            slash.lineCapStyle = .round
-            NSColor.black.setStroke()
-            slash.stroke()
+    static func icon(keysPaused: Bool) -> NSImage {
+        let image = NSImage(size: NSSize(width: iconSize, height: iconSize), flipped: true) { _ in
+            let scale = iconSize / artboard
+            NSGraphicsContext.current?.cgContext.scaleBy(x: scale, y: scale)
+            NSColor.black.set()
+            drawPane()
+            if keysPaused { drawSlash() }
             return true
         }
-        slashed.isTemplate = true
-        slashed.accessibilityDescription = name
-        return slashed
+        image.isTemplate = true
+        image.accessibilityDescription = keysPaused ? "Mado, keyboard features paused" : "Mado"
+        return image
+    }
+
+    private static func drawPane() {
+        let far = artboard - edge
+        let mid = artboard * half
+        let outline = NSBezierPath(
+            roundedRect: NSRect(x: edge, y: edge, width: far - edge, height: far - edge),
+            xRadius: radius, yRadius: radius)
+        outline.move(to: NSPoint(x: mid, y: edge))
+        outline.line(to: NSPoint(x: mid, y: far))
+        outline.move(to: NSPoint(x: edge, y: mid))
+        outline.line(to: NSPoint(x: far, y: mid))
+        outline.lineWidth = lineWidth
+        outline.lineCapStyle = .round
+        outline.lineJoinStyle = .round
+        outline.stroke()
+
+        let lit = NSBezierPath()
+        lit.move(to: NSPoint(x: edge, y: mid))
+        lit.appendArc(
+            from: NSPoint(x: edge, y: edge), to: NSPoint(x: mid, y: edge), radius: radius)
+        lit.line(to: NSPoint(x: mid, y: edge))
+        lit.line(to: NSPoint(x: mid, y: mid))
+        lit.close()
+        lit.fill()
+    }
+
+    private static func slash(inset: CGFloat, width: CGFloat) -> NSBezierPath {
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: inset, y: artboard - inset))
+        path.line(to: NSPoint(x: artboard - inset, y: inset))
+        path.lineWidth = width
+        path.lineCapStyle = .round
+        return path
+    }
+
+    private static func drawSlash() {
+        NSGraphicsContext.current?.compositingOperation = .clear
+        slash(inset: gapInset, width: gapWidth).stroke()
+        NSGraphicsContext.current?.compositingOperation = .sourceOver
+        slash(inset: slashInset, width: lineWidth).stroke()
     }
 }
