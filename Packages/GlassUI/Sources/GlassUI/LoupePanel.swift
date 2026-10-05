@@ -5,8 +5,8 @@ final class LoupePanel: NSPanel {
     private static let keys: [Int: ColourLoupe.Input] = [
         kVK_LeftArrow: .nudged(across: -1, down: 0), kVK_RightArrow: .nudged(across: 1, down: 0),
         kVK_UpArrow: .nudged(across: 0, down: -1), kVK_DownArrow: .nudged(across: 0, down: 1),
-        kVK_ANSI_J: .nudged(across: -1, down: 0), kVK_ANSI_L: .nudged(across: 1, down: 0),
-        kVK_ANSI_I: .nudged(across: 0, down: -1), kVK_ANSI_K: .nudged(across: 0, down: 1),
+        kVK_ANSI_H: .nudged(across: -1, down: 0), kVK_ANSI_L: .nudged(across: 1, down: 0),
+        kVK_ANSI_K: .nudged(across: 0, down: -1), kVK_ANSI_J: .nudged(across: 0, down: 1),
         kVK_Return: .picked, kVK_ANSI_KeypadEnter: .picked, kVK_Escape: .cancelled,
     ]
 
