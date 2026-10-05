@@ -198,7 +198,6 @@ final class WidgetTile: NSView {
 
     override func rightMouseDown(with _: NSEvent) {
         guard !editing else { return }
-        onPress?()
         onMenu?()
     }
 

@@ -201,4 +201,16 @@ import Testing
         #expect(view.choosingAction)
         #expect(try titles().contains("Pin to screen"))
     }
+
+    @Test func rightClickingTheNowPlayingTileOpensItsActionsWithoutTogglingPlayback() throws {
+        var triggered = 0
+        view.onWidget = { _ in triggered += 1 }
+        view.widgets = [song]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.first)
+        tile.rightMouseDown(with: try click(.rightMouseDown, at: NSPoint(x: 40, y: 480)))
+        #expect(view.selectedWidget == 0)
+        #expect(view.choosingAction)
+        #expect(triggered == 0)
+    }
 }
