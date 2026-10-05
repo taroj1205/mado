@@ -159,7 +159,7 @@ final class EnterGuardPage: NSObject {
     private func update(_ change: (inout EnterGuardSettings) -> Void) throws {
         var settings = EnterGuardSettings.load(from: modules)
         change(&settings)
-        settings.save(to: modules)
+        try modules?.setValue(settings, for: EnterGuardSettings.key)
         try modules?.restart(KeyboardModule.id)
     }
 }

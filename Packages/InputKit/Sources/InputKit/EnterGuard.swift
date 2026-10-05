@@ -33,8 +33,11 @@ public struct EnterGuard {
     ) throws(ModuleError) {
         var keys = Self()
         try context.tapEvents(name, matching: [.keyDown]) { _, event in
-            let target = pid_t(
+            let annotated = pid_t(
                 truncatingIfNeeded: event.getIntegerValueField(.eventTargetUnixProcessID))
+            let target =
+                annotated != 0
+                ? annotated : NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0
             let action = keys.handle(
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode), flags: event.flags,
                 target: target, composes: { !InputSource.currentTypesASCII },
