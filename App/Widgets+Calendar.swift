@@ -16,6 +16,7 @@ extension Widgets {
         var monthShift = 0
         var monthEvents: [CalendarAgenda.Found] = []
         var monthFetching: Task<Void, Never>?
+        var isOn = true
 
         mutating func stop() {
             scheduling?.cancel()
@@ -36,7 +37,7 @@ extension Widgets {
     private static let cardEvents = 4
 
     static func month(
-        at date: Date, shift: Int, events: [CalendarAgenda.Found]
+        at date: Date, shift: Int, events: [CalendarAgenda.Found], opensDays: Bool
     ) -> WidgetGrid.Widget {
         let name = name(of: calendarWidget)
         let shown = Calendar.current.date(byAdding: .month, value: shift, to: date) ?? date
@@ -52,7 +53,8 @@ extension Widgets {
                     events: events.map(\.event),
                     colours: Dictionary(
                         events.map { ($0.event.id, $0.colour ?? .controlAccentColor) }
-                    ) { first, _ in first })),
+                    ) { first, _ in first },
+                    opensDays: opensDays)),
             action: openCalendar, spoken: "\(name): \(spoken)", isWide: true, isTall: true)
     }
 
@@ -207,7 +209,7 @@ extension Widgets {
         calendars.monthFetching?.cancel()
         calendars.monthFetching = nil
         let shift = calendars.monthShift
-        guard shown.contains(Self.calendarWidget), CalendarAgenda.hasAccess,
+        guard shown.contains(Self.calendarWidget), calendars.isOn, CalendarAgenda.hasAccess,
             let day = Calendar.current.date(byAdding: .month, value: shift, to: .now)
         else {
             calendars.monthEvents = []

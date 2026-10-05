@@ -95,6 +95,7 @@ extension AppDelegate {
         let enabled = modules?.isEnabled(Widgets.moduleID) != false
         widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
+        widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

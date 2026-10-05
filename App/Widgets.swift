@@ -237,7 +237,11 @@ final class Widgets {
     }
 
     func current() -> [WidgetGrid.Widget] {
-        [Self.month(at: .now, shift: calendars.monthShift, events: calendars.monthEvents)]
+        [
+            Self.month(
+                at: .now, shift: calendars.monthShift, events: calendars.monthEvents,
+                opensDays: calendars.isOn)
+        ]
             + Self.current(
                 at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
                 schedule: calendars.schedule)

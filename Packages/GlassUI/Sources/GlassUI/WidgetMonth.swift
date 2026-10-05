@@ -114,6 +114,7 @@ final class WidgetMonth: NSView {
         where control.isShown && control.frame.insetBy(dx: inset, dy: inset).contains(point) {
             return .page(target)
         }
+        guard shown?.opensDays == true else { return nil }
         return page.index(at: convert(point, to: page)).map(Hit.day)
     }
 

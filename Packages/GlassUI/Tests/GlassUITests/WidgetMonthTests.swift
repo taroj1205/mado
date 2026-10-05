@@ -133,6 +133,25 @@ import Testing
         #expect(days.filter { !$0.events.isEmpty }.map(\.number) == ["12"])
     }
 
+    @Test func daysStayInertWhenTheCalendarModuleIsOff() throws {
+        let inside = try point(of: 15)
+        view.widgets = [
+            .init(
+                id: "calendar", name: "Calendar",
+                content: .month(.init(today: today, opensDays: false)),
+                action: "Open Calendar", spoken: "Calendar", isWide: true, isTall: true)
+        ]
+        view.layoutSubtreeIfNeeded()
+        var opened: [String] = []
+        view.onWidget = { opened.append($0.id) }
+        try click(inside)
+        #expect(tile.month.hit(at: inside) == nil)
+        #expect(view.field.stringValue.isEmpty)
+        #expect(opened == ["calendar"])
+        tile.month.mouseMoved(with: try pointer())
+        #expect(controls() == [.previous, .next])
+    }
+
     @Test func aTileNobodyWiredUpIgnoresThePointer() {
         let loose = WidgetTile(floating: false)
         loose.show(
