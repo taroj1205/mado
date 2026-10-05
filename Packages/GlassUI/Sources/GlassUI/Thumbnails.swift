@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import ImageIO
 
 @MainActor
@@ -35,7 +36,15 @@ final class Thumbnails {
         cache.countLimit = Self.limit
     }
 
-    nonisolated static func decode(_ request: Request) -> CGImage? {
+    @concurrent
+    nonisolated static func decode(_ request: Request) async -> CGImage? {
+        if let image = picture(request) {
+            return image
+        }
+        return await frame(request)
+    }
+
+    nonisolated private static func picture(_ request: Request) -> CGImage? {
         let uncached = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithURL(request.url as CFURL, uncached),
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
@@ -56,6 +65,14 @@ final class Thumbnails {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options)
     }
 
+    nonisolated private static func frame(_ request: Request) async -> CGImage? {
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: request.url))
+        generator.appliesPreferredTrackTransform = true
+        let side = CGFloat(request.side * widest)
+        generator.maximumSize = CGSize(width: side, height: side)
+        return try? await generator.image(at: .zero).image
+    }
+
     func removeAll() {
         cache.removeAllObjects()
     }
@@ -69,7 +86,7 @@ final class Thumbnails {
             return image
         }
         guard !Task.isCancelled else { return nil }
-        let image = await Task.detached(priority: .userInitiated) { Self.decode(request) }.value
+        let image = await Self.decode(request)
         if let image, !Task.isCancelled {
             cache.setObject(image, forKey: request)
         }

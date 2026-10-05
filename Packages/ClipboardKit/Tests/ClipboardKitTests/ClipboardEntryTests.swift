@@ -107,6 +107,27 @@ import Testing
             .count == 3)
     }
 
+    @Test func showsACopiedImageOrVideoFileAsAThumbnail() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let png = folder.appending(path: "Screenshot.png")
+        let video = folder.appending(path: "Recording.mp4")
+        let notes = folder.appending(path: "Notes.txt")
+        for file in [png, video, notes] {
+            try Data().write(to: file)
+        }
+        let path = png.path(percentEncoded: false)
+
+        #expect(Self.entry(.file, path).thumbnail == png)
+        #expect(Self.entry(.file, video.path(percentEncoded: false)).thumbnail == video)
+        #expect(Self.entry(.file, notes.path(percentEncoded: false)).thumbnail == nil)
+        #expect(Self.entry(.file, "\(path)\n\(path)").thumbnail == nil)
+        #expect(Self.entry(.file, folder.appending(path: "gone.png").path()).thumbnail == nil)
+        #expect(Self.entry(.image, "", image: notes).thumbnail == notes)
+        #expect(Self.entry(.text, path).thumbnail == nil)
+    }
+
     @Test func countsShortTextRightAwayAndLeavesLongTextForLater() {
         let short = Self.entry(.text, "Thanks! I’ll send the file tonight.")
         let long = Self.entry(.text, String(repeating: "word ", count: 20_001))

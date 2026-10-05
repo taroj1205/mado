@@ -1,6 +1,7 @@
 import AppCore
 public import AppKit
 import ImageIO
+import UniformTypeIdentifiers
 
 extension ClipboardStore.Entry {
     public typealias Detail = (name: String, value: String)
@@ -64,6 +65,18 @@ extension ClipboardStore.Entry {
         return RGB(
             red: value >> Self.redShift & Self.byte, green: value >> Self.greenShift & Self.byte,
             blue: value & Self.byte)
+    }
+
+    public var thumbnail: URL? {
+        if let image {
+            return image
+        }
+        guard files.count == 1, let file = files.first,
+            let type = UTType(filenameExtension: file.pathExtension),
+            type.conforms(to: .image) || type.conforms(to: .movie),
+            (try? file.checkResourceIsReachable()) == true
+        else { return nil }
+        return file
     }
 
     public var plainText: String? {

@@ -16,6 +16,7 @@ final class DetailPane: NSView {
     private static let rowHeight: CGFloat = 30
     private static let rowInset: CGFloat = 2
     private static let detailSize: CGFloat = 12.5
+    private static let imageSide = 1_024
     private static let fillAlpha = (dark: 0.22, light: 0.04)
     private static let edgeAlpha: CGFloat = 0.06
     static let fill = NSColor(name: nil) { appearance in
@@ -30,6 +31,8 @@ final class DetailPane: NSView {
     let image = NSImageView()
     let info = NSStackView()
     private let header = DetailPane.makeHeader()
+    private var imageRequest: Thumbnails.Request?
+    private(set) var loading: Task<Void, Never>?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -136,10 +139,8 @@ final class DetailPane: NSView {
     func show(_ preview: LauncherView.Preview?) {
         box.isHidden = preview == nil
         info.isHidden = preview == nil
-        guard let preview else {
-            image.image = nil
-            return
-        }
+        showImage(preview?.image)
+        guard let preview else { return }
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = Self.textSize * Self.lineHeight
         style.maximumLineHeight = style.minimumLineHeight
@@ -150,13 +151,27 @@ final class DetailPane: NSView {
                 .foregroundColor: NSColor.labelColor, .paragraphStyle: style,
             ])
         text.isHidden = preview.image != nil
-        image.image = preview.image
         image.isHidden = preview.image == nil
         let rows = preview.details.map { Self.row($0.name, $0.value) }
         info.setViews([header] + rows, in: .top)
         info.setCustomSpacing(Self.headerBottom, after: header)
         for row in rows {
             row.widthAnchor.constraint(equalTo: info.widthAnchor).isActive = true
+        }
+    }
+
+    private func showImage(_ url: URL?) {
+        let next = url.map { Thumbnails.Request(url: $0, side: Self.imageSide) }
+        guard next != imageRequest else { return }
+        imageRequest = next
+        loading?.cancel()
+        loading = nil
+        image.image = nil
+        guard let next else { return }
+        loading = Task { [weak self] in
+            let decoded = await Thumbnails.decode(next)
+            guard let self, imageRequest == next, let decoded else { return }
+            image.image = NSImage(cgImage: decoded, size: .zero)
         }
     }
 
@@ -184,10 +199,10 @@ final class DetailPane: NSView {
 extension LauncherView {
     public struct Preview {
         public let text: String
-        public let image: NSImage?
+        public let image: URL?
         public let details: [(name: String, value: String)]
 
-        public init(text: String, image: NSImage?, details: [(name: String, value: String)]) {
+        public init(text: String, image: URL?, details: [(name: String, value: String)]) {
             self.text = text
             self.image = image
             self.details = details
