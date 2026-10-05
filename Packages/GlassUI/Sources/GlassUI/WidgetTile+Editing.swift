@@ -128,12 +128,15 @@ extension WidgetTile: NSDraggingSource {
         }
     }
 
-    func beginDrag(with event: NSEvent) {
+    func beginDrag(with event: NSEvent, grabbedAt grab: NSPoint?) {
         let item = NSPasteboardItem()
         item.setString(widgetID, forType: WidgetGrid.dragType)
         let dragging = NSDraggingItem(pasteboardWriter: item)
         let card = DragCard.make(of: self, showing: self, radius: Self.radius)
-        dragging.setDraggingFrame(card.frame, contents: card.image)
+        let cursor = convert(event.locationInWindow, from: nil)
+        let shift = grab.map { NSSize(width: cursor.x - $0.x, height: cursor.y - $0.y) } ?? .zero
+        dragging.setDraggingFrame(
+            card.frame.offsetBy(dx: shift.width, dy: shift.height), contents: card.image)
         beginDraggingSession(with: [dragging], event: event, source: self)
         onDragStart?()
     }

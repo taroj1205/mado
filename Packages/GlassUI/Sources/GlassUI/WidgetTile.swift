@@ -5,6 +5,7 @@ final class WidgetTile: NSView {
     static let horizontal: CGFloat = 12
     static let vertical: CGFloat = 10
     static let noteSize: CGFloat = 12
+    static let delays = (hover: 0.3, hold: 0.5)
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
     private static let meterGap: CGFloat = 8
@@ -28,9 +29,9 @@ final class WidgetTile: NSView {
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    private lazy var trackPlacement = trackConstraints()
+    lazy var trackPlacement = trackConstraints()
     lazy var versePlacement = verseConstraints()
-    private let box = NSBox()
+    let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
     let dash = DashedOutline(
@@ -39,16 +40,23 @@ final class WidgetTile: NSView {
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
     let resizer = WidgetResizeHandle()
+    let more = WidgetMoreButton()
+    let hoverDelay = Delay(seconds: WidgetTile.delays.hover)
+    let holdDelay = Delay(seconds: WidgetTile.delays.hold)
     let floating: Bool
-    private let looks: (resting: Look, picked: Look)
-    private(set) var widgetID = ""
-    private(set) var widget: WidgetGrid.Widget?
+    let looks: (resting: Look, picked: Look)
+    var widgetID = ""
+    var widget: WidgetGrid.Widget?
     var form = WidgetForm(size: .zero)
     var dragStart: NSEvent?
+    var holdOrigin: NSPoint?
     var resizeStart: NSPoint?
     var compact = false
     var onPress: (() -> Void)?
     var onOpen: (() -> Void)?
+    var onMenu: ((NSPoint) -> Void)?
+    var onHold: ((NSPoint) -> Void)?
+    var onTap: (() -> Void)?
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
@@ -69,9 +77,18 @@ final class WidgetTile: NSView {
         }
     }
 
+    var hovering = false {
+        didSet { showMore() }
+    }
+
+    var menuOpen = false {
+        didSet { showMore() }
+    }
+
     var editing = false {
         didSet {
             showEditing()
+            showMore()
             wash.alphaValue = editing ? 0 : 1
             paint()
         }
@@ -104,6 +121,7 @@ final class WidgetTile: NSView {
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
+        arrangeMore()
         month.onDay = { [weak self] query in self?.onDay?(query) }
         month.onPage = { [weak self] page in self?.onPage?(page) }
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
@@ -132,63 +150,13 @@ final class WidgetTile: NSView {
         nil
     }
 
-    private func paint() {
-        let look = selected ? looks.picked : looks.resting
-        if editing {
-            box.fillColor = selected ? Self.selectedFill : Self.editFill
-            box.borderColor = .clear
-        } else {
-            box.fillColor = look.fill
-            box.borderColor = look.edge
-        }
-        setAccessibilitySelected(selected)
-    }
-
-    func show(_ widget: WidgetGrid.Widget) {
-        self.widget = widget
-        form = WidgetForm(size: bounds.size)
-        widgetID = widget.id
-        var readings: [WidgetGrid.Meter] = []
-        var symbol: String?
-        switch widget.content {
-        case let .value(_, _, name, _): symbol = name
-        case let .meters(list): readings = list
-        case let .track(playing): track.show(playing)
-        case let .verse(lyrics): verse.show(lyrics)
-        case .month, .event, .loading, .notice, .permission, .unavailable: break
-        }
-        wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
-        let visible = showLines(of: widget.content)
-        for row in lines.arrangedSubviews {
-            row.isHidden = !visible.contains(row)
-        }
-        icon.image = symbol.flatMap { name in
-            NSImage(systemSymbolName: name, accessibilityDescription: nil)
-        }
-        showMeters(readings)
-        showTrack(widget.track != nil)
-        showVerse(widget.verse != nil)
-        month.isInteractive = onPage != nil && !editing
-        setAccessibilityLabel(widget.spoken)
-        setAccessibilityCustomActions(customActions())
-        showFace()
-    }
-
     override func layout() {
         super.layout()
+        more.frame = moreFrame
         let next = WidgetForm(size: bounds.size)
         if next != form {
             form = next
             showFace()
-        }
-    }
-
-    private func showTrack(_ shows: Bool) {
-        track.isHidden = !shows
-        if shows {
-            NSLayoutConstraint.activate(trackPlacement)
-        } else {
-            NSLayoutConstraint.deactivate(trackPlacement)
         }
     }
 
@@ -210,6 +178,10 @@ final class WidgetTile: NSView {
             dragStart = beginResize(event) ? nil : event
             return
         }
+        if event.modifierFlags.contains(.control) || pressesMore(event) {
+            onMenu?(menuAnchor(for: event))
+            return
+        }
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
@@ -220,7 +192,26 @@ final class WidgetTile: NSView {
         } else {
             onPress?()
             openIfAsked(by: event)
+            startHold(with: event)
+            if holdOrigin == nil { tap() }
         }
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        if editing {
+            super.rightMouseDown(with: event)
+        } else {
+            onMenu?(menuAnchor(for: event))
+        }
+    }
+
+    override func mouseEntered(with _: NSEvent) {
+        hoverDelay.start { [weak self] in self?.hovering = true }
+    }
+
+    override func mouseExited(with _: NSEvent) {
+        hoverDelay.cancel()
+        hovering = false
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -232,6 +223,7 @@ final class WidgetTile: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        cancelHold(ifMovedBy: event)
         if let resizeStart {
             let point = screenPoint(of: event)
             onResize?(
@@ -240,10 +232,15 @@ final class WidgetTile: NSView {
         }
         guard let start = dragStart, unsafe window != nil else { return }
         dragStart = nil
-        beginDrag(with: start)
+        beginDrag(with: start, grabbedAt: nil)
     }
 
     override func mouseUp(with _: NSEvent) {
+        holdDelay.cancel()
+        if holdOrigin != nil {
+            holdOrigin = nil
+            tap()
+        }
         dragStart = nil
         if resizeStart != nil {
             resizeStart = nil
@@ -264,6 +261,12 @@ final class WidgetTile: NSView {
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         onDrop?(sender.draggingPasteboard.string(forType: WidgetGrid.dragType)) ?? false
+    }
+
+    override func accessibilityPerformShowMenu() -> Bool {
+        guard !editing, let onMenu else { return false }
+        onMenu(buttonAnchor)
+        return true
     }
 
     override func accessibilityPerformPress() -> Bool {
