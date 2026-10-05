@@ -17,9 +17,10 @@ extension AppDelegate: NSMenuItemValidation {
 
     func makeStatusItem(settings: Selector) -> NSStatusItem {
         modules?.onKeysPausedChange = { [weak self] in self?.keysPausedChanged() }
-        menuBarAgenda.openSettings = { [weak self] in
+        menuBar.agenda.openSettings = { [weak self] in
             self?.settingsWindow().open(.init(page: "Notes", tab: nil), entry: nil)
         }
+        menuBar.timer.openLauncher = { [weak self] in self?.openTimerSearch() }
         let item = StatusMenu.makeItem(
             target: self, open: #selector(showLauncher), settings: settings,
             pauseKeys: #selector(toggleKeysPaused), hide: #selector(hideStatusItem))

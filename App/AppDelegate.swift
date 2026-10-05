@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let colourPicker = ColourPicker()
     let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
-    let menuBarAgenda = MenuBarAgendaItem()
+    let menuBar = MenuBarItems()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
-                        in: manager, hotKeys: registry, menuBarAgenda: menuBarAgenda,
+                        in: manager, hotKeys: registry, menuBar: menuBar,
                         clipboard: .init(
                             history: clipboardHistory, textTools: textTools, emoji: emojiPicker,
                             snippets: library)
@@ -266,7 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let settings { return settings }
         let controller = SettingsWindowController(
             modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-            snippets: snippets, statusItem: statusItem, menuBarAgenda: menuBarAgenda
+            snippets: snippets, statusItem: statusItem, menuBarAgenda: menuBar.agenda
         ) { [weak self] in self?.editWidgetsInLauncher() }
         settings = controller
         return controller
