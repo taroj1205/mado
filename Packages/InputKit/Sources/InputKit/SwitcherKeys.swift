@@ -7,6 +7,7 @@ public struct SwitcherKeys {
     public enum Event: Equatable, Sendable {
         case pressed(keyCode: Int64)
         case stepped(backward: Bool)
+        case steppedRow(upward: Bool)
         case chosen
         case cancelled
     }

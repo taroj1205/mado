@@ -96,8 +96,7 @@ struct SettingsPage {
                 Tab(title: "Radial Menu") { $0.radial.sections },
                 Tab(title: "Switcher") { context in
                     [
-                        SettingsSection(
-                            "Window switcher", [.init("Order", orderPopUp(context.modules))])
+                        SwitcherSettings.section(context.modules)
                     ]
                 },
                 Tab(title: "Drag & Snap") { context in
@@ -194,22 +193,6 @@ struct SettingsPage {
         let button = SettingsButton("Add Widgets…") { context.addWidgets() }
         button.isEnabled = context.modules != nil
         return button
-    }
-
-    private static func orderPopUp(_ modules: ModuleManager?) -> SettingsPopUp {
-        let popUp = SettingsPopUp {
-            let current = SwitcherSettings.load(from: modules)
-            let choices = SwitcherSettings.Order.allCases.map { order in
-                SettingsPopUp.Choice(title: order.title, isSelected: order == current.order) {
-                    var settings = SwitcherSettings.load(from: modules)
-                    settings.order = order
-                    settings.save(to: modules)
-                }
-            }
-            return [SettingsPopUp.Section(title: nil, choices: choices)]
-        }
-        popUp.isEnabled = modules != nil
-        return popUp
     }
 
     private static func gestureTargetPopUp(_ modules: ModuleManager?) -> SettingsPopUp {

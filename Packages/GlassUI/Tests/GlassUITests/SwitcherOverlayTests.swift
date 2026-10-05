@@ -35,6 +35,19 @@ import Testing
         #expect(grid.origin(of: 18, firstRow: 2) == CGPoint(x: 14, y: 14 + 154 + 10))
     }
 
+    @Test func movingByARowKeepsTheColumnAndStopsAtTheEdges() {
+        let grid = SwitcherGrid(count: 9, card: Self.card, fitting: Self.wide)
+        let narrow = SwitcherGrid(
+            count: 9, card: Self.card, fitting: CGSize(width: 4 * 168 + 3 * 10 + 28, height: 600))
+        #expect(grid.index(4, movedBy: 1, count: 9) == 8)
+        #expect(narrow.columns == 4)
+        #expect(narrow.index(1, movedBy: 1, count: 9) == 5)
+        #expect(narrow.index(5, movedBy: -1, count: 9) == 1)
+        #expect(narrow.index(7, movedBy: 1, count: 9) == 8)
+        #expect(narrow.index(8, movedBy: 1, count: 9) == 8)
+        #expect(narrow.index(2, movedBy: -1, count: 9) == 2)
+    }
+
     @Test func aTinyLimitStillShowsOneCard() {
         let grid = SwitcherGrid(count: 3, card: Self.card, fitting: .zero)
         #expect(grid.columns == 1)

@@ -87,6 +87,9 @@ final class WindowSwitcher {
         case .stepped(let backward):
             step(backward: backward)
 
+        case .steppedRow(let upward):
+            if case .shown = phase { select(overlay.index(selected, movedBy: upward ? -1 : 1)) }
+
         case .chosen:
             choose()
 
