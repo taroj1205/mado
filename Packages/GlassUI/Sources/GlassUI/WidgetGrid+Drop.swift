@@ -82,7 +82,7 @@ extension WidgetGrid {
             return move(id, to: target, before: hit?.id, beside: window.frame)
         }
         refused = nil
-        return reorder(id, at: point, in: window)
+        return reorder(id, at: point, in: window) || editing || moving == target
     }
 
     func tileFrames(in window: NSWindow) -> [NSRect] {

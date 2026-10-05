@@ -78,13 +78,13 @@ extension LauncherView {
     func dragWidget(_ id: String?, at point: NSPoint, from source: Any?) -> NSDragOperation {
         guard let id else { return [] }
         guard widgetGrid.widgets.contains(where: { $0.id == id }) else {
-            guard editingWidgets else { return [] }
+            guard editingWidgets, bounds.contains(convert(point, from: nil)) else { return [] }
             widgetGrid.incoming = (source as? WidgetGalleryCard)?.card.size.span ?? 1
             return .copy
         }
         var droppable = false
         changeWidgets { droppable = widgetGrid.preview(moving: id, to: point) }
-        return droppable || (editingWidgets && widgetGrid.refused == nil) ? .move : []
+        return droppable ? .move : []
     }
 
     private func firstHidden(after widget: String?, shown: [String]) -> String? {

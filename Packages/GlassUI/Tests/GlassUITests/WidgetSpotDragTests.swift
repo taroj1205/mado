@@ -71,6 +71,39 @@ import Testing
         #expect(view.widgetGrid.spot(of: numbered(2)) == .leftMiddle)
     }
 
+    @Test func thePreviewedSpotStaysDroppableAroundItsGhost() {
+        start(dragging: 1)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 270, y: 530)), from: nil) == .move)
+        #expect(view.widgetGrid.moving == .leftMiddle)
+    }
+
+    @Test func aFullSpotAfterAGoodOneSaysThereIsNoRoom() {
+        view.widgetSpots = Dictionary(uniqueKeysWithValues: (1...5).map { ("\($0)", .rightTop) })
+        start(dragging: 0)
+        #expect(view.dragWidget("6", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
+        #expect(view.dragWidget("6", at: window(CGPoint(x: 1_290, y: 640)), from: nil).isEmpty)
+        #expect(view.widgetGrid.rails.board.label.title == "No room — try another spot")
+    }
+
+    @Test func whileEditingBlankSpaceFarFromEverySpotCannotTakeTheDrop() {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        view.editWidgets()
+        start(dragging: 1)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)
+        #expect(view.dragWidget("2", at: window(CGPoint(x: 100, y: 950)), from: nil).isEmpty)
+        view.endWidgetDrag()
+        #expect(edits.isEmpty)
+    }
+
+    @Test func aGalleryCardOnlyDropsInsideThePanel() {
+        view.editWidgets()
+        #expect(view.dragWidget("new", at: window(CGPoint(x: 290, y: 437)), from: nil).isEmpty)
+        #expect(view.widgetGrid.incoming == nil)
+        #expect(view.dragWidget("new", at: window(CGPoint(x: 500, y: 300)), from: nil) == .copy)
+    }
+
     @Test func comingBackToItsOwnSpotPutsTheWidgetBackInPlace() {
         start(dragging: 1)
         #expect(view.dragWidget("2", at: window(CGPoint(x: 290, y: 437)), from: nil) == .move)

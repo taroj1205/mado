@@ -169,12 +169,12 @@ final class WidgetRailsView: NSView {
     }
 
     private func placeLabel() {
-        if let ghost = model.ghost {
-            label.show(ghost.spot.title, symbol: "checkmark", tint: .controlAccentColor)
-            label.frame = labelFrame(beside: ghost)
-        } else if let refused = model.refused {
+        if let refused = model.refused {
             label.show("No room — try another spot", symbol: "nosign", tint: .systemOrange)
             label.frame = labelFrame(beside: refused)
+        } else if let ghost = model.ghost {
+            label.show(ghost.spot.title, symbol: "checkmark", tint: .controlAccentColor)
+            label.frame = labelFrame(beside: ghost)
         }
         label.isHidden = model.ghost == nil && model.refused == nil
     }
