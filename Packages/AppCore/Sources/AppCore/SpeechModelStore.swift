@@ -35,7 +35,7 @@ public struct SpeechModelStore: Sendable {
         return bytes.joined()
     }
 
-    func location(of model: SpeechModel) -> URL {
+    public func location(of model: SpeechModel) -> URL {
         directory.appending(path: model.file)
     }
 

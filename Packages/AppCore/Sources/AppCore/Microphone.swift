@@ -14,6 +14,9 @@ public final class Microphone {
     nonisolated private static let decibelsPerPowerDecade = 10.0
 
     private let engine: AVAudioEngine
+    private let sampleRate: Double
+    private var converter: AVAudioConverter?
+    private(set) var recorded: [Float] = []
     private var onLevel: (@MainActor (Double) -> Void)?
     private var onFailure: (@MainActor (any Error) -> Void)?
     private var observer: (any NSObjectProtocol)?
@@ -23,8 +26,14 @@ public final class Microphone {
         onLevel != nil
     }
 
-    public init() {
+    public init(sampleRate: Double) {
         engine = AVAudioEngine()
+        self.sampleRate = sampleRate
+    }
+
+    nonisolated private static func mono(at rate: Double) -> AVAudioFormat? {
+        AVAudioFormat(
+            commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
     }
 
     nonisolated static func level(decibels: Double) -> Double {
@@ -39,10 +48,15 @@ public final class Microphone {
         return level(decibels: decibelsPerPowerDecade * log10(power))
     }
 
+    nonisolated static func samples(of buffer: AVAudioPCMBuffer) -> [Float] {
+        guard let channels = unsafe buffer.floatChannelData else { return [] }
+        return unsafe Array(UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength)))
+    }
+
     nonisolated private static func tap(
-        _ send: @escaping @Sendable (Double) -> Void
+        _ send: @escaping @Sendable (Double, [Float], Double) -> Void
     ) -> AVAudioNodeTapBlock {
-        { buffer, _ in send(level(of: buffer)) }
+        { buffer, _ in send(level(of: buffer), samples(of: buffer), buffer.format.sampleRate) }
     }
 
     public func start(
@@ -60,8 +74,13 @@ public final class Microphone {
         }
     }
 
-    public func stop() {
-        guard isRunning else { return }
+    @discardableResult
+    public func stop() -> [Float] {
+        guard isRunning else { return [] }
+        defer {
+            recorded = []
+            converter = nil
+        }
         if let observer {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -70,6 +89,32 @@ public final class Microphone {
         onFailure = nil
         engine.inputNode.removeTap(onBus: Self.bus)
         engine.stop()
+        return recorded
+    }
+
+    func record(_ chunk: [Float], at chunkRate: Double) {
+        guard let input = Self.mono(at: chunkRate), let speech = Self.mono(at: sampleRate),
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: input, frameCapacity: AVAudioFrameCount(chunk.count)),
+            let channels = unsafe buffer.floatChannelData
+        else { return }
+        if converter?.inputFormat != input {
+            converter = AVAudioConverter(from: input, to: speech)
+        }
+        let frames = AVAudioFrameCount((Double(chunk.count) * sampleRate / chunkRate).rounded(.up))
+        guard let converter,
+            let output = AVAudioPCMBuffer(pcmFormat: speech, frameCapacity: frames)
+        else { return }
+        buffer.frameLength = buffer.frameCapacity
+        _ = unsafe UnsafeMutableBufferPointer(start: channels[0], count: chunk.count)
+            .update(fromContentsOf: chunk)
+        var pending: AVAudioPCMBuffer? = buffer
+        unsafe converter.convert(to: output, error: nil) { _, status in
+            defer { pending = nil }
+            unsafe status.pointee = pending == nil ? .noDataNow : .haveData
+            return pending
+        }
+        recorded += Self.samples(of: output)
     }
 
     private func run() throws {
@@ -80,8 +125,10 @@ public final class Microphone {
         let current = session
         input.installTap(
             onBus: Self.bus, bufferSize: Self.bufferSize, format: nil,
-            block: Self.tap { [weak self] level in
-                DispatchQueue.main.async { self?.deliver(level, in: current) }
+            block: Self.tap { [weak self] level, chunk, sampleRate in
+                DispatchQueue.main.async {
+                    self?.deliver(level, chunk, at: sampleRate, in: current)
+                }
             })
         do {
             try engine.start()
@@ -91,8 +138,11 @@ public final class Microphone {
         }
     }
 
-    private func deliver(_ level: Double, in delivered: Int) {
-        guard delivered == session else { return }
+    private func deliver(
+        _ level: Double, _ chunk: [Float], at sampleRate: Double, in delivered: Int
+    ) {
+        guard delivered == session, isRunning else { return }
+        record(chunk, at: sampleRate)
         onLevel?(level)
     }
 

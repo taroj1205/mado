@@ -27,6 +27,24 @@ import Testing
         #expect(Microphone.level(of: empty) == 0)
     }
 
+    @MainActor
+    @Test func recordingKeepsSpeechRateMonoAcrossInputRates() {
+        let microphone = Microphone(sampleRate: 16_000)
+        for _ in 0..<50 {
+            microphone.record(tone(frames: 960, at: 48_000), at: 48_000)
+        }
+        for _ in 0..<25 {
+            microphone.record(tone(frames: 960, at: 24_000), at: 24_000)
+        }
+        let samples = microphone.recorded
+        #expect(abs(samples.count - 32_000) < 200)
+        #expect(samples.contains { abs($0) > 0.4 })
+    }
+
+    private func tone(frames: Int, at sampleRate: Double) -> [Float] {
+        (0..<frames).map { Float(0.5 * sin(2 * Double.pi * 440 * Double($0) / sampleRate)) }
+    }
+
     private func buffer(_ amplitude: Float, frames: AVAudioFrameCount) throws -> AVAudioPCMBuffer {
         let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1))
         let buffer = try #require(

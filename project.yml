@@ -24,6 +24,8 @@ packages:
     path: Packages/SearchKit
   ClipboardKit:
     path: Packages/ClipboardKit
+  SpeechKit:
+    path: Packages/SpeechKit
 
 targets:
   Mado:
@@ -37,6 +39,7 @@ targets:
       - package: WindowKit
       - package: SearchKit
       - package: ClipboardKit
+      - package: SpeechKit
     info:
       path: App/Info.plist
       properties:
@@ -97,4 +100,5 @@ schemes:
         - package: GlassUI/GlassUITests
         - package: InputKit/InputKitTests
         - package: SearchKit/SearchKitTests
+        - package: SpeechKit/SpeechKitTests
         - package: WindowKit/WindowKitTests
