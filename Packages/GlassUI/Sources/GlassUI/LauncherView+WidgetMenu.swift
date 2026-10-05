@@ -47,7 +47,7 @@ extension LauncherView {
         widgetGrid.showMenu(of: nil)
     }
 
-    func widgetMenuCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
+    func widgetMenuCommand(_ selector: Selector) -> Bool {
         guard let menu = widgetMenu else { return false }
         if spotPicker != nil, let widget = selectedWidget {
             return pickerCommand(selector, moving: widgetGrid.shown[widget].id)
@@ -55,7 +55,7 @@ extension LauncherView {
         switch selector {
         case #selector(NSResponder.moveUp): menu.moveSelection(by: -1)
         case #selector(NSResponder.moveDown): menu.moveSelection(by: 1)
-        case #selector(NSResponder.insertNewline) where !textView.hasMarkedText(): menu.press()
+        case #selector(NSResponder.insertNewline): menu.press()
         case #selector(NSResponder.cancelOperation): closeWidgetMenu()
 
         default:

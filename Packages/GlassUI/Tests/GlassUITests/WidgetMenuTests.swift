@@ -164,6 +164,22 @@ import Testing
         #expect(tiles.allSatisfy { !$0.menuOpen })
     }
 
+    @Test func returnWhileComposingDoesNotPlaceTheWidgetFromTheMenusPicker() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        let editor = try #require(view.field.currentEditor() as? NSTextView)
+        editor.setMarkedText(
+            "か", selectedRange: NSRange(location: 1, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        try rig.open(1)
+        #expect(try #require(view.widgetMenu?.rows[1]).accessibilityPerformPress())
+        #expect(editor.hasMarkedText())
+        let command = #selector(NSResponder.insertNewline)
+        #expect(!view.control(view.field, textView: editor, doCommandBy: command))
+        #expect(edits.isEmpty)
+        #expect(view.spotPicker != nil)
+    }
+
     @Test func theMenuIsOnlyForWidgetsOutsideEditMode() throws {
         view.editWidgets()
         tiles[1].rightMouseDown(with: try rig.event(.rightMouseDown, on: tiles[1]))
