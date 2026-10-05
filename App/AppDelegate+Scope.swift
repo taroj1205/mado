@@ -1,3 +1,4 @@
+import AppCore
 import AppKit
 import ClipboardKit
 import GlassUI
@@ -73,6 +74,9 @@ extension AppDelegate {
             if let emoji = emojiPicker.query(in: query) {
                 return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
             }
+            if showsAgenda(for: query) {
+                return await calendarAgenda.sections(at: .now)
+            }
             let state = signposter.beginInterval("search")
             defer { signposter.endInterval("search", state) }
             return await LauncherResult.sections(for: query, in: sources, usage: usage)
@@ -82,6 +86,9 @@ extension AppDelegate {
     func menu(for item: ResultList.Item) -> LauncherMenu {
         if EmojiPicker.owns(item.id) {
             return LauncherMenu(keyed: emojiPicker.actions(for: item.id, pastingInto: pasteTarget))
+        }
+        if CalendarAgenda.owns(item.id) {
+            return LauncherMenu(keyed: calendarAgenda.actions(for: item.id))
         }
         return switch scope {
         case .clipboard:
@@ -103,9 +110,16 @@ extension AppDelegate {
         }
     }
 
+    private func launcherActions(for item: ResultList.Item) -> [LauncherView.Action] {
+        menu(for: item).actions(
+            labelling: { editor.action(for: $0, on: item.id) },
+            running: { [weak self] in self?.run($0, for: item, recordingUse: $1) })
+    }
+
     func connectActions() {
         launcherView.actions = { [weak self] in self?.launcherActions(for: $0) ?? [] }
-        launcherView.shortcutKeys = LauncherMenu.shortcutKeys + ColourAnswer.shortcutKeys
+        launcherView.shortcutKeys =
+            LauncherMenu.shortcutKeys + ColourAnswer.shortcutKeys + [CalendarAgenda.joinKeys]
     }
 
     private func capsuleSlots(showingGrid: Bool) -> [LauncherView.CapsuleSlot] {
@@ -136,9 +150,16 @@ extension AppDelegate {
             case .calculator:
                 (CalculatorHistory.title, CalculatorHistory.symbol)
 
+            case .root where showsAgenda(for: launcherView.field.stringValue):
+                (CalendarAgenda.title, CalendarAgenda.symbol)
+
             case .root:
                 LauncherResult.context(for: sections, query: launcherView.field.stringValue)
             }
+    }
+
+    private func showsAgenda(for query: String) -> Bool {
+        CalendarAgenda.isOn(in: modules) && Agenda.matches(query)
     }
 
     private func clipboardRunningChanged() {

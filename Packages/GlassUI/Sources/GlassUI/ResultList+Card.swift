@@ -21,6 +21,18 @@ extension ResultList {
         }
     }
 
+    public struct Event: Sendable, Equatable {
+        public let time: String
+        public let colour: NSColor
+        public let hasMeeting: Bool
+
+        public init(time: String, colour: NSColor, hasMeeting: Bool) {
+            self.time = time
+            self.colour = colour
+            self.hasMeeting = hasMeeting
+        }
+    }
+
     public struct Word: Sendable, Equatable {
         public let title: String
         public let query: String

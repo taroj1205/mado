@@ -87,7 +87,7 @@ enum SystemCommands {
             """)
     }
 
-    private static func runScript(_ source: String) throws {
+    static func runScript(_ source: String) throws {
         guard unsafe NSAppleScript(source: source)?.executeAndReturnError(nil) != nil else {
             throw Failure.scriptFailed
         }
