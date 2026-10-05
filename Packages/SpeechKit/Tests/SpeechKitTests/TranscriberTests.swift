@@ -18,6 +18,10 @@ import Testing
         #expect(Transcriber.text([" [Music]", " Hello."]) == "Hello.")
     }
 
+    @Test func bracketsInsideSpeechStay() {
+        #expect(Transcriber.text([" Save it as [draft] for now."]) == "Save it as [draft] for now.")
+    }
+
     @Test func aMissingModelFailsToLoad() async {
         let missing = FileManager.default.temporaryDirectory.appending(path: "no-such-model.bin")
         await #expect(throws: Transcriber.Failure.self) {

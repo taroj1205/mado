@@ -39,8 +39,9 @@ public actor Transcriber {
     }
 
     static func text(_ segments: [String]) -> String {
-        segments.joined()
-            .replacing(/\[[^\]]*\]/, with: "")
+        segments
+            .filter { $0.trimmingCharacters(in: .whitespaces).wholeMatch(of: /\[[^\]]*\]/) == nil }
+            .joined()
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
