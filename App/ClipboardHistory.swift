@@ -23,14 +23,14 @@ final class ClipboardHistory: NSObject {
     private static let shown = 1_000
     private static let iconSize: CGFloat = 16
     private static let byte: CGFloat = 255
-    private static let logger = Log.logger("ClipboardHistory")
+    static let logger = Log.logger("ClipboardHistory")
 
     let filter = NSPopUpButton(frame: .zero, pullsDown: false)
     var onOpen: (() -> Void)?
     var onRunningChange: (() -> Void)?
     var onChange: (() -> Void)?
     var onCount: (() -> Void)?
-    private var store: ClipboardStore?
+    private(set) var store: ClipboardStore?
     private var filters: [Filter?] = []
     private var selected: Filter?
     private(set) var entries: [String: ClipboardStore.Entry] = [:]
@@ -167,26 +167,6 @@ final class ClipboardHistory: NSObject {
         return LauncherView.Preview(
             text: entry.preview, image: entry.thumbnail,
             details: entry.details(source: source, now: .now, calendar: .current, counts: counts))
-    }
-
-    func actions(
-        for id: String, pastingInto target: PasteTarget?
-    ) -> [(action: CommandAction, keys: [String])] {
-        guard let entry = entries[id], let store else { return [] }
-        let copy = CommandAction(id: "copy", title: "Copy to Clipboard") {
-            let data = try await store.data(for: entry.id)
-            try entry.copy(data: data)
-        }
-        guard let target else { return [(copy, LauncherView.Action.secondaryKeys)] }
-        let paste = CommandAction(id: "paste", title: target.title) {
-            try await entry.paste(data: store.data(for: entry.id), into: target)
-        }
-        let plain = CommandAction(id: "paste.plain", title: "Paste as Plain Text") {
-            try await entry.pastePlainText(into: target)
-        }
-        return [(paste, LauncherView.Action.primaryKeys)]
-            + (entry.plainText == nil ? [] : [(plain, LauncherView.Action.alternateKeys)])
-            + [(copy, LauncherView.Action.secondaryKeys)]
     }
 
     private func count(_ entry: ClipboardStore.Entry) {
