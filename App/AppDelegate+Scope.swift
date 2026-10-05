@@ -42,6 +42,12 @@ extension AppDelegate {
             if self?.scope == .clipboard { self?.launcherView.refreshDetail() }
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
+        launcherView.results.onCheck = { [weak self] ids in self?.checked(ids) }
+        launcherView.onEdit = { [weak self] item in self?.edit(item) }
+        launcherView.onSaveSnippet = { [weak self] text in
+            self?.hideLauncher()
+            self?.snippets?.openNew(with: text)
+        }
         textTools.onOpen = { [weak self] in self?.openTextTools() }
         textTools.onRead = { [weak self] in
             if self?.scope == .textTools { self?.searchAgain() }
@@ -95,7 +101,9 @@ extension AppDelegate {
         }
         return switch scope {
         case .clipboard:
-            LauncherMenu(keyed: clipboardHistory.actions(for: item.id, pastingInto: pasteTarget))
+            LauncherMenu(
+                keyed: clipboardHistory.actions(
+                    for: item.id, pastingInto: pasteTarget, draft: launcherView.mergeDraft))
 
         case .textTools:
             LauncherMenu(keyed: textTools.actions(for: item.id))
@@ -185,6 +193,18 @@ extension AppDelegate {
             }
         }
         ClipboardModule.commandIDs.forEach(editor.refreshHotKey)
+    }
+
+    private func checked(_ ids: [String]) {
+        let merge =
+            scope == .clipboard ? clipboardHistory.merge(for: ids, pastingInto: pasteTarget) : nil
+        launcherView.showMerge(merge)
+    }
+
+    private func edit(_ item: ResultList.Item) {
+        guard scope == .clipboard else { return }
+        launcherView.showMerge(
+            clipboardHistory.edit(item, pastingInto: pasteTarget), focusing: true)
     }
 
     func openCalculatorHistory() {

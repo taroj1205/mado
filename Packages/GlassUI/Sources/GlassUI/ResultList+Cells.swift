@@ -51,6 +51,10 @@ extension ResultList {
         }
     }
 
+    private func check(of item: Item) -> GlyphCell.Check {
+        if checked.isEmpty { .off } else if checked.contains(item.id) { .checked } else { .empty }
+    }
+
     func cell(for item: Item, in tableView: NSTableView) -> NSView {
         if item.answer != nil {
             let cell =
@@ -70,7 +74,7 @@ extension ResultList {
             let cell =
                 tableView.makeView(withIdentifier: GlyphCell.id, owner: nil)
                 as? GlyphCell ?? GlyphCell()
-            cell.show(item)
+            cell.show(item, check: check(of: item))
             return cell
         }
         let cell =

@@ -33,7 +33,7 @@ final class ClipboardHistory: NSObject {
     private var store: ClipboardStore?
     private var filters: [Filter?] = []
     private var selected: Filter?
-    private var entries: [String: ClipboardStore.Entry] = [:]
+    private(set) var entries: [String: ClipboardStore.Entry] = [:]
     private var counted: [Int64: ClipboardStore.Entry.Counts] = [:]
     private var counting: Int64?
     private var counter: Task<Void, Never>?
@@ -93,7 +93,7 @@ final class ClipboardHistory: NSObject {
         return ResultList.Item(
             id: id(of: entry), title: entry.title, subtitle: "",
             kind: entry.kind.title, symbol: symbol(for: entry.kind), action: action,
-            thumbnail: entry.thumbnail, tint: tint)
+            thumbnail: entry.thumbnail, tint: tint, isCheckable: entry.plainText != nil)
     }
 
     func start(with store: ClipboardStore, context: ModuleContext) {
