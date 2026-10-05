@@ -15,7 +15,7 @@ final class WidgetMonth: NSView {
     private static let todayText = WidgetTile.tone(
         NSColor(white: todayShade, alpha: 1), .white, (dark: 1, light: 1))
 
-    private(set) var month: CalendarMonth?
+    private(set) var month: AgendaMonth?
 
     override var isFlipped: Bool { true }
 
@@ -29,28 +29,28 @@ final class WidgetMonth: NSView {
         nil
     }
 
-    func show(_ month: CalendarMonth) {
+    func show(_ month: AgendaMonth) {
         guard month != self.month else { return }
         self.month = month
         needsDisplay = true
     }
 
     override func draw(_: NSRect) {
-        guard let month, !month.weekdays.isEmpty else { return }
+        guard let month, !month.initials.isEmpty else { return }
         let title = NSAttributedString(
-            string: month.title.localizedUppercase,
+            string: "\(month.name) \(month.year)".localizedUppercase,
             attributes: [
                 .font: NSFont.systemFont(ofSize: Self.titleSize, weight: .semibold),
                 .foregroundColor: NSColor.secondaryLabelColor, .kern: Self.titleKern,
             ])
         title.draw(at: .zero)
-        let column = bounds.width / CGFloat(month.weekdays.count)
+        let column = bounds.width / CGFloat(month.initials.count)
         let weekdayTop = title.size().height + Self.gap
         let weekday: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: Self.weekdaySize, weight: .semibold),
             .foregroundColor: NSColor.tertiaryLabelColor,
         ]
-        let names = month.weekdays.map { NSAttributedString(string: $0, attributes: weekday) }
+        let names = month.initials.map { NSAttributedString(string: $0, attributes: weekday) }
         let height = names.map { $0.size().height }.max() ?? 0
         for (index, name) in names.enumerated() {
             centre(
@@ -59,10 +59,10 @@ final class WidgetMonth: NSView {
             )
         }
         let top = weekdayTop + height + Self.gap
-        let weeks = (month.days.count + month.weekdays.count - 1) / month.weekdays.count
+        let weeks = (month.days.count + month.initials.count - 1) / month.initials.count
         let row = min(Self.rowHeight, (bounds.height - top) / CGFloat(max(weeks, 1)))
         for (index, day) in month.days.enumerated() {
-            let (week, place) = index.quotientAndRemainder(dividingBy: month.weekdays.count)
+            let (week, place) = index.quotientAndRemainder(dividingBy: month.initials.count)
             let cell = NSRect(
                 x: CGFloat(place) * column, y: top + CGFloat(week) * row, width: column,
                 height: row)
@@ -73,7 +73,7 @@ final class WidgetMonth: NSView {
         }
     }
 
-    private func number(_ day: CalendarMonth.Day) -> NSAttributedString {
+    private func number(_ day: AgendaMonth.Day) -> NSAttributedString {
         let colour: NSColor =
             if day.isToday {
                 Self.todayText

@@ -14,9 +14,12 @@ extension LauncherView {
     public enum Detail {
         case preview((ResultList.Item) -> Preview?)
         case comparison((ResultList.Item) -> Comparison?)
+        case calendar((ResultList.Item?) -> CalendarMonth?)
     }
 
     public var scoped: Bool { rootQuery != nil }
+
+    public var showsCalendarAnswer: Bool { !calendarPane.isHidden && results.answerRow != nil }
 
     var homeShown: Bool {
         !shownQuery.scoped
@@ -87,6 +90,12 @@ extension LauncherView {
                 pane.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
         }
+        NSLayoutConstraint.activate([
+            calendarPane.trailingAnchor.constraint(equalTo: trailingAnchor),
+            calendarPane.widthAnchor.constraint(equalToConstant: CalendarPane.width),
+            calendarTop,
+            calendarPane.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
     }
 
     func openFilter(_ key: String) -> Bool {
@@ -104,9 +113,21 @@ extension LauncherView {
             detail.show(nil)
             comparisonPane.show(item.flatMap(compare))
 
+        case .calendar(let month):
+            detail.show(nil)
+            calendarPane.show(month(item))
+            calendarTop.constant = results.belowAnswer
+
         case nil:
             detail.show(nil)
         }
+        fitForCalendarAnswer()
+    }
+
+    private func fitForCalendarAnswer() {
+        guard showsCalendarAnswer != fittedForCalendarAnswer else { return }
+        fittedForCalendarAnswer = showsCalendarAnswer
+        onFit?()
     }
 
     func placeSearchBar(_ bar: NSLayoutGuide) {
@@ -125,6 +146,15 @@ extension LauncherView {
             fieldTrailing,
             field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
         ])
+    }
+
+    public func showCalendar(_ month: ((ResultList.Item?) -> CalendarMonth?)?) {
+        guard !scoped else { return }
+        if let month {
+            split(.calendar(month))
+        } else if shownDetail != nil {
+            split(nil)
+        }
     }
 
     public func refreshDetail() {
@@ -158,13 +188,16 @@ extension LauncherView {
             switch shown {
             case .preview: DetailPane.listWidth
             case .comparison: ComparisonPane.listWidth
-            case nil: nil
+            case .calendar, nil: nil
             }
         let previews = if case .preview = shown { true } else { false }
         let compares = if case .comparison = shown { true } else { false }
+        let dates = if case .calendar = shown { true } else { false }
         results.compact = previews
+        results.trailingInset = dates ? CalendarPane.width : 0
         detail.isHidden = !previews
         comparisonPane.isHidden = !compares
+        calendarPane.isHidden = !dates
         resultsTrailing.isActive = false
         resultsTrailing =
             listWidth.map { width in

@@ -14,14 +14,18 @@ extension AppDelegate {
             width: Self.launcherWidth,
             height: gridHeight(
                 otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
+                    || launcherView.showsCalendarAnswer
                     ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
     func arrangeWidgets() {
         let shown = modules?.isEnabled(Widgets.moduleID) != false
         launcherView.widgetLayout = shown ? WidgetInlineStyle.load(from: modules).layout : nil
-        launcherView.widgetSpots = WidgetSettings.load(from: modules).spots(
-            WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids)
+        let settings = WidgetSettings.load(from: modules)
+        launcherView.widgetSpots = settings.spots(
+            WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids,
+            wide: Widgets.wide, tall: Widgets.tall)
+        launcherView.widgetSizes = settings.sizes(from: Widgets.ids)
     }
 
     func launcherFrame(in visible: CGRect) -> CGRect {

@@ -10,6 +10,13 @@ final class ResultRowView: NSTableRowView {
 
     var radius = ResultRowView.radius
 
+    var trailingInset: CGFloat = 0 {
+        didSet {
+            needsLayout = true
+            needsDisplay = true
+        }
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         identifier = Self.id
@@ -20,10 +27,18 @@ final class ResultRowView: NSTableRowView {
         nil
     }
 
+    override func layout() {
+        super.layout()
+        for view in subviews {
+            view.frame.size.width = bounds.width - trailingInset
+        }
+    }
+
     override func drawSelection(in _: NSRect) {
         Self.fill.setFill()
         let row = NSRect(
-            x: 0, y: 0, width: bounds.width, height: bounds.height - ResultList.rowGap)
+            x: 0, y: 0, width: bounds.width - trailingInset,
+            height: bounds.height - ResultList.rowGap)
         NSBezierPath(roundedRect: row, xRadius: radius, yRadius: radius).fill()
     }
 }

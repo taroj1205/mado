@@ -9,6 +9,8 @@ extension Widgets {
         case found([CalendarAgenda.Found])
     }
 
+    static let calendarWidget = "calendar"
+    static let upNext = "up_next"
     static let calendarApp = "com.apple.iCal"
     private static let openCalendar = "Open Calendar"
     private static let allowCalendar = "Allow Calendar Access"
@@ -18,8 +20,8 @@ extension Widgets {
         let name = name(of: calendarWidget)
         return .init(
             id: calendarWidget, name: name,
-            content: CalendarMonth(around: date, calendar: .current).map(WidgetGrid.Content.month)
-                ?? .loading(title: name),
+            content: Agenda(events: []).month(showing: date, at: date, calendar: .current)
+                .map(WidgetGrid.Content.month) ?? .loading(title: name),
             action: openCalendar,
             spoken: "\(name): \(date.formatted(date: .complete, time: .omitted))", isWide: true,
             isTall: true)
@@ -51,9 +53,10 @@ extension Widgets {
         in found: [CalendarAgenda.Found], at date: Date
     ) -> WidgetGrid.Widget {
         let name = name(of: upNext)
-        switch Agenda(events: found.map(\.event)).upcoming(at: date, calendar: .current) {
+        switch Agenda(events: found.map(\.event)).upNext(at: date, calendar: .current) {
         case .today(let event):
             let hours = (event.start..<event.end).formatted(.interval.hour().minute())
+            let detail = [hours, event.place].filter { !$0.isEmpty }.joined(separator: " · ")
             let countdown = Agenda.countdown(to: event.start, at: date)
             let colour = found.first { $0.event.id == event.id }?.colour ?? .controlAccentColor
             return .init(
@@ -62,9 +65,7 @@ extension Widgets {
                     title: name,
                     .init(
                         title: event.title, countdown: countdown,
-                        detail: [hours, event.place].filter { !$0.isEmpty }
-                            .joined(separator: " · "),
-                        colour: colour)),
+                        detail: detail, colour: colour)),
                 action: event.meeting == nil
                     ? CalendarAgenda.openTitle : CalendarAgenda.joinTitle,
                 spoken: "\(name): \(event.title), \(hours), \(countdown)", isWide: true)
@@ -101,7 +102,7 @@ extension Widgets {
             return
         }
         scheduling = Task { [weak self, weak view] in
-            let found = await CalendarAgenda.found(around: .now)
+            let found = await CalendarAgenda.upNext(around: .now)
             guard !Task.isCancelled, let self, let view else { return }
             schedule = .found(found)
             refresh(view)
@@ -117,7 +118,7 @@ extension Widgets {
             return CalendarAgenda.allow(titled: title)
 
         case .found(let found):
-            let upcoming = Agenda(events: found.map(\.event)).upcoming(at: .now, calendar: .current)
+            let upcoming = Agenda(events: found.map(\.event)).upNext(at: .now, calendar: .current)
             guard case .today(let event) = upcoming,
                 let picked = found.first(where: { $0.event.id == event.id })
             else { return Self.openApp(Self.calendarApp, titled: title) }

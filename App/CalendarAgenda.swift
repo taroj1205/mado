@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import EventKit
 import GlassUI
+import SearchKit
 
 @MainActor
 final class CalendarAgenda {
@@ -10,6 +11,15 @@ final class CalendarAgenda {
         let colour: NSColor?
         let calendarID: String
         let uid: String
+    }
+
+    private struct Listed {
+        var headings: [Agenda.Heading] = []
+        var now = Date.now
+        var agenda = Agenda(events: [])
+        var found: [String: Found] = [:]
+        var shown: [String: Found] = [:]
+        var days: [String: Date] = [:]
     }
 
     private enum Failure: Error {
@@ -44,6 +54,7 @@ final class CalendarAgenda {
     static let joinKeys = ["⌘", "J"]
     private static let prefix = "agenda."
     private static let allowID = "agenda.allow"
+    private static let upNextDays = 2
     static let joinTitle = "Join Meeting"
     static let openTitle = "Open in Calendar"
     private static let events = Events()
@@ -52,7 +63,7 @@ final class CalendarAgenda {
         EKEventStore.authorizationStatus(for: .event) == .fullAccess
     }
 
-    private var shown: [String: Found] = [:]
+    private var listed = Listed()
 
     static func owns(_ id: String) -> Bool {
         id.hasPrefix(prefix)
@@ -103,9 +114,11 @@ final class CalendarAgenda {
         }
     }
 
-    static func found(around now: Date) async -> [Found] {
-        guard let span = Agenda.span(around: now, calendar: .current) else { return [] }
-        return await events.found(in: span)
+    static func upNext(around now: Date) async -> [Found] {
+        let today = Calendar.current.startOfDay(for: now)
+        guard let end = Calendar.current.date(byAdding: .day, value: upNextDays, to: today)
+        else { return [] }
+        return await events.found(in: DateInterval(start: today, end: end))
     }
 
     static func open(_ found: Found) -> CommandAction {
@@ -145,36 +158,76 @@ final class CalendarAgenda {
             """)
     }
 
-    func sections(at now: Date) async -> [ResultList.Section] {
+    static func headings(for query: String, at now: Date) -> [Agenda.Heading] {
+        let calendar = Calendar.current
+        if Agenda.matches(query) {
+            return Agenda.upcoming(at: now, calendar: calendar)
+        }
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        return DayQuery.day(in: query, now: now, calendar: gregorian).map { day in
+            [Agenda.heading(for: day, at: now, calendar: calendar)]
+        } ?? []
+    }
+
+    private static func notice(for headings: [Agenda.Heading]) -> ResultList.Notice {
+        guard headings.count == 1, let day = headings.first else {
+            return ResultList.Notice(
+                title: "No events today or tomorrow", detail: "Events in Calendar show up here.")
+        }
+        let date = Agenda.date(of: day.start, calendar: .current)
+        return ResultList.Notice(
+            title: "No events on \(date)", detail: "Events in Calendar show up here.")
+    }
+
+    func sections(for headings: [Agenda.Heading], at now: Date) async -> [ResultList.Section] {
+        listed = Listed(headings: headings, now: now)
         guard Self.hasAccess else {
             let request = ResultList.Item(
                 id: Self.allowID, title: "Allow Calendar Access",
-                subtitle: "Mado lists today’s and tomorrow’s events here.", kind: "",
-                symbol: Self.symbol, action: "Allow")
+                subtitle: "Mado lists the day’s events here.", kind: "", symbol: Self.symbol,
+                action: "Allow")
             return [ResultList.Section(title: Self.title, items: [request])]
         }
         let calendar = Calendar.current
-        let fetched = await Self.found(around: now)
+        guard let span = Agenda.span(of: headings, calendar: calendar) else { return [] }
+        let fetched = await Self.events.found(in: span)
         guard !Task.isCancelled else { return [] }
         let found = Dictionary(uniqueKeysWithValues: fetched.map { ($0.event.id, $0) })
         let agenda = Agenda(events: found.values.map(\.event))
-        let days = agenda.days(at: now, calendar: calendar)
+        listed = Listed(headings: headings, now: now, agenda: agenda, found: found)
+        let days = agenda.days(under: headings, calendar: calendar)
         guard days.contains(where: { !$0.events.isEmpty }) else {
-            let notice = ResultList.Notice(
-                title: "No events today or tomorrow", detail: "Events in Calendar show up here.")
-            return [ResultList.Section(title: "", items: [], notice: notice)]
+            return [ResultList.Section(title: "", items: [], notice: Self.notice(for: headings))]
         }
+        return rows(for: days, of: agenda, at: now, calendar: calendar)
+    }
+
+    func month(for item: ResultList.Item?) -> LauncherView.CalendarMonth? {
+        guard let first = listed.headings.first?.start else { return nil }
+        let day = item.flatMap { listed.days[$0.id] } ?? first
+        let colours = listed.found.mapValues { $0.colour ?? .controlAccentColor }
+        return listed.agenda.month(showing: day, at: listed.now, calendar: .current).map { month in
+            LauncherView.CalendarMonth(month: month, colours: colours)
+        }
+    }
+
+    private func rows(
+        for days: [Agenda.Day], of agenda: Agenda, at now: Date, calendar: Calendar
+    ) -> [ResultList.Section] {
         let next = agenda.next(at: now)
         let meeting = agenda.nextMeeting(at: now)
-        var listed: [String: Found] = [:]
+        let first = days.first?.start ?? now
         var preferred = false
-        let sections = days.enumerated().map { index, day in
+        return days.enumerated().map { index, day in
             let items = day.events.compactMap { event -> ResultList.Item? in
-                guard let source = found[event.id] else { return nil }
+                guard let source = listed.found[event.id] else { return nil }
                 let id = "\(Self.prefix)\(index).\(event.id)"
-                listed[id] = source
+                listed.shown[id] = source
+                listed.days[id] = day.start
                 var row = Self.item(
-                    id: id, for: source, time: Agenda.time(of: event, at: now, calendar: calendar),
+                    id: id, for: source,
+                    time: Agenda.time(of: event, listedFrom: first, calendar: calendar),
                     detail: agenda.detail(of: event, at: now), joins: event == meeting)
                 row.isDimmed = event.hasEnded(at: now)
                 row.prefersSelection = !preferred && event == next
@@ -183,15 +236,13 @@ final class CalendarAgenda {
             }
             return ResultList.Section(title: day.title, items: items)
         }
-        shown = listed
-        return sections
     }
 
     func actions(for id: String) -> [(action: CommandAction, keys: [String])] {
         if id == Self.allowID {
             return [(Self.allow(titled: "Allow"), LauncherView.Action.primaryKeys)]
         }
-        guard let picked = shown[id] else { return [] }
+        guard let picked = listed.shown[id] else { return [] }
         let open = Self.open(picked)
         guard let meeting = picked.event.meeting else {
             return [(open, LauncherView.Action.primaryKeys)]

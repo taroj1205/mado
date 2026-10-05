@@ -26,6 +26,37 @@ extension LauncherView {
         CapsuleButton("Actions", keys: ["⌘", "K"])
     }
 
+    func placeCapsules() {
+        addSubview(contextPill)
+        addSubview(statusBar)
+        addSubview(actionCapsule)
+        NSLayoutConstraint.activate([
+            statusBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.capsuleInset),
+            statusBar.trailingAnchor.constraint(
+                lessThanOrEqualTo: actionCapsule.leadingAnchor, constant: -Self.capsuleInset),
+            statusBar.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
+            contextPill.leadingAnchor.constraint(
+                equalTo: leadingAnchor, constant: Self.capsuleInset),
+            contextPill.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
+            actionCapsule.trailingAnchor.constraint(
+                equalTo: trailingAnchor, constant: -Self.capsuleInset),
+            actionCapsule.bottomAnchor.constraint(
+                equalTo: bottomAnchor, constant: -Self.capsuleInset),
+        ])
+        results.contentInsets.bottom =
+            Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
+        results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
+        results.onMove = { [weak self] in self?.selectionMoved() }
+        results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
+        calendarPane.grid.onPick = { [weak self] query in self?.replaceQuery(with: query) }
+        actionsToggle.onPress = { [weak self] in self?.toggleActions() }
+        statusBar.onPress = { [weak self] index in self?.pressPill(index) }
+        statusBar.onMove = { [weak self] id, target in self?.movePill(id, before: target) }
+        statusBar.customise.onPress = { [weak self] in self?.toggleCustomiser() }
+        field.setAccessibilitySharedFocusElements([results.table, emojiGrid.collection])
+        showAction(of: nil)
+    }
+
     func showAction(of item: ResultList.Item?) {
         let action =
             editingWidgets

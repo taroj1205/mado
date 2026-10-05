@@ -2,15 +2,20 @@ import AppKit
 
 extension WidgetGrid {
     typealias Cell = (rows: Range<Int>, columns: Range<Int>)
+    typealias Size = (columns: Int, rows: Int)
 
-    static func cells(of widgets: [Widget]) -> [Cell] {
+    nonisolated static func cells(of widgets: [Widget]) -> [Cell] {
+        cells(sized: widgets.map { ($0.span, $0.rows) })
+    }
+
+    nonisolated static func cells(sized sizes: [Size]) -> [Cell] {
         var taken = Set<Int>()
         var row = 0
         var column = 0
-        return widgets.map { widget in
-            let width = min(widget.span, columns)
+        return sizes.map { size in
+            let width = min(size.columns, columns)
             let covered = { (top: Int, left: Int) in
-                (top..<top + widget.rows).flatMap { line in
+                (top..<top + size.rows).flatMap { line in
                     (left..<left + width).map { line * columns + $0 }
                 }
             }
@@ -24,15 +29,15 @@ extension WidgetGrid {
             }
             taken.formUnion(covered(row, column))
             defer { column += width }
-            return (row..<row + widget.rows, column..<column + width)
+            return (row..<row + size.rows, column..<column + width)
         }
     }
 
-    static func rowCount(of widgets: [Widget]) -> Int {
+    nonisolated static func rowCount(of widgets: [Widget]) -> Int {
         cells(of: widgets).map(\.rows.upperBound).max() ?? 0
     }
 
-    static func extent(of count: Int, size: CGFloat, gap: CGFloat) -> CGFloat {
+    nonisolated static func extent(of count: Int, size: CGFloat, gap: CGFloat) -> CGFloat {
         CGFloat(count) * size + CGFloat(max(count - 1, 0)) * gap
     }
 

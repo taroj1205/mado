@@ -9,7 +9,7 @@ public struct FocusedWindow {
         case failed(AXError)
     }
 
-    static let messagingTimeout: Float = 0.25
+    nonisolated static let messagingTimeout: Float = 0.25
     private static let fullScreenAttribute = "AXFullScreen"
 
     let application: AXUIElement

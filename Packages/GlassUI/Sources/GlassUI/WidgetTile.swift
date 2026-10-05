@@ -1,8 +1,6 @@
 import AppKit
 
 final class WidgetTile: NSView {
-    private typealias Look = (fill: NSColor, edge: NSColor)
-
     static let radius: CGFloat = 16
     static let horizontal: CGFloat = 12
     private static let trackLeading: CGFloat = 10
@@ -13,32 +11,6 @@ final class WidgetTile: NSView {
     private static let meterGap: CGFloat = 8
     private static let headlineBar = (fraction: 0.4, height: 18.0)
     private static let detailBar = (fraction: 0.7, height: 10.0)
-    private static let fillAlpha = (dark: 0.055, light: 0.55)
-    private static let edgeAlpha = (dark: 0.07, light: 0.06)
-    private static let selectedFillAlpha = (dark: 0.13, light: 0.065)
-    private static let selectedEdgeAlpha = (dark: 0.26, light: 0.16)
-    private static let editFillAlpha = (dark: 0.07, light: 0.55)
-    private static let editEdgeAlpha = (dark: 0.28, light: 0.2)
-    static let fill = tone(.white, .white, fillAlpha)
-    static let edge = tone(.white, .black, edgeAlpha)
-    static let selectedFill = tone(.white, .black, selectedFillAlpha)
-    static let selectedEdge = tone(.white, .black, selectedEdgeAlpha)
-    private static let editFill = tone(.white, .white, editFillAlpha)
-    static let editEdge = tone(.white, .black, editEdgeAlpha)
-    private static let floatingSelectedAlpha = (dark: 0.34, light: 0.80)
-    private static let floatingSelectedTint = (red: 0.55, green: 0.55, blue: 0.63)
-    private static let floatingSelectedFill = tone(
-        NSColor(
-            srgbRed: floatingSelectedTint.red, green: floatingSelectedTint.green,
-            blue: floatingSelectedTint.blue, alpha: 1),
-        .white, floatingSelectedAlpha)
-    private static let inlineLooks: (resting: Look, picked: Look) = (
-        (fill, edge), (selectedFill, selectedEdge)
-    )
-    private static let floatingLooks: (resting: Look, picked: Look) = (
-        (.clear, .clear), (floatingSelectedFill, selectedEdge)
-    )
-
     let title = NSTextField(labelWithString: "")
     let value = NSTextField(labelWithString: "")
     let headline = NSTextField(labelWithString: "")
@@ -66,34 +38,44 @@ final class WidgetTile: NSView {
     let slot = WidgetTile.makeSlot()
     let remove = RemoveBadge()
     let grip = Grip(colour: .tertiaryLabelColor)
+    let resizer = WidgetResizeHandle()
     let floating: Bool
     private let looks: (resting: Look, picked: Look)
     private(set) var widgetID = ""
     private var hasTrack = false
     var dragStart: NSEvent?
+    var resizeStart: CGFloat?
     var compact = false
     var onPress: (() -> Void)?
+    var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
     var onRemove: (() -> Void)?
+    var onResize: ((Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
     var onDrop: ((String?) -> Bool)?
     var onDragStart: (() -> Void)?
     var onDragEnd: (() -> Void)?
 
     var selected = false {
-        didSet { paint() }
+        didSet {
+            paint()
+            showGrip()
+        }
     }
 
     var editing = false {
         didSet {
             showEditing()
             paint()
-            setAccessibilityCustomActions(customActions())
         }
     }
 
     var lifted = false {
         didSet { showLifted() }
+    }
+
+    var resizable = false {
+        didSet { showEditing() }
     }
 
     init(floating: Bool) {
@@ -180,15 +162,8 @@ final class WidgetTile: NSView {
         setAccessibilityCustomActions(customActions())
     }
 
-    private func customActions() -> [NSAccessibilityCustomAction] {
-        if editing {
-            return [
-                NSAccessibilityCustomAction(name: "Remove") { [weak self] in
-                    self?.onRemove?()
-                    return true
-                }
-            ]
-        }
+    func customActions() -> [NSAccessibilityCustomAction] {
+        if editing { return editingActions() }
         return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
     }
 
@@ -223,7 +198,7 @@ final class WidgetTile: NSView {
             return
         }
         if event.modifierFlags.contains(.command) {
-            dragStart = event
+            dragStart = beginResize(event) ? nil : event
             return
         }
         let point = track.convert(event.locationInWindow, from: nil)
@@ -234,7 +209,11 @@ final class WidgetTile: NSView {
         }
     }
 
-    override func mouseDragged(with _: NSEvent) {
+    override func mouseDragged(with event: NSEvent) {
+        if let resizeStart {
+            onResize?(.drag(screenX(of: event) - resizeStart))
+            return
+        }
         guard let start = dragStart, unsafe window != nil else { return }
         dragStart = nil
         beginDrag(with: start)
@@ -242,6 +221,10 @@ final class WidgetTile: NSView {
 
     override func mouseUp(with _: NSEvent) {
         dragStart = nil
+        if resizeStart != nil {
+            resizeStart = nil
+            onResize?(.drop)
+        }
     }
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {

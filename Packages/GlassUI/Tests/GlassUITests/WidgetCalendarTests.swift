@@ -10,7 +10,7 @@ import Testing
         contentRect: NSRect(x: 0, y: 0, width: 760, height: 548),
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
-    private let month: CalendarMonth
+    private let month: AgendaMonth
     private let calendar: WidgetGrid.Widget
     private let upNext = WidgetGrid.Widget(
         id: "up_next", name: "Up Next",
@@ -26,7 +26,7 @@ import Testing
         gregorian.locale = Locale(identifier: "en_NZ")
         gregorian.firstWeekday = 2
         let day = try #require(gregorian.date(from: DateComponents(year: 2_026, month: 9, day: 30)))
-        month = try #require(CalendarMonth(around: day, calendar: gregorian))
+        month = try #require(Agenda(events: []).month(showing: day, at: day, calendar: gregorian))
         calendar = .init(
             id: "calendar", name: "Calendar", content: .month(month), action: "Open Calendar",
             spoken: "Calendar", isWide: true, isTall: true)
@@ -58,7 +58,7 @@ import Testing
         #expect(view.widgetGrid.shown.map(\.id) == ["up_next", "weather", "clock", "music"])
         view.widgetSpots = ["calendar": .leftTop]
         #expect(!view.widgetGrid.accepts("calendar", at: .panel, before: nil))
-        #expect(view.widgetGrid.accepts("system", at: .leftTop, before: nil))
+        #expect(view.widgetGrid.accepts("system", at: .rightTop, before: nil))
     }
 
     @Test func aSideRailStacksTheCalendarAtItsFullHeight() {

@@ -26,7 +26,7 @@ public final class LauncherView: NSView {
     public var actions: ((ResultList.Item) -> [Action])?
     public var shortcutKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
-    public var onGridChange: ((Bool) -> Void)?
+    public var onFit: (() -> Void)?
     public let emojiGrid = EmojiGrid()
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
@@ -62,8 +62,10 @@ public final class LauncherView: NSView {
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()
     let comparisonPane = ComparisonPane()
+    let calendarPane = CalendarPane()
     let chip = ScopeChip()
     var shownDetail: Detail?
+    var fittedForCalendarAnswer = false
     var gridHome: String?
     var filter: NSPopUpButton?
     let editBar = WidgetEditBar()
@@ -88,6 +90,7 @@ public final class LauncherView: NSView {
         equalTo: trailingAnchor, constant: -Self.searchInset)
     lazy var resultsTrailing = results.trailingAnchor.constraint(
         equalTo: trailingAnchor, constant: -Self.resultsInset)
+    lazy var calendarTop = calendarPane.topAnchor.constraint(equalTo: results.topAnchor)
 
     var previewing: Bool { preview?.isVisible == true }
     public var sharing: Bool { preview?.sharing == true }
@@ -111,7 +114,7 @@ public final class LauncherView: NSView {
         addLayoutGuide(bar)
         for view in [
             icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
-            emojiGrid,
+            calendarPane, emojiGrid,
         ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -135,36 +138,6 @@ public final class LauncherView: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
-    }
-
-    private func placeCapsules() {
-        addSubview(contextPill)
-        addSubview(statusBar)
-        addSubview(actionCapsule)
-        NSLayoutConstraint.activate([
-            statusBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.capsuleInset),
-            statusBar.trailingAnchor.constraint(
-                lessThanOrEqualTo: actionCapsule.leadingAnchor, constant: -Self.capsuleInset),
-            statusBar.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
-            contextPill.leadingAnchor.constraint(
-                equalTo: leadingAnchor, constant: Self.capsuleInset),
-            contextPill.centerYAnchor.constraint(equalTo: actionCapsule.centerYAnchor),
-            actionCapsule.trailingAnchor.constraint(
-                equalTo: trailingAnchor, constant: -Self.capsuleInset),
-            actionCapsule.bottomAnchor.constraint(
-                equalTo: bottomAnchor, constant: -Self.capsuleInset),
-        ])
-        results.contentInsets.bottom =
-            Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
-        results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
-        results.onMove = { [weak self] in self?.selectionMoved() }
-        results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
-        actionsToggle.onPress = { [weak self] in self?.toggleActions() }
-        statusBar.onPress = { [weak self] index in self?.pressPill(index) }
-        statusBar.onMove = { [weak self] id, target in self?.movePill(id, before: target) }
-        statusBar.customise.onPress = { [weak self] in self?.toggleCustomiser() }
-        field.setAccessibilitySharedFocusElements([results.table, emojiGrid.collection])
-        showAction(of: nil)
     }
 
     override public func layout() {

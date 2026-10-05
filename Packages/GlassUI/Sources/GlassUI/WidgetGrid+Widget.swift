@@ -1,5 +1,3 @@
-import AppKit
-
 extension WidgetGrid {
     public struct Widget: Sendable, Equatable {
         static let wideSpan = 2
@@ -12,8 +10,13 @@ extension WidgetGrid {
         public let spoken: String
         public let isWide: Bool
         public let isTall: Bool
+        var columns: Int?
 
         var span: Int {
+            columns ?? narrowest
+        }
+
+        var narrowest: Int {
             isWide ? Self.wideSpan : 1
         }
 

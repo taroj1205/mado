@@ -51,13 +51,13 @@ import Testing
         #expect(view.widgetOverhang == 182)
     }
 
-    @Test func aroundStacksAColumnOnEachSideFromThePanelTop() {
+    @Test func aroundPutsEachWidgetOnItsOwnStopDownEachSide() {
         arrange(.around)
         let floats = view.widgetGrid.floats
         expect(floats[0].frame, NSRect(x: -140, y: 498, width: 220, height: 78))
-        expect(floats[3].frame, NSRect(x: -140, y: 234, width: 220, height: 78))
+        expect(floats[3].frame, NSRect(x: -140, y: 199.5, width: 220, height: 78))
         expect(floats[4].frame, NSRect(x: 880, y: 498, width: 220, height: 78))
-        expect(floats[6].frame, NSRect(x: 880, y: 322, width: 220, height: 78))
+        expect(floats[6].frame, NSRect(x: 880, y: 299, width: 220, height: 78))
         #expect(view.widgetOverhang == 0)
     }
 
@@ -166,6 +166,8 @@ import Testing
     }
 
     private func arrange(_ arrangement: WidgetSettings.Arrangement) {
-        view.widgetSpots = WidgetSettings().spots(arrangement, from: view.widgets.map(\.id))
+        view.widgetSpots = WidgetSettings().spots(
+            arrangement, from: view.widgets.map(\.id),
+            wide: Set(view.widgets.filter(\.isWide).map(\.id)))
     }
 }

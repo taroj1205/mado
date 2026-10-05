@@ -16,8 +16,6 @@ final class Widgets {
     private static let system = "system"
     static let music = "music"
     static let weather = "weather"
-    static let calendarWidget = "calendar"
-    static let upNext = "up_next"
     private static let listenSeconds = 2.0
     private static let player = MusicPlayer()
     private static let logger = Log.logger("Widgets")
@@ -46,6 +44,14 @@ final class Widgets {
         gallery.map(\.id)
     }
 
+    static var wide: Set<String> {
+        Set(gallery.filter(\.isWide).map(\.id))
+    }
+
+    static var tall: Set<String> {
+        Set(gallery.filter(\.isTall).map(\.id))
+    }
+
     private static var clock: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: clockApp)
     }
@@ -69,8 +75,9 @@ final class Widgets {
         let spot: WidgetGrid.Spot? =
             switch edit {
             case .add: .panel
-            case let .place(_, spot, _): spot
-            case .move, .remove: nil
+            case let .place(_, spot, _), let .group(_, spot, _): spot
+            case .spread(let spots): spots.values.first
+            case .move, .resize, .remove: nil
             }
         if let spot, spot != .panel || WidgetPlacement.load(from: modules) != .inPanel {
             do {

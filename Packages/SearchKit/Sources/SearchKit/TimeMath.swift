@@ -11,7 +11,6 @@ enum TimeMath {
     private static let daysPerWeek = 7
     private static let hourDigits = 100.0
     private static let targetDigits = 1_000.0
-    private static let leapYearCycle = 8
     private static let secondsLimit = 1e12
     private static let locale = Locale(identifier: "en_GB")
     private static let durationUnits: [String: Int] = [
@@ -27,14 +26,6 @@ enum TimeMath {
         "weeks": secondsPerWeek, "days": secondsPerDay, "hours": secondsPerHour,
         "minutes": secondsPerMinute, "seconds": 1,
     ]
-    private static let steps: [String: Calendar.Component] = [
-        "day": .day, "week": .weekOfYear, "month": .month, "year": .year,
-    ]
-    private static let months = [
-        "january", "february", "march", "april", "may", "june", "july", "august", "september",
-        "october", "november", "december",
-    ]
-    private static let monthAbbreviation = 3
     private static let minuteDigits = 2
 
     static func answer(for text: String, now: Date, local: TimeZone) -> Calculator.Answer? {
@@ -119,15 +110,8 @@ enum TimeMath {
     private static func date(
         _ text: String, now: Date, calendar: Calendar
     ) -> Calculator.Answer? {
-        let pattern = /(in )?(\d+) ?(day|week|month|year)s?(?: (from today|from now|later|ago))?/
-        guard let match = text.wholeMatch(of: pattern), match.1 != nil || match.4 != nil,
-            let amount = Int(match.2), let step = steps[String(match.3)]
-        else { return nil }
         let today = calendar.startOfDay(for: now)
-        guard
-            let day = calendar.date(
-                byAdding: step, value: match.4 == "ago" ? -amount : amount, to: today)
-        else { return nil }
+        guard let day = DayQuery.offset(text, from: today, calendar: calendar) else { return nil }
         return Calculator.Answer(
             kind: "Dates", expression: text.prefix(1).uppercased() + text.dropFirst(),
             expressionDetail: "From \(label(today, "EEE, d MMM yyyy", calendar))",
@@ -138,10 +122,7 @@ enum TimeMath {
         _ text: String, now: Date, calendar: Calendar
     ) -> Calculator.Answer? {
         let today = calendar.startOfDay(for: now)
-        guard
-            let match = text.wholeMatch(
-                of: /(?:how many )?(?:days? )?(?:until|till|to) (.+?)\??/),
-            let target = day(match.1, after: today, calendar: calendar),
+        guard let target = DayQuery.until(text, after: today, calendar: calendar),
             let days = calendar.dateComponents([.day], from: today, to: target).day
         else { return nil }
         return Calculator.Answer(
@@ -150,27 +131,6 @@ enum TimeMath {
             result: count(days, "day"),
             resultDetail:
                 "\(count(days / daysPerWeek, "week")) \(count(days % daysPerWeek, "day"))")
-    }
-
-    private static func day(_ text: Substring, after today: Date, calendar: Calendar) -> Date? {
-        let named = text.replacing(/^(christmas|xmas)$/, with: "25 dec")
-            .replacing(/^new years?( day)?$/, with: "1 jan")
-            .replacing(/(\d)(?:st|nd|rd|th)\b/) { $0.1 }
-            .replacing(/^([a-z]+) (\d+)/) { "\($0.2) \($0.1)" }
-        guard let match = named.wholeMatch(of: /(\d{1,2}) ([a-z]+)(?: (\d{4}))?/),
-            match.2.count >= monthAbbreviation,
-            let month = months.firstIndex(where: { $0.hasPrefix(match.2) }),
-            let dayOfMonth = Int(match.1)
-        else { return nil }
-        let thisYear = calendar.component(.year, from: today)
-        let given = match.3.flatMap { Int($0) }.map { $0...$0 }
-        let years = given ?? thisYear...thisYear + leapYearCycle
-        return years.lazy.compactMap { year in
-            let components = DateComponents(year: year, month: month + 1, day: dayOfMonth)
-            guard components.isValidDate(in: calendar) else { return nil }
-            return calendar.date(from: components)
-        }
-        .first { $0 >= today }
     }
 
     private static func clock(_ text: Substring) -> Int? {

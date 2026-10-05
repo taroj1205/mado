@@ -101,7 +101,7 @@ import Testing
         #expect(widgets.added(from: Self.available) == ["system", "clock"])
     }
 
-    @Test func eachPlacementPutsEveryAddedWidgetInItsSpot() {
+    @Test func eachPlacementGivesEveryAddedWidgetItsOwnSpot() {
         let widgets = WidgetSettings()
         let ids = Self.available
         #expect(
@@ -109,11 +109,86 @@ import Testing
                 "clock": .panel, "system": .panel, "battery": .panel,
             ])
         #expect(
-            widgets.spots(.above, from: ids)
-                == ["clock": .aboveLeft, "system": .aboveLeft, "battery": .aboveLeft])
+            widgets.spots(.above, from: ids) == [
+                "clock": .aboveLeft, "system": .above(column: 1, row: 0), "battery": .aboveCentre,
+            ])
         #expect(
-            widgets.spots(.around, from: ids)
-                == ["clock": .leftTop, "system": .leftTop, "battery": .rightTop])
+            widgets.spots(.above, from: ids, wide: ["clock"]) == [
+                "clock": .aboveLeft, "system": .aboveCentre, "battery": .above(column: 3, row: 0),
+            ])
+        #expect(
+            widgets.spots(.around, from: ids) == [
+                "clock": .leftTop, "system": .beside(.left, row: 1), "battery": .rightTop,
+            ])
+    }
+
+    @Test func aboveWrapsOntoAHigherRowOnceSixColumnsAreFull() {
+        let ids = (1...8).map { "\($0)" }
+        let spots = WidgetSettings().spots(.above, from: ids, wide: ["1"])
+        #expect(spots["1"] == .above(column: 0, row: 1))
+        #expect(spots["5"] == .above(column: 5, row: 1))
+        #expect(spots["6"] == .above(column: 0, row: 0))
+        #expect(spots["8"] == .aboveCentre)
+    }
+
+    @Test func aTallWidgetTakesTwoRowsAboveAndTwoStopsBeside() {
+        let ids = ["calendar", "next", "weather", "clock", "battery", "system"]
+        let widgets = WidgetSettings()
+        let above = widgets.spots(
+            .above, from: ids, wide: ["calendar", "next"], tall: ["calendar"])
+        #expect(above["calendar"] == .aboveLeft)
+        #expect(above["next"] == .above(column: 2, row: 1))
+        #expect(above["battery"] == .above(column: 2, row: 0))
+        let around = widgets.spots(.around, from: ids, tall: ["calendar"])
+        #expect(around["calendar"] == .leftTop)
+        #expect(around["next"] == .beside(.left, row: 2))
+        #expect(around["weather"] == .beside(.left, row: 3))
+        #expect(around["clock"] == .rightTop)
+    }
+
+    @Test func groupingPutsTheWidgetsTogetherAndSplittingGivesEachItsOwnSpot() throws {
+        var widgets = try settings(#"{"custom": true, "added": ["clock", "system", "battery"]}"#)
+        widgets.apply(.group(["battery", "clock"], .rightTop, before: nil), from: Self.available)
+        #expect(widgets.added(from: Self.available) == ["system", "battery", "clock"])
+        #expect(
+            widgets.spots(.custom, from: Self.available) == [
+                "clock": .rightTop, "system": .panel, "battery": .rightTop,
+            ])
+        widgets.apply(
+            .spread(["battery": .rightTop, "clock": .rightMiddle, "weather": .leftTop]),
+            from: Self.available)
+        #expect(
+            widgets.spots(.custom, from: Self.available) == [
+                "clock": .rightMiddle, "system": .panel, "battery": .rightTop,
+            ])
+    }
+
+    @Test func movingOneWidgetPlacesItAndMovingSeveralGroupsThem() {
+        #expect(
+            WidgetSettings.Edit.moving(["clock"], to: .leftTop, before: nil)
+                == .place("clock", .leftTop, before: nil))
+        #expect(
+            WidgetSettings.Edit.moving(["clock", "system"], to: .leftTop, before: "battery")
+                == .group(["clock", "system"], .leftTop, before: "battery"))
+    }
+
+    @Test func spotsSaveAsNamesAndOldNamesStillLoad() throws {
+        let spots: [WidgetGrid.Spot] = [
+            .panel, .aboveRight, .above(column: 3, row: 2), .beside(.right, row: 3),
+        ]
+        let data = try JSONEncoder().encode(spots)
+        #expect(
+            String(bytes: data, encoding: .utf8)
+                == #"["in_panel","above_right","above:3:2","right:0:3"]"#)
+        #expect(try JSONDecoder().decode([WidgetGrid.Spot].self, from: data) == spots)
+        let old = Data(#"["above_centre","left_bottom","left:0:9","above:-1:0"]"#.utf8)
+        #expect(
+            try JSONDecoder().decode([WidgetGrid.Spot].self, from: old) == [
+                .aboveCentre, .leftBottom, .leftBottom, .aboveLeft,
+            ])
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode([WidgetGrid.Spot].self, from: Data(#"["nowhere"]"#.utf8))
+        }
     }
 
     @Test func customSpotsComeBackFromSavedSettingsAndDefaultToThePanel() throws {

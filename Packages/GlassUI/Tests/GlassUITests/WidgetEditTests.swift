@@ -156,7 +156,7 @@ import Testing
         #expect(view.widgetGrid.hitTest(view.convert(badge, from: nil)) === tile)
         tile.mouseDown(with: try mouse(at: badge))
         #expect(edits == [.remove("battery")])
-        #expect(tile.accessibilityCustomActions()?.map(\.name) == ["Remove"])
+        #expect(tile.accessibilityCustomActions()?.first?.name == "Remove")
         #expect(tile.accessibilityCustomActions()?.first?.handler?() == true)
         #expect(edits == [.remove("battery"), .remove("battery")])
         #expect(view.widgetGrid.tiles[0].accessibilityPerformPress())

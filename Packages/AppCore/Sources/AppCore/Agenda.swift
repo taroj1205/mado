@@ -34,18 +34,25 @@ public struct Agenda: Sendable, Equatable {
         }
     }
 
-    public enum Upcoming: Sendable, Equatable {
+    public enum UpNext: Sendable, Equatable {
         case today(Event)
         case tomorrow(Event?)
     }
 
+    public struct Heading: Sendable, Equatable {
+        public let start: Date
+        public let title: String
+    }
+
     public struct Day: Sendable, Equatable {
+        public let start: Date
         public let title: String
         public let events: [Event]
     }
 
-    private static let dayCount = 2
-    private static let keywords: Set<String> = ["agenda", "today", "tomorrow"]
+    private static let keywords: Set<String> = ["agenda", "today"]
+    private static let dayFormat: Date.FormatStyle =
+        .dateTime.weekday(.abbreviated).day().month(.abbreviated)
     private static let namesShown = 2
     private static let minute: TimeInterval = 60
     private static let minutesPerHour = 60
@@ -60,10 +67,44 @@ public struct Agenda: Sendable, Equatable {
         keywords.contains(query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
     }
 
-    public static func span(around now: Date, calendar: Calendar) -> DateInterval? {
-        let start = calendar.startOfDay(for: now)
-        return calendar.date(byAdding: .day, value: dayCount, to: start).map { end in
-            DateInterval(start: start, end: end)
+    public static func upcoming(at now: Date, calendar: Calendar) -> [Heading] {
+        let today = calendar.startOfDay(for: now)
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return [] }
+        return [
+            Heading(start: today, title: "Today · \(date(of: today, calendar: calendar))"),
+            Heading(start: tomorrow, title: "Tomorrow"),
+        ]
+    }
+
+    public static func heading(for day: Date, at now: Date, calendar: Calendar) -> Heading {
+        let start = calendar.startOfDay(for: day)
+        let when = relative(start, at: now, calendar: calendar)
+        return Heading(start: start, title: "\(date(of: start, calendar: calendar)) · \(when)")
+    }
+
+    public static func date(of day: Date, calendar: Calendar) -> String {
+        day.formatted(style(dayFormat, in: calendar))
+    }
+
+    public static func span(of headings: [Heading], calendar: Calendar) -> DateInterval? {
+        guard let first = headings.first.flatMap({ grid(of: $0.start, calendar: calendar) }),
+            let last = headings.last.flatMap({ grid(of: $0.start, calendar: calendar) })
+        else { return nil }
+        return DateInterval(start: first.start, end: last.end)
+    }
+
+    static func relative(_ day: Date, at now: Date, calendar: Calendar) -> String {
+        let days =
+            calendar.dateComponents(
+                [.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: day)
+            )
+            .day ?? 0
+        return switch days {
+        case 0: "Today"
+        case 1: "Tomorrow"
+        case -1: "Yesterday"
+        case ..<0: "\(-days) days ago"
+        default: "In \(days) days"
         }
     }
 
@@ -88,37 +129,43 @@ public struct Agenda: Sendable, Equatable {
         return others > 0 ? "\(shown) +\(others)" : shown
     }
 
-    private static func style(_ base: Date.FormatStyle, in calendar: Calendar) -> Date.FormatStyle {
+    static func style(_ base: Date.FormatStyle, in calendar: Calendar) -> Date.FormatStyle {
         var style = base
         style.calendar = calendar
         style.timeZone = calendar.timeZone
         return style
     }
 
-    public static func time(of event: Event, at now: Date, calendar: Calendar) -> String {
+    public static func time(of event: Event, listedFrom first: Date, calendar: Calendar) -> String {
         guard !event.isAllDay else { return "All day" }
         let base: Date.FormatStyle =
-            event.start < calendar.startOfDay(for: now)
+            event.start < first
             ? .dateTime.weekday(.abbreviated) : .init(date: .omitted, time: .shortened)
         return event.start.formatted(style(base, in: calendar))
     }
 
-    public func days(at now: Date, calendar: Calendar) -> [Day] {
-        let today = calendar.startOfDay(for: now)
-        let date = today.formatted(
-            Self.style(.dateTime.weekday(.abbreviated).day().month(.abbreviated), in: calendar))
-        return zip(0..<Self.dayCount, ["Today · \(date)", "Tomorrow"]).compactMap { offset, title in
-            guard let start = calendar.date(byAdding: .day, value: offset, to: today),
-                let end = calendar.date(byAdding: .day, value: 1, to: start)
-            else { return nil }
+    public func days(under headings: [Heading], calendar: Calendar) -> [Day] {
+        guard let first = headings.first?.start else { return [] }
+        return headings.compactMap { heading in
+            guard let end = calendar.date(byAdding: .day, value: 1, to: heading.start) else {
+                return nil
+            }
             let shown = events.filter { event in
                 if event.isAllDay {
-                    return event.start < end && event.end > start
+                    return event.start < end && event.end > heading.start
                 }
-                let listed = max(event.start, today)
-                return listed >= start && listed < end
+                let listed = max(event.start, first)
+                return (event.start >= first || event.end > first) && listed >= heading.start
+                    && listed < end
             }
-            return Day(title: title, events: shown)
+            return Day(start: heading.start, title: heading.title, events: shown)
+        }
+    }
+
+    func events(on day: Date, calendar: Calendar) -> [Event] {
+        guard let end = calendar.date(byAdding: .day, value: 1, to: day) else { return [] }
+        return events.filter { event in
+            event.start < end && (event.end > day || event.start >= day)
         }
     }
 
@@ -126,7 +173,7 @@ public struct Agenda: Sendable, Equatable {
         events.first { !$0.isAllDay && !$0.hasEnded(at: now) }
     }
 
-    public func upcoming(at now: Date, calendar: Calendar) -> Upcoming {
+    public func upNext(at now: Date, calendar: Calendar) -> UpNext {
         let today = calendar.startOfDay(for: now)
         guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
             let after = calendar.date(byAdding: .day, value: 1, to: tomorrow)

@@ -232,7 +232,7 @@ enum LauncherResult {
             } ?? (shows(.dictionary) ? DictionaryAnswer.section(for: query) : nil)
     }
 
-    private static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
+    static func answer(for query: String, in sources: Sources) -> Calculator.Answer? {
         Calculator.answer(for: query, rates: sources.rates, settings: sources.answers)
     }
 
@@ -249,7 +249,7 @@ enum LauncherResult {
             icon: NSWorkspace.shared.icon(forFile: file.path), file: file.url)
     }
 
-    private static func item(for answer: Calculator.Answer) -> ResultList.Item {
+    static func item(for answer: Calculator.Answer) -> ResultList.Item {
         ResultList.Item(
             id: answerID, title: answer.expression, subtitle: answer.expressionDetail,
             kind: answer.kind, symbol: "", action: "Copy Answer",

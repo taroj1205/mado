@@ -36,10 +36,12 @@ struct SwitcherSettings: StoredValue, Equatable {
 
     var order: Order
     var swipe: Swipe
+    var haptics: Bool
 
     init() {
         order = .byApp
         swipe = .threeFingers
+        haptics = true
     }
 
     init(from decoder: any Decoder) throws {
@@ -47,13 +49,30 @@ struct SwitcherSettings: StoredValue, Equatable {
         self.init()
         order = try values.decodeIfPresent(Order.self, forKey: .order) ?? order
         swipe = try values.decodeIfPresent(Swipe.self, forKey: .swipe) ?? swipe
+        haptics = try values.decodeIfPresent(Bool.self, forKey: .haptics) ?? haptics
     }
 
     @MainActor
     static func section(_ modules: ModuleManager?) -> SettingsSection {
         SettingsSection(
             "Window switcher",
-            [.init("Order", orderPopUp(modules)), .init("Trackpad swipe", swipePopUp(modules))])
+            [
+                .init("Order", orderPopUp(modules)), .init("Trackpad swipe", swipePopUp(modules)),
+                .init("Tap the trackpad as the selection moves", hapticsSwitch(modules)),
+            ])
+    }
+
+    @MainActor
+    private static func hapticsSwitch(_ modules: ModuleManager?) -> SettingsSwitch {
+        let toggle = SettingsSwitch(
+            read: { load(from: modules).haptics },
+            write: { isOn in
+                var settings = load(from: modules)
+                settings.haptics = isOn
+                try modules?.setValue(settings, for: key)
+            })
+        toggle.isEnabled = modules != nil
+        return toggle
     }
 
     @MainActor
