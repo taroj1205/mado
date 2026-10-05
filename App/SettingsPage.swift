@@ -103,7 +103,12 @@ struct SettingsPage {
                     [
                         SettingsSection(
                             "Gestures",
-                            [.init("Move and resize", gestureTargetPopUp(context.modules))])
+                            [
+                                .init("Hold to move", WindowTrigger.move.button(context.modules)),
+                                .init(
+                                    "Hold to resize", WindowTrigger.resize.button(context.modules)),
+                                .init("Move and resize", gestureTargetPopUp(context.modules)),
+                            ], footer: WindowTrigger.footer, accessory: nil)
                     ]
                 },
             ]),
