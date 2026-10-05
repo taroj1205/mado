@@ -21,7 +21,7 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.spots = newValue } }
     }
 
-    public var widgetSizes: [String: Int] {
+    public var widgetSizes: [String: WidgetGrid.Size] {
         get { widgetGrid.sizes }
         set { changeWidgets { widgetGrid.sizes = newValue } }
     }
@@ -38,7 +38,7 @@ extension LauncherView {
 
     public var widgetsFillPanel: Bool { widgetGrid.fillsPanel }
 
-    public var widgetOverhang: CGFloat { widgetGrid.overhang }
+    public var widgetShift: CGFloat { widgetGrid.overhang - widgetGrid.underhang }
 
     public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }
 

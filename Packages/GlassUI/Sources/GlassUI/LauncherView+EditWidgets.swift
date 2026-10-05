@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 extension LauncherView {
     static let editTitle = "Edit Widgets"
@@ -7,6 +8,7 @@ extension LauncherView {
     static let editSymbol = "square.grid.2x2"
     static let doneHeight: CGFloat = 28
     private static let doneInset: CGFloat = 14
+    private static let heightChange = [kVK_ANSI_Equal: 1, kVK_ANSI_Minus: -1]
 
     private static func heading(of event: NSEvent) -> WidgetGrid.Heading? {
         switch event.specialKey {
@@ -129,13 +131,23 @@ extension LauncherView {
             ungroupWidget()
             return true
 
-        case (.command, "="), (.command, "-"):
-            guard let selectedWidget else { return false }
-            resizeWidget(selectedWidget, .step(event.charactersIgnoringModifiers == "=" ? 1 : -1))
-            return true
+        case (.command, "="), (.command, "-"), ([.command, .option], _):
+            return resizeSelectedWidget(by: event)
 
         default: return false
         }
+    }
+
+    private func resizeSelectedWidget(by event: NSEvent) -> Bool {
+        guard let selectedWidget else { return false }
+        if event.modifierFlags.contains(.option) {
+            guard let change = Self.heightChange[Int(event.keyCode)] else { return false }
+            resizeWidget(selectedWidget, .step(columns: 0, rows: change))
+        } else {
+            let change = event.charactersIgnoringModifiers == "=" ? 1 : -1
+            resizeWidget(selectedWidget, .step(columns: change, rows: 0))
+        }
+        return true
     }
 
     func editCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
@@ -346,8 +358,8 @@ extension LauncherView {
 
         case .spread: return "Ungrouped"
 
-        case let .resize(_, columns):
-            return "\(name) resized · \(columns) of \(WidgetGrid.columns) columns"
+        case let .resize(_, size):
+            return "\(name) resized · \(size.title)"
         }
     }
 

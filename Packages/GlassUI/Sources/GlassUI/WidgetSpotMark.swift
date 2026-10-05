@@ -69,7 +69,7 @@ final class WidgetSpotMark: NSView {
     }
 
     override func draw(_: NSRect) {
-        if spot == .panel {
+        if spot.side == .panel {
             drawPanel()
         } else {
             drawBar()
@@ -102,7 +102,7 @@ final class WidgetSpotMark: NSView {
             Self.fill(bounds, radius: Self.haloRadius, with: Self.halo)
         }
         let long = isOn ? Self.length.on : isHot ? Self.length.hot : Self.length.rest
-        let flat = spot.side == .above
+        let flat = spot.side.isShelf
         let width = flat ? long : Self.bar
         let height = flat ? Self.bar : long
         let rect = NSRect(

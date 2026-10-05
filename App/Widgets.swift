@@ -106,7 +106,8 @@ final class Widgets {
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
                 detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
-                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
+                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))",
+                facts: clockFacts(at: date)),
             playing.map(widget(for:)),
             stats == nil
                 ? .init(
@@ -121,7 +122,8 @@ final class Widgets {
                     id: system, name: name(of: system),
                     meters: [meter("CPU", cpu), meter("RAM", memory)],
                     action: "Open Activity Monitor",
-                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
+                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))",
+                    facts: systemFacts(of: stats)),
         ]
         .compactMap(\.self)
     }

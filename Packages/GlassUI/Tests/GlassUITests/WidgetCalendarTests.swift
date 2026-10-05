@@ -65,10 +65,10 @@ import Testing
         let frames = WidgetGrid.floatingFrames(
             of: [(calendar, .leftTop), (upNext, .leftTop), (small("clock"), .rightMiddle)],
             beside: screen)
-        #expect(frames[0] == CGRect(x: 400 - 20 - 220, y: 748 - 166, width: 220, height: 166))
+        #expect(frames[0] == CGRect(x: 400 - 20 - 250, y: 748 - 164, width: 250, height: 164))
         #expect(
-            frames[1] == CGRect(x: 400 - 20 - 220, y: 748 - 166 - 10 - 78, width: 220, height: 78))
-        #expect(frames[2] == CGRect(x: 1_180, y: 474 - 39, width: 220, height: 78))
+            frames[1] == CGRect(x: 400 - 20 - 250, y: 748 - 164 - 8 - 78, width: 250, height: 78))
+        #expect(frames[2] == CGRect(x: 1_180, y: 748 - 2 * 86 - 78, width: 250, height: 78))
     }
 
     @Test func aboveThePanelTheCalendarSpansBothShelfRows() {
@@ -76,10 +76,10 @@ import Testing
         let frames = WidgetGrid.floatingFrames(
             of: [(calendar, .aboveLeft), (small("clock"), .aboveLeft)], beside: screen)
         let base = 748 + WidgetGrid.lift
-        #expect(frames[0].minY == base && frames[0].height == 166)
-        #expect(frames[1].minY == base + 78 + 10 && frames[1].height == 78)
+        #expect(frames[0].minY == base && frames[0].height == 164)
+        #expect(frames[1].minY == base + 78 + 8 && frames[1].height == 78)
         #expect(frames[1].minX > frames[0].maxX)
-        #expect(WidgetGrid.shelfRows(of: [(calendar, .aboveLeft)]) == 2)
+        #expect(WidgetGrid.shelfRows(of: [(calendar, .aboveLeft)], on: .above) == 2)
     }
 
     @Test func theMonthTileDrawsTheMonthAndNothingElse() throws {

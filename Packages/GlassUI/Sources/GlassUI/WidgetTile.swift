@@ -23,14 +23,11 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let face = WidgetFace()
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    private lazy var trackPlacement = [
-        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
-        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-        track.centerYAnchor.constraint(equalTo: centerYAnchor),
-    ]
+    private lazy var trackPlacement = trackConstraints()
     private let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
@@ -43,9 +40,10 @@ final class WidgetTile: NSView {
     let floating: Bool
     private let looks: (resting: Look, picked: Look)
     private(set) var widgetID = ""
-    private var hasTrack = false
+    private(set) var widget: WidgetGrid.Widget?
+    var form = WidgetForm(size: .zero)
     var dragStart: NSEvent?
-    var resizeStart: CGFloat?
+    var resizeStart: NSPoint?
     var compact = false
     var onPress: (() -> Void)?
     var onOpen: (() -> Void)?
@@ -80,7 +78,7 @@ final class WidgetTile: NSView {
         didSet { showLifted() }
     }
 
-    var resizable = false {
+    var resizes: Set<Axis> = [] {
         didSet { showEditing() }
     }
 
@@ -97,6 +95,9 @@ final class WidgetTile: NSView {
         wash.frame = bounds
         wash.autoresizingMask = [.width, .height]
         addSubview(wash)
+        face.autoresizingMask = [.width, .height]
+        face.isHidden = true
+        addSubview(face)
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
@@ -128,15 +129,6 @@ final class WidgetTile: NSView {
         nil
     }
 
-    static func tone(
-        _ dark: NSColor, _ light: NSColor, _ alpha: (dark: Double, light: Double)
-    ) -> NSColor {
-        NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
-        }
-    }
-
     private func paint() {
         let look = selected ? looks.picked : looks.resting
         if editing {
@@ -150,8 +142,9 @@ final class WidgetTile: NSView {
     }
 
     func show(_ widget: WidgetGrid.Widget) {
+        self.widget = widget
+        form = WidgetForm(size: bounds.size)
         widgetID = widget.id
-        hasTrack = widget.track != nil
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
@@ -173,12 +166,16 @@ final class WidgetTile: NSView {
         month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
+        showFace()
     }
 
-    func customActions() -> [NSAccessibilityCustomAction] {
-        if editing { return editingActions() }
-        if !month.isHidden { return month.accessibilityActions() }
-        return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
+    override func layout() {
+        super.layout()
+        let next = WidgetForm(size: bounds.size)
+        if next != form {
+            form = next
+            showFace()
+        }
     }
 
     private func showTrack(_ shows: Bool) {
@@ -187,13 +184,6 @@ final class WidgetTile: NSView {
             NSLayoutConstraint.activate(trackPlacement)
         } else {
             NSLayoutConstraint.deactivate(trackPlacement)
-        }
-    }
-
-    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
-        NSAccessibilityCustomAction(name: name) { [weak self] in
-            self?.onSkip?(skip)
-            return true
         }
     }
 
@@ -236,7 +226,9 @@ final class WidgetTile: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         if let resizeStart {
-            onResize?(.drag(screenX(of: event) - resizeStart))
+            let point = screenPoint(of: event)
+            onResize?(
+                .drag(CGSize(width: point.x - resizeStart.x, height: resizeStart.y - point.y)))
             return
         }
         guard let start = dragStart, unsafe window != nil else { return }

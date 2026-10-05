@@ -12,7 +12,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         case place(String, WidgetGrid.Spot, before: String?)
         case group([String], WidgetGrid.Spot, before: String?)
         case spread([String: WidgetGrid.Spot])
-        case resize(String, columns: Int)
+        case resize(String, WidgetGrid.Size)
         case remove(String)
 
         var id: String {
@@ -44,7 +44,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
     private var custom: Bool
     private var added: [String]
     private var spots: [String: WidgetGrid.Spot]
-    private var sizes: [String: Int]
+    private var sizes: [String: WidgetGrid.Size]
 
     public init() {
         custom = false
@@ -58,7 +58,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         custom = try values.decode(Bool.self, forKey: .custom)
         added = try values.decode([String].self, forKey: .added)
         spots = try values.decodeIfPresent([String: WidgetGrid.Spot].self, forKey: .spots) ?? [:]
-        sizes = try values.decodeIfPresent([String: Int].self, forKey: .sizes) ?? [:]
+        sizes = try values.decodeIfPresent([String: WidgetGrid.Size].self, forKey: .sizes) ?? [:]
     }
 
     public func added(from available: [String]) -> [String] {
@@ -74,13 +74,12 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         let ids = added(from: available)
         let left = (ids.count + WidgetGrid.sides - 1) / WidgetGrid.sides
         let footprints = ids.map { id in
-            (
+            WidgetGrid.Size(
                 columns: wide.contains(id) ? WidgetGrid.Widget.wideSpan : 1,
-                rows: tall.contains(id) ? WidgetGrid.Widget.tallRows : 1
-            )
+                rows: tall.contains(id) ? WidgetGrid.Widget.tallRows : 1)
         }
-        let cells = WidgetGrid.cells(sized: footprints)
-        let rows = cells.map(\.rows.upperBound).max() ?? 1
+        let cells = WidgetGrid.cells(spanning: footprints)
+        let rows = max(WidgetGrid.rowCount(of: cells), 1)
         let stops = footprints.indices.map { index in
             footprints[(index < left ? 0 : left)..<index].map(\.rows).reduce(0, +)
         }
@@ -104,7 +103,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             })
     }
 
-    public func sizes(from available: [String]) -> [String: Int] {
+    public func sizes(from available: [String]) -> [String: WidgetGrid.Size] {
         let ids = added(from: available)
         return sizes.filter { ids.contains($0.key) }
     }
@@ -134,8 +133,8 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             let ids = added(from: available)
             spots.merge(moved.filter { ids.contains($0.key) }) { _, spot in spot }
 
-        case let .resize(id, columns):
-            resize(id, to: columns, from: available)
+        case let .resize(id, size):
+            resize(id, to: size, from: available)
 
         case .remove(let id):
             remove(id, from: available)
@@ -156,9 +155,9 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         custom = true
     }
 
-    private mutating func resize(_ id: String, to columns: Int, from available: [String]) {
+    private mutating func resize(_ id: String, to size: WidgetGrid.Size, from available: [String]) {
         guard added(from: available).contains(id) else { return }
-        sizes[id] = columns
+        sizes[id] = size
     }
 
     private mutating func remove(_ id: String, from available: [String]) {

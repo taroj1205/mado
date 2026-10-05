@@ -32,7 +32,7 @@ extension AppDelegate {
 
     func launcherFrame(in visible: CGRect) -> CGRect {
         ScreenGeometry.centeredFrame(of: launcherSize, in: visible)
-            .offsetBy(dx: 0, dy: -launcherView.widgetOverhang * Self.half)
+            .offsetBy(dx: 0, dy: -launcherView.widgetShift * Self.half)
     }
 
     func connectGlances() {
