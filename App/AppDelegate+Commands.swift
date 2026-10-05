@@ -1,4 +1,5 @@
 import AppCore
+import SearchKit
 
 extension AppDelegate {
     var appCommands: [Command] {
@@ -19,6 +20,8 @@ extension AppDelegate {
                     }
                 ],
                 keywords: ["widgets", "arrange", "customize", "customise"]),
+            CalculatorHistory.command { [weak self] in self?.openCalculatorHistory() },
+            textCapture.command,
         ]
     }
 }
