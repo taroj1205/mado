@@ -9,6 +9,12 @@ public final class TriggerButton: NSView {
         didSet { render() }
     }
     public var onChange: ((Shortcut.Modifiers) -> Void)?
+    public var keycaps: [String] {
+        HotKeyLabel.symbols(modifiers)
+    }
+    public var takesSearchFocus = false {
+        didSet { noteFocusRingMaskChanged() }
+    }
 
     private(set) var isRecording = false
     private(set) var held: Shortcut.Modifiers = []
@@ -18,6 +24,7 @@ public final class TriggerButton: NSView {
 
     override public var acceptsFirstResponder: Bool { true }
     override public var canBecomeKeyView: Bool { true }
+    override public var focusRingMaskBounds: NSRect { takesSearchFocus ? bounds : .zero }
 
     public init() {
         super.init(frame: .zero)
@@ -47,13 +54,14 @@ public final class TriggerButton: NSView {
     }
 
     override public func becomeFirstResponder() -> Bool {
-        isRecording = true
-        held = []
-        render()
+        if !takesSearchFocus {
+            startRecording()
+        }
         return super.becomeFirstResponder()
     }
 
     override public func resignFirstResponder() -> Bool {
+        takesSearchFocus = false
         isRecording = false
         held = []
         render()
@@ -61,7 +69,7 @@ public final class TriggerButton: NSView {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard unsafe window?.firstResponder === self else {
+        guard isRecording, unsafe window?.firstResponder === self else {
             return super.performKeyEquivalent(with: event)
         }
         keyDown(with: event)
@@ -69,12 +77,20 @@ public final class TriggerButton: NSView {
     }
 
     override public func keyDown(with event: NSEvent) {
-        if Int(event.keyCode) == kVK_Escape {
-            unsafe window?.makeFirstResponder(nil)
+        let key = Int(event.keyCode)
+        if isRecording {
+            if key == kVK_Escape {
+                unsafe window?.makeFirstResponder(nil)
+            }
+        } else if [kVK_Space, kVK_Return].contains(key) {
+            record()
+        } else {
+            super.keyDown(with: event)
         }
     }
 
     override public func flagsChanged(with event: NSEvent) {
+        guard isRecording else { return }
         var now = HotKeyRecorder.modifiers(event.modifierFlags)
         if event.modifierFlags.contains(.function) {
             now.insert(.function)
@@ -90,14 +106,34 @@ public final class TriggerButton: NSView {
         unsafe window?.makeFirstResponder(nil)
     }
 
+    override public func drawFocusRingMask() {
+        guard takesSearchFocus else { return }
+        NSBezierPath(
+            roundedRect: bounds, xRadius: HotKeyButton.radius, yRadius: HotKeyButton.radius
+        ).fill()
+    }
+
     override public func draw(_: NSRect) {
         HotKeyButton.drawFrame(
             in: bounds, recording: isRecording,
             stroke: isRecording ? .controlAccentColor : HotKeyButton.border)
     }
 
+    private func startRecording() {
+        isRecording = true
+        held = []
+        render()
+    }
+
     private func record() {
-        unsafe window?.makeFirstResponder(self)
+        guard unsafe window?.firstResponder === self else {
+            unsafe window?.makeFirstResponder(self)
+            return
+        }
+        takesSearchFocus = false
+        if !isRecording {
+            startRecording()
+        }
     }
 
     private func render() {

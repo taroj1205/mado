@@ -3,6 +3,13 @@ import AppKit
 import os
 
 final class SettingsButton: NSButton {
+    var takesSearchFocus = false {
+        didSet { cell?.showsFirstResponder = takesSearchFocus }
+    }
+    override var acceptsFirstResponder: Bool {
+        takesSearchFocus || super.acceptsFirstResponder
+    }
+
     private let logger = Log.logger("Settings")
     private let run: @MainActor () async throws -> Void
 
@@ -18,6 +25,11 @@ final class SettingsButton: NSButton {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func resignFirstResponder() -> Bool {
+        takesSearchFocus = false
+        return super.resignFirstResponder()
     }
 
     @objc

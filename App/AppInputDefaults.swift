@@ -64,9 +64,11 @@ final class AppInputDefaults: NSObject {
         let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: app.path))
         icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
         icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-        return SettingsSection.Row(
+        var row = SettingsSection.Row(
             AppIndex.name(of: app), popUp, icon: icon
         ) { "Switches when the app becomes active" }
+        row.key = id
+        return row
     }
 
     @objc

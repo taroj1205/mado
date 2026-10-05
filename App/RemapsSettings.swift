@@ -176,7 +176,9 @@ final class RemapsSettings: NSObject {
         let toggle = toggle(
             read: { $0.applies(to: keyboard) },
             write: { settings, isOn in settings.setApplies(isOn, to: keyboard) })
-        return SettingsSection.Row(keyboard.name, toggle, icon: Self.tile()) { detail }
+        var row = SettingsSection.Row(keyboard.name, toggle, icon: Self.tile()) { detail }
+        row.key = "\(keyboard.name) \(keyboard.vendorID):\(keyboard.productID)"
+        return row
     }
 
     private func toggle(

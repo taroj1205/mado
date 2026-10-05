@@ -78,7 +78,9 @@ final class AppHotKeys: NSObject {
         let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: app.path))
         icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
         icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-        return SettingsSection.Row(name, controls, icon: icon)
+        var row = SettingsSection.Row(name, controls, icon: icon)
+        row.key = app.path
+        return row
     }
 
     @objc

@@ -79,6 +79,10 @@ extension GestureSettings: StoredValue {
     static let key = "gestures"
 }
 
+extension SettingsSearch: StoredValue {
+    static let key = "settings_search"
+}
+
 extension GestureSettings.Target {
     var title: String {
         switch self {

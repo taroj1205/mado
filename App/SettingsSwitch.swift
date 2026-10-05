@@ -3,6 +3,13 @@ import AppKit
 import os
 
 final class SettingsSwitch: NSSwitch {
+    var takesSearchFocus = false {
+        didSet { cell?.showsFirstResponder = takesSearchFocus }
+    }
+    override var acceptsFirstResponder: Bool {
+        takesSearchFocus || super.acceptsFirstResponder
+    }
+
     private let logger = Log.logger("Settings")
     private let read: () -> Bool
     private let write: (Bool) throws -> Void
@@ -19,6 +26,11 @@ final class SettingsSwitch: NSSwitch {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    override func resignFirstResponder() -> Bool {
+        takesSearchFocus = false
+        return super.resignFirstResponder()
     }
 
     func refresh() {

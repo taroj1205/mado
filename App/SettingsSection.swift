@@ -7,6 +7,7 @@ struct SettingsSection {
         let icon: NSView?
         let example: String?
         let detail: (() -> String)?
+        var key: String
 
         init(_ label: String, _ control: NSView) {
             self.init(label, control, icon: nil, example: nil, detail: nil)
@@ -29,6 +30,7 @@ struct SettingsSection {
             detail: (() -> String)?
         ) {
             self.label = label
+            key = label
             self.control = control
             self.icon = icon
             self.example = example

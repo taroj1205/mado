@@ -5,7 +5,7 @@ import Carbon.HIToolbox
 public final class HotKeyButton: NSView {
     private static let height: CGFloat = 26
     static let inset: CGFloat = 7
-    private static let radius: CGFloat = 8
+    static let radius: CGFloat = 8
     private static let keyRadius: CGFloat = 5
     private static let keySize: CGFloat = 18
     static let keyGap: CGFloat = 3
@@ -35,7 +35,13 @@ public final class HotKeyButton: NSView {
         }
         set { hotKey = newValue.map(HotKey.shortcut) }
     }
+    public var keycaps: [String] {
+        hotKey.map(HotKeyLabel.keycaps) ?? []
+    }
     public var onPress: (() -> Void)?
+    public var takesSearchFocus = false {
+        didSet { noteFocusRingMaskChanged() }
+    }
     public var showsRecording = false {
         didSet { render() }
     }
@@ -54,7 +60,8 @@ public final class HotKeyButton: NSView {
 
     var isRecording: Bool { systemHotKeys.isActive }
 
-    override public var acceptsFirstResponder: Bool { onPress == nil }
+    override public var acceptsFirstResponder: Bool { onPress == nil || takesSearchFocus }
+    override public var focusRingMaskBounds: NSRect { takesSearchFocus ? bounds : .zero }
     override public var canBecomeKeyView: Bool { onPress == nil }
 
     public init() {
@@ -136,13 +143,16 @@ public final class HotKeyButton: NSView {
     }
 
     override public func becomeFirstResponder() -> Bool {
-        systemHotKeys.begin()
-        onRecording?(true)
-        render()
+        if onPress == nil {
+            systemHotKeys.begin()
+            onRecording?(true)
+            render()
+        }
         return super.becomeFirstResponder()
     }
 
     override public func resignFirstResponder() -> Bool {
+        takesSearchFocus = false
         stopRecording()
         return super.resignFirstResponder()
     }
@@ -155,7 +165,7 @@ public final class HotKeyButton: NSView {
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard unsafe window?.firstResponder === self else {
+        guard onPress == nil, unsafe window?.firstResponder === self else {
             return super.performKeyEquivalent(with: event)
         }
         keyDown(with: event)
@@ -163,6 +173,14 @@ public final class HotKeyButton: NSView {
     }
 
     override public func keyDown(with event: NSEvent) {
+        if onPress != nil {
+            if [kVK_Space, kVK_Return].contains(Int(event.keyCode)) {
+                press()
+            } else {
+                super.keyDown(with: event)
+            }
+            return
+        }
         let modifiers = HotKeyRecorder.modifiers(event.modifierFlags)
         if !modifiers.isDisjoint(with: Self.chordModifiers) {
             onCapture?(Shortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers))
@@ -171,6 +189,11 @@ public final class HotKeyButton: NSView {
         } else {
             interpretKeyEvents([event])
         }
+    }
+
+    override public func drawFocusRingMask() {
+        guard takesSearchFocus else { return }
+        NSBezierPath(roundedRect: bounds, xRadius: Self.radius, yRadius: Self.radius).fill()
     }
 
     override public func draw(_: NSRect) {

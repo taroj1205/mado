@@ -89,7 +89,10 @@ final class AppListSettings: NSObject {
         icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
         icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
         let kind = detail(id)
-        return SettingsSection.Row(name, control, icon: icon, detail: kind.map { kind in { kind } })
+        var row = SettingsSection.Row(
+            name, control, icon: icon, detail: kind.map { kind in { kind } })
+        row.key = id
+        return row
     }
 
     @objc

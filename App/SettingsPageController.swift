@@ -8,10 +8,6 @@ final class SettingsPageController: NSViewController {
     private static let titleSize: CGFloat = 15
     private static let headerSize: CGFloat = 12
     static let headerInset: CGFloat = 4
-    private static let captionSize: CGFloat = 11
-    private static let rowHeight: CGFloat = 40
-    private static let iconMargin: CGFloat = 18
-    private static let iconGap: CGFloat = 10
     private static let sectionSpacing: CGFloat = 14
     private static let headerSpacing: CGFloat = 6
     private static let leading: CGFloat = 20
@@ -20,11 +16,28 @@ final class SettingsPageController: NSViewController {
 
     private let page: SettingsPage
     private let context: SettingsPage.Context
-    private let stack = NSStackView()
+    let stack = NSStackView()
     private var tab: Int
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
-    private var details: [(label: NSTextField, text: () -> String)] = []
+    var details: [(label: NSTextField, text: () -> String)] = []
+    private var moduleToggle: NSView?
+    let spotlight = SettingsSpotlight()
+    private(set) var shown: SettingsFinder.Shown?
+    var onPickTab: (() -> Void)?
+
+    var tabTitle: String? {
+        page.tabs.count > 1 ? page.tabs[tab].title : nil
+    }
+
+    private var moduleRowID: String? {
+        page.module.map { SettingsFinder.moduleID(page: page.title, name: $0.name) }
+    }
+
+    private var isModuleOff: Bool {
+        guard let module = page.module, let modules = context.modules else { return false }
+        return !modules.isEnabled(module.id)
+    }
 
     init(page: SettingsPage, context: SettingsPage.Context) {
         self.page = page
@@ -81,10 +94,22 @@ final class SettingsPageController: NSViewController {
         }
     }
 
+    func show(tab title: String?) {
+        guard let title, let index = page.tabs.firstIndex(where: { $0.title == title }),
+            index != tab, page.tabs[index].sections != nil
+        else { return }
+        tab = index
+        reload()
+    }
+
     func reload() {
-        var sections = page.tabs[tab].sections?(context) ?? []
+        let built = page.tabs[tab].sections?(context) ?? []
+        shown = .init(page: page.title, tab: page.tabs[tab].title, sections: built)
+        var sections = built
+        spotlight.reset(moduleRow: moduleRowID, moduleOff: isModuleOff)
         if let module = page.module {
             let toggle = moduleRow(module)
+            moduleToggle = toggle.control
             if sections.first?.title == module.name {
                 sections[0].rows.insert(toggle, at: 0)
             } else {
@@ -105,13 +130,17 @@ final class SettingsPageController: NSViewController {
         if page.tabs.count > 1 {
             stack.insertArrangedSubview(tabPicker(), at: page.module == nil ? 0 : 1)
         }
+        spotlight.refresh()
     }
 
     private func moduleRow(_ module: ModuleDescriptor) -> SettingsSection.Row {
         let modules = context.modules
         let toggle = SettingsSwitch(
             read: { modules?.isEnabled(module.id) ?? false },
-            write: { try modules?.setEnabled(module.id, $0) })
+            write: { [weak self] isOn in
+                try modules?.setEnabled(module.id, isOn)
+                self?.spotlight.moduleOff = !isOn
+            })
         toggle.isEnabled = modules != nil
         return .init(module.name, toggle)
     }
@@ -130,16 +159,19 @@ final class SettingsPageController: NSViewController {
     @objc
     private func pickTab(_ picker: NSSegmentedControl) {
         tab = picker.selectedSegment
+        onPickTab?()
         reload()
     }
 
     private func sectionView(_ section: SettingsSection) -> NSView {
         var parts: [NSView] = []
         if let title = section.title {
-            parts.append(header(title, note: section.note, accessory: section.headerAccessory))
+            let view = header(title, note: section.note, accessory: section.headerAccessory)
+            spotlight.add(header: view, rows: section.rows.map { rowID($0, in: section) })
+            parts.append(view)
         }
         if !section.rows.isEmpty {
-            parts.append(Self.columns(section.columnRows.map(box)))
+            parts.append(Self.columns(section.columnRows.map { box($0, in: section) }))
         }
         if let content = section.content {
             parts.append(content)
@@ -163,8 +195,22 @@ final class SettingsPageController: NSViewController {
         return group
     }
 
-    private func box(_ sectionRows: [SettingsSection.Row]) -> NSView {
-        Self.box(sectionRows.map(rowView))
+    private func rowID(_ row: SettingsSection.Row, in section: SettingsSection) -> String {
+        if row.control === moduleToggle, let moduleRowID {
+            return moduleRowID
+        }
+        return SettingsFinder.id(
+            page: page.title, tab: tabTitle, section: section.title, key: row.key)
+    }
+
+    private func box(_ sectionRows: [SettingsSection.Row], in section: SettingsSection) -> NSView {
+        Self.box(
+            sectionRows.map { row in
+                let (view, label) = rowView(row)
+                spotlight.add(
+                    row: view, label: label, control: row.control, id: rowID(row, in: section))
+                return view
+            })
     }
 
     private func header(_ title: String, note: String?, accessory: NSView?) -> NSView {
@@ -186,41 +232,5 @@ final class SettingsPageController: NSViewController {
             header.addArrangedSubview(accessory)
         }
         return header
-    }
-
-    private func rowView(_ row: SettingsSection.Row) -> NSView {
-        row.control.setAccessibilityLabel(row.label)
-        let label = NSTextField(labelWithString: row.label)
-        var title: NSView = label
-        if let detail = row.detail {
-            let detailLabel = NSTextField(labelWithString: detail())
-            detailLabel.font = .systemFont(ofSize: Self.captionSize)
-            detailLabel.textColor = .secondaryLabelColor
-            details.append((detailLabel, detail))
-            let lines = NSStackView(views: [label, detailLabel])
-            lines.orientation = .vertical
-            lines.alignment = .leading
-            lines.spacing = 0
-            title = lines
-        }
-        title.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let view = NSStackView(views: [title])
-        if let example = row.example {
-            let exampleLabel = NSTextField(labelWithString: example)
-            exampleLabel.font = .monospacedSystemFont(ofSize: Self.captionSize, weight: .regular)
-            exampleLabel.textColor = .secondaryLabelColor
-            view.addArrangedSubview(exampleLabel)
-        }
-        view.addArrangedSubview(row.control)
-        view.distribution = .fill
-        view.edgeInsets = NSEdgeInsets(
-            top: 0, left: Self.rowPadding, bottom: 0, right: Self.rowPadding)
-        if let icon = row.icon {
-            view.insertArrangedSubview(icon, at: 0)
-            view.setCustomSpacing(Self.iconGap, after: icon)
-        }
-        let height = max(Self.rowHeight, (row.icon?.fittingSize.height ?? 0) + Self.iconMargin)
-        view.heightAnchor.constraint(equalToConstant: height).isActive = true
-        return view
     }
 }

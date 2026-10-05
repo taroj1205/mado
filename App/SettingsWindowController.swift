@@ -4,99 +4,6 @@ import GlassUI
 import SearchKit
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    private final class Sidebar: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
-        private static let rowHeight: CGFloat = 28
-        private static let rowGap: CGFloat = 2
-        private static let iconWidth: CGFloat = 18
-        private static let iconGap: CGFloat = 9
-        private static let topInset: CGFloat = 43
-
-        private let tabs: NSTabViewController
-        private let table = NSTableView()
-
-        init(tabs: NSTabViewController) {
-            self.tabs = tabs
-            super.init(nibName: nil, bundle: nil)
-        }
-
-        @available(*, unavailable)
-        required init?(coder _: NSCoder) {
-            nil
-        }
-
-        private static func tint(selected: Bool) -> NSColor {
-            selected ? .controlAccentColor : .secondaryLabelColor
-        }
-
-        override func loadView() {
-            table.style = .sourceList
-            table.headerView = nil
-            table.rowSizeStyle = .custom
-            table.rowHeight = Self.rowHeight
-            table.intercellSpacing = NSSize(width: 0, height: Self.rowGap)
-            table.allowsEmptySelection = false
-            table.addTableColumn(NSTableColumn())
-            table.dataSource = self
-            table.delegate = self
-            let scroll = NSScrollView()
-            scroll.documentView = table
-            scroll.drawsBackground = false
-            scroll.automaticallyAdjustsContentInsets = false
-            scroll.contentInsets = NSEdgeInsets(top: Self.topInset, left: 0, bottom: 0, right: 0)
-            let fill = NSBox()
-            fill.boxType = .custom
-            fill.titlePosition = .noTitle
-            fill.borderWidth = 0
-            fill.contentViewMargins = .zero
-            fill.fillColor = SettingsWindowController.tint
-            fill.contentView = scroll
-            view = fill
-            table.selectRowIndexes([0], byExtendingSelection: false)
-        }
-
-        func numberOfRows(in _: NSTableView) -> Int {
-            SettingsPage.all.count
-        }
-
-        func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
-            SettingsSidebarRow()
-        }
-
-        func tableView(_: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
-            let page = SettingsPage.all[row]
-            let image = NSImageView()
-            image.image = NSImage(systemSymbolName: page.symbol, accessibilityDescription: nil)
-            image.contentTintColor = Self.tint(selected: row == table.selectedRow)
-            image.widthAnchor.constraint(equalToConstant: Self.iconWidth).isActive = true
-            let label = NSTextField(labelWithString: page.title)
-            let stack = NSStackView(views: [image, label])
-            stack.spacing = Self.iconGap
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            let cell = NSTableCellView()
-            unsafe cell.imageView = image
-            cell.addSubview(stack)
-            NSLayoutConstraint.activate([
-                stack.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
-                stack.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
-                stack.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            ])
-            return cell
-        }
-
-        func tableView(_: NSTableView, typeSelectStringFor _: NSTableColumn?, row: Int) -> String? {
-            SettingsPage.all[row].title
-        }
-
-        func tableViewSelectionDidChange(_: Notification) {
-            tabs.selectedTabViewItemIndex = table.selectedRow
-            table.enumerateAvailableRowViews { rowView, row in
-                let cell = rowView.view(atColumn: 0) as? NSTableCellView
-                unsafe cell?.imageView?.contentTintColor = Self.tint(
-                    selected: row == table.selectedRow)
-            }
-        }
-    }
-
     private static let width: CGFloat = 820
     private static let height: CGFloat = 608
     private static let sidebarWidth: CGFloat = 208
@@ -110,7 +17,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             : .clear
     }
 
-    private let tabs: NSTabViewController
+    let tabs: NSTabViewController
+    let sidebar: SettingsSidebar
+    var home: Home?
+    weak var spotlit: SettingsPageController?
 
     init(
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
@@ -133,10 +43,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: addWidgets, speechModels: speechModels)
         let pages = Self.pages(context)
-        let window = Self.window(showing: Self.split(showing: pages))
         tabs = pages
+        let finder = SettingsFinder(context: context) {
+            pages.tabViewItems.compactMap { ($0.viewController as? SettingsPageController)?.shown }
+        }
+        sidebar = SettingsSidebar(finder: finder)
+        let window = Self.window(showing: Self.split(sidebar, pages))
         super.init(window: window)
+        sidebar.delegate = self
+        endSearchOnTabPicks()
         window.delegate = self
+        window.onEscape = { [weak self] in self?.endSearchIfActive() ?? false }
         ignoredApps.onChange = { [weak self] in self?.reload() }
         withoutExpansion.onChange = { [weak self] in
             snippets?.reload()
@@ -153,15 +70,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         nil
     }
 
-    private static func split(showing pages: NSTabViewController) -> NSSplitViewController {
-        let sidebar = NSSplitViewItem(sidebarWithViewController: Sidebar(tabs: pages))
-        sidebar.canCollapse = false
-        sidebar.minimumThickness = sidebarWidth
-        sidebar.maximumThickness = sidebarWidth
+    private static func split(
+        _ sidebar: SettingsSidebar, _ pages: NSTabViewController
+    ) -> NSSplitViewController {
+        let item = NSSplitViewItem(sidebarWithViewController: sidebar)
+        item.canCollapse = false
+        item.minimumThickness = sidebarWidth
+        item.maximumThickness = sidebarWidth
         let split = NSSplitViewController()
-        split.addSplitViewItem(sidebar)
+        split.addSplitViewItem(item)
         split.addSplitViewItem(NSSplitViewItem(viewController: pages))
-
         let glass = GlassView(shape: .rounded(cornerRadius), tint: tint)
         glass.frame = split.splitView.bounds
         glass.autoresizingMask = [.width, .height]
@@ -169,8 +87,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         return split
     }
 
-    private static func window(showing split: NSSplitViewController) -> NSWindow {
-        let window = NSWindow(contentViewController: split)
+    private static func window(showing split: NSSplitViewController) -> SettingsWindow {
+        let window = SettingsWindow(contentViewController: split)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
@@ -214,6 +132,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 page.reload()
             }
         }
+        sidebar.reindex()
     }
 
     func windowDidBecomeKey(_: Notification) {
@@ -221,6 +140,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_: Notification) {
+        sidebarEndedSearch()
         NSApp.setActivationPolicy(.accessory)
     }
 }
