@@ -9,6 +9,11 @@ extension LauncherView {
         public static let standard: [Self] = [.primary, .actions]
     }
 
+    struct ArrangedCapsule: Equatable {
+        let slots: [CapsuleSlot]
+        let tokens: [[AnyHashable]]
+    }
+
     private static let actionGap: CGFloat = 8
     private static let actionLeading: CGFloat = 17
     private static let actionTrailing: CGFloat = 5
@@ -24,6 +29,11 @@ extension LauncherView {
 
     static func makeActionsToggle() -> CapsuleButton {
         CapsuleButton("Actions", keys: ["⌘", "K"])
+    }
+
+    private static func token(of view: NSView) -> AnyHashable {
+        (view as? CapsuleButton).map { AnyHashable($0.label.stringValue) }
+            ?? AnyHashable(ObjectIdentifier(view))
     }
 
     func placeCapsules() {
@@ -68,7 +78,7 @@ extension LauncherView {
         let slots =
             selectedPill != nil || selectedWidget != nil ? CapsuleSlot.standard : capsuleSlots
         let groups = slots.map { capsuleGroup($0, primary: action, for: item) }
-        arrangeCapsule(groups)
+        arrangeCapsule(groups, for: slots)
         actionCapsule.isHidden = action == nil || groups.allSatisfy(\.isEmpty)
         showContext()
     }
@@ -93,8 +103,11 @@ extension LauncherView {
         }
     }
 
-    private func arrangeCapsule(_ groups: [[NSView]]) {
-        guard let stack = actionCapsule.contentView as? NSStackView else { return }
+    private func arrangeCapsule(_ groups: [[NSView]], for slots: [CapsuleSlot]) {
+        let next = ArrangedCapsule(slots: slots, tokens: groups.map { $0.map(Self.token(of:)) })
+        guard next != arrangedCapsule, let stack = actionCapsule.contentView as? NSStackView
+        else { return }
+        arrangedCapsule = next
         stack.setViews([], in: .leading)
         for (index, group) in groups.filter({ !$0.isEmpty }).enumerated() {
             if index > 0, let last = stack.arrangedSubviews.last {
