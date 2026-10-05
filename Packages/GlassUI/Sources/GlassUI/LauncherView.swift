@@ -1,7 +1,7 @@
 public import AppKit
 
 public final class LauncherView: NSView {
-    private static let searchBarHeight: CGFloat = 60
+    static let searchBarHeight: CGFloat = 60
     static let searchInset: CGFloat = 20
     static let searchSymbol = "magnifyingglass"
     private static let searchFontSize: CGFloat = 20
@@ -26,6 +26,8 @@ public final class LauncherView: NSView {
     public var actions: ((ResultList.Item) -> [Action])?
     public var shortcutKeys: [[String]] = []
     public var onPill: ((StatusBar.Pill) -> Void)?
+    public var onGridChange: ((Bool) -> Void)?
+    public let emojiGrid = EmojiGrid()
     public var onStatusLayout: ((StatusBarLayout) -> Void)?
     public var pills: [StatusBar.Pill] = [] {
         didSet { arrangePills() }
@@ -45,10 +47,13 @@ public final class LauncherView: NSView {
     public var contextSymbol: String? {
         didSet { showContext() }
     }
+    public var capsuleSlots = CapsuleSlot.standard {
+        didSet { showAction(of: selectedItem) }
+    }
 
     let actionLabel = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let actionsToggle = LauncherView.makeActionsToggle()
-    let actionsDivider = FloatingCapsule.divider()
+    let actionKeycap = FloatingCapsule.keycap("↵")
     let actionCapsule: GlassView
     let contextPill = StatusPill()
     let statusBar = StatusBar()
@@ -56,7 +61,10 @@ public final class LauncherView: NSView {
     var customiser: StatusBarCustomiser?
     let widgetGrid = WidgetGrid()
     let detail = DetailPane()
-    var previewer: ((ResultList.Item) -> Preview?)?
+    let comparisonPane = ComparisonPane()
+    let chip = ScopeChip()
+    var shownDetail: Detail?
+    var gridHome: String?
     var filter: NSPopUpButton?
     let editBar = WidgetEditBar()
     var selectedWidget: Int?
@@ -81,7 +89,7 @@ public final class LauncherView: NSView {
     public var choosingAction: Bool { actionPanel?.isVisible == true }
 
     override public init(frame: NSRect) {
-        actionCapsule = Self.makeActionCapsule(actionLabel, actionsDivider, actionsToggle)
+        actionCapsule = Self.makeActionCapsule()
         super.init(frame: frame)
         icon.image = NSImage(systemSymbolName: Self.searchSymbol, accessibilityDescription: nil)
         icon.symbolConfiguration = .init(pointSize: Self.searchFontSize, weight: .regular)
@@ -96,20 +104,15 @@ public final class LauncherView: NSView {
         separator.boxType = .separator
         let bar = NSLayoutGuide()
         addLayoutGuide(bar)
-        for view in [icon, back, field, separator, widgetGrid, results, detail] {
+        for view in [
+            icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
+            emojiGrid,
+        ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
+        placeSearchBar(bar)
         NSLayoutConstraint.activate([
-            bar.topAnchor.constraint(equalTo: topAnchor),
-            bar.heightAnchor.constraint(equalToConstant: Self.searchBarHeight),
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.searchInset),
-            icon.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            back.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.backInset),
-            back.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            fieldLeading,
-            fieldTrailing,
-            field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
             separator.topAnchor.constraint(equalTo: bar.bottomAnchor),
@@ -120,6 +123,7 @@ public final class LauncherView: NSView {
         ])
         placeWidgets(below: separator)
         placeDetail(below: separator)
+        placeGrid(below: separator)
         placeCapsules()
     }
 
@@ -153,7 +157,7 @@ public final class LauncherView: NSView {
         actionsToggle.onPress = { [weak self] in self?.toggleActions() }
         statusBar.onPress = { [weak self] index in self?.pressPill(index) }
         statusBar.customise.onPress = { [weak self] in self?.toggleCustomiser() }
-        field.setAccessibilitySharedFocusElements([results.table])
+        field.setAccessibilitySharedFocusElements([results.table, emojiGrid.collection])
         showAction(of: nil)
     }
 
@@ -172,8 +176,8 @@ public final class LauncherView: NSView {
         else { return runActionShortcut(event) || super.performKeyEquivalent(with: event) }
         switch event.charactersIgnoringModifiers {
         case let key where Self.returnKeys.contains(key): run(keyed: Action.secondaryKeys)
-        case "k" where results.selectedItem != nil: showActions()
-        case "y" where results.selectedItem?.file != nil: togglePreview()
+        case "k" where selectedItem != nil: showActions()
+        case "y" where selectedItem?.file != nil: togglePreview()
 
         case let key?:
             return runActionShortcut(event) || openFilter(key) || runShortcut(key)
@@ -206,7 +210,7 @@ public final class LauncherView: NSView {
         dropWidget(sender.draggingPasteboard.string(forType: WidgetGrid.dragType))
     }
 
-    private func selectionChanged(to item: ResultList.Item?) {
+    func selectionChanged(to item: ResultList.Item?) {
         showAction(of: item)
         showDetail(of: item)
         if previewing {
@@ -237,7 +241,7 @@ public final class LauncherView: NSView {
     }
 
     private func showPreview() {
-        guard let file = results.selectedItem?.file, let window = unsafe window,
+        guard let file = selectedItem?.file, let window = unsafe window,
             let visible = window.screen?.visibleFrame
         else {
             closePreview()

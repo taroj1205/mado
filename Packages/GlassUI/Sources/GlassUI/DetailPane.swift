@@ -18,10 +18,10 @@ final class DetailPane: NSView {
     private static let detailSize: CGFloat = 12.5
     private static let fillAlpha = (dark: 0.22, light: 0.04)
     private static let edgeAlpha: CGFloat = 0.06
-    private static let fill = NSColor(name: nil) { appearance in
+    static let fill = NSColor(name: nil) { appearance in
         .black.withAlphaComponent(isDark(appearance) ? fillAlpha.dark : fillAlpha.light)
     }
-    private static let edge = NSColor(name: nil) { appearance in
+    static let edge = NSColor(name: nil) { appearance in
         (isDark(appearance) ? NSColor.white : .black).withAlphaComponent(edgeAlpha)
     }
 

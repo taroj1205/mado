@@ -16,6 +16,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public let tint: NSColor?
         public let shortcut: [String]
         public var hotkey: Shortcut?
+        public var isDimmed = false
+        public var glyph: String?
 
         public init(
             id: String, title: String, subtitle: String, kind: String, symbol: String,

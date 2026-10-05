@@ -65,7 +65,9 @@ import Testing
         #expect(view.contextPill.text == "Drag to reorder · ⌫ removes the selected widget")
         #expect(view.contextPill.symbol == "square.grid.2x2")
         #expect(view.actionLabel.stringValue == "Done")
-        #expect(view.actionsToggle.isHidden && view.actionsDivider.isHidden)
+        #expect(
+            (view.actionCapsule.contentView as? NSStackView)?.arrangedSubviews
+                == [view.actionLabel, view.actionKeycap])
         #expect(panel.firstResponder === view.editBar)
         #expect(view.widgetsBottom == 393)
         let iconWidth = view.icon.frame.width

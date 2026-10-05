@@ -35,7 +35,7 @@ extension LauncherView {
             selectWidget(nil)
         }
         widgetGrid.highlight(selectedWidget)
-        showAction(of: results.selectedItem)
+        showAction(of: selectedItem)
     }
 
     func placeWidgets(below separator: NSView) {
@@ -66,7 +66,7 @@ extension LauncherView {
         if index != nil {
             closePreview()
         }
-        showAction(of: results.selectedItem)
+        showAction(of: selectedItem)
     }
 
     func skipTrack(_ index: Int, _ skip: WidgetGrid.Skip) {

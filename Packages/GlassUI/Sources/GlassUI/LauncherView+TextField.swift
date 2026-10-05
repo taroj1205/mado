@@ -21,6 +21,9 @@ extension LauncherView: NSTextFieldDelegate {
     }
 
     private func fieldCommand(_ selector: Selector, in textView: NSTextView) -> Bool {
+        if showsGrid, gridCommand(selector) {
+            return true
+        }
         switch selector {
         case #selector(NSResponder.moveUp): moveUp()
 

@@ -31,7 +31,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private(set) var usage = Usage()
     private(set) var history = CalculatorHistory()
     let clipboardHistory = ClipboardHistory()
-    var clipboardScoped = false
+    let textTools = TextTools()
+    let emojiPicker = EmojiPicker()
+    var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
     private lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
@@ -43,7 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         },
         isAvailable: { [weak self] id in
             self?.modules?.keysPaused != true
-                && (id != ClipboardHistory.commandID || self?.clipboardHistory.isRunning == true)
+                && (!ClipboardModule.commandIDs.contains(id)
+                    || self?.clipboardHistory.isRunning == true)
         })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -76,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.onSave = { [weak self] in self?.saved($0, resettingRanking: $1) }
         editor.start()
         connectClipboardHistory()
+        connectEmoji()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
@@ -98,7 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
-                        in: manager, hotKeys: registry, clipboardHistory: clipboardHistory,
+                        in: manager, hotKeys: registry,
+                        clipboard: .init(
+                            history: clipboardHistory, textTools: textTools, emoji: emojiPicker),
                         snippets: library
                     ) { [weak self] in $0 ? self?.toggleLauncher() : self?.showLauncher() })
             }
@@ -155,7 +161,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
         let opensView =
             CalculatorHistory.opens(item.id)
-            || [Quicklink.createID, ClipboardHistory.commandID].contains(item.id)
+            || [
+                Quicklink.createID, ClipboardHistory.commandID, TextTools.commandID,
+                EmojiPicker.commandID,
+            ].contains(item.id)
         if !opensView { hideLauncher() }
         history.remember(item, in: modules)
         perform(action, for: item.id, recordingUse: recordingUse)
@@ -171,7 +180,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
-        if launcher?.isVisible == true, id != ClipboardHistory.commandID {
+        let keepsOpen = [ClipboardHistory.commandID, TextTools.commandID, EmojiPicker.commandID]
+            .contains(id)
+        if launcher?.isVisible == true, !keepsOpen {
             hideLauncher()
         }
         perform(action, for: id, recordingUse: true)

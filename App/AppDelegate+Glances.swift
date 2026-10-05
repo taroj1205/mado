@@ -12,7 +12,9 @@ extension AppDelegate {
     var launcherSize: CGSize {
         CGSize(
             width: Self.launcherWidth,
-            height: launcherView.widgetsFillPanel ? Self.gridLauncherHeight : Self.launcherHeight)
+            height: gridHeight(
+                otherwise: launcherView.widgetsFillPanel
+                    ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
     func arrangeWidgets() {

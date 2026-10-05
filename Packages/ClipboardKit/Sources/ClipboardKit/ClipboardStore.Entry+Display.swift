@@ -18,6 +18,22 @@ extension ClipboardStore.Entry {
     public struct Counts: Equatable, Sendable {
         public let characters: Int
         public let words: Int
+
+        init(characters: Int, words: Int) {
+            self.characters = characters
+            self.words = words
+        }
+
+        init(of text: String, until stopping: @escaping () -> Bool) {
+            var count = 0
+            text.enumerateSubstrings(
+                in: text.startIndex..., options: [.byWords, .substringNotRequired]
+            ) { _, _, _, stop in
+                count += 1
+                stop = stopping()
+            }
+            self.init(characters: text.count, words: count)
+        }
     }
 
     private static let titleLimit = 200
@@ -121,14 +137,7 @@ extension ClipboardStore.Entry {
     }
 
     func count(until stopping: @escaping () -> Bool) -> Counts {
-        var words = 0
-        text.enumerateSubstrings(
-            in: text.startIndex..., options: [.byWords, .substringNotRequired]
-        ) { _, _, _, stop in
-            words += 1
-            stop = stopping()
-        }
-        return Counts(characters: text.count, words: words)
+        Counts(of: text, until: stopping)
     }
 
     private func kindDetails(_ counts: Counts?) -> [Detail] {
