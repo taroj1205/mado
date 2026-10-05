@@ -14,11 +14,12 @@ public enum TimerClock {
     }
 
     public static func length(_ seconds: TimeInterval) -> String {
-        let minutes = Int((seconds / Double(secondsPerMinute)).rounded())
-        guard minutes >= minutesPerHour else {
-            return seconds < Double(secondsPerMinute) ? "\(Int(seconds)) s" : "\(minutes) min"
-        }
-        let (hours, rest) = minutes.quotientAndRemainder(dividingBy: minutesPerHour)
-        return rest == 0 ? "\(hours) h" : "\(hours) h \(rest) min"
+        let (minutes, rest) = Int(seconds.rounded()).quotientAndRemainder(
+            dividingBy: secondsPerMinute)
+        let (hours, minute) = minutes.quotientAndRemainder(dividingBy: minutesPerHour)
+        let parts = [(hours, "h"), (minute, "min"), (rest, "s")]
+            .filter { amount, _ in amount > 0 }
+            .map { amount, unit in "\(amount) \(unit)" }
+        return parts.isEmpty ? "0 s" : parts.joined(separator: " ")
     }
 }

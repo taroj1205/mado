@@ -14,13 +14,13 @@ import Testing
     @Test func aTimerCountsDownAndFinishesOnce() {
         var timers = Timers()
         timers.add(3 * Self.minute, named: "Tea", at: start)
-        #expect(timers.headline(at: at(0)) == .init(state: .running, text: "3:00"))
-        #expect(timers.headline(at: at(0.4)) == .init(state: .running, text: "3:00"))
-        #expect(timers.headline(at: at(1)) == .init(state: .running, text: "2:59"))
+        #expect(timers.headline(at: at(0)) == .init(mode: .timer, state: .running, text: "3:00"))
+        #expect(timers.headline(at: at(0.4)) == .init(mode: .timer, state: .running, text: "3:00"))
+        #expect(timers.headline(at: at(1)) == .init(mode: .timer, state: .running, text: "2:59"))
         #expect(timers.tick(at: at(179)).isEmpty)
         #expect(timers.tick(at: at(180)) == [.timerFinished("Tea")])
         #expect(timers.tick(at: at(181)).isEmpty)
-        #expect(timers.headline(at: at(181)) == .init(state: .done, text: "Done"))
+        #expect(timers.headline(at: at(181)) == .init(mode: .timer, state: .done, text: "Done"))
         #expect(!timers.isTicking(at: at(181)))
     }
 
@@ -29,10 +29,10 @@ import Testing
         timers.add(10 * Self.minute, named: "Laundry", at: start)
         let id = try #require(timers.countdowns.first?.id)
         timers.toggle(id, at: at(90))
-        #expect(timers.headline(at: at(500)) == .init(state: .paused, text: "8:30"))
+        #expect(timers.headline(at: at(500)) == .init(mode: .timer, state: .paused, text: "8:30"))
         #expect(!timers.isTicking(at: at(500)))
         timers.toggle(id, at: at(500))
-        #expect(timers.headline(at: at(560)) == .init(state: .running, text: "7:30"))
+        #expect(timers.headline(at: at(560)) == .init(mode: .timer, state: .running, text: "7:30"))
     }
 
     @Test func fiveMoreMinutesExtendsRunningPausedAndFinishedTimers() throws {
@@ -64,9 +64,11 @@ import Testing
     @Test func theStopwatchCountsUpAndResets() {
         var timers = Timers()
         timers.toggleStopwatch(at: start)
-        #expect(timers.headline(at: at(75.9)) == .init(state: .running, text: "1:15"))
+        #expect(
+            timers.headline(at: at(75.9)) == .init(mode: .stopwatch, state: .running, text: "1:15"))
         timers.toggleStopwatch(at: at(100))
-        #expect(timers.headline(at: at(900)) == .init(state: .paused, text: "1:40"))
+        #expect(
+            timers.headline(at: at(900)) == .init(mode: .stopwatch, state: .paused, text: "1:40"))
         timers.toggleStopwatch(at: at(900))
         #expect(timers.stopwatch.elapsed(at: at(960)) == 160)
         timers.resetStopwatch()
@@ -139,6 +141,16 @@ import Testing
         #expect(timers.featured(at: at(10))?.name == "Tea")
     }
 
+    @Test func theBarNamesTheClockItShows() {
+        var timers = Timers()
+        timers.toggleStopwatch(at: start)
+        #expect(timers.headline(at: at(10))?.mode == .stopwatch)
+        timers.add(Self.minute, named: "Tea", at: start)
+        #expect(timers.headline(at: at(10))?.mode == .timer)
+        timers.startPomodoro("", at: start)
+        #expect(timers.headline(at: at(10))?.mode == .pomodoro)
+    }
+
     @Test func startingARunningStopwatchKeepsItRunning() {
         var timers = Timers()
         timers.startStopwatch(at: start)
@@ -160,6 +172,7 @@ import Testing
         #expect(TimerClock.text(9.2, roundingUp: true) == "0:10")
         #expect(TimerClock.text(3_725, roundingUp: false) == "1:02:05")
         #expect(TimerClock.length(25 * Self.minute) == "25 min")
+        #expect(TimerClock.length(90) == "1 min 30 s")
         #expect(TimerClock.length(90 * Self.minute) == "1 h 30 min")
         #expect(TimerClock.length(2 * 3_600) == "2 h")
         #expect(TimerClock.length(45) == "45 s")

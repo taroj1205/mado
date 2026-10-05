@@ -12,6 +12,8 @@ import Testing
         #expect(TimerQuery("timer 90s tea") == .timer(length: 90, name: "tea"))
         #expect(TimerQuery("timer pasta 12 minutes") == .timer(length: 720, name: "pasta"))
         #expect(TimerQuery("timer 1.5h") == .timer(length: 5_400, name: ""))
+        #expect(TimerQuery("timer 0.6s") == .timer(length: 1, name: ""))
+        #expect(TimerQuery("timer 0.4s") == .timer(length: nil, name: ""))
     }
 
     @Test func aTimerWithoutAUsableLengthHasNone() {

@@ -20,6 +20,7 @@ public struct Timers: Codable, Equatable, Sendable {
     }
 
     public struct Headline: Equatable, Sendable {
+        public let mode: Mode
         public let state: State
         public let text: String
     }
@@ -153,18 +154,22 @@ public struct Timers: Codable, Equatable, Sendable {
         }
         if stopwatch.isRunning { return stopwatchHeadline(.running, at: now) }
         if timers.contains(where: { $0.isFinished(at: now) }) {
-            return Headline(state: .done, text: "Done")
+            return Headline(mode: .timer, state: .done, text: "Done")
         }
         if let paused = clocks.first { return countdownHeadline(paused, .paused, at: now) }
         return stopwatch.isIdle ? nil : stopwatchHeadline(.paused, at: now)
     }
 
     private func countdownHeadline(_ timer: Countdown, _ state: State, at now: Date) -> Headline {
-        Headline(state: state, text: TimerClock.text(timer.remaining(at: now), roundingUp: true))
+        Headline(
+            mode: timer.id == pomodoro?.countdown.id ? .pomodoro : .timer, state: state,
+            text: TimerClock.text(timer.remaining(at: now), roundingUp: true))
     }
 
     private func stopwatchHeadline(_ state: State, at now: Date) -> Headline {
-        Headline(state: state, text: TimerClock.text(stopwatch.elapsed(at: now), roundingUp: false))
+        Headline(
+            mode: .stopwatch, state: state,
+            text: TimerClock.text(stopwatch.elapsed(at: now), roundingUp: false))
     }
 
     private mutating func update(_ id: Countdown.ID, _ change: (inout Countdown) -> Void) {

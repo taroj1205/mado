@@ -85,7 +85,7 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
         let button = (item ?? makeItem()).button
         button?.title = headline.text
         button?.image = icon(for: headline.state)
-        button?.setAccessibilityLabel("Timer \(headline.text)")
+        button?.setAccessibilityLabel("\(headline.mode.title) \(headline.text)")
         panel?.update(TimerPanel(timers, at: now, calendar: .current))
     }
 

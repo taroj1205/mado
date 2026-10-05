@@ -47,7 +47,7 @@ public enum TimerQuery: Equatable, Sendable {
             }
             index += used
         }
-        let valid = total.flatMap { $0 > 0 && $0 <= longest ? $0 : nil }
+        let valid = total.map { $0.rounded() }.flatMap { $0 >= 1 && $0 <= longest ? $0 : nil }
         return (valid, name.joined(separator: " "))
     }
 
