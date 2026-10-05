@@ -50,7 +50,7 @@ targets:
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true
         NSMicrophoneUsageDescription: Mado listens only while you hold or toggle the dictation key, and the audio stays on this Mac.
         NSLocationUsageDescription: Mado uses your location only to show the weather for where you are. It sends Open-Meteo a position rounded to about a kilometre.
-        NSAppleEventsUsageDescription: Mado asks Finder to empty the Trash, System Events to lock the screen and switch dark mode, the login window to show the restart dialog, Music or Spotify to show and play or pause the current song, and Calendar to open an event you pick.
+        NSAppleEventsUsageDescription: Mado asks Finder to empty the Trash, System Events to lock the screen and switch dark mode, the login window to show the restart dialog, Music or Spotify to show, play or pause and jump within the current song, and Calendar to open an event you pick.
         NSCalendarsFullAccessUsageDescription: Mado reads your calendars to show your next event in the Up Next widget and to list a day's events when you search for them. Events stay on this Mac.
     entitlements:
       path: App/Mado.entitlements

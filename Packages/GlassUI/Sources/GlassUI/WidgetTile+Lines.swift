@@ -87,7 +87,7 @@ extension WidgetTile {
             span.show(range)
             return [value, detail, span]
 
-        case .meters, .track, .month:
+        case .meters, .track, .verse, .month:
             return []
 
         case let .event(name, next):

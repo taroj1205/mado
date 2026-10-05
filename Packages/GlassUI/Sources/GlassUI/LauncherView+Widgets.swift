@@ -21,7 +21,7 @@ extension LauncherView {
         set { changeWidgets { widgetGrid.spots = newValue } }
     }
 
-    public var widgetSizes: [String: Int] {
+    public var widgetSizes: [String: WidgetGrid.Size] {
         get { widgetGrid.sizes }
         set { changeWidgets { widgetGrid.sizes = newValue } }
     }
@@ -38,7 +38,7 @@ extension LauncherView {
 
     public var widgetsFillPanel: Bool { widgetGrid.fillsPanel }
 
-    public var widgetOverhang: CGFloat { widgetGrid.overhang }
+    public var widgetShift: CGFloat { widgetGrid.overhang - widgetGrid.underhang }
 
     public var widgetsBottom: CGFloat { widgetGrid.convert(widgetGrid.bounds, to: nil).minY }
 
@@ -86,6 +86,10 @@ extension LauncherView {
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
         widgetGrid.onDay = { [weak self] query in self?.replaceQuery(with: query) }
         widgetGrid.onPage = { [weak self] index, page in self?.pageMonth(index, page) }
+        widgetGrid.onSeek = { [weak self] index, line in
+            self?.selectWidget(index)
+            self?.onSeek?(line)
+        }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
         widgetGrid.onResize = { [weak self] index, resize in self?.resizeWidget(index, resize) }
         placeEditing()

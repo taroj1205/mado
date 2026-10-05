@@ -37,16 +37,4 @@ extension WidgetTile {
                 ? dark.withAlphaComponent(alpha.dark) : light.withAlphaComponent(alpha.light)
         }
     }
-
-    func paint() {
-        let look = selected ? looks.picked : looks.resting
-        if editing {
-            box.fillColor = selected ? Self.selectedFill : Self.editFill
-            box.borderColor = .clear
-        } else {
-            box.fillColor = look.fill
-            box.borderColor = look.edge
-        }
-        setAccessibilitySelected(selected)
-    }
 }

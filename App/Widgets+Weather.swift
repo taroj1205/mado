@@ -77,7 +77,32 @@ extension Widgets {
             symbol: symbol(of: now.sky, isDay: now.isDay),
             span: .init(
                 low: low, high: high, position: now.position, cold: colour(of: now.low),
-                warm: colour(of: now.high)))
+                warm: colour(of: now.high)),
+            hours: hours(of: now), facts: facts(of: now))
+    }
+
+    private static func hours(of now: Weather) -> [WidgetGrid.Hour] {
+        let style = Date.FormatStyle(timeZone: now.timeZone).hour(
+            .defaultDigits(amPM: .abbreviated))
+        return now.hours(from: Date(), count: forecastHours).enumerated().map { index, hour in
+            .init(
+                label: index == 0 ? "Now" : hour.start.formatted(style),
+                symbol: symbol(of: hour.sky, isDay: hour.isDay),
+                value: degrees(hour.temperature))
+        }
+    }
+
+    private static func facts(of now: Weather) -> [WidgetGrid.Fact] {
+        let wind = Measurement<UnitSpeed>.FormatStyle.measurement(
+            width: .abbreviated, usage: .wind,
+            numberFormatStyle: .number.precision(.fractionLength(0)))
+        return [
+            now.feelsLike.map { .init(name: "Feels like", value: degrees($0)) },
+            now.humidity.map { .init(name: "Humidity", value: $0.formatted(StatusPills.percent)) },
+            now.wind.map { .init(name: "Wind", value: $0.formatted(wind)) },
+            now.rainChance.map { .init(name: "Rain", value: $0.formatted(StatusPills.percent)) },
+        ]
+        .compactMap(\.self)
     }
 
     private static func symbol(of sky: Weather.Sky, isDay: Bool) -> String {

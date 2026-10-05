@@ -5,6 +5,7 @@ public final class WidgetGrid: NSView {
         case value(String, detail: String, symbol: String? = nil, span: Span? = nil)
         case meters([Meter])
         case track(Track)
+        case verse(Verse)
         case month(Month)
         case event(title: String, Event)
         case loading(title: String)
@@ -35,20 +36,6 @@ public final class WidgetGrid: NSView {
         case next
     }
 
-    public struct Track: Sendable, Equatable {
-        public let title: String
-        public let artist: String
-        public let artwork: Data?
-        public let isPlaying: Bool
-
-        public init(title: String, artist: String, artwork: Data?, isPlaying: Bool) {
-            self.title = title
-            self.artist = artist
-            self.artwork = artwork
-            self.isPlaying = isPlaying
-        }
-    }
-
     nonisolated static let columns = 6
     nonisolated static let widest = 3
     static let dragType = NSPasteboard.PasteboardType("com.taroj1205.mado.widget")
@@ -64,9 +51,8 @@ public final class WidgetGrid: NSView {
     private static let captionKern: CGFloat = 0.9
     private static let captionInset: CGFloat = 2
     private static let half: CGFloat = 0.5
-    static let floatingGap: CGFloat = 10
     static let lift: CGFloat = 16
-    static let sideWidth: CGFloat = 220
+    nonisolated static let railColumns = (narrowest: 2, widest: 3)
     static let sideGap: CGFloat = 20
     nonisolated static let sides = 2
 
@@ -74,8 +60,8 @@ public final class WidgetGrid: NSView {
         get {
             supplied.map { widget in
                 var sized = widget
-                sized.columns = (trial[widget.id] ?? sizes[widget.id]).map { columns in
-                    min(max(columns, widget.narrowest), Self.widest)
+                sized.resized = (trial[widget.id] ?? sizes[widget.id]).map { size in
+                    limited(size, for: widget)
                 }
                 return sized
             }
@@ -89,13 +75,13 @@ public final class WidgetGrid: NSView {
         }
     }
 
-    var sizes: [String: Int] = [:] {
+    var sizes: [String: Size] = [:] {
         didSet {
             if sizes != oldValue { update() }
         }
     }
 
-    var trial: [String: Int] = [:] {
+    var trial: [String: Size] = [:] {
         didSet {
             if trial != oldValue { update() }
         }
@@ -173,6 +159,7 @@ public final class WidgetGrid: NSView {
     var onSkip: ((Int, Skip) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((Int, Page) -> Void)?
+    var onSeek: ((Int, Int) -> Void)?
     var onRemove: ((Int) -> Void)?
     var onResize: ((Int, WidgetTile.Resize) -> Void)?
     var onDrag: ((String?, NSPoint, Any?) -> NSDragOperation)?
@@ -188,6 +175,10 @@ public final class WidgetGrid: NSView {
         tileLayout == .strip ? Self.stripHeight : Self.rowHeight
     }
 
+    private var spareRows: Int {
+        tileLayout == .grid ? min(Self.rowCount(of: panelCells) + 1, Self.maxPanelRows) : 1
+    }
+
     override public var isFlipped: Bool { true }
 
     override public var isHidden: Bool {
@@ -198,11 +189,11 @@ public final class WidgetGrid: NSView {
     }
 
     override public var intrinsicContentSize: NSSize {
-        let rows = max(Self.rowCount(of: inPanel), editing ? 1 : 0)
+        let rows = max(Self.rowCount(of: panelCells), editing ? spareRows : 0)
         guard !isHidden, rows > 0 else {
             return NSSize(width: NSView.noIntrinsicMetric, height: 0)
         }
-        let height = CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Self.gap
+        let height = Self.extent(of: rows, unit: rowHeight, gap: Self.gap)
         return NSSize(width: NSView.noIntrinsicMetric, height: Self.top + height + Self.bottom)
     }
 
@@ -237,7 +228,7 @@ public final class WidgetGrid: NSView {
 
     override public func layout() {
         super.layout()
-        let frames = frames(of: inPanel)
+        let frames = frames(of: panelCells)
         for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
             place(tile, in: frame, tilt: tilt(at: index))
         }
@@ -252,7 +243,7 @@ public final class WidgetGrid: NSView {
 
     private func update(rebuilding: Bool = false) {
         let visible = shown
-        let floating = visible.map { spot(of: $0) != .panel }
+        let floating = visible.map { spot(of: $0).side != .panel }
         if rebuilding || floating != tiles.map(\.floating) {
             tiles.forEach { $0.removeFromSuperview() }
             floats.forEach { $0.orderOut(nil) }
@@ -264,7 +255,7 @@ public final class WidgetGrid: NSView {
             tile.compact = tileLayout == .strip && !tile.floating
             tile.show(widget)
             tile.lifted = widget.id == dragged
-            tile.resizable = !Side.rails.contains(spot(of: widget).side)
+            tile.resizes = resizes(of: widget)
         }
         dock.isHidden = !editing
         dockCaption.isHidden = !editing || !inPanel.isEmpty

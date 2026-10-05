@@ -2,11 +2,28 @@ import AppKit
 
 extension WidgetTile: NSDraggingSource {
     enum Resize: Equatable {
-        case drag(CGFloat)
+        case drag(CGSize)
         case drop
-        case step(Int)
+        case step(columns: Int, rows: Int)
     }
 
+    enum Axis {
+        case horizontal
+        case vertical
+    }
+
+    private struct ResizeAction {
+        let name: String
+        let axis: Axis
+        let resize: Resize
+    }
+
+    private static let resizeActions = [
+        ResizeAction(name: "Make Wider", axis: .horizontal, resize: .step(columns: 1, rows: 0)),
+        ResizeAction(name: "Make Narrower", axis: .horizontal, resize: .step(columns: -1, rows: 0)),
+        ResizeAction(name: "Make Taller", axis: .vertical, resize: .step(columns: 0, rows: 1)),
+        ResizeAction(name: "Make Shorter", axis: .vertical, resize: .step(columns: 0, rows: -1)),
+    ]
     static let badgeSize: CGFloat = 22
     static let badgeOverhang: CGFloat = 8
     private static let gripSize: CGFloat = 14
@@ -43,9 +60,9 @@ extension WidgetTile: NSDraggingSource {
     }
 
     func editingActions() -> [NSAccessibilityCustomAction] {
-        let widths = [("Make Wider", 1), ("Make Narrower", -1)].map { name, change in
-            NSAccessibilityCustomAction(name: name) { [weak self] in
-                self?.onResize?(.step(change))
+        let sizes = Self.resizeActions.filter { resizes.contains($0.axis) }.map { action in
+            NSAccessibilityCustomAction(name: action.name) { [weak self] in
+                self?.onResize?(action.resize)
                 return true
             }
         }
@@ -58,7 +75,7 @@ extension WidgetTile: NSDraggingSource {
                 self?.onExtend?()
                 return true
             },
-        ] + (resizable ? widths : [])
+        ] + sizes
     }
 
     func showEditing() {
@@ -71,20 +88,20 @@ extension WidgetTile: NSDraggingSource {
     }
 
     func showGrip() {
-        resizer.isHidden = !editing || !selected || !resizable
-        unsafe window?.invalidateCursorRects(for: resizer)
+        resizer.isHidden = !editing || !selected || resizes.isEmpty
+        resizer.axes = resizes
     }
 
     func beginResize(_ event: NSEvent) -> Bool {
-        guard resizable, resizer.frame.contains(convert(event.locationInWindow, from: nil)) else {
-            return false
-        }
-        resizeStart = screenX(of: event)
+        guard !resizes.isEmpty,
+            resizer.frame.contains(convert(event.locationInWindow, from: nil))
+        else { return false }
+        resizeStart = screenPoint(of: event)
         return true
     }
 
-    func screenX(of event: NSEvent) -> CGFloat {
-        (unsafe window?.convertPoint(toScreen: event.locationInWindow) ?? event.locationInWindow).x
+    func screenPoint(of event: NSEvent) -> NSPoint {
+        unsafe window?.convertPoint(toScreen: event.locationInWindow) ?? event.locationInWindow
     }
 
     func showLifted() {
@@ -133,6 +150,20 @@ extension WidgetTile: NSDraggingSource {
     func draggingSession(_: NSDraggingSession, endedAt _: NSPoint, operation: NSDragOperation) {
         if operation.isEmpty {
             onDragEnd?()
+        }
+    }
+
+    func customActions() -> [NSAccessibilityCustomAction] {
+        if editing { return editingActions() }
+        if !month.isHidden { return month.accessibilityActions() }
+        return widget?.track != nil
+            ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
+    }
+
+    private func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
+        NSAccessibilityCustomAction(name: name) { [weak self] in
+            self?.onSkip?(skip)
+            return true
         }
     }
 }

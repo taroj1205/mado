@@ -32,7 +32,7 @@ extension AppDelegate {
 
     func launcherFrame(in visible: CGRect) -> CGRect {
         ScreenGeometry.centeredFrame(of: launcherSize, in: visible)
-            .offsetBy(dx: 0, dy: -launcherView.widgetOverhang * Self.half)
+            .offsetBy(dx: 0, dy: -launcherView.widgetShift * Self.half)
     }
 
     func connectGlances() {
@@ -43,7 +43,7 @@ extension AppDelegate {
         }
         launcherView.onWidget = { [weak self] widget in
             guard let self else { return }
-            if widget.id == Widgets.music {
+            if widget.id == Widgets.music || widget.id == Widgets.lyrics {
                 widgets.control(.playPause, in: launcherView)
             } else {
                 runGlance(widgets.action(for: widget), for: widget.id)
@@ -56,6 +56,10 @@ extension AppDelegate {
         launcherView.onPage = { [weak self] page in
             guard let self else { return }
             widgets.page(page, in: launcherView)
+        }
+        launcherView.onSeek = { [weak self] line in
+            guard let self else { return }
+            widgets.seek(toLine: line, in: launcherView)
         }
         widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
@@ -98,6 +102,7 @@ extension AppDelegate {
         widgets.shown = enabled ? Widgets.added(in: modules) : []
         widgets.city = WeatherSettings.load(from: modules).city
         widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
+        widgets.lyricsEnabled = LyricsSettings.load(from: modules).lookup
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

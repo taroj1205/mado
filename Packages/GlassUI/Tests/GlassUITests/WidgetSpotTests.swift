@@ -6,7 +6,7 @@ import Testing
 @MainActor
 @Suite struct WidgetSpotTests {
     private static let frame = NSRect(x: 100, y: 100, width: 760, height: 476)
-    private static let width = (760 - 5 * 10) / 6.0
+    private static let width = (760 - 5 * 8) / 6.0
 
     private let panel = NSPanel(
         contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
@@ -36,12 +36,12 @@ import Testing
         let floats = view.widgetGrid.floats.map(\.frame)
         expect(
             floats[0],
-            NSRect(x: 100 + 2 * (Self.width + 10), y: 592, width: Self.width, height: 78))
-        expect(floats[1], NSRect(x: -140, y: 498, width: 220, height: 78))
-        expect(floats[2], NSRect(x: -140, y: 299, width: 220, height: 78))
-        expect(floats[3], NSRect(x: 880, y: 188, width: 220, height: 78))
-        expect(floats[4], NSRect(x: 880, y: 100, width: 220, height: 78))
-        #expect(view.widgetOverhang == 94)
+            NSRect(x: 100 + 2 * (Self.width + 8), y: 592, width: Self.width, height: 78))
+        expect(floats[1], NSRect(x: -170, y: 498, width: 250, height: 78))
+        expect(floats[2], NSRect(x: -170, y: 326, width: 250, height: 78))
+        expect(floats[3], NSRect(x: 880, y: 240, width: 250, height: 78))
+        expect(floats[4], NSRect(x: 880, y: 154, width: 250, height: 78))
+        #expect(view.widgetShift == 94)
         #expect(view.widgetsFillPanel)
     }
 
@@ -52,7 +52,7 @@ import Testing
         let floats = view.widgetGrid.floats.map(\.frame)
         expect(floats[6], NSRect(x: 100, y: 592, width: Self.width, height: 78))
         expect(floats[7], NSRect(x: 860 - Self.width, y: 592, width: Self.width, height: 78))
-        #expect(view.widgetOverhang == 182)
+        #expect(view.widgetShift == 180)
     }
 
     @Test func theStripOnlyLimitsTheWidgetsInThePanel() {

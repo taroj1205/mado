@@ -16,10 +16,12 @@ final class Widgets {
     private static let clockWidget = "clock"
     static let system = "system"
     static let music = "music"
+    static let lyrics = "lyrics"
     static let weather = "weather"
-    private static let listenSeconds = 2.0
-    private static let player = MusicPlayer()
-    private static let logger = Log.logger("Widgets")
+    static let listenSeconds = 2.0
+    static let followSeconds = 0.25
+    static let player = MusicPlayer()
+    static let logger = Log.logger("Widgets")
     static let battery = "battery"
     static let gallery: [WidgetGallery.Card] = [
         .init(
@@ -33,6 +35,9 @@ final class Widgets {
         .init(
             id: music, name: "Now Playing", summary: "Music controls", group: .media,
             isWide: true),
+        .init(
+            id: lyrics, name: "Lyrics", summary: "Synced lyrics, click to jump", group: .media,
+            isWide: true, isTall: true),
         .init(id: battery, name: "Battery", summary: "Mac and devices", group: .system),
         .init(id: system, name: "System", summary: "CPU and memory", group: .system),
     ]
@@ -61,9 +66,12 @@ final class Widgets {
     var searched: [WidgetQuery.Kind] = []
     var delivered: [ResultList.Item] = []
     var onSearchedChange: (() -> Void)?
-    private var playing: MusicPlayer.Track?
+    var playing: MusicPlayer.Track?
     private var ticking: Task<Void, Never>?
-    private var listening: Task<Void, Never>?
+    var listening: Task<Void, Never>?
+    var following: Task<Void, Never>?
+    var lyricsEnabled = false
+    let lyricsFeed = LyricsFeed()
 
     static func added(in modules: ModuleManager?) -> [String] {
         WidgetSettings.load(from: modules).added(from: ids)
@@ -94,7 +102,7 @@ final class Widgets {
     }
 
     private static func current(
-        at date: Date, stats: SystemStats?, playing: MusicPlayer.Track?,
+        at date: Date, stats: SystemStats?, media: [WidgetGrid.Widget],
         weather: WeatherFeed.State, schedule: Schedule
     ) -> [WidgetGrid.Widget] {
         let cpu = stats?.cpu
@@ -106,8 +114,8 @@ final class Widgets {
                 id: clockWidget, name: name(of: clockWidget), value: date.formatted(time),
                 detail: date.formatted(day),
                 action: clock == nil ? "Open Date & Time Settings" : "Open Clock",
-                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))"),
-            playing.map(widget(for:)),
+                spoken: "Time: \(date.formatted(spokenTime)), \(date.formatted(spokenDay))",
+                facts: clockFacts(at: date)),
             stats == nil
                 ? .init(
                     id: battery, name: name(of: battery), content: .loading(title: "Battery"),
@@ -121,20 +129,10 @@ final class Widgets {
                     id: system, name: name(of: system),
                     meters: [meter("CPU", cpu), meter("RAM", memory)],
                     action: "Open Activity Monitor",
-                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))"),
+                    spoken: "System: CPU \(percent(cpu)), memory \(percent(memory))",
+                    facts: systemFacts(of: stats)),
         ]
-        .compactMap(\.self)
-    }
-
-    private static func widget(for playing: MusicPlayer.Track) -> WidgetGrid.Widget {
-        let song = playing.artist.isEmpty ? playing.title : "\(playing.title) by \(playing.artist)"
-        return .init(
-            id: music, name: name(of: music),
-            track: .init(
-                title: playing.title, artist: playing.artist, artwork: playing.artwork,
-                isPlaying: playing.isPlaying),
-            action: "Play / Pause",
-            spoken: "\(playing.isPlaying ? "Now playing" : "Paused"): \(song)")
+        .compactMap(\.self) + media
     }
 
     static func meter(_ name: String, _ level: Double?) -> WidgetGrid.Meter {
@@ -189,15 +187,7 @@ final class Widgets {
                 refresh(view)
             }
         }
-        listening = Task { [weak self, weak view] in
-            while !Task.isCancelled {
-                let found = await Self.player.track()
-                guard !Task.isCancelled, let self, let view else { return }
-                playing = found
-                refresh(view)
-                try? await Task.sleep(for: .seconds(Self.listenSeconds))
-            }
-        }
+        listen(in: view)
     }
 
     func show(_ ids: [String], in view: LauncherView) {
@@ -230,6 +220,8 @@ final class Widgets {
         ticking = nil
         listening?.cancel()
         listening = nil
+        following?.cancel()
+        following = nil
         calendars.stop()
         weatherFeed.cancel()
         searched = []
@@ -243,7 +235,7 @@ final class Widgets {
                 opensDays: calendars.isOn)
         ]
             + Self.current(
-                at: .now, stats: stats, playing: playing, weather: weatherFeed.state,
+                at: .now, stats: stats, media: mediaWidgets(), weather: weatherFeed.state,
                 schedule: calendars.schedule)
     }
 

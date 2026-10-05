@@ -60,8 +60,9 @@ extension WidgetTile {
         holdOrigin = event.locationInWindow
         let grab = convert(event.locationInWindow, from: nil)
         holdDelay.start { [weak self] in
-            self?.holdOrigin = nil
-            self?.onHold?(grab)
+            guard let self, unsafe window != nil else { return }
+            holdOrigin = nil
+            onHold?(grab)
         }
     }
 

@@ -12,6 +12,8 @@ public actor MusicPlayer {
         public let artist: String
         public let isPlaying: Bool
         public var artwork: Data?
+        public var album = ""
+        public var duration: TimeInterval?
     }
 
     public enum Control: Sendable {
@@ -44,15 +46,18 @@ public actor MusicPlayer {
         static let music = Source(
             bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook")
         static let spotify = Source(
-            bundleID: "com.spotify.client", trackID: "ID  ", artwork: .link, suite: "spfy")
+            bundleID: "com.spotify.client", trackID: "ID  ", artwork: .link, suite: "spfy",
+            durationUnit: MusicPlayer.millisecond)
 
         let bundleID: String
         let trackID: String
         let artwork: Artwork
         let suite: String
+        var durationUnit = 1.0
     }
 
     private static let sources = [Source.music, .spotify]
+    private static let millisecond = 0.001
     private static let timeout: TimeInterval = 2
     private static let loadTimeout: TimeInterval = 5
     private static let httpOK = 200
@@ -171,7 +176,32 @@ public actor MusicPlayer {
             let title = try? string("pnam", from: app),
             let artist = try? string("pArt", from: app)
         else { return nil }
-        return Track(id: id, title: title, artist: artist, isPlaying: state != Self.paused)
+        return Track(
+            id: id, title: title, artist: artist, isPlaying: state != Self.paused,
+            album: (try? string("pAlb", from: app)) ?? "",
+            duration: (try? number("pDur", of: Self.currentTrack, from: app))
+                .map { $0 * app.durationUnit })
+    }
+
+    public func position() -> TimeInterval? {
+        guard let source else { return nil }
+        return try? number("pPos", of: .null(), from: source)
+    }
+
+    public func seek(to seconds: TimeInterval) throws {
+        guard let source else { throw Failure.noTrack }
+        let event = Self.event("core", "setd")
+        event.setParam(Self.property("pPos"), forKeyword: AEKeyword(keyDirectObject))
+        event.setParam(NSAppleEventDescriptor(double: seconds), forKeyword: AEKeyword(keyAEData))
+        _ = try send(event, source.bundleID)
+    }
+
+    private func number(
+        _ name: String, of container: NSAppleEventDescriptor, from app: Source
+    ) throws -> Double {
+        let reply = try get(Self.property(name, of: container), from: app)
+        guard reply.descriptorType != typeNull else { throw Failure.noResult }
+        return reply.doubleValue
     }
 
     private func artwork(of id: String, in app: Source) async -> (id: String, data: Data?)? {

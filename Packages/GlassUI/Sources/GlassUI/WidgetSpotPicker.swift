@@ -77,6 +77,7 @@ final class WidgetSpotPicker: NSView {
         return switch spot.side {
         case .panel: NSPoint(x: middle, y: rail.middle)
         case .above: NSPoint(x: middle + shift(shelf.step), y: shelf.top)
+        case .below: NSPoint(x: middle + shift(shelf.step), y: mapHeight - shelf.top)
         case .left: NSPoint(x: middle - rail.offset, y: rail.middle + shift(rail.step))
         case .right: NSPoint(x: middle + rail.offset, y: rail.middle + shift(rail.step))
         }

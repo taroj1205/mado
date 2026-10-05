@@ -47,7 +47,7 @@ extension LauncherView {
         }
         let homes = chosenWidgets.map(widgetGrid.home)
         let undoable = widgetNote?.undoable == true
-        guard let anchor = homes.first(where: { $0 != .panel }) else {
+        guard let anchor = homes.first(where: { $0.side != .panel }) else {
             note("Move one of them out of the panel to group them", undoable: undoable)
             return
         }

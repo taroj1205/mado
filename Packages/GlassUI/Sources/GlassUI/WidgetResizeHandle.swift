@@ -8,6 +8,24 @@ final class WidgetResizeHandle: NSView {
 
     static var size: NSSize { NSSize(width: side, height: side) }
 
+    var axes: Set<WidgetTile.Axis> = [] {
+        didSet { unsafe window?.invalidateCursorRects(for: self) }
+    }
+
+    private var cursor: NSCursor {
+        switch (axes.contains(.horizontal), axes.contains(.vertical)) {
+        case (true, false): .resizeLeftRight
+        case (false, true): .resizeUpDown
+
+        default:
+            if #available(macOS 15, *) {
+                .frameResize(position: .bottomRight, directions: .all)
+            } else {
+                .crosshair
+            }
+        }
+    }
+
     override func draw(_: NSRect) {
         let centre = NSPoint(
             x: bounds.maxX - WidgetTile.radius, y: bounds.minY + WidgetTile.radius)
@@ -22,6 +40,6 @@ final class WidgetResizeHandle: NSView {
     }
 
     override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .resizeLeftRight)
+        addCursorRect(bounds, cursor: cursor)
     }
 }

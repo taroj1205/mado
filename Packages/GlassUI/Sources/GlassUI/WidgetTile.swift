@@ -24,14 +24,13 @@ final class WidgetTile: NSView {
     let icon = NSImageView()
     let meters = NSStackView()
     let track = WidgetTrack()
+    let verse = WidgetLyrics()
+    let face = WidgetFace()
     let wash = WidgetWash()
     let month = WidgetMonth()
     let countdown = NSTextField(labelWithString: "")
-    lazy var trackPlacement = [
-        track.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
-        track.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
-        track.centerYAnchor.constraint(equalTo: centerYAnchor),
-    ]
+    lazy var trackPlacement = trackConstraints()
+    lazy var versePlacement = verseConstraints()
     let box = NSBox()
     let lines = NSStackView()
     let request = NSStackView()
@@ -47,11 +46,12 @@ final class WidgetTile: NSView {
     let floating: Bool
     let looks: (resting: Look, picked: Look)
     var widgetID = ""
-    var hasTrack = false
+    var widget: WidgetGrid.Widget?
+    var form = WidgetForm(size: .zero)
     var dragStart: NSEvent?
-    var resizeStart: CGFloat?
-    var compact = false
     var holdOrigin: NSPoint?
+    var resizeStart: NSPoint?
+    var compact = false
     var onPress: (() -> Void)?
     var onOpen: (() -> Void)?
     var onMenu: ((NSPoint) -> Void)?
@@ -59,6 +59,7 @@ final class WidgetTile: NSView {
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onSeek: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
     var onRemove: (() -> Void)?
@@ -96,7 +97,7 @@ final class WidgetTile: NSView {
         didSet { showLifted() }
     }
 
-    var resizable = false {
+    var resizes: Set<Axis> = [] {
         didSet { showEditing() }
     }
 
@@ -113,6 +114,9 @@ final class WidgetTile: NSView {
         wash.frame = bounds
         wash.autoresizingMask = [.width, .height]
         addSubview(wash)
+        face.autoresizingMask = [.width, .height]
+        face.isHidden = true
+        addSubview(face)
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()
@@ -126,7 +130,7 @@ final class WidgetTile: NSView {
         meters.orientation = .vertical
         meters.spacing = Self.meterGap
         meters.translatesAutoresizingMaskIntoConstraints = false
-        [meters, track].forEach(addSubview)
+        [meters, track, verse].forEach(addSubview)
         NSLayoutConstraint.activate([
             meters.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontal),
             meters.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontal),
@@ -148,13 +152,10 @@ final class WidgetTile: NSView {
     override func layout() {
         super.layout()
         more.frame = moreFrame
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        if unsafe window == nil {
-            hoverDelay.cancel()
-            holdDelay.cancel()
+        let next = WidgetForm(size: bounds.size)
+        if next != form {
+            form = next
+            showFace()
         }
     }
 
@@ -183,6 +184,8 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if let line = lyricLine(at: event) {
+            onSeek?(line)
         } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
             month.press(hit)
         } else {
@@ -220,7 +223,9 @@ final class WidgetTile: NSView {
     override func mouseDragged(with event: NSEvent) {
         cancelHold(ifMovedBy: event)
         if let resizeStart {
-            onResize?(.drag(screenX(of: event) - resizeStart))
+            let point = screenPoint(of: event)
+            onResize?(
+                .drag(CGSize(width: point.x - resizeStart.x, height: resizeStart.y - point.y)))
             return
         }
         guard let start = dragStart, unsafe window != nil else { return }
@@ -252,15 +257,15 @@ final class WidgetTile: NSView {
         onDrop?(sender.draggingPasteboard.string(forType: WidgetGrid.dragType)) ?? false
     }
 
-    override func accessibilityPerformPress() -> Bool {
-        onPress?()
-        onOpen?()
-        return true
-    }
-
     override func accessibilityPerformShowMenu() -> Bool {
         guard !editing, let onMenu else { return false }
         onMenu(buttonAnchor)
+        return true
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPress?()
+        onOpen?()
         return true
     }
 }

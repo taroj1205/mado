@@ -8,7 +8,9 @@ import Testing
     private typealias Event = NSAppleEventDescriptor
 
     private final class FakeApps: @unchecked Sendable {
-        private static let names = ["pPlS", "pPIS", "ID  ", "pnam", "pArt", "pRaw", "aUrl"]
+        private static let names = [
+            "pPlS", "pPIS", "ID  ", "pnam", "pArt", "pRaw", "aUrl", "pAlb", "pDur", "pPos",
+        ]
 
         var answers: [String: [String: NSAppleEventDescriptor]] = [:]
         var asked: [String] = []
@@ -19,6 +21,14 @@ import Testing
 
         func answer(_ event: Event, to app: String) throws -> Event {
             guard let properties = answers[app] else { throw MusicPlayer.Failure.notRunning }
+            if event.eventID == MusicPlayer.code("setd") {
+                let target =
+                    event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?
+                    .forKeyword(AEKeyword(keyAEKeyData))?.typeCodeValue ?? 0
+                asked.append(target == MusicPlayer.code("pPos") ? "seek" : "?")
+                answers[app]?["pPos"] = event.paramDescriptor(forKeyword: AEKeyword(keyAEData))
+                return .null()
+            }
             guard event.eventID == MusicPlayer.code("getd") else {
                 let suite = event.eventClass == MusicPlayer.code("spfy") ? "spfy" : "hook"
                 let id = ["PlPs", "Prev", "Next"].first { MusicPlayer.code($0) == event.eventID }
@@ -114,6 +124,36 @@ import Testing
                 == .init(
                     id: "A1B2", title: "Low Tide", artist: "Harbour Lights", isPlaying: true,
                     artwork: Data([0xFF, 0xD8])))
+    }
+
+    @Test func theAlbumDurationAndPositionComeFromThePlayingApp() async {
+        apps.answers[Self.music]?["pAlb"] = NSAppleEventDescriptor(string: "Salt")
+        apps.answers[Self.music]?["pDur"] = NSAppleEventDescriptor(double: 201.4)
+        apps.answers[Self.music]?["pPos"] = NSAppleEventDescriptor(double: 42.5)
+        #expect(await player.position() == nil)
+        let track = await player.track()
+        #expect(track?.album == "Salt")
+        #expect(track?.duration == 201.4)
+        #expect(await player.position() == 42.5)
+        playSpotify()
+        apps.answers[Self.music] = nil
+        apps.answers[Self.spotify]?["pDur"] = NSAppleEventDescriptor(int32: 201_400)
+        #expect(await player.track()?.duration == 201.4)
+    }
+
+    @Test func aMissingAlbumDurationOrPositionIsLeftOut() async {
+        let track = await player.track()
+        #expect(track?.album.isEmpty == true)
+        #expect(track?.duration == nil)
+        #expect(await player.position() == nil)
+    }
+
+    @Test func seekingSetsThePlayerPositionOfTheShownApp() async throws {
+        await #expect(throws: MusicPlayer.Failure.noTrack) { try await player.seek(to: 10) }
+        _ = await player.track()
+        try await player.seek(to: 73.5)
+        #expect(count("seek") == 1)
+        #expect(await player.position() == 73.5)
     }
 
     @Test func aPausedTrackStaysButAStoppedPlayerOrAMissingTrackShowsNothing() async {

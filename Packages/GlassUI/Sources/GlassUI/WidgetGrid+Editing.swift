@@ -31,6 +31,7 @@ extension WidgetGrid {
         tile.onSkip = { [weak self] skip in self?.onSkip?(index, skip) }
         tile.onDay = { [weak self] query in self?.onDay?(query) }
         tile.onPage = { [weak self] page in self?.onPage?(index, page) }
+        tile.onSeek = { [weak self] line in self?.onSeek?(index, line) }
         tile.onRemove = { [weak self] in self?.onRemove?(index) }
         tile.onResize = { [weak self] resize in self?.onResize?(index, resize) }
         tile.onDrag = { [weak self] id, point, source in self?.onDrag?(id, point, source) ?? [] }

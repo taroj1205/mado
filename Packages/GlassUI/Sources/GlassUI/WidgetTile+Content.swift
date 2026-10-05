@@ -2,17 +2,19 @@ import AppKit
 
 extension WidgetTile {
     func show(_ widget: WidgetGrid.Widget) {
+        self.widget = widget
+        form = WidgetForm(size: bounds.size)
         widgetID = widget.id
-        hasTrack = widget.track != nil
         var readings: [WidgetGrid.Meter] = []
         var symbol: String?
         switch widget.content {
         case let .value(_, _, name, _): symbol = name
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
+        case let .verse(lyrics): verse.show(lyrics)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
-        wash.tint = widget.track == nil ? nil : track.tint
+        wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
         let visible = showLines(of: widget.content)
         for row in lines.arrangedSubviews {
             row.isHidden = !visible.contains(row)
@@ -22,15 +24,11 @@ extension WidgetTile {
         }
         showMeters(readings)
         showTrack(widget.track != nil)
+        showVerse(widget.verse != nil)
         month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())
-    }
-
-    func customActions() -> [NSAccessibilityCustomAction] {
-        if editing { return editingActions() }
-        if !month.isHidden { return month.accessibilityActions() }
-        return hasTrack ? [skip("Previous Track", .previous), skip("Next Track", .next)] : []
+        showFace()
     }
 
     func showTrack(_ shows: Bool) {
@@ -42,10 +40,15 @@ extension WidgetTile {
         }
     }
 
-    func skip(_ name: String, _ skip: WidgetGrid.Skip) -> NSAccessibilityCustomAction {
-        NSAccessibilityCustomAction(name: name) { [weak self] in
-            self?.onSkip?(skip)
-            return true
+    func paint() {
+        let look = selected ? looks.picked : looks.resting
+        if editing {
+            box.fillColor = selected ? Self.selectedFill : Self.editFill
+            box.borderColor = .clear
+        } else {
+            box.fillColor = look.fill
+            box.borderColor = look.edge
         }
+        setAccessibilitySelected(selected)
     }
 }

@@ -53,6 +53,7 @@ struct SettingsPage {
                 WeatherSettings.section(context.modules),
             ]
         },
+        Self("Media", "music.note") { [LyricsSettings.section($0.modules)] },
         Self(
             "Clipboard", "clipboard",
             module: module("clipboard", "Clipboard history", enabled: true)

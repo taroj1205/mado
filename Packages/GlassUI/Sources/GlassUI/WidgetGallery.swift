@@ -178,7 +178,7 @@ public final class WidgetGallery: NSView {
             (width - WidgetGrid.inset - WidgetGrid.inset - (columns - 1) * WidgetGrid.gap)
             / columns
         let step = Self.cardHeight + Self.rowGap
-        let cells = WidgetGrid.cells(of: visible.map(\.widget))
+        let cells = WidgetGrid.cells(of: visible.map(\.widget), in: .grid)
         for card in cards {
             card.isHidden = !visible.contains(card)
         }
@@ -188,7 +188,7 @@ public final class WidgetGallery: NSView {
                 y: Self.gridTop + CGFloat(place.rows.lowerBound) * step,
                 width: CGFloat(place.columns.count) * (cell + WidgetGrid.gap) - WidgetGrid.gap,
                 height: WidgetGrid.extent(
-                    of: place.rows.count, size: Self.cardHeight, gap: Self.rowGap))
+                    of: place.rows.count, unit: Self.cardHeight, gap: Self.rowGap))
         }
         let rows = CGFloat(cells.map(\.rows.upperBound).max() ?? 0)
         board.frame.size = NSSize(
