@@ -81,7 +81,7 @@ extension WidgetGrid {
         guard let window = unsafe window, let mover = listed.first(where: { $0.id == id }) else {
             return false
         }
-        var all = listed.filter { $0.id != id }
+        var all = widgets.filter { $0.id != id }
         all.insert(
             mover, at: other.flatMap { next in all.firstIndex { $0.id == next } } ?? all.endIndex)
         let spot = { (widget: Widget) in widget.id == id ? target : self.spot(of: widget) }

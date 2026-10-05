@@ -33,6 +33,18 @@ import Testing
         #expect(!view.widgetGrid.accepts("f", at: .panel, before: nil))
     }
 
+    @Test func anUnavailableWidgetKeepsItsRoomForWhenItComesBack() {
+        let away = WidgetGrid.Widget(
+            id: "away", name: "away", content: .unavailable(title: "away", summary: ""),
+            action: "Open away", spoken: "away", isWide: true)
+        view.widgets = (1...5).map { widget("\($0)") } + [away, widget("f")]
+        view.widgetLayout = .strip
+        view.widgetSpots = ["f": .leftTop]
+        #expect(view.widgetGrid.shown.map(\.id) == ["1", "2", "3", "4", "5", "f"])
+        #expect(!view.widgetGrid.accepts("f", at: .panel, before: nil))
+        #expect(!view.widgetGrid.accepts("away", at: .leftTop, before: nil))
+    }
+
     @Test func roomIsCheckedWhereTheWidgetWouldGo() {
         view.widgets = (1...10).map { widget("\($0)") } + [widget("wide", wide: true)]
         view.widgetSpots = ["wide": .leftTop]
