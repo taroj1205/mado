@@ -19,6 +19,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         public var isDimmed = false
         public var glyph: String?
         public var event: Event?
+        public var widget: WidgetCard?
         public var prefersSelection = false
 
         public init(
@@ -82,6 +83,10 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
 
         var isAnswer: Bool {
             if case .item(let item) = self { item.answer != nil } else { false }
+        }
+
+        var isWidget: Bool {
+            if case .item(let item) = self { item.widget != nil } else { false }
         }
     }
 
@@ -202,9 +207,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         case .card(let card): DefinitionCell.height(for: card, width: contentSize.width)
         case .colour: Self.colourHeight
         case .header: Self.headerHeight
-        case .item(let item) where item.answer != nil: Self.answerHeight
-        case .item(let item) where item.event != nil: Self.eventHeight
-        case .item: compact ? Self.compactRowHeight : Self.rowHeight
+        case .item(let item): height(of: item)
         }
     }
 
