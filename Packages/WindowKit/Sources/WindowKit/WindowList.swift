@@ -95,6 +95,15 @@ public final class WindowList {
         }
     }
 
+    public static func focusedWindow(of pid: pid_t) -> CGWindowID? {
+        guard let window = try? FocusedWindow(pid: pid) else { return nil }
+        let title = (try? FocusedWindow.copy(kAXTitleAttribute, of: window.element)) as? String
+        let placement = Placement(pid: pid, frame: try? window.quartzFrame(), title: title ?? "")
+        let stack = stack()
+        let match = frontToBack([placement], in: stack.map(\.placement)).first?.stack
+        return match.map { stack[$0].number }
+    }
+
     public func load(from pids: [pid_t]) -> [Window] {
         listed = [:]
         var found: [(window: Window, placement: Placement)] = []

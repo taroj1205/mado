@@ -65,13 +65,27 @@ import Testing
         #expect(recorder.events.isEmpty)
     }
 
-    @Test func liftingOneFingerChoosesBeforeTheRestAreUp() {
+    @Test func liftingDownToOneFingerChooses() {
         let recorder = Recorder()
         recorder.touch(3, across: 0.3)
         recorder.touch(3, across: 0.3 + Self.step)
         recorder.touch(2, across: 0.3 + Self.step)
+        #expect(recorder.events == [.stepped(backward: false)])
+        recorder.touch(1, across: 0.3 + Self.step)
         recorder.lift()
         #expect(recorder.events == [.stepped(backward: false), .chosen])
+    }
+
+    @Test func aFingerSlippingOffMidSwipeNeitherChoosesNorJumps() {
+        let recorder = Recorder()
+        recorder.touch(3, across: 0.3)
+        recorder.touch(3, across: 0.3 + Self.step)
+        recorder.touch(2, across: 0.5)
+        recorder.touch(3, across: 0.2)
+        recorder.touch(3, across: 0.2 + Self.step / 2)
+        #expect(recorder.events == [.stepped(backward: false)])
+        recorder.touch(3, across: 0.2 + Self.step)
+        #expect(recorder.events == [.stepped(backward: false), .stepped(backward: false)])
     }
 
     @Test func aVerticalSwipeIsLeftToMacOSUntilTheFingersLift() {
