@@ -10,7 +10,6 @@ final class PasteStack {
     static let commandID = "clipboard.paste-stack"
     private static let title = "Paste Stack"
     private static let route = "paste stack keys"
-    private static let gap: CGFloat = 8
     private static let logger = Log.logger("PasteStack")
 
     private let hud = PasteStackHUD()
@@ -18,6 +17,11 @@ final class PasteStack {
     private var anchor: (rect: NSRect, screen: NSScreen?)?
     private var listening = false
     private var checkCopies: (@MainActor () -> Void)?
+
+    @AccessibilityActor
+    private static func focusedWindowFrame() -> CGRect? {
+        try? FocusedWindow.frontmost().quartzFrame()
+    }
 
     func start(context: ModuleContext, checkCopies: @escaping @MainActor () -> Void) {
         self.checkCopies = checkCopies
@@ -70,9 +74,9 @@ final class PasteStack {
         end()
         checkCopies?()
         queue = PasteQueue()
-        let caret = await FocusedText.current(readingBack: 0)?.caret
+        let window = await Self.focusedWindowFrame()
         guard queue != nil else { return }
-        anchor = CaretAnchor.find(caret)
+        anchor = ScreenAnchor.find(window)
         refresh()
     }
 
@@ -112,9 +116,11 @@ final class PasteStack {
         }
         let pasted = queue.pasted.map { PasteStackHUD.Row(title: $0.title, state: .pasted) }
         hud.show(waiting + pasted, left: waiting.count) { size in
-            ScreenGeometry.frame(
-                of: size, below: anchor.rect, gap: Self.gap,
-                in: anchor.screen?.visibleFrame ?? anchor.rect)
+            let visible = anchor.screen?.visibleFrame ?? anchor.rect
+            return CGRect(
+                x: min(max(anchor.rect.maxX - size.width, visible.minX), visible.maxX - size.width),
+                y: min(max(anchor.rect.minY, visible.minY), visible.maxY - size.height),
+                width: size.width, height: size.height)
         }
     }
 

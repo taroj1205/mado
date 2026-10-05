@@ -46,7 +46,7 @@ final class SnippetFillIn: NSObject, NSWindowDelegate {
         form.show(
             name: snippet.name, keyword: snippet.keyword,
             fields: template.fields.map { FillInForm.Field(name: $0.name, options: $0.options) })
-        let (anchor, screen) = CaretAnchor.find(caret)
+        let (anchor, screen) = ScreenAnchor.find(caret)
         form.maxHeight = screen?.visibleFrame.height
         panel.setFrame(
             ScreenGeometry.frame(
