@@ -184,6 +184,14 @@ import Testing
         await nowPlaying.perform(.next)
         #expect(await player.controls == [.next])
         #expect(nowPlaying.track == song)
-        #expect(changes == 1)
+        #expect(changes > 0)
+    }
+
+    @Test func aControlLooksUpTheLyricsOfTheTrackItBrings() async {
+        await player.play(song)
+        nowPlaying.lookup = true
+        await nowPlaying.perform(.next)
+        #expect(await until { nowPlaying.session.lyrics != nil })
+        #expect(server.asked == 1)
     }
 }

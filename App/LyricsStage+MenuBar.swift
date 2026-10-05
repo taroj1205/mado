@@ -9,7 +9,6 @@ extension LyricsStage {
         if unsafe line.superview !== button {
             menu = item.menu
             item.menu = nil
-            button.image = nil
             button.target = self
             button.action = #selector(clicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -17,12 +16,13 @@ extension LyricsStage {
             line.autoresizingMask = [.width, .height]
             button.addSubview(line)
         }
+        button.image = nil
         line.show(verse)
         item.length = line.naturalWidth + Self.barPadding
         if isCardOpen, let screen = unsafe button.window?.screen {
             float.show(
                 verse, place: .menuBar(anchor: anchor(of: button)), look: .card, on: screen,
-                hidesInSharing: true)
+                hidesInSharing: settings.hidesInSharing)
         }
     }
 

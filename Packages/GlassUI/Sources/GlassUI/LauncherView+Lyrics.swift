@@ -72,7 +72,6 @@ extension LauncherView {
             event.charactersIgnoringModifiers == "c",
             (field.currentEditor() as? NSTextView)?.hasMarkedText() != true
         else { return false }
-        lyricsPane.copyLine()
-        return true
+        return lyricsPane.copyLine()
     }
 }

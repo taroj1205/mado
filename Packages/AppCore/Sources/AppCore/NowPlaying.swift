@@ -66,8 +66,7 @@ public final class NowPlaying {
 
     public func perform(_ control: MusicPlayer.Control) async {
         do {
-            track = try await source.perform(control)
-            onChange?()
+            await apply(try await source.perform(control))
         } catch {
             logger.error("Music control failed: \(error, privacy: .private)")
         }
@@ -118,7 +117,10 @@ public final class NowPlaying {
     }
 
     private func poll() async {
-        let found = await source.track()
+        await apply(await source.track())
+    }
+
+    private func apply(_ found: MusicPlayer.Track?) async {
         let enabled = allows(found)
         let position = found != nil && enabled ? await source.position() : nil
         guard !Task.isCancelled else { return }

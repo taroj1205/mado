@@ -175,6 +175,20 @@ import Testing
         #expect(pasteboard.string(forType: .string) == "Every rope")
     }
 
+    @Test func commandCIsLeftToTheSearchFieldWhenThereIsNothingToCopy() throws {
+        let event = try #require(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0,
+                windowNumber: panel.windowNumber, context: nil, characters: "c",
+                charactersIgnoringModifiers: "c", isARepeat: false,
+                keyCode: UInt16(kVK_ANSI_C)))
+        open(verse(.instrumental))
+        #expect(!view.lyricsKeyEquivalent(event))
+        #expect(pasteboard.string(forType: .string) == nil)
+        open(verse(.synced))
+        #expect(view.lyricsKeyEquivalent(event))
+    }
+
     @Test func plainLyricsCopyWholeAndCannotSeek() {
         var sought: [Int] = []
         view.onSeek = { sought.append($0) }

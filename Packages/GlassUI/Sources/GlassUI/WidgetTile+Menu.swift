@@ -7,6 +7,7 @@ extension WidgetTile {
         hover.frame = bounds
         hover.autoresizingMask = [.width, .height]
         hover.onChange = { [weak self] hovered in self?.hovered = hovered }
+        more.onPress = { [weak self] in self?.onMenu?() }
         more.translatesAutoresizingMaskIntoConstraints = false
         more.isHidden = true
         addSubview(hover)

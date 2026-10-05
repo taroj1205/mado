@@ -12,7 +12,7 @@ final class LyricsStage: NSObject {
     let restoreIcon: () -> Void
     var menu: NSMenu?
     var isCardOpen = false
-    private var settings = LyricsSettings()
+    private(set) var settings = LyricsSettings()
     private var presence = LyricsPresence(hideAfter: nil)
     private var latest: WidgetGrid.Verse?
 
@@ -83,6 +83,9 @@ final class LyricsStage: NSObject {
 
     private func show(_ verse: WidgetGrid.Verse) {
         if hostsMenuBar {
+            if float.isShown, !isCardOpen {
+                float.hide(animated: false)
+            }
             showMenuBarLine(verse)
             return
         }

@@ -190,4 +190,15 @@ import Testing
         #expect(pressed == ["lyrics", "music"])
         #expect(players == 1)
     }
+
+    @Test func theMoreButtonCanBePressedThroughAccessibility() throws {
+        var ignored: [LyricsPin?] = []
+        view.onPinLyrics = { ignored.append($0) }
+        view.widgets = [song]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.first)
+        #expect(tile.more.accessibilityPerformPress())
+        #expect(view.choosingAction)
+        #expect(try titles().contains("Pin to screen"))
+    }
 }

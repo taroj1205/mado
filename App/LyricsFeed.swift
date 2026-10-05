@@ -64,6 +64,6 @@ struct LyricsFeed {
             lines: session.lyrics?.lines.map(\.text) ?? [], current: moment?.index,
             progress: moment?.progress ?? 0, remaining: moment?.remaining,
             position: status == .off ? nil : session.position(at: Self.now),
-            duration: session.length)
+            duration: track.duration ?? (status == .off ? nil : session.length))
     }
 }

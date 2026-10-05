@@ -9,6 +9,8 @@ final class WidgetMoreButton: NSView {
     private static let half: CGFloat = 0.5
     private static let dots = 3
 
+    var onPress: (() -> Void)?
+
     override var intrinsicContentSize: NSSize {
         NSSize(width: Self.size, height: Self.size)
     }
@@ -39,5 +41,11 @@ final class WidgetMoreButton: NSView {
                     height: Self.dot)
             ).fill()
         }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard let onPress else { return false }
+        onPress()
+        return true
     }
 }
