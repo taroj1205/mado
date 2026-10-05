@@ -25,7 +25,7 @@ public final class ColourLoupe {
         }
     }
 
-    static let hintText = "Click copies · arrow keys nudge 1 px · esc cancels"
+    static let hintText = "Click copies · arrows or IJKL nudge 1 px · esc cancels"
     static let cardWidth: CGFloat = 240
     static let gap: CGFloat = 10
     private static let radius: CGFloat = 18

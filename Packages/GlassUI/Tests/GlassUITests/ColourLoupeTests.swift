@@ -62,6 +62,10 @@ import Testing
             (kVK_RightArrow, .nudged(across: 1, down: 0)),
             (kVK_UpArrow, .nudged(across: 0, down: -1)),
             (kVK_DownArrow, .nudged(across: 0, down: 1)),
+            (kVK_ANSI_J, .nudged(across: -1, down: 0)),
+            (kVK_ANSI_L, .nudged(across: 1, down: 0)),
+            (kVK_ANSI_I, .nudged(across: 0, down: -1)),
+            (kVK_ANSI_K, .nudged(across: 0, down: 1)),
             (kVK_Return, .picked), (kVK_ANSI_KeypadEnter, .picked), (kVK_Escape, .cancelled),
             (kVK_ANSI_A, nil),
         ]
@@ -107,7 +111,7 @@ import Testing
         #expect(loupe.card.frame.width == 240)
         #expect(loupe.hex.stringValue == "#0A84FF")
         #expect(loupe.detail.stringValue == "rgb(10 132 255) · x 1024 y 612")
-        #expect(loupe.hint.stringValue == "Click copies · arrow keys nudge 1 px · esc cancels")
+        #expect(loupe.hint.stringValue == "Click copies · arrows or IJKL nudge 1 px · esc cancels")
         loupe.card.layoutSubtreeIfNeeded()
         let hint = loupe.hint.convert(loupe.hint.bounds, to: loupe.card)
         #expect(loupe.card.bounds.insetBy(dx: 8, dy: 8).contains(hint))
