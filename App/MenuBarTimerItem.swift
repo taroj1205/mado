@@ -112,6 +112,7 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
             ofSize: NSFont.systemFontSize, weight: .regular)
         made.button?.target = self
         made.button?.action = #selector(clicked)
+        StatusItemHover.install(on: made.button)
         item = made
         return made
     }

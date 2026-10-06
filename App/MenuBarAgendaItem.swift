@@ -98,6 +98,7 @@ final class MenuBarAgendaItem: NSObject, NSPopoverDelegate {
         made.button?.target = self
         made.button?.action = #selector(clicked)
         made.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        StatusItemHover.install(on: made.button)
         item = made
         return made
     }
