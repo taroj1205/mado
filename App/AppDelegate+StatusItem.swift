@@ -25,6 +25,7 @@ extension AppDelegate: NSMenuItemValidation {
             target: self, open: #selector(showLauncher), settings: settings,
             pauseKeys: #selector(toggleKeysPaused), hide: #selector(hideStatusItem))
         item.button?.image = StatusMenu.icon(keysPaused: modules?.keysPaused == true)
+        StatusItemHover.install(on: item.button)
         return item
     }
 
