@@ -76,7 +76,9 @@ public final class NowPlaying {
     public func seek(toLine index: Int) async {
         guard let start = session.start(ofLine: index), track != nil else { return }
         do {
+            let wasPaused = track?.isPlaying == false
             try await source.seek(to: start)
+            if wasPaused { await apply(try await source.perform(.playPause)) }
             session.moved(to: start, isPlaying: track?.isPlaying ?? false, at: uptime())
             line = session.moment(at: uptime())?.index
             onChange?()

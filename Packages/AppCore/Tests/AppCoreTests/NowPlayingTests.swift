@@ -172,6 +172,20 @@ import Testing
         nowPlaying.stop(.stage)
     }
 
+    @Test func seekingInAPausedTrackAlsoResumesIt() async {
+        let paused = MusicPlayer.Track(
+            id: "A1", title: "Low Tide", artist: "Harbour Lights", isPlaying: false, album: "Salt",
+            duration: 200)
+        await player.play(paused)
+        nowPlaying.lookup = true
+        nowPlaying.start(.stage)
+        defer { nowPlaying.stop(.stage) }
+        #expect(await until { nowPlaying.session.lyrics != nil })
+        await nowPlaying.seek(toLine: 1)
+        #expect(await player.seeks == [20])
+        #expect(await player.controls == [.playPause])
+    }
+
     @Test func seekingWithoutTimedLinesDoesNothing() async {
         await nowPlaying.seek(toLine: 0)
         #expect(await player.seeks.isEmpty)

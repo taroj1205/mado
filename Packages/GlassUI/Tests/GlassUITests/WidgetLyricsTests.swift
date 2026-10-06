@@ -110,6 +110,17 @@ import Testing
         #expect(WidgetLyrics.compact([], current: 0).current == nil)
     }
 
+    @Test func aHiddenColumnIgnoresClicksSoTheMessageOpensTheLyrics() throws {
+        view.widgets = [verse(.synced, current: 2)]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.first)
+        let middle = NSPoint(x: tile.verse.bounds.midX, y: tile.verse.bounds.midY)
+        #expect(tile.verse.line(at: middle) != nil)
+        view.widgets = [verse(.missing)]
+        view.layoutSubtreeIfNeeded()
+        #expect(tile.verse.line(at: middle) == nil)
+    }
+
     @Test func plainLyricsHaveNoCurrentLineToSeekTo() {
         let column = LyricsColumn(look: .init(pitch: 30, size: 16, rest: 12.5))
         column.frame = NSRect(x: 0, y: 0, width: 300, height: 120)

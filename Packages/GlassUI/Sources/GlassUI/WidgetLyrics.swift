@@ -113,7 +113,11 @@ final class WidgetLyrics: NSView {
     }
 
     func line(at point: NSPoint) -> Int? {
-        column.line(at: column.convert(point, from: self)).map { originals[$0] }
+        guard !column.isHidden,
+            let row = column.line(at: column.convert(point, from: self)),
+            originals.indices.contains(row)
+        else { return nil }
+        return originals[row]
     }
 
     func show(_ verse: WidgetGrid.Verse) {

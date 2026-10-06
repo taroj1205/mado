@@ -53,6 +53,10 @@ struct LyricsSettings: StoredValue, Equatable {
     var hidesInSharing: Bool
     var players: Set<MusicPlayer.Player>
 
+    var isActive: Bool {
+        pin != nil && lookup && !players.isEmpty
+    }
+
     init() {
         lookup = false
         pin = nil

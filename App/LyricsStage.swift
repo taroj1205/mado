@@ -14,7 +14,6 @@ final class LyricsStage: NSObject {
     var isCardOpen = false
     private(set) var settings = LyricsSettings()
     private var presence = LyricsPresence(hideAfter: nil)
-    private var latest: WidgetGrid.Verse?
 
     private var feed: LyricsFeed {
         LyricsFeed(nowPlaying: nowPlaying)
@@ -42,18 +41,10 @@ final class LyricsStage: NSObject {
         float.onDismiss = { [weak self] in self?.isCardOpen = false }
     }
 
-    private static func stopped(_ verse: WidgetGrid.Verse) -> WidgetGrid.Verse {
-        .init(
-            title: verse.title, artist: verse.artist, artwork: verse.artwork, isPlaying: false,
-            status: verse.status, lines: verse.lines, current: verse.current,
-            progress: verse.progress, remaining: nil, position: verse.position,
-            duration: verse.duration)
-    }
-
     func apply(_ next: LyricsSettings) {
         settings = next
         presence.hideAfter = next.hideDelay.seconds
-        if next.pin != nil, next.lookup {
+        if next.isActive {
             nowPlaying.start(.stage)
         } else {
             nowPlaying.stop(.stage)
@@ -62,19 +53,13 @@ final class LyricsStage: NSObject {
     }
 
     func update() {
-        guard settings.pin != nil, settings.lookup else {
-            latest = nil
+        guard settings.isActive else {
             presence.reset()
             hide()
             return
         }
-        if let track = nowPlaying.track {
-            latest = feed.verse(of: track)
-        } else {
-            latest = latest.map(Self.stopped)
-        }
         let uptime = ProcessInfo.processInfo.systemUptime
-        guard let verse = latest,
+        guard let verse = nowPlaying.track.map(feed.verse(of:)),
             presence.shows(timed: verse.status == .synced, playing: verse.isPlaying, at: uptime)
         else {
             hide()
