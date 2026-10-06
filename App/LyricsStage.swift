@@ -7,11 +7,14 @@ final class LyricsStage: NSObject {
     let nowPlaying: NowPlaying
     let float = LyricsFloat()
     let line = LyricsMenuBarLine()
+    let bar = LyricsBar()
     let modules: () -> ModuleManager?
     let statusItem: () -> NSStatusItem?
     let restoreIcon: () -> Void
     var menu: NSMenu?
     var isCardOpen = false
+    var surroundings: LyricsSurroundings?
+    var survey: Task<Void, Never>?
     private(set) var settings = LyricsSettings()
     private var presence = LyricsPresence(hideAfter: nil)
 
@@ -44,6 +47,7 @@ final class LyricsStage: NSObject {
     func apply(_ next: LyricsSettings) {
         settings = next
         presence.hideAfter = next.hideDelay.seconds
+        syncSurvey()
         if next.isActive {
             nowPlaying.start(.stage)
         } else {
@@ -78,11 +82,12 @@ final class LyricsStage: NSObject {
         }
         hideMenuBarLine()
         guard let pin = settings.pin, let screen else { return }
+        if showBar(verse, pin: pin, on: screen) { return }
         let place: LyricsPlace =
             switch pin {
             case .corner: .corner(settings.corner)
             case .desktop: .desktop
-            case .island, .menuBar: .island
+            case .island, .menuBar, .dock, .menus: .island
             }
         float.show(
             verse, place: place, look: settings.look, on: screen,
@@ -91,6 +96,7 @@ final class LyricsStage: NSObject {
 
     func hide() {
         float.hide(animated: true)
+        bar.hide(animated: true)
         isCardOpen = false
         hideMenuBarLine()
     }

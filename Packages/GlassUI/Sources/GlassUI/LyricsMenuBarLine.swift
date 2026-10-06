@@ -2,7 +2,7 @@ public import AppKit
 
 public final class LyricsMenuBarLine: NSView {
     public static let width: CGFloat = 210
-    private static let height: CGFloat = 22
+    private static let height = LyricsBarSpot.height
     private static let inset: CGFloat = 8
     private static let gap: CGFloat = 7
     private static let radius: CGFloat = 6
