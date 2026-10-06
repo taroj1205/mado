@@ -67,6 +67,19 @@ import Testing
         #expect(unknown.isEmpty)
     }
 
+    @Test func countsTheAppLeftInFrontOnlyWhenTheSwitchFollowedTheLastPoll() {
+        let start = ContinuousClock.now
+        var front = PasteboardWatch.FrontApps(current: "com.example.front")
+        front.activate("com.example.switched", at: start + .milliseconds(100))
+
+        let sinceLastPoll = front.before(start)
+        let afterPoll = front.before(start + .milliseconds(500))
+
+        #expect(front.current == "com.example.switched")
+        #expect(sinceLastPoll == "com.example.front")
+        #expect(afterPoll == "com.example.switched")
+    }
+
     @Test(arguments: PasteboardWatch.privateTypes)
     func flagsACopyMarkedPrivateOnAnyItem(_ marker: NSPasteboard.PasteboardType) {
         let pasteboard = NSPasteboard.withUniqueName()
@@ -144,6 +157,9 @@ import Testing
         try manager.setEnabled("clipboard", true)
         #expect(
             manager.activeResources == [
+                ActiveResource(
+                    module: "clipboard", kind: .observer,
+                    name: NSWorkspace.didActivateApplicationNotification.rawValue),
                 ActiveResource(module: "clipboard", kind: .timer, name: "pasteboard watch"),
                 ActiveResource(
                     module: "clipboard", kind: .other, name: "pasteboard watch last check"),

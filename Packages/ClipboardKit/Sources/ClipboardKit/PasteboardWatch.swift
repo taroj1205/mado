@@ -4,6 +4,26 @@ import os
 
 @MainActor
 public struct PasteboardWatch {
+    struct FrontApps {
+        private(set) var current: String?
+        private var previous: String?
+        private var switched = ContinuousClock.now
+
+        init(current: String?) {
+            self.current = current
+        }
+
+        mutating func activate(_ app: String?, at now: ContinuousClock.Instant) {
+            previous = current
+            current = app
+            switched = now
+        }
+
+        func before(_ check: ContinuousClock.Instant) -> String? {
+            switched > check ? previous : current
+        }
+    }
+
     static let interval: TimeInterval = 0.5
     static let sourceType = NSPasteboard.PasteboardType("org.nspasteboard.source")
     nonisolated static let transientType = NSPasteboard.PasteboardType(
@@ -33,20 +53,33 @@ public struct PasteboardWatch {
     ) -> @MainActor () -> Void {
         let logger = context.logger
         var watch = Self(pasteboard: pasteboard)
-        var previous = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        var front = FrontApps(current: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+        var lastCheck = ContinuousClock.now
+        context.observe(
+            NSWorkspace.didActivateApplicationNotification,
+            on: NSWorkspace.shared.notificationCenter, reading: activatedApp(in:)
+        ) { front.activate($0, at: .now) }
         let check: @MainActor () -> Void = {
-            let current = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-            defer { previous = current }
+            let checked = lastCheck
+            lastCheck = .now
             guard watch.poll() else { return }
             if watch.holdsPrivateData {
                 logger.debug("Skipped a concealed, transient or auto-generated copy")
             } else {
-                onChange(sourceApps(of: pasteboard, frontmost: current, before: previous))
+                onChange(
+                    sourceApps(
+                        of: pasteboard, frontmost: front.current, before: front.before(checked)))
             }
         }
         context.scheduleTimer(name, interval: interval, handler: check)
         context.own(.other, "\(name) last check") { MainActor.assumeIsolated(check) }
         return check
+    }
+
+    nonisolated private static func activatedApp(in notification: Notification) -> String? {
+        let app =
+            notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+        return app?.bundleIdentifier
     }
 
     static func sourceApps(
