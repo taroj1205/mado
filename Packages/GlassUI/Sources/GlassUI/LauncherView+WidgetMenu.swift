@@ -132,8 +132,10 @@ extension LauncherView {
                 choice: .move, title: Self.moveToTitle,
                 detail: widgetGrid.home(of: widget.id).title),
         ]
-        if sizeOptions(of: widget.id).count > 1, let size = widgetGrid.currentSize(of: widget.id) {
-            entries.append(.init(choice: .size, title: Self.sizeTitle, detail: size.title))
+        let current = widgetGrid.currentSize(of: widget.id)
+        let sizes = sizeOptions(of: widget.id).filter { $0.size != current }
+        if let current, !sizes.isEmpty {
+            entries.append(.init(choice: .size, title: Self.sizeTitle, detail: current.title))
         }
         if let pin = pinAction(for: widget) {
             entries.append(.init(choice: .pin, title: pin.title, detail: pin.detail))

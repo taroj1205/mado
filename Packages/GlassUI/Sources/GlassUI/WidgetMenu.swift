@@ -109,6 +109,9 @@ final class WidgetMenu {
                 keys: entry.choice == .open ? LauncherView.Action.primaryKeys : [],
                 icon: Self.icon(of: entry), isDestructive: entry.choice == .remove,
                 detail: entry.detail, opens: entry.size == nil && entry.choice.opensMore)
+            if entry.size != nil {
+                row.setAccessibilityValue(entry.checked)
+            }
             row.onPress = { [weak self] in
                 if let size = entry.size {
                     self?.onSize?(size)

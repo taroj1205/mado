@@ -169,7 +169,7 @@ extension WidgetGrid {
         for (float, (frame, item)) in zip(floats, zip(frames, placed)) {
             let margin = editing ? -WidgetFloatFrame.margin : 0
             if item.widget.id != settling?.id {
-                let shape = following(floating: frame, of: item.widget.id, on: item.spot.side)
+                let shape = following(floating: frame, of: item.widget.id)
                 float.setFrame(shape.insetBy(dx: margin, dy: margin), display: false)
                 if pull?.id == item.widget.id {
                     pulledFrame = float.frame

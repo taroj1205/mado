@@ -40,6 +40,7 @@ import Testing
         let sizes = try #require(view.sizeMenu)
         #expect(sizes.rows.map(\.label.stringValue) == ["Small", "Medium", "Large"])
         #expect(sizes.rows.map(\.detail.stringValue) == ["1 × 1", "2 × 1", "2 × 2"])
+        #expect(sizes.rows.map { $0.accessibilityValue() as? Bool } == [true, false, false])
         let menu = try #require(view.widgetMenu).glass.frame
         #expect(!sizes.glass.frame.intersects(menu))
         #expect(view.bounds.contains(sizes.glass.frame))

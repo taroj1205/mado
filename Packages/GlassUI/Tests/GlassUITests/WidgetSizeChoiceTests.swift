@@ -21,6 +21,7 @@ import Testing
     }
 
     @Test func theTileFollowsThePointerPastTheLargestSizeButOnlyStretchesALittle() throws {
+        view.widgetGrid.reducesMotion = { false }
         view.editWidgets()
         view.selectWidget(0)
         view.layoutSubtreeIfNeeded()
@@ -72,6 +73,60 @@ import Testing
         #expect(
             view.editBar.sizes.buttons.map(ObjectIdentifier.init)
                 == before.map(ObjectIdentifier.init))
+    }
+
+    @Test func withReducedMotionTheTileStopsAtTheLargestSize() {
+        view.widgetGrid.reducesMotion = { true }
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        view.widgetGrid.stretch("1", by: Self.step.scaled(9, 0))
+        view.layoutSubtreeIfNeeded()
+        let grid = view.widgetGrid
+        #expect(grid.tiles[0].frame.width == grid.guide.frame.width)
+    }
+
+    @Test(arguments: [(WidgetGrid.Spot.leftTop, true), (.aboveLeft, false)])
+    func aPulledShelfOrRailTileKeepsItsFarEdgeSoTheCornerStaysUnderThePointer(
+        spot: WidgetGrid.Spot, widens: Bool
+    ) throws {
+        view.widgetGrid.reducesMotion = { false }
+        view.widgetSpots = ["1": spot]
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        let grid = view.widgetGrid
+        let before = try #require(grid.floats.first).frame
+        let distance = widens ? CGSize(width: 20, height: 0) : CGSize(width: 0, height: 20)
+        grid.stretch("1", by: distance)
+        view.layoutSubtreeIfNeeded()
+        let after = try #require(grid.floats.first).frame
+        #expect(after.minX == before.minX)
+        #expect(after.maxY == before.maxY)
+        #expect(after.width > before.width || after.height > before.height)
+    }
+
+    @Test func theStripOnlyOffersSizesWithTheRowsItShows() {
+        view.widgets = (1...3).map(numbered)
+        view.widgetLayout = .strip
+        #expect(view.widgetGrid.options(for: "1") == [.small, .wide])
+    }
+
+    @Test func aLonePresetStillOffersTheSizeControlWhenTheCurrentSizeIsNotAPreset() {
+        view.widgets = (1...3).map(numbered)
+        view.widgetLayout = .strip
+        view.widgetSizes = ["1": .init(columns: 1, rows: 2)]
+        let grid = view.widgetGrid
+        #expect(grid.currentSize(of: "1") == .init(columns: 1, rows: 2))
+        #expect(grid.options(for: "1") == [.large])
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        #expect(!view.editBar.sizes.isHidden)
+        view.finishEditingWidgets()
+        view.openWidgetMenu(0, at: .zero)
+        let titles = view.widgetMenu?.rows.map(\.label.stringValue) ?? []
+        #expect(titles.contains("Size"))
     }
 
     @Test func eachTileOffersTheNamedSizesInsideItsOwnRange() {

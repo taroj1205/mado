@@ -62,12 +62,11 @@ extension WidgetGrid {
         return pulledFrame ?? frame
     }
 
-    func following(floating frame: NSRect, of id: String, on side: Side) -> NSRect {
+    func following(floating frame: NSRect, of id: String) -> NSRect {
         guard let pull, pull.id == id, let extent = pulledExtent(pull) else { return frame }
         return NSRect(
-            x: side == .left ? frame.maxX - extent.width : frame.minX,
-            y: side == .above ? frame.minY : frame.maxY - extent.height,
-            width: extent.width, height: extent.height)
+            x: frame.minX, y: frame.maxY - extent.height, width: extent.width,
+            height: extent.height)
     }
 
     func placeGuide(over frames: [NSRect]) {

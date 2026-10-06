@@ -6,6 +6,8 @@ final class WidgetEditBar: NSStackView {
         let spot: WidgetGrid.Spot
         let sizes: [WidgetSizeSwitch.Option]
         let current: WidgetGrid.Size
+
+        var offersChoice: Bool { sizes.contains { $0.size != current } }
     }
 
     enum Grouping {
@@ -25,7 +27,6 @@ final class WidgetEditBar: NSStackView {
         let width: CGFloat
     }
 
-    private static let sizeChoices = 2
     private static let nameFloor: CGFloat = 60
     private static let gap: CGFloat = 10
     private static let nameSize: CGFloat = 13
@@ -132,7 +133,7 @@ final class WidgetEditBar: NSStackView {
         for view: NSView in [move, divider, remove] {
             view.isHidden = several
         }
-        sizes.isHidden = several || widget.sizes.count < Self.sizeChoices
+        sizes.isHidden = several || !widget.offersChoice
         sizeDivider.isHidden = sizes.isHidden
         sizes.show(widget.sizes, current: widget.current)
         group.isHidden = grouping != .group

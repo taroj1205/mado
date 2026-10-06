@@ -54,7 +54,11 @@ extension WidgetGrid {
             home(of: id).side.isRail
             ? (1...Self.tallest(on: .left)).map { Size(columns: current.columns, rows: $0) }
             : Size.named
-        return all.filter { limited($0, for: widget) == $0 && ($0 == current || fits($0, for: id)) }
+        let tall = resizes(of: widget).contains(.vertical)
+        return all.filter { size in
+            limited(size, for: widget) == size && (tall || size.rows == current.rows)
+                && (size == current || fits(size, for: id))
+        }
     }
 
     private func fits(_ size: Size, for id: String) -> Bool {
