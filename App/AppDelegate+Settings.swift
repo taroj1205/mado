@@ -18,6 +18,7 @@ extension AppDelegate {
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: { [weak self] in self?.editWidgetsInLauncher() },
+            lyricsChanged: { [weak self] in self?.applyLyricsSettings() },
             speechModels: speechModels,
             colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
             menuBarAgenda: menuBar.agenda)
@@ -42,5 +43,10 @@ extension AppDelegate {
     func reloadSettings() {
         settingsFinder?.invalidate()
         settings?.reload()
+    }
+
+    @objc
+    func showSettings() {
+        settingsWindow().showWindow(nil)
     }
 }

@@ -79,7 +79,7 @@ extension LauncherView {
             selectedPill != nil || selectedWidget != nil ? CapsuleSlot.standard : capsuleSlots
         let groups = slots.map { capsuleGroup($0, primary: action, for: item) }
         arrangeCapsule(groups, for: slots)
-        actionCapsule.isHidden = action == nil || groups.allSatisfy(\.isEmpty)
+        actionCapsule.isHidden = action == nil || groups.allSatisfy(\.isEmpty) || showsLyrics
         showContext()
     }
 
@@ -130,7 +130,7 @@ extension LauncherView {
         }
         widgetGrid.isHidden = !showsWidgets
         showWidgetTools()
-        if editingWidgets {
+        if editingWidgets || showsLyrics {
             contextPill.show(nil as String?, symbol: nil)
             return
         }

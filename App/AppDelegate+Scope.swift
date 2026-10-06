@@ -168,6 +168,7 @@ extension AppDelegate {
         launcherView.showCalendar(
             showsCalendar ? { [calendarAgenda] in calendarAgenda.month(for: $0) } : nil)
         launcherView.show(sections, gridHome: home)
+        launcherView.showLyrics(scope == .root && widgets.searched.contains(.lyrics))
         (launcherView.context, launcherView.contextSymbol) =
             switch scope {
             case .clipboard:

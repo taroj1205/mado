@@ -163,6 +163,13 @@ import Testing
         #expect(await player.track()?.bundleID == Self.spotify)
     }
 
+    @Test func onlyTheEnabledPlayersAreConsideredWhenBothArePlaying() async {
+        playSpotify()
+        #expect(await player.track()?.bundleID == Self.music)
+        #expect(await player.track(among: [.spotify])?.bundleID == Self.spotify)
+        #expect(await player.track(among: []) == nil)
+    }
+
     @Test func aPausedTrackStaysButAStoppedPlayerOrAMissingTrackShowsNothing() async {
         apps.answers[Self.music]?["pPlS"] = state("kPSp")
         #expect(await player.track()?.isPlaying == false)

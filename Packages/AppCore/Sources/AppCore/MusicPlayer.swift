@@ -6,6 +6,11 @@ public actor MusicPlayer {
     typealias Send = @Sendable (NSAppleEventDescriptor, String) throws -> NSAppleEventDescriptor
     typealias Load = @Sendable (URL) async throws -> Data
 
+    public enum Player: String, CaseIterable, Sendable {
+        case music = "apple_music"
+        case spotify = "spotify"
+    }
+
     public struct Track: Equatable, Sendable {
         public let id: String
         public let title: String
@@ -14,6 +19,7 @@ public actor MusicPlayer {
         public var artwork: Data?
         public var album = ""
         public var duration: TimeInterval?
+        public var player = MusicPlayer.Player.music
         public var bundleID = ""
     }
 
@@ -45,15 +51,17 @@ public actor MusicPlayer {
 
     struct Source: Equatable, Sendable {
         static let music = Source(
-            bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook")
+            bundleID: "com.apple.Music", trackID: "pPIS", artwork: .rawData, suite: "hook",
+            player: .music)
         static let spotify = Source(
             bundleID: "com.spotify.client", trackID: "ID  ", artwork: .link, suite: "spfy",
-            durationUnit: MusicPlayer.millisecond)
+            player: .spotify, durationUnit: MusicPlayer.millisecond)
 
         let bundleID: String
         let trackID: String
         let artwork: Artwork
         let suite: String
+        let player: MusicPlayer.Player
         var durationUnit = 1.0
     }
 
@@ -99,6 +107,7 @@ public actor MusicPlayer {
     private let send: Send
     private let load: Load
     private var source: Source?
+    private var allowed = Set(Player.allCases)
     private var artwork: (id: String, data: Data?)?
 
     public init() {
@@ -143,8 +152,10 @@ public actor MusicPlayer {
             transactionID: AETransactionID(kAnyTransactionID))
     }
 
-    public func track() async -> Track? {
-        let found = Self.sources.compactMap { app in read(app).map { (app, $0) } }
+    public func track(among players: Set<Player> = Set(Player.allCases)) async -> Track? {
+        allowed = players
+        let found = Self.sources.filter { players.contains($0.player) }
+            .compactMap { app in read(app).map { (app, $0) } }
         let shown = found.first(where: \.1.isPlaying) ?? found.first { $0.0 == source }
         guard let (app, current) = shown ?? found.first else {
             source = nil
@@ -167,7 +178,7 @@ public actor MusicPlayer {
             guard read(source) == before else { break }
             try await Task.sleep(for: Self.settleStep)
         }
-        return await track()
+        return await track(among: allowed)
     }
 
     private func read(_ app: Source) -> Track? {
@@ -182,7 +193,7 @@ public actor MusicPlayer {
             album: (try? string("pAlb", from: app)) ?? "",
             duration: (try? number("pDur", of: Self.currentTrack, from: app))
                 .map { $0 * app.durationUnit },
-            bundleID: app.bundleID)
+            player: app.player, bundleID: app.bundleID)
     }
 
     public func position() -> TimeInterval? {

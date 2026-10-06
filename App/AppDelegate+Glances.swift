@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import GlassUI
+import SearchKit
 import WindowKit
 
 extension AppDelegate {
@@ -8,13 +9,14 @@ extension AppDelegate {
     private static let launcherHeight: CGFloat = 476
     private static let gridLauncherHeight: CGFloat = 548
     private static let half: CGFloat = 0.5
+    private static let mediaPage = "Media"
 
     var launcherSize: CGSize {
         CGSize(
             width: Self.launcherWidth,
             height: gridHeight(
                 otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
-                    || launcherView.showsCalendarAnswer
+                    || launcherView.showsCalendarAnswer || launcherView.showsLyrics
                     ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
@@ -43,16 +45,25 @@ extension AppDelegate {
         }
         launcherView.onWidget = { [weak self] widget in
             guard let self else { return }
-            if widget.id == Widgets.music || widget.id == Widgets.lyrics {
-                widgets.control(.playPause, in: launcherView)
+            if widget.id == Widgets.lyrics {
+                launcherView.openLyrics()
+            } else if widget.id == Widgets.music {
+                widgets.control(.playPause)
             } else {
                 runGlance(widgets.action(for: widget), for: widget.id)
             }
         }
+        launcherView.onPlayPause = { [weak self] in
+            self?.widgets.control(.playPause)
+        }
+        launcherView.onLyricsSettings = { [weak self] in
+            self?.hideLauncher()
+            self?.settingsWindow().open(.init(page: Self.mediaPage, tab: nil), entry: nil)
+        }
         launcherView.onOpenPlayer = { [weak self] in self?.widgets.openPlayer() }
         launcherView.onSkip = { [weak self] skip in
             guard let self else { return }
-            widgets.control(skip == .previous ? .previous : .next, in: launcherView)
+            widgets.control(skip == .previous ? .previous : .next)
         }
         launcherView.onPage = { [weak self] page in
             guard let self else { return }
@@ -60,7 +71,7 @@ extension AppDelegate {
         }
         launcherView.onSeek = { [weak self] line in
             guard let self else { return }
-            widgets.seek(toLine: line, in: launcherView)
+            widgets.seek(toLine: line)
         }
         widgets.onSearchedChange = { [weak self] in self?.searchAgain() }
         connectWidgetEditing()
@@ -104,7 +115,6 @@ extension AppDelegate {
         widgets.city = WeatherSettings.load(from: modules).city
         widgets.calendars.isOn = CalendarAgenda.isOn(in: modules)
         widgets.calendars.searchesDays = CalendarDayClick.searches(in: modules)
-        widgets.lyricsEnabled = LyricsSettings.load(from: modules).lookup
         widgets.show(in: launcherView)
         systemFeed.start { [weak self] stats in
             guard let self else { return }

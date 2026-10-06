@@ -3,37 +3,46 @@ import Foundation
 import GlassUI
 
 @MainActor
-final class LyricsFeed {
+struct LyricsFeed {
     private static let breakText = "♪"
+    private static let instrumentalText = "♪ Instrumental"
 
     private static var now: TimeInterval {
         ProcessInfo.processInfo.systemUptime
     }
 
-    private let session = LyricsSession()
-    private var shown: Int?
+    let nowPlaying: NowPlaying
 
-    var onChange: (() -> Void)? {
-        get { session.onChange }
-        set { session.onChange = newValue }
+    private var session: LyricsSession {
+        nowPlaying.session
     }
 
     private var moment: Lyrics.Moment? {
         session.moment(at: Self.now)
     }
 
-    func update(_ track: MusicPlayer.Track?, position: TimeInterval?, enabled: Bool) {
-        session.update(track, position: position, enabled: enabled, at: Self.now)
+    private static func resting(_ text: String) -> WidgetGrid.Lyric {
+        .init(text: text, progress: 0, remaining: nil)
     }
 
-    func advance() -> Bool {
-        let line = moment?.index
-        defer { shown = line }
-        return line != shown
+    func tileLine() -> (lyric: WidgetGrid.Lyric?, lookingUp: Bool) {
+        switch session.state {
+        case .found(let lyrics) where lyrics.isSynced:
+            return (syncedLine(of: lyrics), false)
+
+        case .instrumental:
+            return (Self.resting(Self.instrumentalText), false)
+
+        case .loading:
+            return (nil, true)
+
+        case .off, .idle, .found, .missing, .failed:
+            return (nil, false)
+        }
     }
 
-    func lyric() -> WidgetGrid.Lyric? {
-        guard let lyrics = session.lyrics, lyrics.isSynced, let moment else { return nil }
+    private func syncedLine(of lyrics: Lyrics) -> WidgetGrid.Lyric {
+        guard let moment else { return Self.resting(Self.breakText) }
         let text = lyrics.lines[moment.index].text
         return .init(
             text: text.isEmpty ? Self.breakText : text, progress: moment.progress,
@@ -53,14 +62,8 @@ final class LyricsFeed {
             title: track.title, artist: track.artist, artwork: track.artwork,
             isPlaying: track.isPlaying, status: status,
             lines: session.lyrics?.lines.map(\.text) ?? [], current: moment?.index,
-            progress: moment?.progress ?? 0, remaining: moment?.remaining)
-    }
-
-    func start(ofLine line: Int) -> TimeInterval? {
-        session.start(ofLine: line)
-    }
-
-    func moved(to position: TimeInterval, isPlaying: Bool) {
-        session.moved(to: position, isPlaying: isPlaying, at: Self.now)
+            progress: moment?.progress ?? 0, remaining: moment?.remaining,
+            position: status == .off ? nil : session.position(at: Self.now),
+            duration: track.duration ?? (status == .off ? nil : session.length))
     }
 }
