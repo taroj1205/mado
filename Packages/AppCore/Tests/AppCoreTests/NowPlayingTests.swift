@@ -21,7 +21,7 @@ import Testing
             time = position
         }
 
-        func track() -> MusicPlayer.Track? {
+        func track(among _: Set<MusicPlayer.Player>) -> MusicPlayer.Track? {
             tracked += 1
             return current
         }

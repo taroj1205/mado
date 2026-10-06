@@ -107,6 +107,7 @@ public actor MusicPlayer {
     private let send: Send
     private let load: Load
     private var source: Source?
+    private var allowed = Set(Player.allCases)
     private var artwork: (id: String, data: Data?)?
 
     public init() {
@@ -151,8 +152,10 @@ public actor MusicPlayer {
             transactionID: AETransactionID(kAnyTransactionID))
     }
 
-    public func track() async -> Track? {
-        let found = Self.sources.compactMap { app in read(app).map { (app, $0) } }
+    public func track(among players: Set<Player> = Set(Player.allCases)) async -> Track? {
+        allowed = players
+        let found = Self.sources.filter { players.contains($0.player) }
+            .compactMap { app in read(app).map { (app, $0) } }
         let shown = found.first(where: \.1.isPlaying) ?? found.first { $0.0 == source }
         guard let (app, current) = shown ?? found.first else {
             source = nil
@@ -175,7 +178,7 @@ public actor MusicPlayer {
             guard read(source) == before else { break }
             try await Task.sleep(for: Self.settleStep)
         }
-        return await track()
+        return await track(among: allowed)
     }
 
     private func read(_ app: Source) -> Track? {

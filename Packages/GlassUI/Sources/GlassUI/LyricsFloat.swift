@@ -67,7 +67,9 @@ public final class LyricsFloat {
         card.onDrag = { [weak self] phase in self?.drag(phase) }
         desktopPanel.contentView = desktop
         desktopPanel.level = Self.desktopLevel
-        desktopPanel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        desktopPanel.collectionBehavior = [
+            .canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle,
+        ]
         desktopPanel.animationBehavior = .none
     }
 

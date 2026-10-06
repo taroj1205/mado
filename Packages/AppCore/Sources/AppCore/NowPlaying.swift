@@ -120,7 +120,7 @@ public final class NowPlaying {
     }
 
     private func poll() async {
-        await apply(await source.track())
+        await apply(await source.track(among: players))
     }
 
     private func apply(_ found: MusicPlayer.Track?) async {
