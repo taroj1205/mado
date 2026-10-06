@@ -45,6 +45,7 @@ struct SettingsSection {
     let accessory: NSView?
     let headerAccessory: NSView?
     let content: NSView?
+    var refresh: (() -> Void)?
     private(set) var columns = 1
 
     var columnRows: [[Row]] {
@@ -75,6 +76,10 @@ struct SettingsSection {
         self.init(
             title, note: nil, rows, footer: nil, accessory: nil, content: nil,
             headerAccessory: headerAccessory)
+    }
+
+    init(_ title: String, _ rows: [Row], content: NSView) {
+        self.init(title, note: nil, rows, footer: nil, accessory: nil, content: content)
     }
 
     init(_ title: String, content: NSView) {

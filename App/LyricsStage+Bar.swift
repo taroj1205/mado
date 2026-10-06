@@ -37,7 +37,7 @@ extension LyricsStage {
     private func spot(for pin: LyricsPin, on screen: NSScreen) -> NSRect? {
         surroundings.flatMap { around in
             LyricsBarSpot.frame(
-                for: pin, around: around,
+                for: pin, around: around, side: settings.dockSide,
                 on: LyricsBarSpot.Screen(
                     frame: screen.frame, visibleFrame: screen.visibleFrame,
                     notchEdge: screen.auxiliaryTopLeftArea?.maxX))

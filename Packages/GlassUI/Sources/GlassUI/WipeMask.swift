@@ -29,11 +29,19 @@ final class WipeMask: CALayer {
     }
 
     func fit(width: CGFloat, height: CGFloat) {
-        bounds = CGRect(x: 0, y: 0, width: width, height: height)
-        position = CGPoint(x: 0, y: height * Self.half)
+        fit(CGRect(x: 0, y: 0, width: width, height: height))
+    }
+
+    func fit(_ rect: CGRect) {
+        bounds = CGRect(origin: .zero, size: rect.size)
+        position = CGPoint(x: rect.minX, y: rect.midY)
     }
 
     func run(from start: Double, remaining: Double?, playing: Bool, restart: Bool) {
+        run(from: start, remaining: remaining, delay: 0, playing: playing, restart: restart)
+    }
+
+    func run(from start: Double, remaining: Double?, delay: Double, playing: Bool, restart: Bool) {
         let from = max(start, Self.smallest)
         let runs = playing && (remaining ?? 0) > 0
         guard
@@ -51,6 +59,10 @@ final class WipeMask: CALayer {
         sweep.toValue = 1
         sweep.duration = remaining
         sweep.timingFunction = CAMediaTimingFunction(name: .linear)
+        if delay > 0 {
+            sweep.beginTime = convertTime(CACurrentMediaTime(), from: nil) + delay
+            sweep.fillMode = .backwards
+        }
         add(sweep, forKey: Self.key)
     }
 }

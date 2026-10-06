@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import GlassUI
 
 extension LyricsSettings {
     private static let footerSize: CGFloat = 12
@@ -31,11 +32,15 @@ extension LyricsSettings {
                 [
                     .init("Show lyrics", editor.toggle(\.lookup), icon: nil) {
                         "Adds a line to Now Playing and the Lyrics widget and pane."
+                    }
+                ]),
+            onScreen(editor),
+            SettingsSection(
+                "Display",
+                [
+                    .init("Size", editor.sizeControl(), icon: nil) {
+                        "For the island and corner cards. Other spots size themselves."
                     },
-                    .init("Keep on screen", editor.pinPopUp(), icon: nil) {
-                        "Stays after the launcher closes."
-                    },
-                    .init("Size", editor.sizeControl()),
                     .init("Show on", editor.screenPopUp()),
                     .init("Hide after pausing for", editor.hidePopUp(), icon: nil) {
                         "Hides at once when the player stops."
@@ -52,6 +57,22 @@ extension LyricsSettings {
                     .init("Kept on this Mac", caption("in memory until you quit")),
                 ], footer: footer, accessory: nil),
         ]
+    }
+
+    @MainActor
+    private static func onScreen(_ editor: LyricsSettingsEditor) -> SettingsSection {
+        let picker = editor.spotPicker()
+        let pin = editor.pinPopUp { picker.refresh() }
+        picker.onChange = { pin.refresh() }
+        var section = SettingsSection(
+            "On screen",
+            [
+                .init("Keep on screen", pin, icon: nil) {
+                    "Stays after the launcher closes. Click the map to choose where."
+                }
+            ], content: picker)
+        section.refresh = { picker.refresh() }
+        return section
     }
 
     @MainActor

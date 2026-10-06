@@ -16,35 +16,45 @@ public enum LyricsBarSpot {
     static let height: CGFloat = 22
     static let gap: CGFloat = 16
     static let widths: ClosedRange<CGFloat> = 140...300
-    static let typeHeight: CGFloat = 64
-    static let typeWidths: ClosedRange<CGFloat> = 160...380
+    static let typeWidths: ClosedRange<CGFloat> = 220...520
+    static let typeHeight: CGFloat = 168
+    static let typeRest: CGFloat = 62
     private static let half: CGFloat = 0.5
     private static let slack: CGFloat = 1
 
     public static func frame(
-        for pin: LyricsPin, around surroundings: LyricsSurroundings, on screen: Screen
+        for pin: LyricsPin, around surroundings: LyricsSurroundings, side: LyricsSide,
+        on screen: Screen
     ) -> NSRect? {
         switch pin {
-        case .dock: dock(surroundings, on: screen)
+        case .dock: dock(surroundings, side: side, on: screen)
         case .menus: menus(surroundings, on: screen)
         case .corner, .desktop, .island, .menuBar: nil
         }
     }
 
-    private static func dock(_ surroundings: LyricsSurroundings, on screen: Screen) -> NSRect? {
+    private static func dock(
+        _ surroundings: LyricsSurroundings, side: LyricsSide, on screen: Screen
+    ) -> NSRect? {
         let inset = screen.visibleFrame.minY - screen.frame.minY
         guard let items = surroundings.dock, inset >= height,
             screen.visibleFrame.minX == screen.frame.minX,
             screen.visibleFrame.maxX == screen.frame.maxX,
             items.intersects(screen.frame)
         else { return nil }
-        let before = items.minX - screen.frame.minX
-        let after = screen.frame.maxX - items.maxX
-        let span =
-            before > after ? (screen.frame.minX, items.minX) : (items.maxX, screen.frame.maxX)
-        let frame = fit(
-            from: span.0, to: span.1, centre: items.midY, widths: typeWidths, height: typeHeight)
-        return frame.flatMap { screen.frame.contains($0) ? $0 : nil }
+        let spans = [
+            LyricsSide.leading: (screen.frame.minX, items.minX),
+            .trailing: (items.maxX, screen.frame.maxX),
+        ]
+        let bottom = (items.midY - typeRest * half).rounded()
+        let frames = [side, side.other].compactMap { side in
+            spans[side].flatMap { span in
+                fit(
+                    from: span.0, to: span.1, bottom: bottom, widths: typeWidths,
+                    height: typeHeight)
+            }
+        }
+        return frames.first { screen.frame.contains($0) }
     }
 
     private static func menus(_ surroundings: LyricsSurroundings, on screen: Screen) -> NSRect? {
@@ -61,18 +71,16 @@ public enum LyricsBarSpot {
         let limits = [screen.frame.maxX, screen.notchEdge].compactMap(\.self) + items.map(\.minX)
         return fit(
             from: screen.frame.minX + end, to: limits.min() ?? screen.frame.maxX,
-            centre: band.midY, widths: widths, height: height)
+            bottom: (band.midY - height * half).rounded(), widths: widths, height: height)
     }
 
     private static func fit(
-        from lower: CGFloat, to upper: CGFloat, centre: CGFloat, widths: ClosedRange<CGFloat>,
+        from lower: CGFloat, to upper: CGFloat, bottom: CGFloat, widths: ClosedRange<CGFloat>,
         height: CGFloat
     ) -> NSRect? {
         let room = upper - lower - gap - gap
         guard room >= widths.lowerBound else { return nil }
         return NSRect(
-            x: lower + gap, y: (centre - height * half).rounded(),
-            width: min(room, widths.upperBound),
-            height: height)
+            x: lower + gap, y: bottom, width: min(room, widths.upperBound), height: height)
     }
 }

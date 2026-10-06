@@ -20,6 +20,7 @@ final class SettingsPageController: NSViewController {
     private var tab: Int
     private var switches: [SettingsSwitch] = []
     private var popUps: [SettingsPopUp] = []
+    private var refreshers: [() -> Void] = []
     var details: [(label: NSTextField, text: () -> String)] = []
     private var moduleToggle: NSView?
     let spotlight = SettingsSpotlight()
@@ -92,6 +93,9 @@ final class SettingsPageController: NSViewController {
         for detail in details {
             detail.label.stringValue = detail.text()
         }
+        for refresher in refreshers {
+            refresher()
+        }
     }
 
     func show(tab title: String?) {
@@ -119,6 +123,7 @@ final class SettingsPageController: NSViewController {
         let controls = sections.flatMap(\.rows).map(\.control)
         switches = controls.compactMap { $0 as? SettingsSwitch }
         popUps = controls.compactMap { $0 as? SettingsPopUp }
+        refreshers = sections.compactMap(\.refresh)
         details = []
         for view in stack.arrangedSubviews {
             view.removeFromSuperview()

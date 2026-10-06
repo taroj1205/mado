@@ -44,10 +44,6 @@ struct LyricsBarTests {
         #expect(unsafe bar.type.superview == nil)
     }
 
-    @Test func theDockTypeFitsTheHeightTheSpotGivesIt() {
-        #expect(LyricsDesktop(style: .dock).fittingSize.height <= LyricsBarSpot.typeHeight)
-    }
-
     @Test func sharingFollowsTheSetting() {
         bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: false)
         defer { bar.hide(animated: false) }

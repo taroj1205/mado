@@ -33,6 +33,7 @@ struct LyricsSettings: StoredValue, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case corner = "corner"
+        case dockSide = "dock_side"
         case hideDelay = "hide_after"
         case hidesInSharing = "hides_in_sharing"
         case look = "look"
@@ -48,6 +49,7 @@ struct LyricsSettings: StoredValue, Equatable {
     var pin: LyricsPin?
     var look: LyricsLook
     var corner: LyricsCorner
+    var dockSide: LyricsSide
     var screen: LauncherScreen
     var hideDelay: HideDelay
     var hidesInSharing: Bool
@@ -57,11 +59,16 @@ struct LyricsSettings: StoredValue, Equatable {
         pin != nil && lookup && !players.isEmpty
     }
 
+    var spot: LyricsSpot? {
+        pin.map { LyricsSpot(pin: $0, corner: corner, side: dockSide) }
+    }
+
     init() {
         lookup = false
         pin = nil
         look = .line
         corner = .bottomTrailing
+        dockSide = .trailing
         screen = .mouse
         hideDelay = .ten
         hidesInSharing = true
@@ -80,6 +87,9 @@ struct LyricsSettings: StoredValue, Equatable {
         corner =
             try values.decodeIfPresent(String.self, forKey: .corner)
             .flatMap(LyricsCorner.init(rawValue:)) ?? corner
+        dockSide =
+            try values.decodeIfPresent(String.self, forKey: .dockSide)
+            .flatMap(LyricsSide.init(rawValue:)) ?? dockSide
         screen = LauncherScreen(json: try values.decodeIfPresent(JSONValue.self, forKey: .screen))
         hideDelay =
             try values.decodeIfPresent(Int.self, forKey: .hideDelay)
@@ -91,12 +101,19 @@ struct LyricsSettings: StoredValue, Equatable {
             .map { names in Set(names.compactMap(MusicPlayer.Player.init(rawValue:))) } ?? players
     }
 
+    mutating func place(at spot: LyricsSpot) {
+        pin = spot.pin
+        corner = spot.corner ?? corner
+        dockSide = spot.side ?? dockSide
+    }
+
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(lookup, forKey: .lookup)
         try values.encodeIfPresent(pin?.rawValue, forKey: .pin)
         try values.encode(look.rawValue, forKey: .look)
         try values.encode(corner.rawValue, forKey: .corner)
+        try values.encode(dockSide.rawValue, forKey: .dockSide)
         try values.encode(screen.json, forKey: .screen)
         try values.encode(hideDelay.rawValue, forKey: .hideDelay)
         try values.encode(hidesInSharing, forKey: .hidesInSharing)

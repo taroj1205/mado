@@ -36,11 +36,24 @@ struct LyricsSettingsEditor {
         return control
     }
 
-    func pinPopUp() -> SettingsPopUp {
+    func spotPicker() -> LyricsSpotPicker {
+        let picker = LyricsSpotPicker(
+            read: { current.spot },
+            write: { spot in
+                edit { settings in
+                    if let spot { settings.place(at: spot) } else { settings.pin = nil }
+                }
+            })
+        picker.isEnabled = modules != nil
+        return picker
+    }
+
+    func pinPopUp(then picked: @escaping () -> Void) -> SettingsPopUp {
         popUp {
             let choice = { (pin: LyricsPin?) in
                 SettingsPopUp.Choice(title: pin?.title ?? "Off", isSelected: pin == current.pin) {
                     edit { settings in settings.pin = pin }
+                    picked()
                 }
             }
             return [
