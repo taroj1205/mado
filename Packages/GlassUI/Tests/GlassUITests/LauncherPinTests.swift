@@ -5,6 +5,8 @@ import Testing
 
 @MainActor
 @Suite struct LauncherPinTests {
+    private static let places = LyricsPin.allCases.map(\.title)
+
     private let panel = NSPanel(
         contentRect: NSRect(x: 0, y: 0, width: 760, height: 548),
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -73,14 +75,14 @@ import Testing
         #expect(try !titles().contains("Pin to screen"))
     }
 
-    @Test func pinToScreenListsTheFourPlacesInTheDesignsOrderAndPicksOne() throws {
+    @Test func pinToScreenListsEveryPlaceInOrderAndPicksOne() throws {
         var picked: [LyricsPin?] = []
         view.onPinLyrics = { picked.append($0) }
         view.widgets = [song]
         view.selectWidget(0)
         view.showActions()
         try press(2)
-        #expect(try titles() == ["Island", "Corner card", "Menu bar line", "Desktop type"])
+        #expect(try titles() == Self.places)
         try press(2)
         #expect(picked == [.menuBar])
         #expect(!view.choosingAction)
@@ -94,9 +96,8 @@ import Testing
         view.selectWidget(0)
         view.showActions()
         try press(2)
-        #expect(
-            try titles() == ["Island", "Corner card", "Menu bar line", "Desktop type", "Unpin"])
-        try press(4)
+        #expect(try titles() == Self.places + ["Unpin"])
+        try press(6)
         #expect(picked.count == 1 && picked[0] == nil)
     }
 
@@ -183,8 +184,7 @@ import Testing
         #expect(pin.detail.stringValue == "Island")
         #expect(pin.accessibilityPerformPress())
         #expect(view.widgetMenu == nil && view.choosingAction)
-        #expect(
-            try titles() == ["Island", "Corner card", "Menu bar line", "Desktop type", "Unpin"])
+        #expect(try titles() == Self.places + ["Unpin"])
     }
 
     @Test func pressingTheLyricsTileThroughAccessibilityOpensTheLyrics() throws {

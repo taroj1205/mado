@@ -88,7 +88,7 @@ public struct FocusedWindow {
         return (position, extent)
     }
 
-    private static func element(_ value: CFTypeRef) throws(Failure) -> AXUIElement {
+    static func element(_ value: CFTypeRef) throws(Failure) -> AXUIElement {
         guard CFGetTypeID(value) == AXUIElementGetTypeID() else { throw .noWindow }
         return unsafe unsafeDowncast(value, to: AXUIElement.self)
     }
