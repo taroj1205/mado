@@ -29,7 +29,7 @@ extension LauncherView {
     func showGrid(_ sections: [ResultList.Section], home: String?, keeping id: String?) {
         let changed = showsGrid != (home != nil)
         gridHome = home
-        results.isHidden = home != nil || showsLyrics
+        results.isHidden = home != nil || showsLyrics || editingWidgets
         emojiGrid.isHidden = home == nil
         if home != nil {
             emojiGrid.show(sections, keeping: id)

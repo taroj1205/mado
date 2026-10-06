@@ -3,7 +3,7 @@ import AppKit
 extension WidgetGrid {
     public struct Spot: Hashable, Comparable, Sendable, Codable {
         static let shelfRows = 3
-        static let panelRows = 2
+        static let panelRows = 3
         static let stops = 6
         private static let centreColumn = 2
         private static let middleStop = 2

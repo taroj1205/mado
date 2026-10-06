@@ -40,6 +40,7 @@ extension LauncherView {
             editBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.capsuleInset),
         ])
         doneButton.onPress = { [weak self] in self?.finishEditingWidgets() }
+        connectSizeSwitch()
         editBar.onMove = { [weak self] in self?.toggleSpotPicker() }
         editBar.onGroup = { [weak self] in self?.groupWidgets() }
         editBar.onUngroup = { [weak self] in self?.ungroupWidget() }
@@ -233,13 +234,14 @@ extension LauncherView {
             } else {
                 .off
             }
-        editBar.show(
-            widget.map { ($0.name, widgetGrid.home(of: $0.id)) }, moving: spotPicker != nil,
-            count: picked.count, grouping: grouping)
         let hint = widgetNote ?? (widget == nil ? (Self.editHint, false) : nil)
         editBar.show(
-            hint: hint?.text, symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
-            undoable: hint?.undoable == true)
+            .init(
+                widget: widget.map { subject(of: $0) }, moving: spotPicker != nil,
+                count: picked.count, grouping: grouping, hint: hint?.text,
+                symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
+                undoable: hint?.undoable == true,
+                width: bounds.width - Self.capsuleInset - Self.capsuleInset))
         gallery.placed = Dictionary(
             widgetGrid.widgets.map { ($0.id, widgetGrid.home(of: $0.id)) }
         ) { first, _ in first }

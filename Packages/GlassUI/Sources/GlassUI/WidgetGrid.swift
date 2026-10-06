@@ -37,7 +37,6 @@ public final class WidgetGrid: NSView {
     }
 
     nonisolated static let columns = 6
-    nonisolated static let widest = 3
     static let dragType = NSPasteboard.PasteboardType("com.taroj1205.mado.widget")
     static let rowHeight: CGFloat = 78
     static let stripHeight: CGFloat = 72
@@ -87,6 +86,15 @@ public final class WidgetGrid: NSView {
         }
     }
 
+    var pull: Pull? {
+        didSet {
+            if pull != oldValue { repull() }
+        }
+    }
+
+    var pulledFrame: NSRect?
+    var settling: Settle?
+
     var tileLayout: Layout? = .grid {
         didSet {
             if tileLayout != oldValue { update(rebuilding: true) }
@@ -105,6 +113,7 @@ public final class WidgetGrid: NSView {
             dragged = nil
             order = []
             incoming = nil
+            pull = nil
             update(rebuilding: true)
         }
     }
@@ -172,6 +181,8 @@ public final class WidgetGrid: NSView {
     let dock = DashedOutline(
         colour: WidgetRailsView.dock, width: dockEdge, fill: .clear, radius: WidgetTile.radius)
     let dockCaption = NSTextField(labelWithString: "IN THE PANEL · DROP OR CLICK A WIDGET BELOW")
+    let guide = DashedOutline.slot(radius: WidgetTile.radius)
+    let sizeLabel = WidgetSpotLabel()
 
     var rowHeight: CGFloat {
         tileLayout == .strip ? Self.stripHeight : Self.rowHeight
@@ -217,6 +228,7 @@ public final class WidgetGrid: NSView {
         dockCaption.isHidden = true
         addSubview(dock)
         addSubview(dockCaption)
+        arrangeGuide()
         rails.board.onDrag = { [weak self] id, point, source in
             self?.onDrag?(id, point, source) ?? []
         }
@@ -231,9 +243,11 @@ public final class WidgetGrid: NSView {
     override public func layout() {
         super.layout()
         let frames = frames(of: panelCells)
-        for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated() {
-            place(tile, in: frame, tilt: tilt(at: index))
+        for (index, (tile, frame)) in zip(tiles.filter { !$0.floating }, frames).enumerated()
+        where tile.widgetID != settling?.id {
+            place(tile, in: following(frame, of: tile.widgetID), tilt: tilt(at: index))
         }
+        placeGuide(over: frames)
         dock.frame = bounds.insetBy(dx: Self.dockInset, dy: 0)
         dock.frame.origin.y = Self.dockInset
         dock.frame.size.height = bounds.height - Self.dockInset - Self.bottom
@@ -241,6 +255,7 @@ public final class WidgetGrid: NSView {
         dockCaption.frame = NSRect(
             x: Self.inset + Self.captionInset, y: dock.frame.midY - caption.height * Self.half,
             width: caption.width, height: caption.height)
+        springSettled()
     }
 
     private func update(rebuilding: Bool = false) {
@@ -252,6 +267,7 @@ public final class WidgetGrid: NSView {
             tiles = zip(visible.indices, floating).map(makeTile)
             floats = tiles.filter(\.floating).map(Self.makeFloat)
             tiles.filter { !$0.floating }.forEach(addSubview)
+            addSubview(sizeLabel)
         }
         for (tile, widget) in zip(tiles, visible) {
             tile.compact = tileLayout == .strip && !tile.floating

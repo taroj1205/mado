@@ -153,6 +153,8 @@ final class WidgetTile: NSView {
 
     override func layout() {
         super.layout()
+        dash.frame = bounds
+        slot.frame = bounds
         more.frame = moreFrame
         let next = WidgetForm(size: bounds.size)
         if next != form {

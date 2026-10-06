@@ -2,7 +2,7 @@ import AppKit
 
 extension WidgetGrid {
     private static let reach: CGFloat = 160
-    static let maxPanelRows = 2
+    static let maxPanelRows = Spot.panelRows
     private static let maxShelfRows = 2
     private static let maxRailRows = 3
     private static let half: CGFloat = 0.5
@@ -234,9 +234,14 @@ extension WidgetGrid {
             CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
         }
         model.hot = moving?.side
-        model.ghost = ghost(in: window).map { ghost in
-            WidgetRailsView.Mark(spot: ghost.spot, frame: local(ghost.frame))
-        }
+        model.ghost =
+            resizeMark(in: window).map { mark in
+                WidgetRailsView.Mark(
+                    spot: mark.spot, frame: local(mark.frame), caption: mark.caption)
+            }
+            ?? ghost(in: window).map { ghost in
+                WidgetRailsView.Mark(spot: ghost.spot, frame: local(ghost.frame))
+            }
         model.refused = refused.map { spot in
             let point = Self.anchorPoint(of: spot, beside: panel)
             let size = CGSize(width: Self.refusedWidth, height: Self.rowHeight)

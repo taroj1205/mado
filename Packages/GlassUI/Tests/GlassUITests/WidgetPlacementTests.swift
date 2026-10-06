@@ -100,10 +100,10 @@ import Testing
         #expect(!grid.accepts("3", at: .cell(column: 4, row: 1), before: nil))
     }
 
-    @Test func aTallPinnedTileMustStayInsideTwoRows() {
+    @Test func aTallPinnedTileMustStayInsideThreeRows() {
         view.widgetSizes = ["1": .init(columns: 2, rows: 2)]
-        #expect(!view.widgetGrid.accepts("1", at: .cell(column: 0, row: 1), before: nil))
-        #expect(view.widgetGrid.accepts("1", at: .cell(column: 0, row: 0), before: nil))
+        #expect(!view.widgetGrid.accepts("1", at: .cell(column: 0, row: 2), before: nil))
+        #expect(view.widgetGrid.accepts("1", at: .cell(column: 0, row: 1), before: nil))
     }
 
     @Test func belowTilesMirrorTheShelfAboveAndStartSixteenPointsUnderThePanel() {

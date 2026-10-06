@@ -2,6 +2,12 @@ extension WidgetGrid {
     public struct Widget: Sendable, Equatable {
         static let wideSpan = 2
         static let tallRows = 2
+        private static let monthCeiling = (columns: 4, rows: 3)
+        private static let verseCeiling = (
+            columns: WidgetGrid.columns, rows: WidgetGrid.Spot.panelRows
+        )
+        private static let playerCeiling = (columns: 4, rows: 2)
+        private static let plainCeiling = (columns: 3, rows: 2)
 
         public let id: String
         public let name: String
@@ -17,6 +23,17 @@ extension WidgetGrid {
         var smallest: Size {
             Size(
                 columns: isWide ? Self.wideSpan : 1, rows: isTall ? Self.tallRows : 1)
+        }
+
+        var largest: Size {
+            let ceiling =
+                switch content {
+                case .month: Self.monthCeiling
+                case .verse: Self.verseCeiling
+                case .track, .event: Self.playerCeiling
+                default: Self.plainCeiling
+                }
+            return Size(columns: ceiling.columns, rows: ceiling.rows)
         }
 
         var size: Size {
@@ -108,6 +125,10 @@ extension WidgetGrid {
             case .meters: true
             default: false
             }
+        }
+
+        func shownSize(on side: Side) -> Size {
+            side.isRail ? railSize : size
         }
 
         func size(in layout: Layout?) -> Size {

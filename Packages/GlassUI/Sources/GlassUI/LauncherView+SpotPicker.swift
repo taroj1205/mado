@@ -42,7 +42,8 @@ extension LauncherView {
         ])
         spotPicker = picker
         if let widgetMenu {
-            place(picker, beside: widgetMenu)
+            closeSizeMenu()
+            place(picker.glass, width: WidgetSpotPicker.size.width, beside: widgetMenu)
             return
         }
         guard let panel else {

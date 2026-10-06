@@ -17,16 +17,68 @@ import Testing
         let menu = try #require(view.widgetMenu)
         #expect(
             titles == [
-                "Open Weather", "Move to…", "Edit Widgets", "Add Widgets…", "Remove Weather",
+                "Open Weather", "Move to…", "Size", "Edit Widgets", "Add Widgets…",
+                "Remove Weather",
             ])
         #expect(menu.rows[0].keycaps.map(\.name.stringValue) == ["↵"])
         #expect(menu.rows[1].detail.stringValue == "In the panel")
         #expect(unsafe menu.rows[1].chevron.superview != nil)
-        #expect(menu.rows[4].isDestructive)
+        #expect(menu.rows[2].detail.stringValue == "Small · 1 × 1")
+        #expect(menu.rows[5].isDestructive)
         #expect(view.selectedWidget == 1)
         #expect(tiles.map(\.menuOpen) == [false, true, false])
         #expect(view.bounds.contains(menu.glass.frame))
         #expect(menu.glass.frame.width == WidgetMenu.width)
+    }
+
+    @Test func theSizeEntryOpensTheNamedSizesAndChoosingOneResizesAndClosesBoth() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        try rig.open(1)
+        #expect(try #require(view.widgetMenu?.rows[2]).accessibilityPerformPress())
+        view.layoutSubtreeIfNeeded()
+        let sizes = try #require(view.sizeMenu)
+        #expect(sizes.rows.map(\.label.stringValue) == ["Small", "Medium", "Large"])
+        #expect(sizes.rows.map(\.detail.stringValue) == ["1 × 1", "2 × 1", "2 × 2"])
+        #expect(sizes.rows.map { $0.accessibilityValue() as? Bool } == [true, false, false])
+        let menu = try #require(view.widgetMenu).glass.frame
+        #expect(!sizes.glass.frame.intersects(menu))
+        #expect(view.bounds.contains(sizes.glass.frame))
+        #expect(sizes.rows[1].accessibilityPerformPress())
+        #expect(edits == [.resize("weather", .wide)])
+        #expect(view.widgetMenu == nil && view.sizeMenu == nil)
+    }
+
+    @Test func theKeyboardWalksTheSizesAndLeftClosesOnlyThatList() throws {
+        var edits: [WidgetSettings.Edit] = []
+        view.onWidgetEdit = { edits.append($0) }
+        try rig.open(1)
+        let editor = try #require(view.field.currentEditor() as? NSTextView)
+        let command = { (selector: Selector) in
+            view.control(view.field, textView: editor, doCommandBy: selector)
+        }
+        _ = command(#selector(NSResponder.moveDown))
+        _ = command(#selector(NSResponder.moveDown))
+        #expect(command(#selector(NSResponder.insertNewline)))
+        #expect(view.sizeMenu != nil)
+        #expect(command(#selector(NSResponder.moveLeft)))
+        #expect(view.sizeMenu == nil && view.widgetMenu != nil)
+        _ = command(#selector(NSResponder.insertNewline))
+        #expect(command(#selector(NSResponder.moveDown)))
+        #expect(command(#selector(NSResponder.insertNewline)))
+        #expect(edits == [.resize("weather", .wide)])
+        #expect(view.widgetMenu == nil && view.sizeMenu == nil)
+    }
+
+    @Test func aTileWithNothingToChooseBetweenHasNoSizeEntry() {
+        view.widgets = (1...18).map { number in
+            .init(
+                id: "\(number)", name: "W\(number)", value: "", detail: "", action: "Open",
+                spoken: "W")
+        }
+        view.layoutSubtreeIfNeeded()
+        view.openWidgetMenu(0, at: .zero)
+        #expect(!titles.contains("Size"))
     }
 
     @Test func controlClickingAWidgetOpensTheSameMenu() throws {
@@ -58,10 +110,10 @@ import Testing
         #expect(view.widgetMenu == nil)
         #expect(tiles.allSatisfy { !$0.menuOpen })
         try rig.open(1)
-        #expect(try #require(view.widgetMenu?.rows[4]).accessibilityPerformPress())
+        #expect(try #require(view.widgetMenu?.rows[5]).accessibilityPerformPress())
         #expect(edits == [.remove("weather")])
         try rig.open(1)
-        #expect(try #require(view.widgetMenu?.rows[2]).accessibilityPerformPress())
+        #expect(try #require(view.widgetMenu?.rows[3]).accessibilityPerformPress())
         #expect(view.editingWidgets)
         #expect(view.selectedWidget == 1)
         #expect(view.widgetMenu == nil)
@@ -69,7 +121,7 @@ import Testing
 
     @Test func addWidgetsOpensEditModeWithNothingPicked() throws {
         try rig.open(1)
-        #expect(try #require(view.widgetMenu?.rows[3]).accessibilityPerformPress())
+        #expect(try #require(view.widgetMenu?.rows[4]).accessibilityPerformPress())
         #expect(view.editingWidgets)
         #expect(view.selectedWidget == nil)
         #expect(view.widgetMenu == nil)
@@ -118,8 +170,9 @@ import Testing
         #expect(command(#selector(NSResponder.insertNewline)))
         #expect(ran == ["weather"])
         try rig.open(1)
-        #expect(command(#selector(NSResponder.moveDown)))
-        #expect(command(#selector(NSResponder.moveDown)))
+        for _ in 1...3 {
+            #expect(command(#selector(NSResponder.moveDown)))
+        }
         #expect(command(#selector(NSResponder.insertNewline)))
         #expect(view.editingWidgets)
         view.finishEditingWidgets()

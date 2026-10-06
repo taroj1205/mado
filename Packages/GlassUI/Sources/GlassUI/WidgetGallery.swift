@@ -64,7 +64,9 @@ public final class WidgetGallery: NSView {
     }
 
     var placed: [String: WidgetGrid.Spot] = [:] {
-        didSet { showPlaced() }
+        didSet {
+            if placed != oldValue { showPlaced() }
+        }
     }
 
     var query = "" {

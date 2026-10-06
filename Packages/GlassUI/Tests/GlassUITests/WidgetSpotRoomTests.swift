@@ -46,7 +46,7 @@ import Testing
     }
 
     @Test func roomIsCheckedWhereTheWidgetWouldGo() {
-        view.widgets = (1...10).map { widget("\($0)") } + [widget("wide", wide: true)]
+        view.widgets = (1...16).map { widget("\($0)") } + [widget("wide", wide: true)]
         view.widgetSpots = ["wide": .leftTop]
         #expect(view.widgetGrid.accepts("wide", at: .panel, before: nil))
         #expect(!view.widgetGrid.accepts("wide", at: .panel, before: "6"))

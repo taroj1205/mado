@@ -6,9 +6,12 @@ extension WidgetGrid {
 
         public static let small = Self(columns: 1)
         public static let wide = Self(columns: double)
+        static let large = Self(columns: double, rows: double)
+        static let extraLarge = Self(columns: double * double, rows: double)
+        static let named = [small, wide, large, extraLarge]
 
         private static let names: [Self: String] = [
-            small: "Small", wide: "Medium", Self(columns: double, rows: double): "Large",
+            small: "Small", wide: "Medium", large: "Large", extraLarge: "Extra Large",
         ]
 
         public let columns: Int
@@ -18,8 +21,16 @@ extension WidgetGrid {
             "\(columns) × \(rows)"
         }
 
+        var name: String? {
+            Self.names[self]
+        }
+
+        var rowsTitle: String {
+            rows == 1 ? "1 row" : "\(rows) rows"
+        }
+
         public var title: String {
-            Self.names[self].map { "\($0) · \(dimensions)" } ?? dimensions
+            name.map { "\($0) · \(dimensions)" } ?? dimensions
         }
 
         public init(columns: Int, rows: Int = 1) {
