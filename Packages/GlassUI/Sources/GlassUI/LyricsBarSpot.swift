@@ -42,8 +42,9 @@ public enum LyricsBarSpot {
         let after = screen.frame.maxX - items.maxX
         let span =
             before > after ? (screen.frame.minX, items.minX) : (items.maxX, screen.frame.maxX)
-        return fit(
+        let frame = fit(
             from: span.0, to: span.1, centre: items.midY, widths: typeWidths, height: typeHeight)
+        return frame.flatMap { screen.frame.contains($0) ? $0 : nil }
     }
 
     private static func menus(_ surroundings: LyricsSurroundings, on screen: Screen) -> NSRect? {

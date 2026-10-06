@@ -33,6 +33,14 @@ struct LyricsBarSpotTests {
         #expect(frame == NSRect(x: 1_537, y: 14, width: 247, height: 64))
     }
 
+    @Test func noDockTypeWhereItsThreeLinesWouldLeaveTheScreen() {
+        let small = LyricsBarSpot.Screen(
+            frame: Self.screen.frame, visibleFrame: NSRect(x: 0, y: 30, width: 1_800, height: 1_122)
+        )
+        #expect(spot(.dock, dock: NSRect(x: 600, y: 4, width: 600, height: 32), on: small) == nil)
+        #expect(spot(.dock, dock: NSRect(x: 600, y: 4, width: 600, height: 64), on: small) != nil)
+    }
+
     @Test func noDockTypeWithoutRoomOrABottomDock() {
         #expect(spot(.dock, dock: NSRect(x: 100, y: 10, width: 1_600, height: 72)) == nil)
         #expect(spot(.dock, dock: nil) == nil)
