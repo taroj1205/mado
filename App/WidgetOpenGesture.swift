@@ -4,7 +4,7 @@ enum WidgetOpenGesture: String, LauncherSetting {
 
     static let allCases: [Self] = [.doubleClick, .singleClick]
     static let field = "widget_open_gesture"
-    static let fallback = Self.doubleClick
+    static let fallback = Self.singleClick
 
     var title: String {
         switch self {

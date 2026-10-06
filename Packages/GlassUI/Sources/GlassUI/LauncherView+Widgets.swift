@@ -79,12 +79,12 @@ extension LauncherView {
             widgetGrid.topAnchor.constraint(equalTo: separator.bottomAnchor),
         ])
         widgetGrid.onPress = { [weak self] index in self?.pressWidget(index) }
-        widgetGrid.onTap = { [weak self] index in self?.tapWidget(index) }
         widgetGrid.onMenu = { [weak self] index, point in self?.openWidgetMenu(index, at: point) }
         widgetGrid.onHold = { [weak self] index, grab in self?.holdWidget(index, grabbedAt: grab) }
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
+        widgetGrid.onPlay = { [weak self] index in self?.playTrack(index) }
         widgetGrid.onDay = { [weak self] query in
             self?.closeWidgetMenu()
             self?.replaceQuery(with: query)
@@ -139,6 +139,12 @@ extension LauncherView {
         onSkip?(skip)
     }
 
+    func playTrack(_ index: Int) {
+        closeWidgetMenu()
+        selectWidget(index)
+        onWidget?(widgetGrid.shown[index])
+    }
+
     func pageMonth(_ index: Int, _ page: WidgetGrid.Page) {
         closeWidgetMenu()
         selectWidget(index)
@@ -180,13 +186,6 @@ extension LauncherView {
     func pressWidget(_ index: Int) {
         closeWidgetMenu()
         selectWidget(index)
-    }
-
-    func tapWidget(_ index: Int) {
-        let widget = widgetGrid.shown[index]
-        if widget.isPlayer, !editingWidgets {
-            onWidget?(widget)
-        }
     }
 
     func openWidget(_ index: Int) {

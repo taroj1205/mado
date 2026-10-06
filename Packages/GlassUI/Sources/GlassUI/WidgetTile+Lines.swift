@@ -16,23 +16,13 @@ extension WidgetTile {
 
     func pressForAccessibility() {
         onPress?()
-        tap()
-        if widget?.isPlayer != true {
-            onOpen?()
-        }
-    }
-
-    func tap() {
-        if widget?.isPlayer == true {
-            onTap?()
-        }
+        onOpen?()
     }
 
     func openIfAsked(by event: NSEvent) {
         let point = allow.convert(event.locationInWindow, from: nil)
         let onAllow = !allow.isHiddenOrHasHiddenAncestor && allow.bounds.contains(point)
-        let opensOnClick = opensOnSingleClick && widget?.isPlayer != true
-        if opensOnClick || event.clickCount == Self.doubleClick || onAllow {
+        if opensOnSingleClick || event.clickCount == Self.doubleClick || onAllow {
             onOpen?()
         }
     }

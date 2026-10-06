@@ -56,10 +56,10 @@ final class WidgetTile: NSView {
     var onOpen: (() -> Void)?
     var onMenu: ((NSPoint) -> Void)?
     var onHold: ((NSPoint) -> Void)?
-    var onTap: (() -> Void)?
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onPlay: (() -> Void)?
     var onSeek: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
@@ -186,6 +186,8 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if !track.isHidden, track.pressesDisc(at: point) {
+            onPlay?()
         } else if let line = lyricLine(at: event) {
             onSeek?(line)
         } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {
@@ -194,7 +196,6 @@ final class WidgetTile: NSView {
             onPress?()
             openIfAsked(by: event)
             startHold(with: event)
-            if holdOrigin == nil { tap() }
         }
     }
 
@@ -238,10 +239,7 @@ final class WidgetTile: NSView {
 
     override func mouseUp(with _: NSEvent) {
         holdDelay.cancel()
-        if holdOrigin != nil {
-            holdOrigin = nil
-            tap()
-        }
+        holdOrigin = nil
         dragStart = nil
         if resizeStart != nil {
             resizeStart = nil

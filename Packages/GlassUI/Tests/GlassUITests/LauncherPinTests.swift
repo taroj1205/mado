@@ -149,7 +149,7 @@ import Testing
         #expect(track.lookup.isHidden && !track.artist.isHidden)
     }
 
-    @Test func theLyricsWidgetOpensOnlyWhenOpenedAndTheNowPlayingTileOpensThePlayer() {
+    @Test func theLyricsWidgetOpensItsPaneAndTheNowPlayingTileOpensThePlayer() {
         let lyrics = WidgetGrid.Widget(
             id: "lyrics", name: "Lyrics",
             verse: .init(
@@ -161,11 +161,9 @@ import Testing
         view.onWidget = { pressed.append($0.id) }
         view.onOpenPlayer = { players += 1 }
         view.widgets = [lyrics, song]
-        view.tapWidget(0)
         view.openWidget(0)
-        view.tapWidget(1)
         view.openWidget(1)
-        #expect(pressed == ["lyrics", "music"])
+        #expect(pressed == ["lyrics"])
         #expect(players == 1)
     }
 
