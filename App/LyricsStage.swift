@@ -74,6 +74,7 @@ final class LyricsStage: NSObject {
 
     private func show(_ verse: WidgetGrid.Verse) {
         if hostsMenuBar {
+            bar.hide(animated: false)
             if float.isShown, !isCardOpen {
                 float.hide(animated: false)
             }
