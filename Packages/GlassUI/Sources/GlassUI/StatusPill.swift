@@ -30,7 +30,10 @@ final class StatusPill: NSView, NSDraggingSource {
     private(set) var symbol: String?
     let slot = DashedOutline.slot(radius: StatusPill.radius)
     private var dragStart: NSEvent?
-    var onPress: (() -> Void)?
+    private var hover: HoverFill?
+    var onPress: (() -> Void)? {
+        didSet { hover?.isHidden = onPress == nil }
+    }
     var onGrab: (() -> Void)?
     var onDrop: (() -> Void)?
 
@@ -75,7 +78,8 @@ final class StatusPill: NSView, NSDraggingSource {
         highlight.autoresizingMask = [.width, .height]
         highlight.isHidden = true
         glass.container.addSubview(highlight, positioned: .below, relativeTo: stack)
-        HoverFill.install(in: glass.container, radius: Self.radius)
+        hover = HoverFill.install(in: glass.container, radius: Self.radius)
+        hover?.isHidden = true
         addSubview(glass)
         slot.translatesAutoresizingMaskIntoConstraints = false
         addSubview(slot)

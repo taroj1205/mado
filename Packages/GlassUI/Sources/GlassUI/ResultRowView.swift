@@ -17,6 +17,10 @@ final class ResultRowView: NSTableRowView {
 
     private let hover = HoverFill(radius: ResultRowView.radius)
 
+    var isHoverable = true {
+        didSet { hover.isHidden = !isHoverable }
+    }
+
     var isChecked = false {
         didSet { needsDisplay = true }
     }

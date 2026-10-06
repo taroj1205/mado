@@ -217,6 +217,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
             tableView.makeView(withIdentifier: ResultRowView.id, owner: nil) as? ResultRowView
             ?? ResultRowView()
         view.radius = radius(ofRow: row)
+        view.isHoverable = rows[row].isItem
         view.isChecked = rows[row].itemID.map(checked.contains) ?? false
         view.trailingInset = rows[row].isAnswer ? 0 : trailingInset
         return view

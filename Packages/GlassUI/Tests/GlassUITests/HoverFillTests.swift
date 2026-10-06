@@ -79,4 +79,28 @@ import Testing
         let fill = try #require(button.contentView?.subviews.compactMap { $0 as? HoverFill }.first)
         #expect(fill.radius == 15)
     }
+
+    @Test func onlySelectableResultRowsHover() throws {
+        let list = ResultList()
+        list.frame = NSRect(x: 0, y: 0, width: 744, height: 415)
+        let item = ResultList.Item(
+            id: "A", title: "A", subtitle: "", kind: "Command", symbol: "star",
+            action: "Run Command")
+        list.sections = [.init(title: "Results", items: [item])]
+        let header = try #require(list.tableView(list.table, rowViewForRow: 0) as? ResultRowView)
+        let result = try #require(list.tableView(list.table, rowViewForRow: 1) as? ResultRowView)
+        #expect(!header.isHoverable)
+        #expect(result.isHoverable)
+    }
+
+    @Test func statusPillsHoverOnlyWhilePressable() throws {
+        let pill = StatusPill()
+        let fill = try #require(
+            pill.glass.container.subviews.compactMap { $0 as? HoverFill }.first)
+        #expect(fill.isHidden)
+        pill.onPress = { _ = pill }
+        #expect(!fill.isHidden)
+        pill.onPress = nil
+        #expect(fill.isHidden)
+    }
 }
