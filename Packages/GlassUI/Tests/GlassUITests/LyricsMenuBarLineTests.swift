@@ -7,18 +7,15 @@ import Testing
 struct LyricsMenuBarLineTests {
     private let item = LyricsMenuBarLine()
 
-    @Test func itsWidthFollowsTheLineUpToACap() {
+    @Test func itsWidthStaysFixedWhateverTheLine() {
         item.show(LyricsFloatRig.song(.synced, current: 3, playing: true))
-        let short = item.naturalWidth
-        #expect(short > 0)
-        #expect(short < 210)
-        #expect(item.intrinsicContentSize == NSSize(width: short, height: 22))
+        #expect(item.intrinsicContentSize == NSSize(width: LyricsMenuBarLine.width, height: 22))
         let long = WidgetGrid.Verse(
             title: "Low Tide", artist: "", artwork: nil, isPlaying: true, status: .synced,
             lines: [String(repeating: "Every rope remembers where it’s tied ", count: 4)],
             current: 0, progress: 0.5, remaining: 3)
         item.show(long)
-        #expect(item.naturalWidth == 210)
+        #expect(item.intrinsicContentSize.width == LyricsMenuBarLine.width)
     }
 
     @Test func theEqualizerMovesOnlyWhilePlaying() {
@@ -42,6 +39,6 @@ struct LyricsMenuBarLineTests {
     @Test func withoutATimedLineItShowsTheSong() {
         item.show(LyricsFloatRig.song(.missing, current: nil, playing: true))
         #expect(item.accessibilityValue() as? String == "Low Tide · Harbour Lights")
-        #expect(item.naturalWidth > 0)
+        #expect(item.intrinsicContentSize.width == LyricsMenuBarLine.width)
     }
 }
