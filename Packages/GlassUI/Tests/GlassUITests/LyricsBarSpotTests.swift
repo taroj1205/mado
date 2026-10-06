@@ -12,28 +12,39 @@ struct LyricsBarSpotTests {
 
     private func spot(
         _ pin: LyricsPin, dock: NSRect? = dock, menusEnd: CGFloat? = 612,
-        statusItems: [NSRect] = [status], on screen: LyricsBarSpot.Screen = screen
+        statusItems: [NSRect] = [status], side: LyricsSide = .trailing,
+        on screen: LyricsBarSpot.Screen = screen
     ) -> NSRect? {
         LyricsBarSpot.frame(
             for: pin,
             around: LyricsSurroundings(
                 dock: dock, menusEnd: menusEnd, statusItems: statusItems),
-            on: screen)
+            side: side, on: screen)
     }
 
-    @Test func theDockTypeStartsInTheRoomierSideAtTheIconsHeight() throws {
-        let right = try #require(spot(.dock, dock: NSRect(x: 100, y: 10, width: 1_200, height: 72)))
-        #expect(right == NSRect(x: 1_316, y: 14, width: 380, height: 64))
-        let left = try #require(spot(.dock, dock: NSRect(x: 600, y: 10, width: 1_100, height: 72)))
-        #expect(left == NSRect(x: 16, y: 14, width: 380, height: 64))
+    @Test func theDockTypeSitsOnTheChosenSideLevelWithTheIcons() throws {
+        let beside = NSRect(x: 700, y: 10, width: 800, height: 72)
+        let right = try #require(spot(.dock, dock: beside, side: .trailing))
+        #expect(right == NSRect(x: 1_516, y: 15, width: 268, height: 168))
+        let left = try #require(spot(.dock, dock: beside, side: .leading))
+        #expect(left == NSRect(x: 16, y: 15, width: 520, height: 168))
     }
 
-    @Test func theDockTypeShrinksToTheGapAndTakesTheRightOnATie() throws {
-        let frame = try #require(spot(.dock))
-        #expect(frame == NSRect(x: 1_537, y: 14, width: 247, height: 64))
+    @Test func theDockTypeTakesTheOtherSideWhenTheChosenOneIsFull() throws {
+        let crowded = NSRect(x: 100, y: 10, width: 1_200, height: 72)
+        let moved = try #require(spot(.dock, dock: crowded, side: .leading))
+        #expect(moved == NSRect(x: 1_316, y: 15, width: 468, height: 168))
+        #expect(spot(.dock, dock: crowded, side: .trailing) == moved)
     }
 
-    @Test func noDockTypeWhereItsThreeLinesWouldLeaveTheScreen() {
+    @Test func theDockTypeShrinksToTheGapOnEitherSide() throws {
+        let right = try #require(spot(.dock))
+        #expect(right == NSRect(x: 1_537, y: 15, width: 247, height: 168))
+        let left = try #require(spot(.dock, side: .leading))
+        #expect(left == NSRect(x: 16, y: 15, width: 247, height: 168))
+    }
+
+    @Test func noDockTypeWhereItsRowsWouldLeaveTheScreen() {
         let small = LyricsBarSpot.Screen(
             frame: Self.screen.frame, visibleFrame: NSRect(x: 0, y: 30, width: 1_800, height: 1_122)
         )

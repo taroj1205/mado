@@ -1,20 +1,9 @@
 import AppKit
 
 final class LyricsDesktop: NSView {
-    struct Style {
-        private static let desktopRest: CGFloat = 15
-        private static let desktopLine: CGFloat = 26
-        private static let desktopGap: CGFloat = 6
-        private static let dockRest: CGFloat = 12
-        private static let dockLine: CGFloat = 20
-        private static let dockGap: CGFloat = 4
-        static let desktop = Self(rest: desktopRest, line: desktopLine, gap: desktopGap)
-        static let dock = Self(rest: dockRest, line: dockLine, gap: dockGap)
-
-        let rest: CGFloat
-        let line: CGFloat
-        let gap: CGFloat
-    }
+    private static let restSize: CGFloat = 15
+    private static let lineSize: CGFloat = 26
+    private static let gap: CGFloat = 6
 
     let previous: NSTextField
     let line: LyricLine
@@ -23,19 +12,15 @@ final class LyricsDesktop: NSView {
     private let stack: NSStackView
     private var text: LyricsFloatText?
 
-    convenience init() {
-        self.init(style: .desktop)
-    }
-
-    init(style: Style) {
-        previous = Self.rest(size: style.rest)
-        line = LyricLine(size: style.line, weight: .semibold)
-        next = Self.rest(size: style.rest)
+    init() {
+        previous = Self.restLabel()
+        line = LyricLine(size: Self.lineSize, weight: .semibold)
+        next = Self.restLabel()
         stack = NSStackView(views: [previous, line, next])
         super.init(frame: .zero)
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = style.gap
+        stack.spacing = Self.gap
         stack.translatesAutoresizingMaskIntoConstraints = false
         line.wantsLayer = true
         addSubview(stack)
@@ -55,9 +40,9 @@ final class LyricsDesktop: NSView {
         nil
     }
 
-    private static func rest(size: CGFloat) -> NSTextField {
+    private static func restLabel() -> NSTextField {
         let label = NSTextField(labelWithString: "")
-        label.font = .systemFont(ofSize: size)
+        label.font = .systemFont(ofSize: restSize)
         label.textColor = .tertiaryLabelColor
         label.lineBreakMode = .byTruncatingTail
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

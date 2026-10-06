@@ -12,7 +12,7 @@ public final class LyricsBar {
     let panel = OverlayPanel()
     let glass = GlassView(shape: .capsule)
     let line = LyricsMenuBarLine()
-    let type = LyricsDesktop(style: .dock)
+    let type = LyricsDockType()
     private let root = NSView()
     public private(set) var isShown = false
 
