@@ -1,4 +1,5 @@
 import AppKit
+import GlassUI
 
 final class MenuBarPanelRow: NSView {
     private static let height: CGFloat = 24
@@ -8,6 +9,12 @@ final class MenuBarPanelRow: NSView {
     private static let iconColumn: CGFloat = 18
     private static let textSize: CGFloat = 13
     private static let hintSize: CGFloat = 12.5
+    private static let bleed: CGFloat = 8
+    private static let radius: CGFloat = 6
+
+    override var alignmentRectInsets: NSEdgeInsets {
+        NSEdgeInsets(top: 0, left: Self.bleed, bottom: 0, right: Self.bleed)
+    }
 
     private let time = NSTextField(labelWithString: "")
     private let name: String
@@ -20,6 +27,7 @@ final class MenuBarPanelRow: NSView {
         self.onPress = onPress
         name = text
         super.init(frame: .zero)
+        HoverFill.install(in: self, radius: Self.radius)
         let icon = NSImageView(
             image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)

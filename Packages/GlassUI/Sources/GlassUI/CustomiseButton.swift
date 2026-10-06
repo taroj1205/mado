@@ -29,6 +29,7 @@ final class CustomiseButton: NSView {
         icon.symbolConfiguration = .init(pointSize: Self.symbolSize, weight: .semibold)
         icon.contentTintColor = .secondaryLabelColor
         icon.translatesAutoresizingMaskIntoConstraints = false
+        HoverFill.install(in: self, radius: Self.radius)
         addSubview(icon)
         translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

@@ -18,6 +18,12 @@ final class CapsuleButton: NSBox {
     let label = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let icon = NSImageView()
     let keycaps: NSStackView
+    private var hover: HoverFill?
+
+    override var cornerRadius: CGFloat {
+        didSet { hover?.radius = cornerRadius }
+    }
+
     var onPress: (() -> Void)?
 
     convenience init(_ title: String, keys: [String]) {
@@ -45,6 +51,7 @@ final class CapsuleButton: NSBox {
         cornerRadius = Self.radius
         fillColor = .clear
         contentViewMargins = .zero
+        hover = HoverFill.install(in: self, radius: Self.radius)
         addSubview(stack)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: height),
