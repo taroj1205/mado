@@ -2,6 +2,7 @@ import AppKit
 
 extension LauncherView {
     static let moveToTitle = "Move to…"
+    static let sizeTitle = "Size"
 
     func openWidgetMenu(_ index: Int, at screen: NSPoint) {
         guard !editingWidgets, widgetGrid.shown.indices.contains(index), let window = unsafe window
@@ -41,6 +42,7 @@ extension LauncherView {
 
     func closeWidgetMenu() {
         guard let menu = widgetMenu else { return }
+        closeSizeMenu()
         closeSpotPicker()
         menu.close()
         widgetMenu = nil
@@ -51,6 +53,9 @@ extension LauncherView {
         guard let menu = widgetMenu else { return false }
         if spotPicker != nil, let widget = selectedWidget {
             return pickerCommand(selector, moving: widgetGrid.shown[widget].id)
+        }
+        if let sizes = sizeMenu {
+            return sizeMenuCommand(selector, in: sizes)
         }
         switch selector {
         case #selector(NSResponder.moveUp): menu.moveSelection(by: -1)
@@ -65,10 +70,10 @@ extension LauncherView {
         return true
     }
 
-    func place(_ picker: WidgetSpotPicker, beside menu: WidgetMenu) {
+    func place(_ glass: GlassView, width: CGFloat, beside menu: WidgetMenu) {
         layoutSubtreeIfNeeded()
         let gap = WidgetSpotPicker.gap
-        let room = WidgetSpotPicker.size.width + gap + Self.capsuleInset
+        let room = width + gap + Self.capsuleInset
         let fitsRight = bounds.width - menu.glass.frame.maxX >= room
         let fitsLeft = menu.glass.frame.minX >= room
         let onLeft = !fitsRight && fitsLeft
@@ -79,15 +84,13 @@ extension LauncherView {
         }
         let side =
             onLeft
-            ? picker.glass.trailingAnchor.constraint(
-                equalTo: menu.glass.leadingAnchor, constant: -gap)
-            : picker.glass.leadingAnchor.constraint(
-                equalTo: menu.glass.trailingAnchor, constant: gap)
-        let level = picker.glass.topAnchor.constraint(equalTo: menu.glass.topAnchor)
+            ? glass.trailingAnchor.constraint(equalTo: menu.glass.leadingAnchor, constant: -gap)
+            : glass.leadingAnchor.constraint(equalTo: menu.glass.trailingAnchor, constant: gap)
+        let level = glass.topAnchor.constraint(equalTo: menu.glass.topAnchor)
         level.priority = .defaultHigh
         NSLayoutConstraint.activate([
             side, level,
-            picker.glass.bottomAnchor.constraint(
+            glass.bottomAnchor.constraint(
                 lessThanOrEqualTo: bottomAnchor, constant: -Self.capsuleInset),
         ])
     }
@@ -108,12 +111,13 @@ extension LauncherView {
     }
 
     private func choose(_ choice: WidgetMenu.Choice, from widget: WidgetGrid.Widget) {
-        if choice != .move {
+        if choice != .move, choice != .size {
             closeWidgetMenu()
         }
         switch choice {
         case .open: onWidget?(widget)
         case .move: openSpotPicker(for: widget)
+        case .size: openSizeMenu(for: widget)
         case .pin: presentPin(for: widget)
         case .edit: editWidgets()
         case .add: addWidgets()
@@ -122,18 +126,71 @@ extension LauncherView {
     }
 
     private func menuEntries(for widget: WidgetGrid.Widget) -> [WidgetMenu.Entry] {
-        let pin = pinAction(for: widget).map { action in
-            [WidgetMenu.Entry(choice: .pin, title: action.title, detail: action.detail)]
-        }
-        return [
+        var entries: [WidgetMenu.Entry] = [
             .init(choice: .open, title: widget.action),
             .init(
                 choice: .move, title: Self.moveToTitle,
                 detail: widgetGrid.home(of: widget.id).title),
-        ] + (pin ?? []) + [
+        ]
+        if sizeOptions(of: widget.id).count > 1, let size = widgetGrid.currentSize(of: widget.id) {
+            entries.append(.init(choice: .size, title: Self.sizeTitle, detail: size.title))
+        }
+        if let pin = pinAction(for: widget) {
+            entries.append(.init(choice: .pin, title: pin.title, detail: pin.detail))
+        }
+        return entries + [
             .init(choice: .edit, title: Self.editTitle),
             .init(choice: .add, title: Self.addTitle),
             .init(choice: .remove, title: "Remove \(widget.name)"),
         ]
+    }
+}
+
+extension LauncherView {
+    func openSizeMenu(for widget: WidgetGrid.Widget) {
+        guard sizeMenu == nil, let menu = widgetMenu else { return }
+        closeSpotPicker()
+        let current = widgetGrid.currentSize(of: widget.id)
+        let sizes = WidgetMenu()
+        sizes.onSize = { [weak self] size in
+            self?.closeWidgetMenu()
+            if let index = self?.widgetGrid.shown.firstIndex(where: { $0.id == widget.id }) {
+                self?.resizeWidget(index, .size(size))
+            }
+        }
+        sizes.show(
+            sizeOptions(of: widget.id).map { option in
+                .init(
+                    choice: .size, title: option.title, detail: option.size.dimensions,
+                    size: option.size, checked: option.size == current)
+            }, for: Self.sizeTitle)
+        sizeMenu = sizes
+        addSubview(sizes.glass)
+        NSLayoutConstraint.activate([
+            sizes.glass.widthAnchor.constraint(equalToConstant: WidgetMenu.width)
+        ])
+        place(sizes.glass, width: WidgetMenu.width, beside: menu)
+    }
+
+    func closeSizeMenu() {
+        sizeMenu?.close()
+        sizeMenu = nil
+    }
+
+    func sizeMenuCommand(_ selector: Selector, in menu: WidgetMenu) -> Bool {
+        switch selector {
+        case #selector(NSResponder.moveUp): menu.moveSelection(by: -1)
+        case #selector(NSResponder.moveDown): menu.moveSelection(by: 1)
+        case #selector(NSResponder.insertNewline): menu.press()
+
+        case #selector(NSResponder.cancelOperation), #selector(NSResponder.moveLeft),
+            #selector(NSResponder.moveRight):
+            closeSizeMenu()
+
+        default:
+            closeWidgetMenu()
+            return false
+        }
+        return true
     }
 }

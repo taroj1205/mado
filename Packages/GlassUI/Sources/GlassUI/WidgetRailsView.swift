@@ -4,6 +4,7 @@ final class WidgetRailsView: NSView {
     struct Mark {
         let spot: WidgetGrid.Spot
         let frame: CGRect
+        var caption: String?
     }
 
     struct Model {
@@ -15,6 +16,7 @@ final class WidgetRailsView: NSView {
         var refused: Mark?
     }
 
+    static let resizeSymbol = "arrow.up.left.and.arrow.down.right"
     private static let radius: CGFloat = 20
     private static let edge: CGFloat = 1.5
     private static let dash: CGFloat = 4.5
@@ -197,7 +199,10 @@ final class WidgetRailsView: NSView {
             label.show("No room — try another spot", symbol: "nosign", tint: .systemOrange)
             label.frame = labelFrame(beside: refused)
         } else if let ghost = model.ghost {
-            label.show(ghost.spot.title, symbol: "checkmark", tint: .controlAccentColor)
+            label.show(
+                ghost.caption ?? ghost.spot.title,
+                symbol: ghost.caption == nil ? "checkmark" : Self.resizeSymbol,
+                tint: .controlAccentColor)
             label.frame = labelFrame(beside: ghost)
         }
         label.isHidden = model.ghost == nil && model.refused == nil

@@ -1,12 +1,21 @@
 import AppKit
 
 final class WidgetEditBar: NSStackView {
+    struct Subject {
+        let name: String
+        let spot: WidgetGrid.Spot
+        let sizes: [WidgetSizeSwitch.Option]
+        let current: WidgetGrid.Size
+    }
+
     enum Grouping {
         case off
         case group
         case ungroup
     }
 
+    private static let sizeChoices = 2
+    private static let nameFloor: CGFloat = 60
     private static let gap: CGFloat = 10
     private static let nameSize: CGFloat = 13
     private static let nameGap: CGFloat = 10
@@ -33,8 +42,10 @@ final class WidgetEditBar: NSStackView {
     let ungroup = CapsuleButton(
         "Ungroup", keys: ["⇧", "⌘", "G"], symbol: "square.on.square.dashed",
         height: WidgetEditBar.buttonHeight)
+    let sizes = WidgetSizeSwitch()
     let remove = NSButton()
     private let divider = FloatingCapsule.divider()
+    private let sizeDivider = FloatingCapsule.divider()
     let hintIcon = NSImageView()
     let hint = NSTextField(labelWithString: "")
     let undo = CapsuleButton(
@@ -42,6 +53,7 @@ final class WidgetEditBar: NSStackView {
     private let hintStack: NSStackView
     let inspector: GlassView
     let notice: GlassView
+    var onSize: ((WidgetGrid.Size) -> Void)?
     var onMove: (() -> Void)?
     var onGroup: (() -> Void)?
     var onUngroup: (() -> Void)?
@@ -57,7 +69,8 @@ final class WidgetEditBar: NSStackView {
         remove.contentTintColor = .systemRed
         remove.isBordered = false
         remove.refusesFirstResponder = true
-        let tools = NSStackView(views: [name, move, group, ungroup, divider, remove])
+        let tools = NSStackView(
+            views: [name, sizes, sizeDivider, move, group, ungroup, divider, remove])
         tools.setCustomSpacing(Self.nameGap, after: name)
         inspector = FloatingCapsule.make(
             tools, leading: Self.inspectorLeading, trailing: Self.inspectorTrailing)
@@ -75,11 +88,7 @@ final class WidgetEditBar: NSStackView {
         super.init(frame: .zero)
         remove.target = self
         remove.action = #selector(pressRemove)
-        move.onPress = { [weak self] in self?.onMove?() }
-        group.onPress = { [weak self] in self?.onGroup?() }
-        ungroup.onPress = { [weak self] in self?.onUngroup?() }
-        undo.onPress = { [weak self] in self?.onUndo?() }
-        move.setAccessibilityLabel("Move to…")
+        connectButtons()
         setViews([inspector, notice], in: .leading)
         spacing = Self.gap
         translatesAutoresizingMaskIntoConstraints = false
@@ -95,10 +104,7 @@ final class WidgetEditBar: NSStackView {
         nil
     }
 
-    func show(
-        _ widget: (name: String, spot: WidgetGrid.Spot)?, moving: Bool, count: Int,
-        grouping: Grouping
-    ) {
+    func show(_ widget: Subject?, moving: Bool, count: Int, grouping: Grouping) {
         inspector.isHidden = widget == nil
         guard let widget else { return }
         let several = count > 1
@@ -106,6 +112,9 @@ final class WidgetEditBar: NSStackView {
         for view: NSView in [move, divider, remove] {
             view.isHidden = several
         }
+        sizes.isHidden = several || widget.sizes.count < Self.sizeChoices
+        sizeDivider.isHidden = sizes.isHidden
+        sizes.show(widget.sizes, current: widget.current)
         group.isHidden = grouping != .group
         ungroup.isHidden = grouping != .ungroup
         move.label.stringValue = widget.spot.title
@@ -123,6 +132,29 @@ final class WidgetEditBar: NSStackView {
         hintIcon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         undo.isHidden = !undoable
         hintStack.edgeInsets.right = undoable ? Self.hintTrailing.undo : Self.hintTrailing.plain
+    }
+
+    private func connectButtons() {
+        sizes.onPick = { [weak self] size in self?.onSize?(size) }
+        move.onPress = { [weak self] in self?.onMove?() }
+        group.onPress = { [weak self] in self?.onGroup?() }
+        ungroup.onPress = { [weak self] in self?.onUngroup?() }
+        undo.onPress = { [weak self] in self?.onUndo?() }
+        move.setAccessibilityLabel("Move to…")
+    }
+
+    func arrange(in width: CGFloat) {
+        let nameWidth = name.fittingSize.width
+        let needed = inspector.fittingSize.width - nameWidth + Self.nameFloor
+        if !sizes.isHidden, needed > width {
+            sizes.isHidden = true
+            sizeDivider.isHidden = true
+        }
+        let beside = inspector.fittingSize.width + spacing + notice.fittingSize.width <= width
+        let stacked = !beside && !inspector.isHidden && !notice.isHidden
+        orientation = stacked ? .vertical : .horizontal
+        alignment = stacked ? .leading : .centerY
+        setViews(stacked ? [notice, inspector] : [inspector, notice], in: .leading)
     }
 
     @objc

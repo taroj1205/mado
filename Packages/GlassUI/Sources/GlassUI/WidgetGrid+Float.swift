@@ -168,7 +168,13 @@ extension WidgetGrid {
         let travelling = dragged.map(unit) ?? []
         for (float, (frame, item)) in zip(floats, zip(frames, placed)) {
             let margin = editing ? -WidgetFloatFrame.margin : 0
-            float.setFrame(frame.insetBy(dx: margin, dy: margin), display: false)
+            if item.widget.id != settling?.id {
+                let shape = following(floating: frame, of: item.widget.id, on: item.spot.side)
+                float.setFrame(shape.insetBy(dx: margin, dy: margin), display: false)
+                if pull?.id == item.widget.id {
+                    pulledFrame = float.frame
+                }
+            }
             float.alphaValue = item.widget.id == dragged ? 0 : 1
             float.ignoresMouseEvents = travelling.contains(item.widget.id)
             if float.parent !== window {

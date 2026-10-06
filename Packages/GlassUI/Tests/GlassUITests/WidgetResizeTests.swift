@@ -46,7 +46,11 @@ import Testing
             with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0.6, 0))))
         #expect(view.widgetGrid.trial == ["1": .init(columns: 2)])
         view.layoutSubtreeIfNeeded()
-        #expect(view.widgetGrid.tiles[0].frame.width > narrow * 2)
+        let grid = view.widgetGrid
+        #expect(abs(grid.tiles[0].frame.width - (narrow + 0.6 * Self.step.width)) < 0.5)
+        #expect(abs(grid.guide.frame.width - (2 * narrow + 8)) < 0.5)
+        #expect(!grid.guide.isHidden && !grid.sizeLabel.isHidden)
+        #expect(grid.sizeLabel.title == "Medium · 2 × 1")
         #expect(edits.isEmpty)
         tile.mouseUp(with: try mouse(.leftMouseUp, at: handle))
         #expect(edits == [.resize("1", .init(columns: 2))])
@@ -73,7 +77,7 @@ import Testing
             with: try mouse(.leftMouseDragged, at: moved(handle, by: Self.step.scaled(0.6, 0.6))))
         #expect(view.widgetGrid.trial == ["1": .init(columns: 2, rows: 2)])
         view.layoutSubtreeIfNeeded()
-        let tall = view.widgetGrid.tiles[0].frame
+        let tall = view.widgetGrid.guide.frame
         #expect(abs(tall.height - (2 * short + 8)) < 0.01)
         #expect(view.widgetGrid.tiles[1].frame.minX > tall.maxX)
         tile.mouseUp(with: try mouse(.leftMouseUp, at: handle))
@@ -82,7 +86,7 @@ import Testing
     }
 
     @Test func aTallTileDoesNotFitAFullPanelAndTheFullestSizeThatFitsWins() {
-        view.widgets = (1...11).map(numbered)
+        view.widgets = (1...17).map(numbered)
         view.editWidgets()
         view.widgetGrid.stretch("1", by: Self.step.scaled(0, 2))
         #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
@@ -90,18 +94,18 @@ import Testing
         #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
         view.widgetGrid.stretch("1", by: Self.step.scaled(2, 2))
         #expect(view.widgetGrid.trial == ["1": .init(columns: 1, rows: 2)])
-        view.widgets = (1...12).map(numbered)
+        view.widgets = (1...18).map(numbered)
         #expect(view.widgetGrid.fitted("1", adding: (1, 1)) == nil)
     }
 
     @Test func wideningStopsAtTheWidestSizeThatStillFits() {
-        view.widgets = (1...11).map(numbered)
+        view.widgets = (1...17).map(numbered)
         view.editWidgets()
         view.widgetGrid.stretch("1", by: Self.step.scaled(2, 0))
         #expect(view.widgetGrid.trial == ["1": .init(columns: 2)])
         view.widgetGrid.stretch("1", by: Self.step.scaled(-1, 0))
         #expect(view.widgetGrid.trial.isEmpty)
-        view.widgets = (1...12).map(numbered)
+        view.widgets = (1...18).map(numbered)
         #expect(view.widgetGrid.fitted("1", adding: (1, 0)) == nil)
     }
 
@@ -195,7 +199,7 @@ import Testing
     @Test func aRailTileResizesOnSquareUnitsAndAShelfTileStopsAtTwoRows() {
         view.widgetSpots = ["1": .leftTop, "2": .aboveLeft]
         view.editWidgets()
-        #expect(view.widgetGrid.fitted("1", adding: (2, 2)) == .init(columns: 3, rows: 3))
+        #expect(view.widgetGrid.fitted("1", adding: (2, 2)) == .init(columns: 3, rows: 2))
         #expect(view.widgetGrid.fitted("1", adding: (-1, 1)) == .init(columns: 2, rows: 2))
         #expect(view.widgetGrid.fitted("1", adding: (-2, 0)) == .init(columns: 2, rows: 1))
         #expect(view.widgetGrid.fitted("2", adding: (0, 3)) == .init(columns: 1, rows: 2))

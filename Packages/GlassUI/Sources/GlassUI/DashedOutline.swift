@@ -17,6 +17,7 @@ final class DashedOutline: NSView {
         self.fill = fill
         self.radius = radius
         super.init(frame: .zero)
+        layerContentsRedrawPolicy = .duringViewResize
     }
 
     @available(*, unavailable)

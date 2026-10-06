@@ -5,6 +5,7 @@ extension WidgetTile: NSDraggingSource {
         case drag(CGSize)
         case drop
         case step(columns: Int, rows: Int)
+        case size(WidgetGrid.Size)
     }
 
     enum Axis {
@@ -34,7 +35,6 @@ extension WidgetTile: NSDraggingSource {
     func arrangeEditing() {
         for outline in [dash, slot] {
             outline.frame = bounds
-            outline.autoresizingMask = [.width, .height]
             addSubview(outline)
         }
         let centre = Self.badgeSize * Self.half - Self.badgeOverhang

@@ -14,6 +14,25 @@ import Testing
         return made
     }
 
+    @Test func theNamedSizesCarryTheirDimensionsAndEverythingElseJustTheNumbers() {
+        #expect(WidgetGrid.Size.small.title == "Small · 1 × 1")
+        #expect(WidgetGrid.Size.wide.title == "Medium · 2 × 1")
+        #expect(WidgetGrid.Size.large.title == "Large · 2 × 2")
+        #expect(WidgetGrid.Size.extraLarge.title == "Extra Large · 4 × 2")
+        #expect(WidgetGrid.Size(columns: 3, rows: 2).title == "3 × 2")
+        #expect(WidgetGrid.Size(columns: 2, rows: 3).rowsTitle == "3 rows")
+        #expect(WidgetGrid.Size.small.rowsTitle == "1 row")
+    }
+
+    @Test func tilesKeepToTheirOwnRangeAndThePanelHoldsThreeRows() {
+        let grid = WidgetGrid()
+        let plain = widget("a", .small)
+        #expect(grid.range(of: plain, on: .panel) == (.small, .init(columns: 3, rows: 2)))
+        #expect(grid.range(of: plain, on: .left) == (.wide, .init(columns: 3, rows: 2)))
+        #expect(WidgetGrid.maxPanelRows == 3)
+        #expect(WidgetGrid.tallest(on: .above) == 2)
+    }
+
     @Test func aTallTileHoldsItsColumnsForTwoRowsAndLaterTilesFlowAround() {
         let cells = WidgetGrid.cells(
             spanning: [

@@ -12,6 +12,7 @@ final class WidgetMenu {
     enum Choice {
         case open
         case move
+        case size
         case pin
         case edit
         case add
@@ -21,6 +22,7 @@ final class WidgetMenu {
             switch self {
             case .open: "arrow.up.forward.square"
             case .move: "arrow.up.and.down.and.arrow.left.and.right"
+            case .size: WidgetRailsView.resizeSymbol
             case .pin: "pin"
             case .edit: LauncherView.editSymbol
             case .add: "plus"
@@ -28,10 +30,14 @@ final class WidgetMenu {
             }
         }
 
+        var opensMore: Bool {
+            self == .move || self == .size || self == .pin
+        }
+
         var section: Section {
             switch self {
             case .open: .open
-            case .move, .pin: .place
+            case .move, .size, .pin: .place
             case .edit, .add: .edit
             case .remove: .remove
             }
@@ -42,14 +48,18 @@ final class WidgetMenu {
         let choice: Choice
         let title: String
         var detail: String?
+        var size: WidgetGrid.Size?
+        var checked = false
     }
 
     static let width: CGFloat = 244
+    private static let tick: CGFloat = 16
 
     let glass = GlassView(shape: .rounded(ActionPanel.radius))
     private let list = ActionList()
 
     var onChoose: ((Choice) -> Void)?
+    var onSize: ((WidgetGrid.Size) -> Void)?
     var rows: [ActionRow] { list.rows }
     var isVisible: Bool { unsafe glass.superview != nil }
 
@@ -83,15 +93,29 @@ final class WidgetMenu {
         ]
     }
 
+    private static func icon(of entry: Entry) -> NSImage? {
+        guard entry.size != nil else {
+            return NSImage(systemSymbolName: entry.choice.symbol, accessibilityDescription: nil)
+        }
+        return entry.checked
+            ? NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
+            : NSImage(size: NSSize(width: tick, height: tick))
+    }
+
     func show(_ entries: [Entry], for name: String) {
         let made = entries.map { entry in
             let row = ActionRow(
                 title: entry.title,
                 keys: entry.choice == .open ? LauncherView.Action.primaryKeys : [],
-                icon: NSImage(systemSymbolName: entry.choice.symbol, accessibilityDescription: nil),
-                isDestructive: entry.choice == .remove, detail: entry.detail,
-                opens: entry.choice == .move || entry.choice == .pin)
-            row.onPress = { [weak self] in self?.onChoose?(entry.choice) }
+                icon: Self.icon(of: entry), isDestructive: entry.choice == .remove,
+                detail: entry.detail, opens: entry.size == nil && entry.choice.opensMore)
+            row.onPress = { [weak self] in
+                if let size = entry.size {
+                    self?.onSize?(size)
+                } else {
+                    self?.onChoose?(entry.choice)
+                }
+            }
             return row
         }
         list.show(made, groups: entries.map(\.choice.section.rawValue), label: name)
