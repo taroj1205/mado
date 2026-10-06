@@ -21,7 +21,10 @@ extension LyricsStage {
             bar.hide(animated: false)
             return false
         }
-        guard surroundings != nil else { return true }
+        guard surroundings != nil else {
+            float.hide(animated: false)
+            return true
+        }
         guard let spot = spot(for: pin, on: screen) else {
             bar.hide(animated: false)
             return false
