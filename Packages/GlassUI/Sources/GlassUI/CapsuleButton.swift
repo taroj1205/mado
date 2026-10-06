@@ -19,6 +19,11 @@ final class CapsuleButton: NSBox {
     let icon = NSImageView()
     let keycaps: NSStackView
     private var hover: HoverFill?
+
+    override var cornerRadius: CGFloat {
+        didSet { hover?.radius = cornerRadius }
+    }
+
     var onPress: (() -> Void)?
 
     convenience init(_ title: String, keys: [String]) {
@@ -70,7 +75,6 @@ final class CapsuleButton: NSBox {
         let button = CapsuleButton(title, keys: keys, symbol: nil, height: height)
         button.fillColor = .controlAccentColor
         button.cornerRadius = height * half
-        button.hover?.radius = height * half
         button.label.textColor = .white
         button.label.font = .systemFont(ofSize: accentFontSize, weight: .semibold)
         for case let key as Keycap in button.keycaps.arrangedSubviews {

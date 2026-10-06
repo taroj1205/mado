@@ -103,4 +103,37 @@ import Testing
         pill.onPress = nil
         #expect(fill.isHidden)
     }
+
+    @Test func retainedResultRowsFollowTheirNewKind() throws {
+        let list = ResultList()
+        list.reducesMotion = { true }
+        list.frame = NSRect(x: 0, y: 0, width: 744, height: 415)
+        let item = ResultList.Item(
+            id: "A", title: "A", subtitle: "", kind: "Command", symbol: "star",
+            action: "Run Command")
+        let notice = ResultList.Notice(title: "No matches", detail: "")
+        list.sections = [.init(title: "Results", items: [item, item])]
+        list.layoutSubtreeIfNeeded()
+        list.sections = [.init(title: "Results", items: [item], notice: notice)]
+        list.layoutSubtreeIfNeeded()
+        let row = try #require(
+            list.table.rowView(atRow: 1, makeIfNecessary: false) as? ResultRowView)
+        #expect(list.rows[1] == .header("Results"))
+        #expect(!row.isHoverable)
+    }
+
+    @Test func selectedPillsKeepTheirTintAboveTheSelectionFill() throws {
+        let pill = StatusPill()
+        let views = pill.glass.container.subviews
+        let fill = try #require(views.firstIndex { $0 is HoverFill })
+        let selection = try #require(views.firstIndex { $0 is NSBox })
+        #expect(fill > selection)
+    }
+
+    @Test func capsulesRoundTheirTintWhenRestyled() throws {
+        let button = CapsuleButton("Open", keys: [], symbol: nil, height: 34)
+        let fill = try #require(button.contentView?.subviews.compactMap { $0 as? HoverFill }.first)
+        button.cornerRadius = 17
+        #expect(fill.radius == 17)
+    }
 }

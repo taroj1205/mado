@@ -47,6 +47,7 @@ extension ResultList {
         table.enumerateAvailableRowViews { rowView, row in
             guard let view = rowView as? ResultRowView, rows.indices.contains(row) else { return }
             view.radius = radius(ofRow: row)
+            view.isHoverable = rows[row].isItem
             view.needsDisplay = true
         }
     }

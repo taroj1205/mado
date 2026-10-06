@@ -36,11 +36,13 @@ public final class HoverFill: NSView {
     }
 
     @discardableResult
-    public static func install(in view: NSView, radius: CGFloat) -> HoverFill {
+    public static func install(
+        in view: NSView, radius: CGFloat, below sibling: NSView? = nil
+    ) -> HoverFill {
         let fill = HoverFill(radius: radius)
         fill.frame = view.bounds
         fill.autoresizingMask = [.width, .height]
-        view.addSubview(fill, positioned: .below, relativeTo: nil)
+        view.addSubview(fill, positioned: .below, relativeTo: sibling)
         return fill
     }
 
