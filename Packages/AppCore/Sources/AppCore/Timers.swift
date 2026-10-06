@@ -132,10 +132,20 @@ public struct Timers: Codable, Equatable, Sendable {
         pomodoro.map { !$0.isFinished(at: now) } ?? false
     }
 
+    public mutating func showFinishedPomodoro(at now: Date) {
+        guard pomodoro?.isFinished(at: now) == true,
+            !countdowns.contains(where: { $0.isFinished(at: now) })
+        else { return }
+        mode = .pomodoro
+    }
+
     public mutating func dismissFinished(at now: Date) {
-        countdowns.removeAll { $0.isFinished(at: now) }
+        countdowns.removeAll { $0.isFinished(at: now) && $0.isAnnounced }
         if !countdowns.contains(where: { $0.id == pinned }) { pinned = nil }
-        if pomodoro?.isFinished(at: now) == true { pomodoro = nil }
+        guard mode == .pomodoro, let current = pomodoro, current.isFinished(at: now),
+            current.countdown.isAnnounced
+        else { return }
+        pomodoro = nil
     }
 
     public mutating func tick(at now: Date) -> [Event] {

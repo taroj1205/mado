@@ -180,6 +180,39 @@ import Testing
         #expect(timers.headline(at: at(61))?.mode == .pomodoro)
     }
 
+    @Test func aTimerThatFinishedBetweenTicksIsAnnouncedBeforeItCanBeDismissed() {
+        var timers = Timers()
+        timers.add(Self.minute, named: "Egg", at: start)
+        timers.dismissFinished(at: at(61))
+        #expect(timers.countdowns.count == 1)
+        #expect(timers.tick(at: at(61)) == [.timerFinished("Egg")])
+        timers.dismissFinished(at: at(61))
+        #expect(timers.countdowns.isEmpty)
+    }
+
+    @Test func aFinishedPomodoroIsShownBeforeItIsDismissed() {
+        var timers = Timers()
+        timers.startPomodoro("", at: start)
+        timers.startStopwatch(at: start)
+        let end = at(131 * Self.minute)
+        _ = timers.tick(at: end)
+        timers.dismissFinished(at: end)
+        #expect(timers.pomodoro != nil)
+        timers.showFinishedPomodoro(at: end)
+        #expect(timers.mode == .pomodoro)
+        timers.dismissFinished(at: end)
+        #expect(timers.pomodoro == nil)
+    }
+
+    @Test func aFinishedTimerIsShownBeforeAFinishedPomodoro() {
+        var timers = Timers()
+        timers.startPomodoro("", at: start)
+        timers.add(Self.minute, named: "Egg", at: start)
+        _ = timers.tick(at: at(131 * Self.minute))
+        timers.showFinishedPomodoro(at: at(131 * Self.minute))
+        #expect(timers.mode == .timer)
+    }
+
     @Test func aFinishedPomodoroStaysDoneUntilDismissedAndStartsAgainWithItsLabel() {
         var timers = Timers()
         timers.startPomodoro("Widgets UI", at: start)
