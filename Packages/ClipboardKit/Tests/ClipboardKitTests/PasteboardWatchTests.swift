@@ -67,6 +67,19 @@ import Testing
         #expect(unknown.isEmpty)
     }
 
+    @Test func keepsTheAppFromTheLastPollThroughSeveralSwitches() {
+        var front = PasteboardWatch.FrontApps(current: "com.example.front")
+
+        front.activate("com.example.first")
+        front.activate("com.example.second")
+        let beforePoll = (front.current, front.polled)
+        front.poll()
+        let afterPoll = (front.current, front.polled)
+
+        #expect(beforePoll == ("com.example.second", "com.example.front"))
+        #expect(afterPoll == ("com.example.second", "com.example.second"))
+    }
+
     @Test(arguments: PasteboardWatch.privateTypes)
     func flagsACopyMarkedPrivateOnAnyItem(_ marker: NSPasteboard.PasteboardType) {
         let pasteboard = NSPasteboard.withUniqueName()
@@ -144,6 +157,9 @@ import Testing
         try manager.setEnabled("clipboard", true)
         #expect(
             manager.activeResources == [
+                ActiveResource(
+                    module: "clipboard", kind: .observer,
+                    name: NSWorkspace.didActivateApplicationNotification.rawValue),
                 ActiveResource(module: "clipboard", kind: .timer, name: "pasteboard watch"),
                 ActiveResource(
                     module: "clipboard", kind: .other, name: "pasteboard watch last check"),

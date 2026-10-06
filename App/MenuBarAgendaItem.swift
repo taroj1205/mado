@@ -18,6 +18,7 @@ final class MenuBarAgendaItem: NSObject, NSPopoverDelegate {
     private var popover: NSPopover?
     private var panel: MenuBarAgendaPanel?
     private var fetching: Task<Void, Never>?
+    private let upNext = UpNextFeed()
     private(set) var shown: Shown?
     var openSettings: (@MainActor () -> Void)?
 
@@ -34,6 +35,7 @@ final class MenuBarAgendaItem: NSObject, NSPopoverDelegate {
         context.scheduleTimer("menu bar agenda", interval: Self.interval) { [weak self] in
             self?.refresh()
         }
+        upNext.refreshOnChange(in: context) { [weak self] in self?.refresh() }
         refresh()
     }
 
@@ -56,7 +58,7 @@ final class MenuBarAgendaItem: NSObject, NSPopoverDelegate {
             return
         }
         fetching = Task { [weak self] in
-            let found = await CalendarAgenda.upNext(around: .now)
+            let found = await self?.upNext.found(around: .now) ?? []
             guard !Task.isCancelled else { return }
             self?.show(found, at: .now)
         }

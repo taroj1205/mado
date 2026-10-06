@@ -23,36 +23,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var home: Home?
     weak var spotlit: SettingsPageController?
 
-    init(
-        modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
-        items: ItemEditor, snippets: Snippets?, statusItem: NSStatusItem?,
-        menuBarAgenda: MenuBarAgendaItem,
-        addWidgets: @escaping @MainActor () -> Void,
-        lyricsChanged: @escaping LyricsSettingsEditor.Change
-    ) {
-        let recorder = HotKeyPopover(items: items)
-        let ignoredApps = AppListSettings.ignoredApps(modules: modules)
-        let withoutExpansion = AppListSettings.withoutExpansion(modules: modules)
-        let inputKeys = InputSourceKeys(modules: modules, recorder: recorder)
-        let inputDefaults = AppInputDefaults(modules: modules)
-        let remaps = RemapsSettings(modules: modules, recorder: recorder)
-        let enterGuard = EnterGuardPage(modules: modules)
-        let speechModels = SpeechModelSettings(modules: modules)
-        let context = SettingsPage.Context(
-            modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
-            apps: AppHotKeys(items: items, recorder: recorder),
-            radial: RadialMenuSettings(modules: modules),
-            clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
-            withoutExpansion: withoutExpansion, inputKeys: inputKeys,
-            inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
-            addWidgets: addWidgets, lyricsChanged: lyricsChanged, speechModels: speechModels,
-            colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
-            menuBarAgenda: menuBarAgenda)
+    var shown: [SettingsFinder.Shown] {
+        tabs.tabViewItems.compactMap { ($0.viewController as? SettingsPageController)?.shown }
+    }
+
+    init(finder: SettingsFinder, snippets: Snippets?) {
+        let context = finder.context
         let pages = Self.pages(context)
         tabs = pages
-        finder = SettingsFinder(context: context) {
-            pages.tabViewItems.compactMap { ($0.viewController as? SettingsPageController)?.shown }
-        }
+        self.finder = finder
         sidebar = SettingsSidebar(finder: finder)
         let window = Self.window(showing: Self.split(sidebar, pages))
         super.init(window: window)
@@ -61,15 +40,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         endSearchOnTabPicks()
         window.delegate = self
         window.onEscape = { [weak self] in self?.endSearchIfActive() ?? false }
-        ignoredApps.onChange = { [weak self] in self?.reload() }
-        withoutExpansion.onChange = { [weak self] in
+        context.ignoredApps.onChange = { [weak self] in self?.reload() }
+        context.withoutExpansion.onChange = { [weak self] in
             snippets?.reload()
             self?.reload()
         }
-        inputKeys.onChange = { [weak self] in self?.reload() }
-        inputDefaults.onChange = { [weak self] in self?.reload() }
-        remaps.onChange = { [weak self] in self?.reload() }
-        enterGuard.onChange = { [weak self] in self?.reload() }
+        context.inputKeys.onChange = { [weak self] in self?.reload() }
+        context.inputDefaults.onChange = { [weak self] in self?.reload() }
+        context.remaps.onChange = { [weak self] in self?.reload() }
+        context.enterGuard.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)

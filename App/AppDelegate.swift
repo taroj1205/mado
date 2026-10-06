@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
     var settings: SettingsWindowController?
+    var settingsFinder: SettingsFinder?
     private(set) var snippets: Snippets?
     private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
@@ -212,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             usage.save(to: modules)
         }
         searchAgain()
-        settings?.reload()
+        reloadSettings()
     }
 
     private func recordUse(of id: String) {
