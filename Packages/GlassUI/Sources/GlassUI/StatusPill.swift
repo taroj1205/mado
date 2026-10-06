@@ -75,6 +75,7 @@ final class StatusPill: NSView, NSDraggingSource {
         highlight.autoresizingMask = [.width, .height]
         highlight.isHidden = true
         glass.container.addSubview(highlight, positioned: .below, relativeTo: stack)
+        HoverFill.install(in: glass.container, radius: Self.radius)
         addSubview(glass)
         slot.translatesAutoresizingMaskIntoConstraints = false
         addSubview(slot)

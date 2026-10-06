@@ -19,6 +19,7 @@ final class BackButton: NSButton {
         isBordered = false
         contentTintColor = .labelColor
         wantsLayer = true
+        HoverFill.install(in: self, radius: Self.radius)
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalToConstant: Self.size),
             heightAnchor.constraint(equalToConstant: Self.size),

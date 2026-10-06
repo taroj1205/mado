@@ -19,6 +19,7 @@ final class ScopeChip: NSBox {
         cornerRadius = Self.radius
         fillColor = ResultRowView.fill
         contentViewMargins = .zero
+        HoverFill.install(in: self, radius: Self.radius)
         isHidden = true
         icon.symbolConfiguration = .init(pointSize: Self.fontSize, weight: .medium)
         icon.contentTintColor = .labelColor

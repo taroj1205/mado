@@ -1,4 +1,5 @@
 import AppKit
+import GlassUI
 
 final class MenuBarPanelButton: NSButton {
     private static let height: CGFloat = 30
@@ -30,6 +31,7 @@ final class MenuBarPanelButton: NSButton {
         refusesFirstResponder = true
         wantsLayer = true
         layer?.cornerRadius = Self.height * Self.half
+        HoverFill.install(in: self, radius: Self.height * Self.half)
         target = self
         action = #selector(pressed)
         tint()
