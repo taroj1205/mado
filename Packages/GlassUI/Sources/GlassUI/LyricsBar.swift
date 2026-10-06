@@ -2,10 +2,18 @@ public import AppKit
 
 @MainActor
 public final class LyricsBar {
+    public enum Look: Sendable {
+        case pill
+        case type
+    }
+
     static let fadeSeconds = 0.25
 
-    let panel = GlassPanel(kind: .hud, contentRect: .zero, shape: .capsule)
+    let panel = OverlayPanel()
+    let glass = GlassView(shape: .capsule)
     let line = LyricsMenuBarLine()
+    let type = LyricsDesktop(style: .dock)
+    private let root = NSView()
     public private(set) var isShown = false
 
     public var frame: NSRect {
@@ -18,13 +26,21 @@ public final class LyricsBar {
 
     public init() {
         panel.animationBehavior = .none
-        panel.hasShadow = false
-        panel.glass.contentView = line
+        glass.contentView = line
+        panel.contentView = root
     }
 
-    public func show(_ verse: WidgetGrid.Verse, in frame: NSRect, hidesInSharing: Bool) {
+    public func show(
+        _ verse: WidgetGrid.Verse, look: Look, in frame: NSRect, hidesInSharing: Bool
+    ) {
         panel.sharingType = hidesInSharing ? .none : .readOnly
-        line.show(verse)
+        if look == .pill {
+            attach(glass, replacing: type)
+            line.show(verse)
+        } else {
+            attach(type, replacing: glass)
+            type.show(verse)
+        }
         if panel.frame != frame {
             panel.setFrame(frame, display: true)
         }
@@ -54,5 +70,13 @@ public final class LyricsBar {
                 panel.orderOut(nil)
             }
         }
+    }
+
+    private func attach(_ view: NSView, replacing other: NSView) {
+        other.removeFromSuperview()
+        guard unsafe view.superview == nil else { return }
+        view.frame = root.bounds
+        view.autoresizingMask = [.width, .height]
+        root.addSubview(view)
     }
 }

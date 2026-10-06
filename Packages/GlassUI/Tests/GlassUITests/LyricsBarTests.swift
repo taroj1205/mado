@@ -10,7 +10,7 @@ struct LyricsBarTests {
     private let bar = LyricsBar()
 
     @Test func itSitsInTheSpotAboveTheMenuBarWithoutTakingFocusOrClicks() {
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         defer { bar.hide(animated: false) }
         #expect(bar.isShown)
         #expect(bar.panel.isVisible)
@@ -23,24 +23,41 @@ struct LyricsBarTests {
     }
 
     @Test func itFollowsTheSpotAndNamesItsWindowForTheStatusItemScan() throws {
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         defer { bar.hide(animated: false) }
         let moved = Self.spot.offsetBy(dx: 40, dy: 0)
-        bar.show(LyricsFloatRig.synced, in: moved, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: moved, hidesInSharing: true)
         #expect(bar.frame == moved)
         #expect(try #require(bar.windowNumber) > 0)
     }
 
+    @Test func theTypeLookShowsThreeLinesAndNoGlassPill() {
+        bar.show(LyricsFloatRig.synced, look: .type, in: Self.spot, hidesInSharing: true)
+        defer { bar.hide(animated: false) }
+        #expect(unsafe bar.glass.superview == nil)
+        #expect(unsafe bar.type.superview != nil)
+        #expect(bar.type.previous.stringValue == LyricsFloatRig.lines[0])
+        #expect(bar.type.next.stringValue == "•  •  •")
+        #expect(bar.panel.ignoresMouseEvents)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
+        #expect(unsafe bar.glass.superview != nil)
+        #expect(unsafe bar.type.superview == nil)
+    }
+
+    @Test func theDockTypeFitsTheHeightTheSpotGivesIt() {
+        #expect(LyricsDesktop(style: .dock).fittingSize.height <= LyricsBarSpot.typeHeight)
+    }
+
     @Test func sharingFollowsTheSetting() {
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: false)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: false)
         defer { bar.hide(animated: false) }
         #expect(bar.panel.sharingType == .readOnly)
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         #expect(bar.panel.sharingType == .none)
     }
 
     @Test func hidingClosesTheWindow() {
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         bar.hide(animated: false)
         #expect(!bar.isShown)
         #expect(!bar.panel.isVisible)
@@ -49,10 +66,10 @@ struct LyricsBarTests {
     }
 
     @Test func showingAgainAfterAFadeBringsItBack() async throws {
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         defer { bar.hide(animated: false) }
         bar.hide(animated: true)
-        bar.show(LyricsFloatRig.synced, in: Self.spot, hidesInSharing: true)
+        bar.show(LyricsFloatRig.synced, look: .pill, in: Self.spot, hidesInSharing: true)
         try await Task.sleep(for: .seconds(LyricsBar.fadeSeconds * 2))
         #expect(bar.isShown)
         #expect(bar.panel.isVisible)

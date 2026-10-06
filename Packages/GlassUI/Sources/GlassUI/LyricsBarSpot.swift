@@ -16,6 +16,8 @@ public enum LyricsBarSpot {
     static let height: CGFloat = 22
     static let gap: CGFloat = 16
     static let widths: ClosedRange<CGFloat> = 140...300
+    static let typeHeight: CGFloat = 64
+    static let typeWidths: ClosedRange<CGFloat> = 160...380
     private static let half: CGFloat = 0.5
     private static let slack: CGFloat = 1
 
@@ -38,9 +40,10 @@ public enum LyricsBarSpot {
         else { return nil }
         let before = items.minX - screen.frame.minX
         let after = screen.frame.maxX - items.maxX
-        return before > after
-            ? fit(from: screen.frame.minX, to: items.minX, atStart: false, centre: items.midY)
-            : fit(from: items.maxX, to: screen.frame.maxX, atStart: true, centre: items.midY)
+        let span =
+            before > after ? (screen.frame.minX, items.minX) : (items.maxX, screen.frame.maxX)
+        return fit(
+            from: span.0, to: span.1, centre: items.midY, widths: typeWidths, height: typeHeight)
     }
 
     private static func menus(_ surroundings: LyricsSurroundings, on screen: Screen) -> NSRect? {
@@ -56,19 +59,19 @@ public enum LyricsBarSpot {
         }
         let limits = [screen.frame.maxX, screen.notchEdge].compactMap(\.self) + items.map(\.minX)
         return fit(
-            from: screen.frame.minX + end, to: limits.min() ?? screen.frame.maxX, atStart: true,
-            centre: band.midY)
+            from: screen.frame.minX + end, to: limits.min() ?? screen.frame.maxX,
+            centre: band.midY, widths: widths, height: height)
     }
 
     private static func fit(
-        from lower: CGFloat, to upper: CGFloat, atStart: Bool, centre: CGFloat
+        from lower: CGFloat, to upper: CGFloat, centre: CGFloat, widths: ClosedRange<CGFloat>,
+        height: CGFloat
     ) -> NSRect? {
         let room = upper - lower - gap - gap
         guard room >= widths.lowerBound else { return nil }
-        let width = min(room, widths.upperBound)
         return NSRect(
-            x: atStart ? lower + gap : upper - gap - width,
-            y: (centre - height * half).rounded(), width: width,
+            x: lower + gap, y: (centre - height * half).rounded(),
+            width: min(room, widths.upperBound),
             height: height)
     }
 }

@@ -7,6 +7,10 @@ extension LyricsPin {
     var isBeside: Bool {
         self == .dock || self == .menus
     }
+
+    var barLook: LyricsBar.Look {
+        self == .dock ? .type : .pill
+    }
 }
 
 extension LyricsStage {
@@ -23,7 +27,7 @@ extension LyricsStage {
             return false
         }
         float.hide(animated: false)
-        bar.show(verse, in: spot, hidesInSharing: settings.hidesInSharing)
+        bar.show(verse, look: pin.barLook, in: spot, hidesInSharing: settings.hidesInSharing)
         return true
     }
 

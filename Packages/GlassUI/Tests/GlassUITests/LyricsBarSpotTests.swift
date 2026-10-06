@@ -21,19 +21,19 @@ struct LyricsBarSpotTests {
             on: screen)
     }
 
-    @Test func theDockBarSitsInTheRoomierSideBesideTheIconsAtTheirHeight() throws {
+    @Test func theDockTypeStartsInTheRoomierSideAtTheIconsHeight() throws {
         let right = try #require(spot(.dock, dock: NSRect(x: 100, y: 10, width: 1_200, height: 72)))
-        #expect(right == NSRect(x: 1_316, y: 35, width: 300, height: 22))
+        #expect(right == NSRect(x: 1_316, y: 14, width: 380, height: 64))
         let left = try #require(spot(.dock, dock: NSRect(x: 600, y: 10, width: 1_100, height: 72)))
-        #expect(left == NSRect(x: 284, y: 35, width: 300, height: 22))
+        #expect(left == NSRect(x: 16, y: 14, width: 380, height: 64))
     }
 
-    @Test func theDockBarShrinksToTheGapAndTakesTheRightOnATie() throws {
+    @Test func theDockTypeShrinksToTheGapAndTakesTheRightOnATie() throws {
         let frame = try #require(spot(.dock))
-        #expect(frame == NSRect(x: 1_537, y: 35, width: 247, height: 22))
+        #expect(frame == NSRect(x: 1_537, y: 14, width: 247, height: 64))
     }
 
-    @Test func noDockBarWithoutRoomOrABottomDock() {
+    @Test func noDockTypeWithoutRoomOrABottomDock() {
         #expect(spot(.dock, dock: NSRect(x: 100, y: 10, width: 1_600, height: 72)) == nil)
         #expect(spot(.dock, dock: nil) == nil)
         let hidden = LyricsBarSpot.Screen(frame: Self.screen.frame, visibleFrame: Self.screen.frame)
