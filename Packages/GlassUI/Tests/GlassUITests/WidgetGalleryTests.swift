@@ -60,6 +60,17 @@ import Testing
         #expect(abs(badge.minX + 7) < 1 && badge.width == 22)
     }
 
+    @Test func hiddenGalleryHoldsNoCardsAndRebuildsThemWhenShown() throws {
+        gallery.isHidden = true
+        #expect(gallery.cards.isEmpty)
+        gallery.placed = ["weather": .panel]
+        gallery.isHidden = false
+        gallery.layoutSubtreeIfNeeded()
+        #expect(gallery.cards.count == 5)
+        #expect(try card("weather").badge.isAdded)
+        #expect(try card("clock").tile.value.stringValue == "9:41")
+    }
+
     @Test func addedPreviewsShowAGreenTickAndWhereTheySit() throws {
         let clock = try card("clock")
         let weather = try card("weather")

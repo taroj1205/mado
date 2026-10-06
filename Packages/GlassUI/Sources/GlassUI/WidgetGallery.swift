@@ -42,6 +42,12 @@ public final class WidgetGallery: NSView {
     var onPick: ((String) -> Void)?
     var onDragEnd: (() -> Void)?
 
+    override public var isHidden: Bool {
+        didSet {
+            if isHidden != oldValue { makeCards() }
+        }
+    }
+
     var catalogue: [Card] = [] {
         didSet {
             if catalogue != oldValue { makeCards() }
@@ -146,7 +152,7 @@ public final class WidgetGallery: NSView {
 
     private func makeCards() {
         cards.forEach { $0.removeFromSuperview() }
-        cards = catalogue.map { card in
+        cards = (isHidden ? [] : catalogue).map { card in
             let view = WidgetGalleryCard(card, showing: preview(of: card))
             view.spot = placed[card.id]
             view.onPick = { [weak self] in self?.onPick?(card.id) }
