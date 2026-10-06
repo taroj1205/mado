@@ -96,6 +96,20 @@ import Testing
         #expect(sought == [3])
     }
 
+    @Test func theTileSkipsEmptyLinesAndMapsTheCurrentLine() {
+        let kept = WidgetLyrics.compact(lines, current: 3)
+        #expect(kept.kept == [0, 2, 3, 4] && kept.current == 2 && kept.gap == nil)
+    }
+
+    @Test func aBreakKeepsTheLastSungLineAndAnIntroKeepsTheFirst() {
+        let gap = WidgetLyrics.compact(lines, current: 1)
+        #expect(gap.current == 0 && gap.gap == 1)
+        let intro = WidgetLyrics.compact(["", "First", "Second"], current: 0)
+        #expect(intro.current == 0 && intro.gap == 0 && intro.kept == [1, 2])
+        #expect(WidgetLyrics.compact(lines, current: nil).current == nil)
+        #expect(WidgetLyrics.compact([], current: 0).current == nil)
+    }
+
     @Test func plainLyricsHaveNoCurrentLineToSeekTo() {
         let column = LyricsColumn(look: .init(pitch: 30, size: 16, rest: 12.5))
         column.frame = NSRect(x: 0, y: 0, width: 300, height: 120)
