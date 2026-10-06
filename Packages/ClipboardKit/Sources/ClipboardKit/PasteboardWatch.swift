@@ -6,21 +6,19 @@ import os
 public struct PasteboardWatch {
     struct FrontApps {
         private(set) var current: String?
-        private var previous: String?
-        private var switched = ContinuousClock.now
+        private(set) var polled: String?
 
         init(current: String?) {
             self.current = current
+            polled = current
         }
 
-        mutating func activate(_ app: String?, at now: ContinuousClock.Instant) {
-            previous = current
+        mutating func activate(_ app: String?) {
             current = app
-            switched = now
         }
 
-        func before(_ check: ContinuousClock.Instant) -> String? {
-            switched > check ? previous : current
+        mutating func poll() {
+            polled = current
         }
     }
 
@@ -54,21 +52,18 @@ public struct PasteboardWatch {
         let logger = context.logger
         var watch = Self(pasteboard: pasteboard)
         var front = FrontApps(current: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
-        var lastCheck = ContinuousClock.now
         context.observe(
             NSWorkspace.didActivateApplicationNotification,
             on: NSWorkspace.shared.notificationCenter, reading: activatedApp(in:)
-        ) { front.activate($0, at: .now) }
+        ) { front.activate($0) }
         let check: @MainActor () -> Void = {
-            let checked = lastCheck
-            lastCheck = .now
+            defer { front.poll() }
             guard watch.poll() else { return }
             if watch.holdsPrivateData {
                 logger.debug("Skipped a concealed, transient or auto-generated copy")
             } else {
                 onChange(
-                    sourceApps(
-                        of: pasteboard, frontmost: front.current, before: front.before(checked)))
+                    sourceApps(of: pasteboard, frontmost: front.current, before: front.polled))
             }
         }
         context.scheduleTimer(name, interval: interval, handler: check)

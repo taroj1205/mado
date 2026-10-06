@@ -67,17 +67,17 @@ import Testing
         #expect(unknown.isEmpty)
     }
 
-    @Test func countsTheAppLeftInFrontOnlyWhenTheSwitchFollowedTheLastPoll() {
-        let start = ContinuousClock.now
+    @Test func keepsTheAppFromTheLastPollThroughSeveralSwitches() {
         var front = PasteboardWatch.FrontApps(current: "com.example.front")
-        front.activate("com.example.switched", at: start + .milliseconds(100))
 
-        let sinceLastPoll = front.before(start)
-        let afterPoll = front.before(start + .milliseconds(500))
+        front.activate("com.example.first")
+        front.activate("com.example.second")
+        let beforePoll = (front.current, front.polled)
+        front.poll()
+        let afterPoll = (front.current, front.polled)
 
-        #expect(front.current == "com.example.switched")
-        #expect(sinceLastPoll == "com.example.front")
-        #expect(afterPoll == "com.example.switched")
+        #expect(beforePoll == ("com.example.second", "com.example.front"))
+        #expect(afterPoll == ("com.example.second", "com.example.second"))
     }
 
     @Test(arguments: PasteboardWatch.privateTypes)

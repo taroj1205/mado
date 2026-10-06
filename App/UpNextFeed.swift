@@ -19,6 +19,9 @@ final class UpNextFeed {
     func refreshOnChange(
         in context: ModuleContext, _ refresh: @escaping @MainActor () -> Void
     ) {
+        context.own(.other, "up next cache") { [weak self] in
+            MainActor.assumeIsolated { self?.invalidate() }
+        }
         context.observe(
             .EKEventStoreChanged, on: .default, reading: \.name
         ) { [weak self] _ in
