@@ -19,7 +19,7 @@ extension LyricsStage {
         button.image = nil
         unsafe button.window?.sharingType = settings.hidesInSharing ? .none : .readOnly
         line.show(verse)
-        item.length = line.naturalWidth + Self.barPadding
+        item.length = LyricsMenuBarLine.width + Self.barPadding
         if isCardOpen, let screen = unsafe button.window?.screen {
             float.show(
                 verse, place: .menuBar(anchor: anchor(of: button)), look: .card, on: screen,

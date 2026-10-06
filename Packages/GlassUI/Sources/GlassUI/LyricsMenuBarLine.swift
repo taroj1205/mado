@@ -1,12 +1,12 @@
 public import AppKit
 
 public final class LyricsMenuBarLine: NSView {
+    public static let width: CGFloat = 210
     private static let height: CGFloat = 22
     private static let inset: CGFloat = 8
     private static let gap: CGFloat = 7
     private static let radius: CGFloat = 6
     private static let size: CGFloat = 12
-    private static let widest: CGFloat = 210
     private static let half: CGFloat = 0.5
     private static let pillAlpha = (dark: 0.2, light: 0.1)
     private static let pill = NSColor(name: nil) { appearance in
@@ -23,14 +23,7 @@ public final class LyricsMenuBarLine: NSView {
     override public var wantsUpdateLayer: Bool { true }
 
     override public var intrinsicContentSize: NSSize {
-        NSSize(width: naturalWidth, height: Self.height)
-    }
-
-    public var naturalWidth: CGFloat {
-        let content =
-            Self.inset + equalizer.intrinsicContentSize.width + Self.gap
-            + line.intrinsicContentSize.width + Self.inset
-        return min(content.rounded(.up), Self.widest)
+        NSSize(width: Self.width, height: Self.height)
     }
 
     public init() {
@@ -88,9 +81,5 @@ public final class LyricsMenuBarLine: NSView {
         text = words.text
         line.show(words, playing: verse.isPlaying)
         setAccessibilityValue(shown.spoken)
-        if changed {
-            invalidateIntrinsicContentSize()
-            needsLayout = true
-        }
     }
 }
