@@ -158,6 +158,49 @@ import Testing
         #expect(timers.stopwatch.elapsed(at: at(60)) == 60)
     }
 
+    @Test func aFinishedTimerShowsDoneEvenWhileAnotherClockRuns() {
+        var timers = Timers()
+        timers.startPomodoro("", at: start)
+        timers.add(Self.minute, named: "Egg", at: start)
+        _ = timers.tick(at: at(61))
+        #expect(timers.headline(at: at(61)) == .init(mode: .timer, state: .done, text: "Done"))
+    }
+
+    @Test func dismissingFinishedTimersKeepsTheOnesStillRunning() throws {
+        var timers = Timers()
+        timers.startPomodoro("", at: start)
+        timers.add(Self.minute, named: "Egg", at: start)
+        timers.add(10 * Self.minute, named: "Tea", at: start)
+        timers.select(try #require(timers.countdowns.first?.id))
+        _ = timers.tick(at: at(61))
+        timers.dismissFinished(at: at(61))
+        #expect(timers.countdowns.map(\.name) == ["Tea"])
+        #expect(timers.pinned == nil)
+        #expect(timers.pomodoro != nil)
+        #expect(timers.headline(at: at(61))?.mode == .pomodoro)
+    }
+
+    @Test func aFinishedPomodoroStaysDoneUntilDismissedAndStartsAgainWithItsLabel() {
+        var timers = Timers()
+        timers.startPomodoro("Widgets UI", at: start)
+        #expect(timers.isPomodoroInProgress(at: at(10)))
+        let end = at(130 * Self.minute)
+        #expect(timers.tick(at: end) == [.pomodoroFinished])
+        #expect(timers.tick(at: end + 1).isEmpty)
+        #expect(
+            timers.headline(at: end + 1) == .init(mode: .pomodoro, state: .done, text: "Done"))
+        #expect(!timers.isTicking(at: end + 1))
+        #expect(!timers.isPomodoroInProgress(at: end + 1))
+        timers.perform(.startPomodoro, at: end + 1)
+        #expect(timers.pomodoro?.label == "Widgets UI")
+        #expect(timers.pomodoro?.round == 1)
+        #expect(timers.isPomodoroInProgress(at: end + 1))
+        _ = timers.tick(at: end + 1 + 130 * Self.minute)
+        timers.dismissFinished(at: end + 1 + 130 * Self.minute)
+        #expect(timers.pomodoro == nil)
+        #expect(timers.headline(at: end + 1 + 130 * Self.minute) == nil)
+    }
+
     @Test func stateSurvivesAnEncodeAndDecode() throws {
         var timers = Timers()
         timers.add(Self.minute, named: "Tea", at: start)

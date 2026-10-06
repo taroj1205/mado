@@ -128,6 +128,16 @@ public struct Timers: Codable, Equatable, Sendable {
         pomodoro = nil
     }
 
+    public func isPomodoroInProgress(at now: Date) -> Bool {
+        pomodoro.map { !$0.isFinished(at: now) } ?? false
+    }
+
+    public mutating func dismissFinished(at now: Date) {
+        countdowns.removeAll { $0.isFinished(at: now) }
+        if !countdowns.contains(where: { $0.id == pinned }) { pinned = nil }
+        if pomodoro?.isFinished(at: now) == true { pomodoro = nil }
+    }
+
     public mutating func tick(at now: Date) -> [Event] {
         var events: [Event] = []
         for index in countdowns.indices where countdowns[index].settle(at: now) {
@@ -136,9 +146,7 @@ public struct Timers: Codable, Equatable, Sendable {
         switch pomodoro?.advance(at: now) {
         case .entered(let phase): events.append(.phaseStarted(phase))
 
-        case .finished:
-            pomodoro = nil
-            events.append(.pomodoroFinished)
+        case .finished: events.append(.pomodoroFinished)
 
         case .unchanged, nil: break
         }
@@ -146,16 +154,18 @@ public struct Timers: Codable, Equatable, Sendable {
     }
 
     public func headline(at now: Date) -> Headline? {
+        if countdowns.contains(where: { $0.isFinished(at: now) }) {
+            return Headline(mode: .timer, state: .done, text: "Done")
+        }
+        if pomodoro?.isFinished(at: now) == true {
+            return Headline(mode: .pomodoro, state: .done, text: "Done")
+        }
         let timers = countdowns.sorted { $0.remaining(at: now) < $1.remaining(at: now) }
-        let clocks =
-            (pomodoro.map { [$0.countdown] } ?? []) + timers.filter { !$0.isFinished(at: now) }
+        let clocks = (pomodoro.map { [$0.countdown] } ?? []) + timers
         if let running = clocks.first(where: { $0.isRunning(at: now) }) {
             return countdownHeadline(running, .running, at: now)
         }
         if stopwatch.isRunning { return stopwatchHeadline(.running, at: now) }
-        if timers.contains(where: { $0.isFinished(at: now) }) {
-            return Headline(mode: .timer, state: .done, text: "Done")
-        }
         if let paused = clocks.first { return countdownHeadline(paused, .paused, at: now) }
         return stopwatch.isIdle ? nil : stopwatchHeadline(.paused, at: now)
     }

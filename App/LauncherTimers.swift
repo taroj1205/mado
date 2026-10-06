@@ -21,7 +21,7 @@ enum LauncherTimers {
         id.hasPrefix(prefix)
     }
 
-    static func sections(for query: String) -> [ResultList.Section] {
+    static func sections(for query: String, pomodoroInProgress: Bool) -> [ResultList.Section] {
         guard let parsed = TimerQuery(query) else { return [] }
         var items =
             switch parsed {
@@ -34,9 +34,13 @@ enum LauncherTimers {
             case let .pomodoro(label):
                 [
                     row(
-                        id: pomodoroID, title: "Start Pomodoro",
-                        detail: ["Focus \(TimerClock.length(Pomodoro.Phase.focus.length))", label]
-                            .filter { !$0.isEmpty }.joined(separator: " · "))
+                        id: pomodoroID,
+                        title: pomodoroInProgress ? "Restart Pomodoro" : "Start Pomodoro",
+                        detail: pomodoroInProgress
+                            ? "Replaces the pomodoro in progress"
+                            : ["Focus \(TimerClock.length(Pomodoro.Phase.focus.length))", label]
+                                .filter { !$0.isEmpty }.joined(separator: " · "),
+                        action: pomodoroInProgress ? "Restart" : "Start")
                 ]
             }
         items[0].prefersSelection = true
@@ -69,8 +73,10 @@ enum LauncherTimers {
                 separator: " · "))
     }
 
-    private static func row(id: String, title: String, detail: String) -> ResultList.Item {
+    private static func row(
+        id: String, title: String, detail: String, action: String = "Start"
+    ) -> ResultList.Item {
         ResultList.Item(
-            id: id, title: title, subtitle: detail, kind: "", symbol: symbol, action: "Start")
+            id: id, title: title, subtitle: detail, kind: "", symbol: symbol, action: action)
     }
 }

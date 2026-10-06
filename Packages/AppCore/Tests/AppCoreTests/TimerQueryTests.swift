@@ -20,6 +20,8 @@ import Testing
         #expect(TimerQuery("timer") == .timer(length: nil, name: ""))
         #expect(TimerQuery("timer tea") == .timer(length: nil, name: "tea"))
         #expect(TimerQuery("timer 5x") == .timer(length: nil, name: "5x"))
+        #expect(TimerQuery("timer 0x10") == .timer(length: nil, name: "0x10"))
+        #expect(TimerQuery("timer 1e5") == .timer(length: nil, name: "1e5"))
     }
 
     @Test func aSuppliedLengthThatCannotRunIsNotATimer() {

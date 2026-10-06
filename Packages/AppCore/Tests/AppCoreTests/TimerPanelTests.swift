@@ -96,4 +96,15 @@ import Testing
         #expect(timers.pomodoro == nil)
         #expect(panel(timers).buttons.map(\.title) == ["Start"])
     }
+
+    @Test func aFinishedPomodoroOffersToStartAgain() {
+        var timers = Timers()
+        timers.startPomodoro("Widgets UI", at: start)
+        _ = timers.tick(at: start + 130 * Self.minute)
+        let shown = panel(timers, after: 131 * Self.minute)
+        #expect(shown.title == "Pomodoro done")
+        #expect(shown.state == .done)
+        #expect(shown.buttons.map(\.title) == ["Start again", "Stop"])
+        #expect(shown.buttons.first?.action == .startPomodoro)
+    }
 }

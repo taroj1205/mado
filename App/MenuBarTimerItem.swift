@@ -57,6 +57,7 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
     func popoverDidClose(_: Notification) {
         popover = nil
         panel = nil
+        change { $0.dismissFinished(at: $1) }
     }
 
     private func change(_ edit: (inout Timers, Date) -> Void) {

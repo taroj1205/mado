@@ -143,6 +143,7 @@ public struct TimerPanel: Equatable, Sendable {
 
     private static func face(of pomodoro: Pomodoro?, at now: Date, calendar: Calendar) -> Face {
         guard let pomodoro else { return idleFace() }
+        if pomodoro.isFinished(at: now) { return finishedFace() }
         let phase = pomodoro.countdown
         let running = phase.isRunning(at: now)
         let ends = clockTime(now + phase.remaining(at: now), calendar: calendar)
@@ -152,6 +153,18 @@ public struct TimerPanel: Equatable, Sendable {
             clock: TimerClock.text(phase.remaining(at: now), roundingUp: true),
             fraction: phase.fraction(at: now), state: running ? .running : .paused,
             buttons: controls(running ? "Pause" : "Resume"))
+    }
+
+    private static func finishedFace() -> Face {
+        Face(
+            caption: "POMODORO", title: "Pomodoro done",
+            detail: "\(Pomodoro.rounds) rounds finished",
+            clock: TimerClock.text(0, roundingUp: true),
+            fraction: 0, state: .done,
+            buttons: [
+                Button(title: "Start again", action: .startPomodoro, isPrimary: true),
+                Button(title: "Stop", action: .stop, isPrimary: false),
+            ])
     }
 
     private static func idleFace() -> Face {
