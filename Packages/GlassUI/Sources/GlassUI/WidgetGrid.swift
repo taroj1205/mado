@@ -157,6 +157,7 @@ public final class WidgetGrid: NSView {
         tile.beginDrag(with: event, grabbedAt: grab)
     }
     var onSkip: ((Int, Skip) -> Void)?
+    var onPlay: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((Int, Page) -> Void)?
     var onSeek: ((Int, Int) -> Void)?

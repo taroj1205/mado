@@ -30,6 +30,22 @@ import Testing
         #expect(ran.isEmpty && opened == 0)
     }
 
+    @Test func aClickOnThePlayDiscPlaysOrPausesWithoutOpeningTheApp() throws {
+        var ran: [String] = []
+        var opened = 0
+        view.onWidget = { ran.append($0.id) }
+        view.onOpenPlayer = { opened += 1 }
+        view.opensWidgetsOnSingleClick = true
+        let tile = showPlayer()
+        let disc = tile.convert(
+            NSPoint(x: tile.track.disc.bounds.midX, y: tile.track.disc.bounds.midY),
+            from: tile.track.disc)
+        tile.mouseDown(with: try rig.event(.leftMouseDown, on: tile, at: disc))
+        #expect(ran == ["music"])
+        #expect(opened == 0)
+        #expect(view.selectedWidget == 1)
+    }
+
     @Test func aClickOnThePlayerOpensItsAppWhenWidgetsOpenOnSingleClick() throws {
         var ran: [String] = []
         var opened = 0

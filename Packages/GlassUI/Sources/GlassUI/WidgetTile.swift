@@ -59,6 +59,7 @@ final class WidgetTile: NSView {
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
+    var onPlay: (() -> Void)?
     var onSeek: ((Int) -> Void)?
     var onDay: ((String) -> Void)?
     var onPage: ((WidgetGrid.Page) -> Void)?
@@ -185,6 +186,8 @@ final class WidgetTile: NSView {
         let point = track.convert(event.locationInWindow, from: nil)
         if !track.isHidden, let skip = track.skip(at: point) {
             onSkip?(skip)
+        } else if !track.isHidden, track.pressesDisc(at: point) {
+            onPlay?()
         } else if let line = lyricLine(at: event) {
             onSeek?(line)
         } else if let hit = month.hit(at: month.convert(event.locationInWindow, from: nil)) {

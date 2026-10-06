@@ -84,6 +84,7 @@ extension LauncherView {
         widgetGrid.onOpen = { [weak self] index in self?.openWidget(index) }
         widgetGrid.onExtend = { [weak self] index in self?.extendWidgetSelection(index) }
         widgetGrid.onSkip = { [weak self] index, skip in self?.skipTrack(index, skip) }
+        widgetGrid.onPlay = { [weak self] index in self?.playTrack(index) }
         widgetGrid.onDay = { [weak self] query in
             self?.closeWidgetMenu()
             self?.replaceQuery(with: query)
@@ -136,6 +137,12 @@ extension LauncherView {
         selectWidget(index)
         widgetGrid.tiles[index].track.pulse(skip)
         onSkip?(skip)
+    }
+
+    func playTrack(_ index: Int) {
+        closeWidgetMenu()
+        selectWidget(index)
+        onWidget?(widgetGrid.shown[index])
     }
 
     func pageMonth(_ index: Int, _ page: WidgetGrid.Page) {

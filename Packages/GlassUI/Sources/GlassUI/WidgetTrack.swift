@@ -131,6 +131,10 @@ final class WidgetTrack: NSView {
         return nil
     }
 
+    func pressesDisc(at point: NSPoint) -> Bool {
+        !disc.isHidden && convert(disc.bounds, from: disc).contains(point)
+    }
+
     func pulse(_ skip: WidgetGrid.Skip) {
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
         let reach = skip == .previous ? -Self.nudge : Self.nudge
