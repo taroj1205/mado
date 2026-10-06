@@ -143,18 +143,9 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
         }
         guard let button = item?.button else { return }
         let content = makePanel()
-        let controller = NSViewController()
-        controller.view = content
-        content.onResize = { [weak controller] size in controller?.preferredContentSize = size }
         content.update(TimerPanel(timers, at: .now, calendar: .current))
-        let shown = NSPopover()
-        shown.behavior = .transient
-        shown.delegate = self
-        shown.contentViewController = controller
         panel = content
-        popover = shown
-        shown.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        NSApp.activate()
+        popover = MenuBarPanelStyle.present(content, below: button, delegate: self)
     }
 
     private func makePanel() -> MenuBarTimerPanel {

@@ -1,10 +1,11 @@
 import AppKit
 
-final class TimerPanelRow: NSView {
+final class MenuBarPanelRow: NSView {
     private static let height: CGFloat = 24
     private static let labelWidth: CGFloat = 250
     private static let gap: CGFloat = 8
     private static let iconSize: CGFloat = 13
+    private static let iconColumn: CGFloat = 18
     private static let textSize: CGFloat = 13
     private static let hintSize: CGFloat = 12.5
 
@@ -12,7 +13,10 @@ final class TimerPanelRow: NSView {
     private let name: String
     private let onPress: () -> Void
 
-    init(symbol: String, text: String, isHint: Bool, onPress: @escaping () -> Void) {
+    init(
+        symbol: String, text: String, trailing: String, isHint: Bool, isDimmed: Bool,
+        onPress: @escaping () -> Void
+    ) {
         self.onPress = onPress
         name = text
         super.init(frame: .zero)
@@ -20,14 +24,16 @@ final class TimerPanelRow: NSView {
             image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
         icon.symbolConfiguration = .init(pointSize: Self.iconSize, weight: .regular)
         icon.contentTintColor = .secondaryLabelColor
+        icon.widthAnchor.constraint(equalToConstant: Self.iconColumn).isActive = true
         let label = NSTextField(labelWithString: text)
         label.font = .systemFont(ofSize: isHint ? Self.hintSize : Self.textSize)
-        label.textColor = isHint ? .secondaryLabelColor : .labelColor
         if isHint {
+            label.textColor = .secondaryLabelColor
             label.lineBreakMode = .byWordWrapping
             label.maximumNumberOfLines = 0
             label.preferredMaxLayoutWidth = Self.labelWidth
         } else {
+            label.textColor = isDimmed ? .tertiaryLabelColor : .labelColor
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
@@ -46,7 +52,7 @@ final class TimerPanelRow: NSView {
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel(text)
+        show(time: trailing)
     }
 
     @available(*, unavailable)
@@ -56,7 +62,7 @@ final class TimerPanelRow: NSView {
 
     func show(time text: String) {
         time.stringValue = text
-        setAccessibilityLabel("\(name), \(text)")
+        setAccessibilityLabel(text.isEmpty ? name : "\(name), \(text)")
     }
 
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
