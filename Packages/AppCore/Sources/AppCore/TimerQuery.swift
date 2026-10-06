@@ -60,11 +60,13 @@ public enum TimerQuery: Equatable, Sendable {
 
     private static func duration(at index: Int, in words: [String]) -> (TimeInterval?, Int) {
         if let whole = duration(of: words[index]) { return (whole, oneWord) }
-        guard let amount = Double(words[index]), amount.isFinite, amount >= 0 else {
-            return (nil, oneWord)
-        }
+        guard let amount = number(words[index]), amount.isFinite else { return (nil, oneWord) }
         let unit = words.indices.contains(index + 1) ? unitSize(words[index + 1]) : nil
         return unit.map { (amount * $0, twoWords) } ?? (amount * secondsPerMinute, oneWord)
+    }
+
+    private static func number(_ word: String) -> Double? {
+        word.allSatisfy { $0.isASCII && ($0.isNumber || $0 == ".") } ? Double(word) : nil
     }
 
     private static func unitSize(_ text: String) -> Double? {

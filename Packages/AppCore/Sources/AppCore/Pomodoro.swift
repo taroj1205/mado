@@ -65,10 +65,17 @@ public struct Pomodoro: Codable, Equatable, Sendable {
         countdown = Countdown(name: label, length: Phase.focus.length, startingAt: now)
     }
 
+    public func isFinished(at now: Date) -> Bool {
+        phase == .longBreak && countdown.isFinished(at: now)
+    }
+
     public mutating func advance(at now: Date) -> Step {
         var step = Step.unchanged
         while let end = countdown.endsAt, end <= now {
-            guard let following = successor else { return .finished }
+            guard let following = successor else {
+                _ = countdown.settle(at: now)
+                return .finished
+            }
             (phase, round) = following
             countdown = Countdown(
                 name: label, length: phase.length, startingAt: end, id: countdown.id)

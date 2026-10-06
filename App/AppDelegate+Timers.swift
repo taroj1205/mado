@@ -6,7 +6,9 @@ extension AppDelegate {
     private static let timerQuery = "timer "
 
     func timerSections(for query: String) -> [ResultList.Section] {
-        menuBar.timer.isOn ? LauncherTimers.sections(for: query) : []
+        guard menuBar.timer.isOn else { return [] }
+        return LauncherTimers.sections(
+            for: query, pomodoroInProgress: menuBar.timer.timers.isPomodoroInProgress(at: .now))
     }
 
     func timerActions(for item: ResultList.Item) -> [(action: CommandAction, keys: [String])] {

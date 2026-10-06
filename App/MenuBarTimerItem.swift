@@ -57,6 +57,7 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
     func popoverDidClose(_: Notification) {
         popover = nil
         panel = nil
+        change { $0.dismissFinished(at: $1) }
     }
 
     private func change(_ edit: (inout Timers, Date) -> Void) {
@@ -143,6 +144,7 @@ final class MenuBarTimerItem: NSObject, NSPopoverDelegate {
             return
         }
         guard let button = item?.button else { return }
+        change { $0.showFinishedPomodoro(at: $1) }
         let content = makePanel()
         content.update(TimerPanel(timers, at: .now, calendar: .current))
         panel = content

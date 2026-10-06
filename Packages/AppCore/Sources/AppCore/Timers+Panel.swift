@@ -5,7 +5,7 @@ extension Timers {
         switch action {
         case .startTimer(let length): add(length, named: Self.defaultName, at: now)
 
-        case .startPomodoro: startPomodoro("", at: now)
+        case .startPomodoro: startPomodoro(pomodoro?.label ?? "", at: now)
 
         default:
             switch mode {
