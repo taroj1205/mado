@@ -66,9 +66,8 @@ public final class LyricsSession {
             clock = LyricsClock()
             clocked = track.id
         }
-        if let position {
-            clock.sync(position: position, at: now, isPlaying: track.isPlaying)
-        }
+        clock.sync(
+            position: position ?? clock.position(at: now), at: now, isPlaying: track.isPlaying)
         if fetching?.id == track.id { return }
         let retryable = state == .failed && now - (tried?.at ?? 0) >= Self.retryAfter
         if tried?.id == track.id, !retryable { return }

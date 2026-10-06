@@ -190,8 +190,20 @@ import Testing
     @Test func aControlLooksUpTheLyricsOfTheTrackItBrings() async {
         await player.play(song)
         nowPlaying.lookup = true
+        nowPlaying.start(.launcher)
+        defer { nowPlaying.stop(.launcher) }
         await nowPlaying.perform(.next)
         #expect(await until { nowPlaying.session.lyrics != nil })
         #expect(server.asked == 1)
+    }
+
+    @Test func aControlThatLandsAfterPollingStoppedOnlyUpdatesTheTrack() async {
+        await player.play(song)
+        nowPlaying.lookup = true
+        await nowPlaying.perform(.next)
+        #expect(nowPlaying.track == song)
+        #expect(await player.positioned == 0)
+        #expect(nowPlaying.session.state == .idle)
+        #expect(server.asked == 0)
     }
 }

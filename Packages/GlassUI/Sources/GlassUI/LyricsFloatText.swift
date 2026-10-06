@@ -2,6 +2,7 @@ import Foundation
 
 struct LyricsFloatText: Equatable {
     static let gap = "•  •  •"
+    static let breakLabel = "Instrumental break"
 
     let heading: String
     let lines: [String]
@@ -25,7 +26,9 @@ struct LyricsFloatText: Equatable {
         lines = verse.lines.map { $0.isEmpty ? Self.gap : $0 }
         let synced = verse.status == .synced ? verse.current : nil
         current = synced.flatMap { verse.lines.indices.contains($0) ? $0 : nil }
-        spoken = current.map { verse.lines[$0] } ?? ""
+        let sung = current.map { verse.lines[$0] }
+        let fallback = current == nil ? heading : Self.breakLabel
+        spoken = sung.flatMap { $0.isEmpty ? nil : $0 } ?? fallback
     }
 
     func lyric(of verse: WidgetGrid.Verse) -> WidgetGrid.Lyric {

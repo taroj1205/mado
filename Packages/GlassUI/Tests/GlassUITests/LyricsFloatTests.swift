@@ -150,7 +150,7 @@ struct LyricsFloatTests {
             #expect(rig.card.following.isHidden)
             #expect(rig.card.column.isHidden)
             #expect(rig.card.title.stringValue == "Low Tide")
-            #expect((rig.card.accessibilityValue() as? String)?.isEmpty == true)
+            #expect(rig.card.accessibilityValue() as? String == "Low Tide · Harbour Lights")
         }
         rig.look = .line
         rig.show(.island)
@@ -180,7 +180,7 @@ struct LyricsFloatTests {
         defer { float.hide(animated: false) }
         #expect(rig.card.text?.line == LyricsFloatText.gap)
         #expect(rig.card.following.stringValue == LyricsFloatRig.lines[3])
-        #expect((rig.card.accessibilityValue() as? String)?.isEmpty == true)
+        #expect(rig.card.accessibilityValue() as? String == LyricsFloatText.breakLabel)
     }
 
     @Test func desktopTypeSitsUnderEveryWindow() throws {

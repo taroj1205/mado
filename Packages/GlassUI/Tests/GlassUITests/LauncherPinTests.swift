@@ -114,6 +114,24 @@ import Testing
         #expect(picked == [.island])
     }
 
+    @Test func aCancelledDragDoesNotPinAndAFinishedOneUsesTheIdItStartedWith() throws {
+        view.widgets = [clock, song]
+        view.layoutSubtreeIfNeeded()
+        let tile = try #require(view.widgetGrid.tiles.last)
+        var dropped: [String] = []
+        var ended = 0
+        tile.onDragOff = { id, _ in dropped.append(id) }
+        tile.onDragEnd = { ended += 1 }
+        let far = NSPoint(x: panel.frame.maxX + 2_000, y: panel.frame.midY)
+        tile.finishDrag(of: "music", at: far, operation: [], cancelled: true)
+        #expect(dropped.isEmpty && ended == 1)
+        tile.widgetID = "other"
+        tile.finishDrag(of: "music", at: far, operation: [], cancelled: false)
+        #expect(dropped == ["music"] && ended == 2)
+        tile.finishDrag(of: "music", at: far, operation: .move, cancelled: false)
+        #expect(dropped == ["music"] && ended == 2)
+    }
+
     @Test func aTrackThatIsBeingLookedUpShowsASkeletonInPlaceOfTheLyricLine() throws {
         view.widgetSizes = ["music": .init(columns: 3)]
         let lookingUp = WidgetGrid.Widget(

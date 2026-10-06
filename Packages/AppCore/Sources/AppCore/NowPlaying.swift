@@ -30,6 +30,7 @@ public final class NowPlaying {
     private var users: Set<User> = []
     private var loops: [Task<Void, Never>] = []
     private var line: Int?
+    private var latest = 0
 
     public var isRunning: Bool {
         !users.isEmpty
@@ -121,9 +122,16 @@ public final class NowPlaying {
     }
 
     private func apply(_ found: MusicPlayer.Track?) async {
+        guard isRunning else {
+            track = found
+            onChange?()
+            return
+        }
+        latest += 1
+        let mine = latest
         let enabled = allows(found)
         let position = found != nil && enabled ? await source.position() : nil
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, isRunning, mine == latest else { return }
         track = found
         session.update(found, position: position, enabled: enabled, at: uptime())
         line = session.moment(at: uptime())?.index

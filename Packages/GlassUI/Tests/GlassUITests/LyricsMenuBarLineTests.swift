@@ -41,7 +41,7 @@ struct LyricsMenuBarLineTests {
 
     @Test func withoutATimedLineItShowsTheSong() {
         item.show(LyricsFloatRig.song(.missing, current: nil, playing: true))
-        #expect((item.accessibilityValue() as? String)?.isEmpty == true)
+        #expect(item.accessibilityValue() as? String == "Low Tide · Harbour Lights")
         #expect(item.naturalWidth > 0)
     }
 }

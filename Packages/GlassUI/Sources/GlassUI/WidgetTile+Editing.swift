@@ -29,6 +29,7 @@ extension WidgetTile: NSDraggingSource {
     private static let gripSize: CGFloat = 14
     private static let gripInset: CGFloat = 8
     private static let half: CGFloat = 0.5
+    static let escapeKey: CGKeyCode = 53
 
     func arrangeEditing() {
         for outline in [dash, slot] {
@@ -148,10 +149,21 @@ extension WidgetTile: NSDraggingSource {
         context == .withinApplication ? .move : []
     }
 
-    func draggingSession(_: NSDraggingSession, endedAt point: NSPoint, operation: NSDragOperation) {
-        if operation.isEmpty {
-            onDragEnd?()
-            onDragOff?(point)
+    func draggingSession(
+        _ session: NSDraggingSession, endedAt point: NSPoint, operation: NSDragOperation
+    ) {
+        let id = session.draggingPasteboard.string(forType: WidgetGrid.dragType)
+        let cancelled = CGEventSource.keyState(.combinedSessionState, key: Self.escapeKey)
+        finishDrag(of: id, at: point, operation: operation, cancelled: cancelled)
+    }
+
+    func finishDrag(
+        of id: String?, at point: NSPoint, operation: NSDragOperation, cancelled: Bool
+    ) {
+        guard operation.isEmpty else { return }
+        onDragEnd?()
+        if !cancelled, let id {
+            onDragOff?(id, point)
         }
     }
 
