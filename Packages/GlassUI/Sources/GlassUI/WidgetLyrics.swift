@@ -1,6 +1,12 @@
 import AppKit
 
 final class WidgetLyrics: NSView {
+    struct Compact {
+        let kept: [Int]
+        let current: Int?
+        let gap: Double?
+    }
+
     private static let pitch: CGFloat = 30
     private static let currentSize: CGFloat = 16
     private static let restSize: CGFloat = 12.5
@@ -24,6 +30,7 @@ final class WidgetLyrics: NSView {
     private let message = NSStackView()
     private(set) var tint: NSColor?
     private var shown: WidgetGrid.Verse?
+    private var originals: [Int] = []
 
     init() {
         super.init(frame: .zero)
@@ -68,6 +75,17 @@ final class WidgetLyrics: NSView {
         }
     }
 
+    static func compact(_ lines: [String], current: Int?) -> Compact {
+        let kept = lines.indices.filter { !lines[$0].isEmpty }
+        guard let current else { return Compact(kept: kept, current: nil, gap: nil) }
+        if let position = kept.firstIndex(of: current) {
+            return Compact(kept: kept, current: position, gap: nil)
+        }
+        let before = kept.lastIndex { $0 < current }
+        return Compact(
+            kept: kept, current: before ?? (kept.isEmpty ? nil : 0), gap: before == nil ? 0 : 1)
+    }
+
     private func layOut() {
         let header = NSStackView(views: [cover, heading, equalizer])
         header.spacing = Self.headerGap
@@ -95,7 +113,11 @@ final class WidgetLyrics: NSView {
     }
 
     func line(at point: NSPoint) -> Int? {
-        column.line(at: column.convert(point, from: self))
+        guard !column.isHidden,
+            let row = column.line(at: column.convert(point, from: self)),
+            originals.indices.contains(row)
+        else { return nil }
+        return originals[row]
     }
 
     func show(_ verse: WidgetGrid.Verse) {
@@ -116,9 +138,13 @@ final class WidgetLyrics: NSView {
         detail.stringValue = text?.detail ?? ""
         detail.isHidden = text?.detail.isEmpty ?? true
         if text == nil {
+            let compact = Self.compact(
+                verse.lines, current: verse.status == .synced ? verse.current : nil)
+            originals = compact.kept
             column.show(
-                verse.lines, current: verse.status == .synced ? verse.current : nil,
-                progress: verse.progress, remaining: verse.remaining, playing: verse.isPlaying)
+                compact.kept.map { verse.lines[$0] }, current: compact.current,
+                progress: compact.gap ?? verse.progress,
+                remaining: compact.gap == nil ? verse.remaining : nil, playing: verse.isPlaying)
         }
         shown = verse
     }

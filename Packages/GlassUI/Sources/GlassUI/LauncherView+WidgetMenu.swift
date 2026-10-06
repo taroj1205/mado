@@ -114,6 +114,7 @@ extension LauncherView {
         switch choice {
         case .open: onWidget?(widget)
         case .move: openSpotPicker(for: widget)
+        case .pin: presentPin(for: widget)
         case .edit: editWidgets()
         case .add: addWidgets()
         case .remove: report(.remove(widget.id))
@@ -121,11 +122,15 @@ extension LauncherView {
     }
 
     private func menuEntries(for widget: WidgetGrid.Widget) -> [WidgetMenu.Entry] {
-        [
+        let pin = pinAction(for: widget).map { action in
+            [WidgetMenu.Entry(choice: .pin, title: action.title, detail: action.detail)]
+        }
+        return [
             .init(choice: .open, title: widget.action),
             .init(
                 choice: .move, title: Self.moveToTitle,
                 detail: widgetGrid.home(of: widget.id).title),
+        ] + (pin ?? []) + [
             .init(choice: .edit, title: Self.editTitle),
             .init(choice: .add, title: Self.addTitle),
             .init(choice: .remove, title: "Remove \(widget.name)"),

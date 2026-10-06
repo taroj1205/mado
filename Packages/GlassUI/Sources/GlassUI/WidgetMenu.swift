@@ -12,6 +12,7 @@ final class WidgetMenu {
     enum Choice {
         case open
         case move
+        case pin
         case edit
         case add
         case remove
@@ -20,6 +21,7 @@ final class WidgetMenu {
             switch self {
             case .open: "arrow.up.forward.square"
             case .move: "arrow.up.and.down.and.arrow.left.and.right"
+            case .pin: "pin"
             case .edit: LauncherView.editSymbol
             case .add: "plus"
             case .remove: "trash"
@@ -29,7 +31,7 @@ final class WidgetMenu {
         var section: Section {
             switch self {
             case .open: .open
-            case .move: .place
+            case .move, .pin: .place
             case .edit, .add: .edit
             case .remove: .remove
             }
@@ -88,7 +90,7 @@ final class WidgetMenu {
                 keys: entry.choice == .open ? LauncherView.Action.primaryKeys : [],
                 icon: NSImage(systemSymbolName: entry.choice.symbol, accessibilityDescription: nil),
                 isDestructive: entry.choice == .remove, detail: entry.detail,
-                opens: entry.choice == .move)
+                opens: entry.choice == .move || entry.choice == .pin)
             row.onPress = { [weak self] in self?.onChoose?(entry.choice) }
             return row
         }

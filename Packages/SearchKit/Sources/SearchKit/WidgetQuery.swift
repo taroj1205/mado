@@ -4,6 +4,7 @@ public enum WidgetQuery {
     public enum Kind: CaseIterable, Sendable {
         case battery
         case calendar
+        case lyrics
         case system
         case weather
     }
@@ -12,6 +13,7 @@ public enum WidgetQuery {
     private static let keywords: [Kind: [String]] = [
         .weather: ["weather", "forecast"], .battery: ["battery"],
         .system: ["cpu", "memory", "ram", "processor"], .calendar: ["calendar"],
+        .lyrics: ["lyrics"],
     ]
 
     public static func kinds(for query: String) -> [Kind] {

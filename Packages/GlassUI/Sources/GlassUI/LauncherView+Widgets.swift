@@ -33,7 +33,10 @@ extension LauncherView {
 
     public var widgetPreviews: [WidgetGrid.Widget] {
         get { gallery.previews }
-        set { gallery.previews = newValue }
+        set {
+            gallery.previews = newValue
+            showVerse(among: newValue)
+        }
     }
 
     public var widgetsFillPanel: Bool { widgetGrid.fillsPanel }
@@ -93,6 +96,7 @@ extension LauncherView {
             self?.onSeek?(line)
         }
         widgetGrid.onRemove = { [weak self] index in self?.removeWidget(index) }
+        widgetGrid.onPinOff = { [weak self] in self?.pinOffPanel() }
         widgetGrid.onResize = { [weak self] index, resize in self?.resizeWidget(index, resize) }
         placeEditing()
     }

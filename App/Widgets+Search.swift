@@ -17,6 +17,7 @@ extension Widgets {
         case .battery: battery
         case .system: system
         case .calendar: calendarWidget
+        case .lyrics: lyrics
         }
     }
 
@@ -34,7 +35,7 @@ extension Widgets {
     func sections(
         for query: String, enabled: Bool, in view: LauncherView
     ) -> [ResultList.Section] {
-        let kinds = enabled ? WidgetQuery.kinds(for: query) : []
+        let kinds = WidgetQuery.kinds(for: query).filter { enabled || $0 == .lyrics }
         if kinds != searched {
             searched = kinds
             delivered = []
@@ -61,7 +62,7 @@ extension Widgets {
     }
 
     private func items(among all: [WidgetGrid.Widget]) -> [ResultList.Item] {
-        searched.map { kind in
+        searched.filter { $0 != .lyrics }.map { kind in
             let id = Self.id(of: kind)
             let widget = all.first { $0.id == id }
             let (card, action) = card(for: kind, widget: widget)

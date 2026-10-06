@@ -171,6 +171,10 @@ final class ActionPanel: NSObject, NSTextFieldDelegate {
         return row
     }
 
+    func choose(_ index: Int) {
+        run(index)
+    }
+
     private func run(_ index: Int) {
         if actions[index].opens {
             onOpen?(index)

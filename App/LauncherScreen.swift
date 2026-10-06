@@ -2,7 +2,7 @@ import AppCore
 import AppKit
 import WindowKit
 
-enum LauncherScreen {
+enum LauncherScreen: Equatable {
     case activeWindow
     case display(id: String, name: String)
     case mouse
@@ -50,30 +50,46 @@ enum LauncherScreen {
         NSScreen.screens.first { Self.uuid(of: $0) == id }
     }
 
-    static func displays(keeping saved: Self) -> [Self] {
-        let connected = NSScreen.screens.compactMap { screen in
-            uuid(of: screen).map { Self.display(id: $0, name: screen.localizedName) }
+    var json: JSONValue {
+        switch self {
+        case let .display(id, name): .object(["id": .string(id), "name": .string(name)])
+        case .activeWindow, .mouse: .string(id)
         }
+    }
+
+    init(json: JSONValue?) {
+        switch json {
+        case .string(Self.activeWindow.id):
+            self = .activeWindow
+
+        case .object(let display):
+            guard case .string(let id) = display["id"], case .string(let name) = display["name"]
+            else {
+                self = .mouse
+                return
+            }
+            self = .display(id: id, name: name)
+
+        default:
+            self = .mouse
+        }
+    }
+
+    static func displays(keeping saved: Self) -> [Self] {
+        let connected = NSScreen.screens.compactMap(Self.display(of:))
         guard case .display = saved, !connected.contains(where: { $0.id == saved.id }) else {
             return connected
         }
         return connected + [saved]
     }
 
+    static func display(of screen: NSScreen) -> Self? {
+        uuid(of: screen).map { .display(id: $0, name: screen.localizedName) }
+    }
+
     @MainActor
     static func load(from modules: ModuleManager?) -> Self {
-        switch LauncherSettings.value(field, in: modules) {
-        case .string(Self.activeWindow.id):
-            return .activeWindow
-
-        case .object(let display):
-            guard case .string(let id) = display["id"], case .string(let name) = display["name"]
-            else { return .mouse }
-            return .display(id: id, name: name)
-
-        default:
-            return .mouse
-        }
+        Self(json: LauncherSettings.value(field, in: modules))
     }
 
     private static func uuid(of screen: NSScreen) -> String? {
@@ -104,11 +120,6 @@ enum LauncherScreen {
 
     @MainActor
     func save(to modules: ModuleManager?) throws {
-        let value: JSONValue =
-            switch self {
-            case let .display(id, name): .object(["id": .string(id), "name": .string(name)])
-            case .activeWindow, .mouse: .string(id)
-            }
-        try LauncherSettings.setValue(value, for: Self.field, in: modules)
+        try LauncherSettings.setValue(json, for: Self.field, in: modules)
     }
 }

@@ -27,7 +27,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         modules: ModuleManager?, hotKeys: LauncherHotKeys, rates: ExchangeRateFeed,
         items: ItemEditor, snippets: Snippets?, statusItem: NSStatusItem?,
         menuBarAgenda: MenuBarAgendaItem,
-        addWidgets: @escaping @MainActor () -> Void
+        addWidgets: @escaping @MainActor () -> Void,
+        lyricsChanged: @escaping LyricsSettingsEditor.Change
     ) {
         let recorder = HotKeyPopover(items: items)
         let ignoredApps = AppListSettings.ignoredApps(modules: modules)
@@ -44,7 +45,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
-            addWidgets: addWidgets, speechModels: speechModels,
+            addWidgets: addWidgets, lyricsChanged: lyricsChanged, speechModels: speechModels,
             colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
             menuBarAgenda: menuBarAgenda)
         let pages = Self.pages(context)
