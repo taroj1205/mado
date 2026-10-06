@@ -45,6 +45,8 @@ final class EmojiPicker: NSObject {
     }
     private let tonePicker = NSPopUpButton(frame: .zero, pullsDown: false)
     private var catalog: EmojiCatalog?
+    private var loadCatalog: (@MainActor () -> Void)?
+    private var isLoading = false
 
     static func owns(_ id: String) -> Bool {
         id.hasPrefix(idPrefix)
@@ -56,13 +58,15 @@ final class EmojiPicker: NSObject {
     }
 
     func query(in text: String) -> String? {
-        guard catalog != nil, text.hasPrefix(Self.prefix) else { return nil }
+        guard loadCatalog != nil, text.hasPrefix(Self.prefix) else { return nil }
         return String(text.dropFirst(Self.prefix.count))
     }
 
     func start(context: ModuleContext) {
         context.own(.other, "emoji catalog") { [weak self] in
             self?.catalog = nil
+            self?.loadCatalog = nil
+            self?.isLoading = false
             self?.onUnload?()
         }
         let open = CommandAction(id: "open", title: "Open \(Self.title)") { [weak self] in
@@ -77,11 +81,15 @@ final class EmojiPicker: NSObject {
             context.logger.error(
                 "Emoji command failed: \(String(describing: error), privacy: .public)")
         }
-        context.run("load emoji") { [weak self] in
-            let loaded = await Task.detached { EmojiCatalog.bundled() }.value
-            guard let self, let loaded, !Task.isCancelled else { return }
-            catalog = loaded
-            onLoad?()
+        loadCatalog = { [weak self, weak context] in
+            guard let self, !isLoading else { return }
+            isLoading = true
+            context?.run("load emoji") { [weak self] in
+                let loaded = await Task.detached { EmojiCatalog.bundled() }.value
+                guard let self, let loaded, !Task.isCancelled else { return }
+                catalog = loaded
+                onLoad?()
+            }
         }
     }
 
@@ -109,6 +117,7 @@ final class EmojiPicker: NSObject {
 
     func sections(for query: String, pastingInto target: PasteTarget?) -> [ResultList.Section] {
         guard let catalog else {
+            loadCatalog?()
             let notice = ResultList.Notice(title: "Loading emoji…", detail: "")
             return [ResultList.Section(title: "", items: [], notice: notice)]
         }

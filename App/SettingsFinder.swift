@@ -48,7 +48,7 @@ final class SettingsFinder {
     ]
     private static let separator = "\u{1F}"
 
-    private let context: SettingsPage.Context
+    let context: SettingsPage.Context
     private let shown: () -> [Shown]
     private var history: SettingsSearch
     private var entries: [SettingsSearch.Entry] = []
@@ -128,7 +128,7 @@ final class SettingsFinder {
                 entries.append(.init(id: id, place: place, section: nil, label: module.name))
             }
             for tab in page.tabs {
-                index(tab, of: page, live: live)
+                autoreleasepool { index(tab, of: page, live: live) }
             }
         }
     }

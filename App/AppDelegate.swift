@@ -15,7 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let launch: OSSignpostIntervalState
     private(set) var statusItem: NSStatusItem?
     private(set) var modules: ModuleManager?
-    private(set) var settings: SettingsWindowController?
+    var settings: SettingsWindowController?
+    var settingsFinder: SettingsFinder?
     private(set) var snippets: Snippets?
     private(set) var launcher: GlassPanel?
     private var launcherClosed: ContinuousClock.Instant?
@@ -39,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let menuBar = MenuBarItems()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
-    private lazy var hotKeys = LauncherHotKeys(
+    lazy var hotKeys = LauncherHotKeys(
         modules: modules, registry: registry
     ) { [weak self] in self?.toggleLauncher() }
     lazy var editor = ItemEditor(
@@ -206,7 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             usage.save(to: modules)
         }
         searchAgain()
-        settings?.reload()
+        reloadSettings()
     }
 
     private func recordUse(of id: String) {
@@ -260,16 +261,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         CATransaction.setCompletionBlock { [signposter] in
             signposter.endInterval("open launcher", opening)
         }
-    }
-
-    func settingsWindow() -> SettingsWindowController {
-        if let settings { return settings }
-        let controller = SettingsWindowController(
-            modules: modules, hotKeys: hotKeys, rates: rates, items: editor,
-            snippets: snippets, statusItem: statusItem, menuBarAgenda: menuBar.agenda
-        ) { [weak self] in self?.editWidgetsInLauncher() }
-        settings = controller
-        return controller
     }
 
     @objc

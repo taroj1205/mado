@@ -197,7 +197,7 @@ extension AppDelegate {
     private func clipboardRunningChanged() {
         if clipboardHistory.isRunning {
             if ClipboardHistory.assignDefaultHotKey(in: editor, modules: modules) {
-                settings?.reload()
+                reloadSettings()
             }
             if scope == .clipboard {
                 searchAgain()
