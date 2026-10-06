@@ -1,6 +1,6 @@
 import AppKit
 
-final class TimerPanelButton: NSButton {
+final class MenuBarPanelButton: NSButton {
     private static let height: CGFloat = 30
     private static let side: CGFloat = 12
     private static let fontSize: CGFloat = 13

@@ -3,7 +3,7 @@ import AppKit
 import os
 
 @MainActor
-final class MenuBarAgendaItem: NSObject {
+final class MenuBarAgendaItem: NSObject, NSPopoverDelegate {
     struct Shown {
         let bar: MenuBarAgenda
         let found: [CalendarAgenda.Found]
@@ -15,6 +15,8 @@ final class MenuBarAgendaItem: NSObject {
     private let logger = Log.logger("MenuBarAgenda")
     private weak var modules: ModuleManager?
     private var item: NSStatusItem?
+    private var popover: NSPopover?
+    private var panel: MenuBarAgendaPanel?
     private var fetching: Task<Void, Never>?
     private(set) var shown: Shown?
     var openSettings: (@MainActor () -> Void)?
@@ -42,6 +44,11 @@ final class MenuBarAgendaItem: NSObject {
         hide()
     }
 
+    func popoverDidClose(_: Notification) {
+        popover = nil
+        panel = nil
+    }
+
     func refresh() {
         fetching?.cancel()
         guard modules != nil, settings.isShown, CalendarAgenda.hasAccess else {
@@ -65,16 +72,19 @@ final class MenuBarAgendaItem: NSObject {
             hide()
             return
         }
-        shown = Shown(bar: bar, found: found, now: now)
+        let current = Shown(bar: bar, found: found, now: now)
+        shown = current
         let button = (item ?? makeItem()).button
         let title = bar.title(showingEvent: !settings.hidesTitles)
         button?.title = title
         button?.image = icon(joining: bar.joins)
         button?.setAccessibilityLabel(title)
+        panel?.update(current, hidesTitles: settings.hidesTitles)
     }
 
     private func hide() {
         shown = nil
+        popover?.close()
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
     }
@@ -98,7 +108,11 @@ final class MenuBarAgendaItem: NSObject {
 
     @objc
     private func clicked() {
-        guard let shown, let item else { return }
+        if let popover, popover.isShown {
+            popover.close()
+            return
+        }
+        guard let shown, let button = item?.button else { return }
         let event = NSApp.currentEvent
         let isPlainClick =
             event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == false
@@ -106,8 +120,32 @@ final class MenuBarAgendaItem: NSObject {
             run(CalendarAgenda.join(meeting))
             return
         }
-        item.menu = makeMenu(for: shown)
-        item.button?.performClick(nil)
-        item.menu = nil
+        let content = makePanel()
+        content.update(shown, hidesTitles: settings.hidesTitles)
+        panel = content
+        popover = MenuBarPanelStyle.present(content, below: button, delegate: self)
+    }
+
+    private func makePanel() -> MenuBarAgendaPanel {
+        MenuBarAgendaPanel(
+            .init(
+                join: { [weak self] meeting in self?.act(CalendarAgenda.join(meeting)) },
+                open: { [weak self] found in self?.act(CalendarAgenda.open(found)) },
+                openCalendar: { [weak self] in
+                    self?.act(Widgets.openApp(Widgets.calendarApp, titled: "Open Calendar"))
+                },
+                toggleTitles: { [weak self] in
+                    self?.popover?.close()
+                    self?.settings.hidesTitles.toggle()
+                },
+                openSettings: { [weak self] in
+                    self?.popover?.close()
+                    self?.openSettings?()
+                }))
+    }
+
+    private func act(_ action: CommandAction) {
+        popover?.close()
+        run(action)
     }
 }
