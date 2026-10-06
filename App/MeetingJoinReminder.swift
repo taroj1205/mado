@@ -17,6 +17,7 @@ final class MeetingJoinReminder {
     private var reminder = JoinReminder(you: NSFullUserName())
     private var prompt: JoinPrompt?
     private var fetching: Task<Void, Never>?
+    private let upNext = UpNextFeed()
 
     private static func frame(for size: CGSize) -> CGRect {
         let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? .zero
@@ -40,6 +41,7 @@ final class MeetingJoinReminder {
         context.scheduleTimer("meeting join reminder", interval: Self.interval) { [weak self] in
             self?.refresh()
         }
+        upNext.refreshOnChange(in: context) { [weak self] in self?.refresh() }
         context.startKeyFeatures { watchKeys(in: context) }
         refresh()
     }
@@ -59,7 +61,7 @@ final class MeetingJoinReminder {
             return
         }
         fetching = Task { [weak self] in
-            let found = await CalendarAgenda.upNext(around: .now)
+            let found = await self?.upNext.found(around: .now) ?? []
             guard !Task.isCancelled else { return }
             self?.show(Agenda(events: found.map(\.event)), at: .now)
         }
