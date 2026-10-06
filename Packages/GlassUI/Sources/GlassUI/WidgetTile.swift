@@ -56,7 +56,6 @@ final class WidgetTile: NSView {
     var onOpen: (() -> Void)?
     var onMenu: ((NSPoint) -> Void)?
     var onHold: ((NSPoint) -> Void)?
-    var onTap: (() -> Void)?
     var opensOnSingleClick = false
     var onExtend: (() -> Void)?
     var onSkip: ((WidgetGrid.Skip) -> Void)?
@@ -194,7 +193,6 @@ final class WidgetTile: NSView {
             onPress?()
             openIfAsked(by: event)
             startHold(with: event)
-            if holdOrigin == nil { tap() }
         }
     }
 
@@ -238,10 +236,7 @@ final class WidgetTile: NSView {
 
     override func mouseUp(with _: NSEvent) {
         holdDelay.cancel()
-        if holdOrigin != nil {
-            holdOrigin = nil
-            tap()
-        }
+        holdOrigin = nil
         dragStart = nil
         if resizeStart != nil {
             resizeStart = nil

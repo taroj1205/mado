@@ -17,16 +17,29 @@ import Testing
         return rig.tiles[1]
     }
 
-    @Test func aClickOnThePlayerRunsItsActionWhenTheButtonComesUp() throws {
+    @Test func aClickOnThePlayerSelectsItWithoutPausingTheMusic() throws {
         var ran: [String] = []
+        var opened = 0
         view.onWidget = { ran.append($0.id) }
+        view.onOpenPlayer = { opened += 1 }
         let tile = showPlayer()
         tile.holdDelay.duration = .seconds(5)
         tile.mouseDown(with: try rig.event(.leftMouseDown, on: tile))
-        #expect(ran.isEmpty)
-        #expect(view.selectedWidget == 1)
         tile.mouseUp(with: try rig.event(.leftMouseUp, on: tile))
-        #expect(ran == ["music"])
+        #expect(view.selectedWidget == 1)
+        #expect(ran.isEmpty && opened == 0)
+    }
+
+    @Test func aClickOnThePlayerOpensItsAppWhenWidgetsOpenOnSingleClick() throws {
+        var ran: [String] = []
+        var opened = 0
+        view.onWidget = { ran.append($0.id) }
+        view.onOpenPlayer = { opened += 1 }
+        view.opensWidgetsOnSingleClick = true
+        let tile = showPlayer()
+        tile.mouseDown(with: try rig.event(.leftMouseDown, on: tile))
+        #expect(ran.isEmpty)
+        #expect(opened == 1)
     }
 
     @Test func holdingThePlayerIntoEditModeDoesNotRunItsAction() async throws {

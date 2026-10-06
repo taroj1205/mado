@@ -71,7 +71,7 @@ import Testing
         #expect(ran == ["weather"])
     }
 
-    @Test func aPlayerTilePlaysOnAClickAndOpensThePlayerOnADoubleClick() throws {
+    @Test func aPlayerTileOpensThePlayerOnADoubleClickAndNeverPlaysOnAClick() throws {
         var ran: [String] = []
         var opens = 0
         view.onWidget = { ran.append($0.id) }
@@ -88,15 +88,15 @@ import Testing
         let tile = view.widgetGrid.tiles[1]
         let press = try click(tile, [])
         tile.mouseDown(with: press)
-        #expect(ran.isEmpty)
         tile.mouseUp(with: press)
-        #expect(ran == ["music"])
+        #expect(ran.isEmpty)
         #expect(opens == 0)
         tile.mouseDown(with: try click(tile, [], count: 2))
         #expect(opens == 1)
         view.opensWidgetsOnSingleClick = true
         tile.mouseDown(with: try click(tile, []))
-        #expect(opens == 1)
+        #expect(ran.isEmpty)
+        #expect(opens == 2)
     }
 
     @Test func commandDraggingReordersTheInlineGridWithoutEditMode() {
