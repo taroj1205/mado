@@ -166,6 +166,22 @@ import Testing
         #expect(view.selectedWidget != nil)
     }
 
+    @Test func inEditModeAnyTilesCornerResizesWithoutHoldingCommand() throws {
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        let tile = view.widgetGrid.tiles[1]
+        let corner = tile.convert(
+            NSPoint(x: tile.bounds.maxX - 4, y: tile.bounds.minY + 4), to: nil)
+        tile.mouseDown(with: try mouse(.leftMouseDown, at: corner))
+        #expect(tile.resizeStart != nil)
+        #expect(view.selectedWidget == 1)
+        tile.mouseDragged(
+            with: try mouse(.leftMouseDragged, at: moved(corner, by: Self.step.scaled(1, 0))))
+        #expect(view.widgetGrid.trial == ["2": .init(columns: 2)])
+        tile.mouseUp(with: try mouse(.leftMouseUp, at: corner))
+    }
+
     @Test func savedSizesStayBetweenTheWidgetsSmallestAndTheLargestItsSpotAllows() {
         let track = WidgetGrid.Track(title: "Song", artist: "Band", artwork: nil, isPlaying: true)
         view.widgets =

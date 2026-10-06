@@ -1,7 +1,7 @@
 import AppKit
 
 final class WidgetEditBar: NSStackView {
-    struct Subject {
+    struct Subject: Equatable {
         let name: String
         let spot: WidgetGrid.Spot
         let sizes: [WidgetSizeSwitch.Option]
@@ -12,6 +12,17 @@ final class WidgetEditBar: NSStackView {
         case off
         case group
         case ungroup
+    }
+
+    struct State: Equatable {
+        let widget: Subject?
+        let moving: Bool
+        let count: Int
+        let grouping: Grouping
+        let hint: String?
+        let symbol: String
+        let undoable: Bool
+        let width: CGFloat
     }
 
     private static let sizeChoices = 2
@@ -53,6 +64,7 @@ final class WidgetEditBar: NSStackView {
     private let hintStack: NSStackView
     let inspector: GlassView
     let notice: GlassView
+    private var shown: State?
     var onSize: ((WidgetGrid.Size) -> Void)?
     var onMove: (() -> Void)?
     var onGroup: (() -> Void)?
@@ -104,7 +116,15 @@ final class WidgetEditBar: NSStackView {
         nil
     }
 
-    func show(_ widget: Subject?, moving: Bool, count: Int, grouping: Grouping) {
+    func show(_ state: State) {
+        guard state != shown else { return }
+        shown = state
+        show(state.widget, moving: state.moving, count: state.count, grouping: state.grouping)
+        show(hint: state.hint, symbol: state.symbol, undoable: state.undoable)
+        arrange(in: state.width)
+    }
+
+    private func show(_ widget: Subject?, moving: Bool, count: Int, grouping: Grouping) {
         inspector.isHidden = widget == nil
         guard let widget else { return }
         let several = count > 1
@@ -126,7 +146,7 @@ final class WidgetEditBar: NSStackView {
         setAccessibilityLabel("\(name.stringValue) options")
     }
 
-    func show(hint text: String?, symbol: String, undoable: Bool) {
+    private func show(hint text: String?, symbol: String, undoable: Bool) {
         notice.isHidden = text == nil
         hint.stringValue = text ?? ""
         hintIcon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
@@ -143,7 +163,7 @@ final class WidgetEditBar: NSStackView {
         move.setAccessibilityLabel("Move to…")
     }
 
-    func arrange(in width: CGFloat) {
+    private func arrange(in width: CGFloat) {
         let nameWidth = name.fittingSize.width
         let needed = inspector.fittingSize.width - nameWidth + Self.nameFloor
         if !sizes.isHidden, needed > width {

@@ -78,7 +78,9 @@ extension LyricsStage {
             } else {
                 surroundings?.menusEnd
             }
-        let items = SystemBars.statusItems(excluding: bar.windowNumber).map(appKit)
+        let excluded = bar.windowNumber
+        let items = await Task.detached { SystemBars.statusItems(excluding: excluded) }.value
+            .map(appKit)
         let next = LyricsSurroundings(dock: dock, menusEnd: menusEnd, statusItems: items)
         guard settings.pin?.isBeside == true, next != surroundings else { return }
         surroundings = next

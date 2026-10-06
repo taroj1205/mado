@@ -234,14 +234,14 @@ extension LauncherView {
             } else {
                 .off
             }
-        editBar.show(
-            widget.map { subject(of: $0) }, moving: spotPicker != nil, count: picked.count,
-            grouping: grouping)
         let hint = widgetNote ?? (widget == nil ? (Self.editHint, false) : nil)
         editBar.show(
-            hint: hint?.text, symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
-            undoable: hint?.undoable == true)
-        editBar.arrange(in: bounds.width - Self.capsuleInset - Self.capsuleInset)
+            .init(
+                widget: widget.map { subject(of: $0) }, moving: spotPicker != nil,
+                count: picked.count, grouping: grouping, hint: hint?.text,
+                symbol: widgetNote == nil ? WidgetEditBar.moveSymbol : "checkmark",
+                undoable: hint?.undoable == true,
+                width: bounds.width - Self.capsuleInset - Self.capsuleInset))
         gallery.placed = Dictionary(
             widgetGrid.widgets.map { ($0.id, widgetGrid.home(of: $0.id)) }
         ) { first, _ in first }

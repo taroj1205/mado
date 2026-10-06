@@ -187,6 +187,14 @@ import Testing
         #expect(view.field.stringValue.isEmpty)
     }
 
+    @Test func resultsArrivingWhileEditingStayHiddenBehindTheGallery() {
+        edit()
+        view.showLyrics(false)
+        #expect(view.results.isHidden)
+        view.showGrid([], home: nil, keeping: nil)
+        #expect(view.results.isHidden)
+    }
+
     private func edit() {
         if view.selectedWidget == nil {
             view.selectWidget(0)

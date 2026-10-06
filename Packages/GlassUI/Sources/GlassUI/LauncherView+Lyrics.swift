@@ -22,7 +22,7 @@ extension LauncherView {
     public func showLyrics(_ shown: Bool) {
         let changed = shown != showsLyrics
         lyricsPane.isHidden = !shown
-        results.isHidden = shown || showsGrid
+        results.isHidden = shown || showsGrid || editingWidgets
         if !shown {
             lyricsPane.follow()
         }

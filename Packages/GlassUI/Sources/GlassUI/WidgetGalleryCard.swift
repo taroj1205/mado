@@ -9,7 +9,9 @@ final class WidgetGalleryCard: NSView, NSDraggingSource {
         private static let half: CGFloat = 0.5
 
         var isAdded = false {
-            didSet { needsDisplay = true }
+            didSet {
+                if isAdded != oldValue { needsDisplay = true }
+            }
         }
 
         override init(frame: NSRect) {

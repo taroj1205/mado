@@ -60,6 +60,20 @@ import Testing
         #expect(view.widgetGrid.guide.isHidden && view.widgetGrid.sizeLabel.isHidden)
     }
 
+    @Test func dragThroughTheSameSizeKeepsTheBarsButtonsInsteadOfRebuildingThem() {
+        view.editWidgets()
+        view.selectWidget(0)
+        view.layoutSubtreeIfNeeded()
+        let before = view.editBar.sizes.buttons
+        #expect(before.count == 3)
+        view.widgetGrid.stretch("1", by: Self.step.scaled(0.1, 0))
+        view.widgetGrid.stretch("1", by: Self.step.scaled(0.2, 0))
+        view.showWidgetTools()
+        #expect(
+            view.editBar.sizes.buttons.map(ObjectIdentifier.init)
+                == before.map(ObjectIdentifier.init))
+    }
+
     @Test func eachTileOffersTheNamedSizesInsideItsOwnRange() {
         let grid = view.widgetGrid
         #expect(grid.options(for: "1") == [.small, .wide, .large])
