@@ -63,6 +63,7 @@ public final class LauncherView: NSView {
     let actionCapsule: GlassView
     let contextPill = StatusPill()
     let statusBar = StatusBar()
+    let resultsFade = LauncherView.makeResultsFade()
     var selectedPill: Int?
     var arrangedCapsule: ArrangedCapsule?
     var customiser: StatusBarCustomiser?
@@ -156,6 +157,7 @@ public final class LauncherView: NSView {
     override public func layout() {
         super.layout()
         widgetGrid.placeFloats()
+        fadeResultsBehindCapsules()
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
