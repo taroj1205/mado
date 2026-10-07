@@ -159,6 +159,9 @@ public final class WidgetGrid: NSView {
     var opensOnSingleClick = false {
         didSet { tiles.forEach { $0.opensOnSingleClick = opensOnSingleClick } }
     }
+    var keepsFloats = false {
+        didSet { placeFloats() }
+    }
     var onExtend: ((Int) -> Void)?
     var onMenu: ((Int, NSPoint) -> Void)?
     var onHold: ((Int, NSPoint) -> Void)?
@@ -183,14 +186,6 @@ public final class WidgetGrid: NSView {
     let dockCaption = NSTextField(labelWithString: "IN THE PANEL · DROP OR CLICK A WIDGET BELOW")
     let guide = DashedOutline.slot(radius: WidgetTile.radius)
     let sizeLabel = WidgetSpotLabel()
-
-    var rowHeight: CGFloat {
-        tileLayout == .strip ? Self.stripHeight : Self.rowHeight
-    }
-
-    private var spareRows: Int {
-        tileLayout == .grid ? min(Self.rowCount(of: panelCells) + 1, Self.maxPanelRows) : 1
-    }
 
     override public var isFlipped: Bool { true }
 

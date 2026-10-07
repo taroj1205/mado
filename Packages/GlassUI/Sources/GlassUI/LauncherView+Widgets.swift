@@ -16,6 +16,11 @@ extension LauncherView {
         set { widgetGrid.opensOnSingleClick = newValue }
     }
 
+    public var keepsOutsideWidgetsWhileSearching: Bool {
+        get { widgetGrid.keepsFloats }
+        set { widgetGrid.keepsFloats = newValue }
+    }
+
     public var widgetSpots: [String: WidgetGrid.Spot] {
         get { widgetGrid.spots }
         set { changeWidgets { widgetGrid.spots = newValue } }

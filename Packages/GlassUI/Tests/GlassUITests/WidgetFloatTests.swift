@@ -99,6 +99,16 @@ import Testing
         #expect(view.widgetGrid.floats.allSatisfy { $0.parent === panel })
     }
 
+    @Test func theFloatsStayWhileTypingWhenKept() {
+        view.keepsOutsideWidgetsWhileSearching = true
+        arrange(.above)
+        press(kVK_ANSI_A, "a")
+        #expect(view.widgetGrid.floats.allSatisfy { $0.parent === panel })
+        #expect(view.widgetGrid.isHidden)
+        view.keepsOutsideWidgetsWhileSearching = false
+        #expect(view.widgetGrid.floats.allSatisfy { $0.parent == nil })
+    }
+
     @Test func resizingThePanelKeepsTheFloatsOnItsTop() {
         arrange(.above)
         panel.setFrame(NSRect(x: 100, y: 64, width: 760, height: 548), display: false)
