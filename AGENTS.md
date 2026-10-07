@@ -15,6 +15,12 @@
 - Skip blog summaries, aggregator pages, and AI-generated "skills" sites unless a primary source backs the same claim.
 - State the sources and what was adopted or rejected in the design discussion, and record the decision that matters in the issue or commit body. If no authoritative source exists, say so instead of presenting a guess as best practice.
 
+## Keeping the Mac untouched
+
+- Debug builds use the bundle ID `com.taroj1205.mado.debug`, so they keep their own defaults, permission grants and login item apart from the installed Mado (`com.taroj1205.mado`). Don't give a Debug build the Release ID.
+- Quit a test build by its path, as the README does (`pkill -USR1 -f "$PWD/build/Build/Products/Debug/"`). Never use `pkill -x Mado` or `killall Mado` outside the VM: the installed app has the same process name.
+- Tests must use temporary directories and `NSPasteboard.withUniqueName()`. Don't call `SettingsStore.standard()`, `ClipboardStore.standard()` or the general pasteboard from a test.
+
 ## Pull requests
 
 - Never commit to `main` directly. Work on a task branch named `<type>/<issue>-<summary>` with the goal's issue number, not its goal ID (`feat/231-battery-widget`, not `feat/M5-11-battery-widget`), and open a PR with the `pr-local` skill.
