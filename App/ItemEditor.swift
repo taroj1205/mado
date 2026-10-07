@@ -58,6 +58,7 @@ final class ItemEditor {
 
     func start() {
         WindowLayouts.assignDefaultHotKeys(in: self, modules: modules)
+        NotesSettings.assignDefaultHotKey(in: self, modules: modules)
         for (id, hotkey) in settings.hotkeys {
             register(hotkey, for: id)
         }

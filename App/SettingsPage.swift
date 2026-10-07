@@ -125,6 +125,7 @@ struct SettingsPage {
             "Notes", "note.text", module: module(NotesModule.id, "Notes & calendar", enabled: true)
         ) { context in
             [
+                NotesSettings.section(context.recorder),
                 MenuBarAgendaSettings.section(context.modules, context.menuBarAgenda),
                 MeetingHUDSettings.section(context.modules),
             ]
