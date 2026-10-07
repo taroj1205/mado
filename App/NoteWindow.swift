@@ -88,16 +88,19 @@ final class NoteWindow: NSObject, NSWindowDelegate, NSTextViewDelegate {
         panel.orderOut(nil)
     }
 
-    func flush() {
+    @discardableResult
+    func flush() -> Bool {
         pending?.cancel()
         pending = nil
-        guard isDirty else { return }
-        isDirty = false
+        guard isDirty else { return true }
         do {
             try save(note)
+            isDirty = false
             isStored = true
+            return true
         } catch {
             logger.error("Saving a note failed: \(error, privacy: .public)")
+            return false
         }
     }
 
@@ -119,7 +122,11 @@ final class NoteWindow: NSObject, NSWindowDelegate, NSTextViewDelegate {
     private func close() {
         note.isOpen = false
         isDirty = isDirty || isStored || !note.text.isEmpty
-        hide()
+        guard flush() else {
+            note.isOpen = true
+            return
+        }
+        panel.orderOut(nil)
         closed(note.id)
     }
 

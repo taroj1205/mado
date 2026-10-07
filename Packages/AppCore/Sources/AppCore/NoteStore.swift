@@ -27,14 +27,14 @@ public struct NoteStore: Sendable {
             at: directory, includingPropertiesForKeys: nil)
         let files = entries.filter { $0.pathExtension == "json" }
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .secondsSince1970
         return files.compactMap { try? decoder.decode(Note.self, from: Data(contentsOf: $0)) }
             .sorted { ($0.modified, $0.id.uuidString) < ($1.modified, $1.id.uuidString) }
     }
 
     public func save(_ note: Note) throws {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .secondsSince1970
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try encoder.encode(note).write(to: file(of: note.id), options: .atomic)

@@ -34,6 +34,19 @@ import Testing
         #expect(try store.load().map(\.text) == ["Groceries\n納豆 × 3"])
     }
 
+    @Test func editsInTheSameSecondKeepTheirOrder() throws {
+        let store = temporaryStore()
+        let frame = CGRect(x: 0, y: 0, width: 300, height: 300)
+        let later = Note(
+            frame: frame, text: "later", modified: Date(timeIntervalSince1970: 1_790_000_000.75))
+        let earlier = Note(
+            frame: frame, text: "earlier", modified: Date(timeIntervalSince1970: 1_790_000_000.25))
+        try store.save(later)
+        try store.save(earlier)
+        #expect(try store.load().map(\.text) == ["earlier", "later"])
+        #expect(try store.load().map(\.modified) == [earlier.modified, later.modified])
+    }
+
     @Test func notesLoadOldestEditFirstAndSkipFilesThatAreNotNotes() throws {
         let store = temporaryStore()
         let frame = CGRect(x: 0, y: 0, width: 300, height: 300)

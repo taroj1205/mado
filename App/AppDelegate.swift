@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
     let menuBar = MenuBarItems()
+    let notes = NoteBoard()
     var enteredScope = Scope.calculator
     private lazy var registry = LauncherHotKeys.makeRegistry()
     lazy var hotKeys = LauncherHotKeys(
@@ -57,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.modules?.keysPaused != true
                 && (!ClipboardModule.commandIDs.contains(id)
                     || self?.clipboardHistory.isRunning == true)
+                && (id != NoteBoard.commandID || self?.notes.isRunning == true)
         })
     #if DEBUG
         private var toggleSignal: (any DispatchSourceSignal)?
@@ -90,6 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.onHotKey = { [weak self] in self?.runHotKey(of: $0) }
         editor.onSave = { [weak self] in self?.saved($0, resettingRanking: $1) }
         editor.start()
+        notes.onRunningChange = { [weak self] in self?.notesRunningChanged() }
+        notesRunningChanged()
         connectClipboardHistory()
         connectEmoji()
         #if DEBUG
@@ -112,7 +116,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
-                        in: manager, hotKeys: registry, menuBar: menuBar,
+                        in: manager, hotKeys: registry,
+                        notes: .init(menuBar: menuBar, board: notes),
                         clipboard: .init(
                             history: clipboardHistory, textTools: textTools, emoji: emojiPicker,
                             snippets: library)

@@ -9,8 +9,13 @@ final class NoteBoard {
     private static let half: CGFloat = 0.5
     private static let staggerSteps = 8
 
+    var onRunningChange: (() -> Void)?
     private var store: NoteStore?
     private var windows: [Note.ID: NoteWindow] = [:]
+
+    var isRunning: Bool {
+        store != nil
+    }
 
     func start(context: ModuleContext) {
         let opened: NoteStore
@@ -43,6 +48,7 @@ final class NoteBoard {
         } catch {
             context.logger.error("Notes failed to load: \(error, privacy: .public)")
         }
+        onRunningChange?()
     }
 
     func flush() {
@@ -53,6 +59,7 @@ final class NoteBoard {
         windows.values.forEach { $0.hide() }
         windows = [:]
         store = nil
+        onRunningChange?()
     }
 
     private func newNote() {
@@ -74,7 +81,10 @@ final class NoteBoard {
     }
 
     private func onScreen(_ frame: CGRect) -> CGRect {
-        NSScreen.screens.contains { $0.visibleFrame.intersects(frame) } ? frame : nextFrame()
+        let bar = CGRect(
+            x: frame.minX, y: frame.maxY - NoteStyle.barHeight, width: frame.width,
+            height: NoteStyle.barHeight)
+        return NSScreen.screens.contains { $0.visibleFrame.intersects(bar) } ? frame : nextFrame()
     }
 
     private func nextFrame() -> CGRect {

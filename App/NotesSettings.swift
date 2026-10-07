@@ -21,14 +21,13 @@ struct NotesSettings: StoredValue, Equatable {
     }
 
     @MainActor
-    static func assignDefaultHotKey(in editor: ItemEditor, modules: ModuleManager?) {
+    static func assignDefaultHotKey(in editor: ItemEditor, modules: ModuleManager?) -> Bool {
         var settings = load(from: modules)
-        guard !settings.assignedDefaultHotKey, modules?.isEnabled(NotesModule.id) == true else {
-            return
-        }
+        guard !settings.assignedDefaultHotKey else { return false }
         editor.assignDefaults([(NoteBoard.commandID, hotkey)])
         settings.assignedDefaultHotKey = true
         settings.save(to: modules)
+        return true
     }
 
     @MainActor
