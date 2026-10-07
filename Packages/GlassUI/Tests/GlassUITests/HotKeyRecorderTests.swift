@@ -20,6 +20,14 @@ import Testing
                 isARepeat: false, keyCode: UInt16(keyCode)))
     }
 
+    func heldDelete() throws -> NSEvent {
+        try #require(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
+                isARepeat: true, keyCode: UInt16(kVK_Delete)))
+    }
+
     func descendant<View: NSView>(_ type: View.Type, in view: NSView) -> View? {
         for child in view.subviews {
             if let match = child as? View ?? descendant(type, in: child) {
@@ -117,6 +125,8 @@ import Testing
         recorder.keyDown(with: try event(.keyDown, kVK_F5, []))
         recorder.keyDown(with: try event(.keyDown, kVK_Delete, []))
         #expect(recorder.state == .waiting)
+        #expect(cleared == 0)
+        recorder.keyDown(with: try heldDelete())
         #expect(cleared == 0)
         recorder.keyDown(with: try event(.keyDown, kVK_Delete, []))
         #expect(cleared == 1)
