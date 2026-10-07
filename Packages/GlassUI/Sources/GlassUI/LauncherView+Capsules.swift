@@ -36,6 +36,25 @@ extension LauncherView {
             ?? AnyHashable(ObjectIdentifier(view))
     }
 
+    static func makeResultsFade() -> CAGradientLayer {
+        let fadeMiddle: CGFloat = 0.5
+        let fade = CAGradientLayer()
+        fade.startPoint = CGPoint(x: fadeMiddle, y: 0)
+        fade.endPoint = CGPoint(x: fadeMiddle, y: 1)
+        fade.colors = [NSColor.black, .black, .clear, .clear].map(\.cgColor)
+        return fade
+    }
+
+    func fadeResultsBehindCapsules() {
+        let height = max(results.bounds.height, 1)
+        let solid = max(height - results.contentInsets.bottom, 0) / height
+        let clear = min(solid + Self.capsuleInset / height, 1)
+        CATransaction.quietly {
+            resultsFade.frame = results.bounds
+            resultsFade.locations = [0, solid, clear, 1].map { .init(value: $0) }
+        }
+    }
+
     func placeCapsules() {
         addSubview(contextPill)
         addSubview(statusBar)
@@ -55,6 +74,8 @@ extension LauncherView {
         ])
         results.contentInsets.bottom =
             Self.capsuleInset + FloatingCapsule.height + Self.capsuleInset
+        results.wantsLayer = true
+        results.layer?.mask = resultsFade
         results.onSelect = { [weak self] item in self?.selectionChanged(to: item) }
         results.onMove = { [weak self] in self?.selectionMoved() }
         results.onPick = { [weak self] query in self?.replaceQuery(with: query) }
