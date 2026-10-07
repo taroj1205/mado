@@ -69,6 +69,9 @@ targets:
         ENABLE_DEBUG_DYLIB: NO
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "Mado Development"
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.taroj1205.mado.debug
 
   MadoTests:
     type: bundle.unit-test
