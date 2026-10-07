@@ -17,7 +17,7 @@ struct PlaceholderModule: Module {
 extension ModuleDescriptor {
     @MainActor
     func makeModule(
-        in modules: ModuleManager, hotKeys: HotKeyRegistry?, menuBar: MenuBarItems,
+        in modules: ModuleManager, hotKeys: HotKeyRegistry?, notes: NotesModule.Screens,
         clipboard: ClipboardModule.Screens,
         showLauncher: @escaping @MainActor (_ toggles: Bool) -> Void
     ) -> any Module {
@@ -47,7 +47,7 @@ extension ModuleDescriptor {
                 switcherSettings: { [weak modules] in .load(from: modules) })
 
         case NotesModule.id:
-            NotesModule(descriptor: self, menuBar: menuBar, modules: modules)
+            NotesModule(descriptor: self, screens: notes, modules: modules)
 
         default: PlaceholderModule(descriptor: self)
         }
