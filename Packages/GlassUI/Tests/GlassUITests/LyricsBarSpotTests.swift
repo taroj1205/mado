@@ -44,6 +44,14 @@ struct LyricsBarSpotTests {
         #expect(left == NSRect(x: 16, y: 15, width: 247, height: 168))
     }
 
+    @Test func theDockTypeFitsTheGapBesideAWideDock() throws {
+        let wide = NSRect(x: 167, y: 10, width: 1_466, height: 72)
+        let right = try #require(spot(.dock, dock: wide, side: .trailing))
+        #expect(right == NSRect(x: 1_649, y: 15, width: 135, height: 168))
+        let left = try #require(spot(.dock, dock: wide, side: .leading))
+        #expect(left == NSRect(x: 16, y: 15, width: 135, height: 168))
+    }
+
     @Test func noDockTypeWhereItsRowsWouldLeaveTheScreen() {
         let small = LyricsBarSpot.Screen(
             frame: Self.screen.frame, visibleFrame: NSRect(x: 0, y: 30, width: 1_800, height: 1_122)
