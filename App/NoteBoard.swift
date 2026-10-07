@@ -10,6 +10,7 @@ final class NoteBoard {
     private static let staggerSteps = 8
 
     var onRunningChange: (() -> Void)?
+    private let logger = Log.logger("Notes")
     private var store: NoteStore?
     private var windows: [Note.ID: NoteWindow] = [:]
     private var unsaved: [Note.ID: Note] = [:]
@@ -28,9 +29,6 @@ final class NoteBoard {
         }
         store = opened
         context.own(.other, "sticky notes") { [weak self] in self?.stop() }
-        context.observe(
-            NSApplication.willTerminateNotification, on: .default, reading: { $0.name },
-            handler: { [weak self] _ in self?.flush() })
         let new = CommandAction(id: "new", title: "New Note") { [weak self] in self?.newNote() }
         do {
             try context.register(
@@ -47,6 +45,14 @@ final class NoteBoard {
 
     func flush() {
         windows.values.forEach { $0.flush() }
+        guard !unsaved.isEmpty, let kept = try? NoteStore.standard() else { return }
+        for note in unsaved.values {
+            do {
+                try kept.save(note)
+            } catch {
+                logger.error("Saving a note failed: \(error, privacy: .public)")
+            }
+        }
     }
 
     private func stop() {

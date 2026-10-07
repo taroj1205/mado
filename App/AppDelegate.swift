@@ -104,6 +104,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if OpenOnLaunch.isEnabled(in: modules) { showLauncher() }
     }
 
+    func applicationWillTerminate(_: Notification) {
+        notes.flush()
+    }
+
     private func makeModules() -> ModuleManager? {
         do {
             let manager = try ModuleManager(store: .standard())
