@@ -91,6 +91,13 @@ final class InputSourceKeys: NSObject {
         return tile
     }
 
+    private static func label(of target: InputTarget) -> String {
+        if case .source(let id) = target {
+            return InputSource.named(id) ?? id
+        }
+        return fixed.first { $0.target == target }?.label ?? ""
+    }
+
     private func hero(_ targets: [Target], _ settings: InputSourceSettings) -> NSView {
         var chips: [HotKey.ModifierKey: String] = [:]
         for target in targets {
@@ -182,15 +189,19 @@ final class InputSourceKeys: NSObject {
         let assign: (HotKey?) -> Void = { [weak self] key in self?.bind(key, to: target) }
         recorder.recordKey(
             named: name, clearable: clearable, from: anchor,
-            refusal: { [weak self] in self?.refusal(for: $0) }, assign: assign)
+            refusal: { [weak self] in self?.refusal(for: $0, assigning: target) }, assign: assign)
     }
 
-    private func refusal(for hotKey: HotKey) -> String? {
+    private func refusal(for hotKey: HotKey, assigning target: InputTarget) -> String? {
         let claimed = RemapSettings.load(from: modules).claimsRightControlTap
         if hotKey == .modifierTap(.rightControl), claimed {
             return "Caps Lock’s tap uses Right ⌃ while Caps Lock is Control. Try another key."
         }
-        let owned = InputSourceSettings.load(from: modules).keys.map(\.hotKey)
+        let keys = InputSourceSettings.load(from: modules).keys
+        if let owner = keys.first(where: { $0.hotKey == hotKey && $0.target != target }) {
+            return "\(Self.label(of: owner.target)) already uses this key. Clear it there first."
+        }
+        let owned = keys.map(\.hotKey)
         guard case .shortcut(let shortcut) = hotKey, !owned.contains(hotKey),
             !recorder.accepts(shortcut)
         else { return nil }

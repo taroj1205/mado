@@ -110,6 +110,24 @@ import Testing
                 == .captured(.shortcut(Shortcut(keyCode: UInt32(kVK_Return), modifiers: .command))))
     }
 
+    @Test func deleteClearsTheSavedKeyOnlyWhenNothingIsPending() throws {
+        let recorder = HotKeyRecorder()
+        var cleared = 0
+        recorder.onClear = { cleared += 1 }
+        recorder.keyDown(with: try event(.keyDown, kVK_F5, []))
+        recorder.keyDown(with: try event(.keyDown, kVK_Delete, []))
+        #expect(recorder.state == .waiting)
+        #expect(cleared == 0)
+        recorder.keyDown(with: try event(.keyDown, kVK_Delete, []))
+        #expect(cleared == 1)
+    }
+
+    @Test func deleteDoesNothingWhenThereIsNothingToClear() throws {
+        let recorder = HotKeyRecorder()
+        recorder.keyDown(with: try event(.keyDown, kVK_Delete, []))
+        #expect(recorder.state == .waiting)
+    }
+
     @Test func takesMenuKeyEquivalentsOnlyWhileFocused() throws {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 320, height: 160), styleMask: [.titled],

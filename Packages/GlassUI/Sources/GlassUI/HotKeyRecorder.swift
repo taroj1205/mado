@@ -133,7 +133,11 @@ public final class HotKeyRecorder: NSView {
                 return
 
             case kVK_Delete:
-                state = .waiting
+                if state == .waiting, let onClear {
+                    onClear()
+                } else {
+                    state = .waiting
+                }
                 return
 
             case kVK_Return:
