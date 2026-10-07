@@ -79,13 +79,19 @@ final class NoteWindow: NSObject, NSWindowDelegate, NSTextViewDelegate {
             panel.makeKeyAndOrderFront(nil)
             panel.makeFirstResponder(textView)
         } else {
-            panel.orderFront(nil)
+            panel.orderFrontRegardless()
         }
     }
 
-    func hide() {
-        flush()
+    @discardableResult
+    func hide() -> Bool {
+        let saved = flush()
         panel.orderOut(nil)
+        return saved
+    }
+
+    func retrySave() {
+        markDirty()
     }
 
     @discardableResult
@@ -132,6 +138,10 @@ final class NoteWindow: NSObject, NSWindowDelegate, NSTextViewDelegate {
 
     private func changed() {
         note.modified = .now
+        markDirty()
+    }
+
+    private func markDirty() {
         isDirty = true
         pending?.cancel()
         pending = Task { [weak self] in

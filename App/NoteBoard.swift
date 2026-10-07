@@ -12,6 +12,7 @@ final class NoteBoard {
     var onRunningChange: (() -> Void)?
     private var store: NoteStore?
     private var windows: [Note.ID: NoteWindow] = [:]
+    private var unsaved: [Note.ID: Note] = [:]
 
     var isRunning: Bool {
         store != nil
@@ -40,14 +41,7 @@ final class NoteBoard {
             context.logger.error(
                 "New note command failed: \(String(describing: error), privacy: .public)")
         }
-        do {
-            for var note in try opened.load() where note.isOpen {
-                note.frame = onScreen(note.frame)
-                show(note, isStored: true, focusing: false)
-            }
-        } catch {
-            context.logger.error("Notes failed to load: \(error, privacy: .public)")
-        }
+        restore(from: opened, logger: context.logger)
         onRunningChange?()
     }
 
@@ -56,7 +50,9 @@ final class NoteBoard {
     }
 
     private func stop() {
-        windows.values.forEach { $0.hide() }
+        for (id, pad) in windows where !pad.hide() {
+            unsaved[id] = pad.note
+        }
         windows = [:]
         store = nil
         onRunningChange?()
@@ -67,13 +63,33 @@ final class NoteBoard {
         show(note, isStored: false, focusing: true)
     }
 
-    private func show(_ note: Note, isStored: Bool, focusing: Bool) {
-        guard let store else { return }
+    private func restore(from opened: NoteStore, logger: Logger) {
+        var notes: [Note] = []
+        do {
+            notes = try opened.load()
+        } catch {
+            logger.error("Notes failed to load: \(error, privacy: .public)")
+        }
+        let retained = unsaved
+        unsaved = [:]
+        notes.removeAll { retained[$0.id] != nil }
+        notes += retained.values.sorted { $0.modified < $1.modified }
+        for var note in notes where note.isOpen {
+            note.frame = onScreen(note.frame)
+            let pad = show(note, isStored: true, focusing: false)
+            if retained[note.id] != nil { pad?.retrySave() }
+        }
+    }
+
+    @discardableResult
+    private func show(_ note: Note, isStored: Bool, focusing: Bool) -> NoteWindow? {
+        guard let store else { return nil }
         let pad = NoteWindow(note: note, isStored: isStored, save: store.save) { [weak self] id in
             self?.forget(id)
         }
         windows[note.id] = pad
         pad.show(focusing: focusing)
+        return pad
     }
 
     private func forget(_ id: Note.ID) {
