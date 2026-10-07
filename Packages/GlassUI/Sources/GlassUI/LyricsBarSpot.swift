@@ -16,7 +16,7 @@ public enum LyricsBarSpot {
     static let height: CGFloat = 22
     static let gap: CGFloat = 16
     static let widths: ClosedRange<CGFloat> = 140...300
-    static let typeWidths: ClosedRange<CGFloat> = 220...520
+    static let typeWidths: ClosedRange<CGFloat> = 120...520
     static let typeHeight: CGFloat = 168
     static let typeRest: CGFloat = 62
     private static let half: CGFloat = 0.5
