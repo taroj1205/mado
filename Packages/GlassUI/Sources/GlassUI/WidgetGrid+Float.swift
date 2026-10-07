@@ -157,7 +157,7 @@ extension WidgetGrid {
     }
 
     func placeFloats() {
-        guard let window = unsafe window, !isHidden else {
+        guard let window = unsafe window, !isHidden || keepsFloats else {
             floats.forEach { $0.orderOut(nil) }
             rails.orderOut(nil)
             return

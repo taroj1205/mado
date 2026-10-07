@@ -45,6 +45,7 @@ struct SettingsPage {
                     [
                         .init("Placement", popUp(WidgetPlacement.self, context.modules)),
                         .init("Inside the panel", popUp(WidgetInlineStyle.self, context.modules)),
+                        .init("Keep outside widgets while searching", keepOutsideWidgets(context)),
                     ]),
                 SettingsSection(
                     "Mouse",
@@ -191,6 +192,14 @@ struct SettingsPage {
         }
         popUp.isEnabled = modules != nil
         return popUp
+    }
+
+    private static func keepOutsideWidgets(_ context: Context) -> SettingsSwitch {
+        SettingsSwitch(
+            read: { OutsideWidgetsWhileSearching.stays(in: context.modules) },
+            write: { stays in
+                try OutsideWidgetsWhileSearching.setStays(stays, in: context.modules)
+            })
     }
 
     private static func galleryButton(_ context: Context) -> SettingsButton {

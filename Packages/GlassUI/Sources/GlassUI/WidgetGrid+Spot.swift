@@ -284,6 +284,14 @@ extension WidgetGrid {
 
     var inPanel: [Widget] { shown.filter { spot(of: $0).side == .panel } }
 
+    var rowHeight: CGFloat {
+        tileLayout == .strip ? Self.stripHeight : Self.rowHeight
+    }
+
+    var spareRows: Int {
+        tileLayout == .grid ? min(Self.rowCount(of: panelCells) + 1, Self.maxPanelRows) : 1
+    }
+
     var placed: [Placed] {
         shown.compactMap { widget in
             let spot = spot(of: widget)
