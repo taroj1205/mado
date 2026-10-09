@@ -146,14 +146,6 @@ public final class Microphone {
             block: Self.tap(into: pending) { [weak self] level in
                 DispatchQueue.main.async { self?.deliver(level, in: current) }
             })
-        do {
-            try fresh.start()
-        } catch {
-            input.removeTap(onBus: Self.bus)
-            fresh.stop()
-            throw error
-        }
-        engine = fresh
         observer = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: fresh, queue: .main
         ) { [weak self] _ in
@@ -162,6 +154,18 @@ public final class Microphone {
                 self.restart()
             }
         }
+        do {
+            try fresh.start()
+        } catch {
+            if let observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            observer = nil
+            input.removeTap(onBus: Self.bus)
+            fresh.stop()
+            throw error
+        }
+        engine = fresh
     }
 
     private func tearDown() {

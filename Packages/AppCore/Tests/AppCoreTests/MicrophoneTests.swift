@@ -12,6 +12,7 @@ import Testing
     private final class TestEngine: AVAudioEngine, @unchecked Sendable {
         private static let maximumFrames: AVAudioFrameCount = 1_024
         var failsToStart = false
+        var changesConfigurationOnStart = false
 
         init(format: AVAudioFormat) throws {
             super.init()
@@ -20,6 +21,10 @@ import Testing
         }
 
         override func start() throws {
+            if changesConfigurationOnStart {
+                NotificationCenter.default.post(
+                    name: .AVAudioEngineConfigurationChange, object: self)
+            }
             if failsToStart { throw EngineFailure.formatNotSupported }
         }
     }
@@ -105,6 +110,28 @@ import Testing
         #expect(engines.count == 2)
         #expect(microphone.isRunning)
         #expect(microphone.recorded == samples)
+        #expect(failures == 0)
+        microphone.stop()
+    }
+
+    @MainActor
+    @Test func configurationChangeDuringStartupRebuildsTheEngine() async throws {
+        let prepared = try (0..<3).map { _ in try TestEngine(format: hardwareFormat()) }
+        prepared[0].changesConfigurationOnStart = true
+        var engines: [TestEngine] = []
+        let microphone = Microphone(sampleRate: 16_000) {
+            let engine = prepared[engines.count]
+            engines.append(engine)
+            return engine
+        }
+        var failures = 0
+        try microphone.start(onLevel: { _ in () }, onFailure: { _ in failures += 1 })
+        #expect(engines.count == 1)
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        #expect(engines.count == 2)
+        #expect(microphone.isRunning)
         #expect(failures == 0)
         microphone.stop()
     }
