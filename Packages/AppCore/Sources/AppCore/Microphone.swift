@@ -19,7 +19,8 @@ public final class Microphone {
     nonisolated private static let loud = -10.0
     nonisolated private static let decibelsPerPowerDecade = 10.0
 
-    private let engine: AVAudioEngine
+    private var engine: AVAudioEngine?
+    private let makeEngine: () -> AVAudioEngine
     private let sampleRate: Double
     nonisolated private let pending = OSAllocatedUnfairLock<[Chunk]>(initialState: [])
     private var converter: AVAudioConverter?
@@ -33,9 +34,13 @@ public final class Microphone {
         onLevel != nil
     }
 
-    public init(sampleRate: Double) {
-        engine = AVAudioEngine()
+    public convenience init(sampleRate: Double) {
+        self.init(sampleRate: sampleRate, makeEngine: AVAudioEngine.init)
+    }
+
+    init(sampleRate: Double, makeEngine: @escaping () -> AVAudioEngine) {
         self.sampleRate = sampleRate
+        self.makeEngine = makeEngine
     }
 
     nonisolated private static func mono(at rate: Double) -> AVAudioFormat? {
@@ -79,11 +84,6 @@ public final class Microphone {
         try run()
         self.onLevel = onLevel
         self.onFailure = onFailure
-        observer = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.restart() }
-        }
     }
 
     @discardableResult
@@ -93,15 +93,9 @@ public final class Microphone {
             recorded = []
             converter = nil
         }
-        if let observer {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        observer = nil
         onLevel = nil
         onFailure = nil
-        engine.inputNode.removeTap(onBus: Self.bus)
-        engine.stop()
-        drain()
+        tearDown()
         return recorded
     }
 
@@ -141,7 +135,8 @@ public final class Microphone {
     }
 
     private func run() throws {
-        let input = engine.inputNode
+        let fresh = makeEngine()
+        let input = fresh.inputNode
         let hardware = input.inputFormat(forBus: Self.bus)
         guard hardware.channelCount > 0, hardware.sampleRate > 0 else { throw Failure.noInput }
         session += 1
@@ -152,11 +147,32 @@ public final class Microphone {
                 DispatchQueue.main.async { self?.deliver(level, in: current) }
             })
         do {
-            try engine.start()
+            try fresh.start()
         } catch {
             input.removeTap(onBus: Self.bus)
+            fresh.stop()
             throw error
         }
+        engine = fresh
+        observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: fresh, queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.session == current else { return }
+                self.restart()
+            }
+        }
+    }
+
+    private func tearDown() {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observer = nil
+        engine?.inputNode.removeTap(onBus: Self.bus)
+        engine?.stop()
+        engine = nil
+        drain()
     }
 
     private func deliver(_ level: Double, in delivered: Int) {
@@ -167,7 +183,7 @@ public final class Microphone {
 
     private func restart() {
         guard isRunning else { return }
-        engine.inputNode.removeTap(onBus: Self.bus)
+        tearDown()
         do {
             try run()
         } catch {
