@@ -82,6 +82,16 @@ import Testing
         #expect(sources.selected.isEmpty)
     }
 
+    @Test func leavesTheSourceAloneWhenTheAppsSourceIsAlreadySelected() async {
+        let sources = Sources(current: "com.apple.keylayout.ABC")
+        let switcher = Self.makeSwitch(front: "com.apple.Safari", sources)
+
+        await Self.activate("com.apple.Terminal", on: switcher)
+
+        #expect(sources.selected.isEmpty)
+        #expect(switcher.pending == nil)
+    }
+
     @Test func lastUsedRestoresTheSourceTheAppWasLeftWith() async {
         let sources = Sources(current: "com.apple.keylayout.ABC")
         let switcher = Self.makeSwitch(front: "com.apple.MobileSMS", sources)

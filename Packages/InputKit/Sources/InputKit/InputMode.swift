@@ -9,7 +9,7 @@ public enum InputMode: Sendable {
     @MainActor
     public func select() {
         guard let target = source() else { return }
-        InputSource.select(target)
+        TISSelectInputSource(target)
     }
 
     @MainActor
