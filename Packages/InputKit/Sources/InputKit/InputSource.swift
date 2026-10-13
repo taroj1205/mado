@@ -49,7 +49,7 @@ public struct InputSource: Sendable {
                 matching: [kTISPropertyInputSourceID: id], includeAllInstalled: false
             ).first
         else { return }
-        TISSelectInputSource(source)
+        select(source)
     }
 
     @MainActor
@@ -57,6 +57,20 @@ public struct InputSource: Sendable {
         if let nextID = cycle.next(after: currentID, in: enabled.map(\.id), at: .now) {
             select(nextID)
         }
+    }
+
+    @MainActor
+    static func select(_ source: TISInputSource) {
+        let target = string(source, kTISPropertyInputSourceID)
+        if target == currentID {
+            let detour = sources(matching: [:], includeAllInstalled: false).first { other in
+                string(other, kTISPropertyInputSourceID) != target
+            }
+            if let detour {
+                TISSelectInputSource(detour)
+            }
+        }
+        TISSelectInputSource(source)
     }
 
     @MainActor
