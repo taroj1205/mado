@@ -93,10 +93,12 @@ public final class AppInputSwitch {
         }
         front = app
         guard let source = app.flatMap({ source(for: $0, in: apps) }) else { return }
-        pending = Task { [weak self, settle, select] in
+        pending = Task { [weak self, settle, current, select] in
             try? await Task.sleep(for: settle)
             guard !Task.isCancelled else { return }
-            select(source)
+            if current() != source {
+                select(source)
+            }
             self?.pending = nil
         }
     }

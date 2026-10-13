@@ -61,7 +61,18 @@ public struct InputSource: Sendable {
 
     @MainActor
     static func select(_ source: TISInputSource) {
-        guard string(source, kTISPropertyInputSourceID) != currentID else { return }
+        let target = string(source, kTISPropertyInputSourceID)
+        if target == currentID {
+            var detours = sources(matching: [:], includeAllInstalled: false)
+            if let ascii = unsafe TISCopyCurrentASCIICapableKeyboardInputSource() {
+                detours.insert(unsafe ascii.takeRetainedValue(), at: 0)
+            }
+            for detour in detours where string(detour, kTISPropertyInputSourceID) != target {
+                if TISSelectInputSource(detour) == noErr {
+                    break
+                }
+            }
+        }
         TISSelectInputSource(source)
     }
 
