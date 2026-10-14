@@ -6,6 +6,7 @@ import os
 
 struct KeyboardModule: Module {
     static let id = "keyboard"
+    private static let inputTapMilliseconds = 500
 
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
@@ -58,7 +59,9 @@ struct KeyboardModule: Module {
         guard !taps.isEmpty else { return }
         context.installWhenTrusted("input mode taps") {
             do {
-                try ModifierTap.install(name: "input mode taps", context: context, bindings: taps)
+                try ModifierTap.install(
+                    name: "input mode taps", context: context, bindings: taps,
+                    window: .milliseconds(Self.inputTapMilliseconds))
                 return true
             } catch {
                 return false
