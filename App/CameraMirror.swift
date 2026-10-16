@@ -12,6 +12,7 @@ final class CameraMirror {
     private let permissions = PermissionManager()
     private lazy var window = makeWindow()
     private var current: String?
+    private var isOpen = false
     private var watching: Task<Void, Never>?
     private var run = 0
 
@@ -33,10 +34,11 @@ final class CameraMirror {
     init(modules: @escaping () -> ModuleManager?) {
         self.modules = modules
         camera.onDevicesChanged = { [weak self] in self?.devicesChanged() }
+        camera.onFailed = { [weak self] in self?.failed() }
     }
 
     func toggle() {
-        if window.isShown {
+        if isOpen {
             close()
         } else {
             show()
@@ -44,7 +46,8 @@ final class CameraMirror {
     }
 
     func show() {
-        guard !window.isShown else { return }
+        guard !isOpen else { return }
+        isOpen = true
         let saved = settings
         camera.retain()
         window.show(saved: saved.frame, mirrored: saved.mirrored)
@@ -72,7 +75,8 @@ final class CameraMirror {
     }
 
     private func close() {
-        guard window.isShown else { return }
+        guard isOpen else { return }
+        isOpen = false
         run += 1
         watching?.cancel()
         watching = nil
@@ -133,6 +137,16 @@ final class CameraMirror {
                 }
             }
         }
+    }
+
+    func quit() {
+        if isOpen { close() }
+    }
+
+    private func failed() {
+        guard window.isShown else { return }
+        current = nil
+        window.setPhase(.failed)
     }
 
     private func devicesChanged() {

@@ -72,6 +72,15 @@ import Testing
         #expect(closed == 1)
     }
 
+    @Test func theMirrorButtonTellsAssistiveTechnologyWhetherItIsOn() {
+        let mirror = window.surface.mirror
+        #expect(mirror.accessibilityRole() == .checkBox)
+        #expect(mirror.accessibilityValue() as? Bool == false)
+        window.surface.setMirrored(true)
+        #expect(mirror.accessibilityValue() as? Bool == true)
+        #expect(window.surface.dismiss.accessibilityRole() != .checkBox)
+    }
+
     @Test func flipsTheMirrorAndReportsIt() {
         var flips: [Bool] = []
         window.onMirror = { flips.append($0) }

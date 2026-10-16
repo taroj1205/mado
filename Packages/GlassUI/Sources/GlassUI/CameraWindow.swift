@@ -100,7 +100,7 @@ public final class CameraWindow {
         guard abs(CameraGeometry.aspect(of: panel.frame.size) - aspect) > CameraGeometry.sameShape
         else { return }
         panel.setFrame(
-            CameraGeometry.refit(panel.frame, aspect: aspect), display: true,
+            CameraGeometry.refit(panel.frame, aspect: aspect, areas: areas()), display: true,
             animate: isShown && !reducesMotion())
     }
 

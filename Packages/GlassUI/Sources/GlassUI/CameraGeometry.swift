@@ -41,8 +41,12 @@ enum CameraGeometry {
         anchored(frame, width: frame.width + delta, aspect: aspect(of: frame.size))
     }
 
-    static func refit(_ frame: CGRect, aspect: CGFloat) -> CGRect {
-        anchored(frame, width: frame.width, aspect: aspect)
+    static func refit(_ frame: CGRect, aspect: CGFloat, areas: [CGRect]) -> CGRect {
+        var fitted = anchored(frame, width: frame.width, aspect: aspect)
+        if let area = areas.first(where: { $0.intersects(frame) }), fitted.minY < area.minY {
+            fitted.origin.y = min(area.minY, area.maxY - fitted.height)
+        }
+        return fitted
     }
 
     private static func anchored(_ frame: CGRect, width: CGFloat, aspect: CGFloat) -> CGRect {

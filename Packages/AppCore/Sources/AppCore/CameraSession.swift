@@ -14,6 +14,7 @@ public final class CameraSession {
     }
 
     public var onDevicesChanged: (@MainActor () -> Void)?
+    public var onFailed: (@MainActor () -> Void)?
 
     private let engine: CameraEngine
     private var observers: [any NSObjectProtocol] = []
@@ -43,19 +44,25 @@ public final class CameraSession {
     }
 
     public func start(preferring saved: String?) async -> Result<Opened, Failure> {
-        let preferred = AVCaptureDevice.systemPreferredCamera?.uniqueID
-        guard
-            let device = CameraDevice.choose(
-                from: Self.devices(), saved: saved, preferred: preferred)
-        else {
-            opened = nil
-            return .failure(.noCamera)
-        }
-        if let opened, opened.device == device { return .success(opened) }
         watch()
-        let result = await engine.open(device.id).map { Opened(device: device, size: $0) }
-        opened = isInUse ? try? result.get() : nil
-        return result
+        let preferred = AVCaptureDevice.systemPreferredCamera?.uniqueID
+        let devices = CameraDevice.ordered(
+            from: Self.devices(), saved: saved, preferred: preferred)
+        if let opened, opened.device == devices.first { return .success(opened) }
+        var failure = Failure.noCamera
+        for device in devices {
+            switch await engine.open(device.id) {
+            case .success(let size):
+                let result = Opened(device: device, size: size)
+                opened = isInUse ? result : nil
+                return .success(result)
+
+            case .failure(let reason):
+                failure = reason
+            }
+        }
+        opened = nil
+        return .failure(failure)
     }
 
     public func retain() {
@@ -73,15 +80,24 @@ public final class CameraSession {
 
     private func watch() {
         guard observers.isEmpty else { return }
+        let center = NotificationCenter.default
         let changed: @Sendable (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated { self?.onDevicesChanged?() }
+        }
+        let failed: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.opened = nil
+                self?.onFailed?()
+            }
         }
         observers = [
             AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification,
         ]
-        .map { name in
-            NotificationCenter.default.addObserver(
-                forName: name, object: nil, queue: .main, using: changed)
+        .map { name in center.addObserver(forName: name, object: nil, queue: .main, using: changed)
         }
+        observers.append(
+            center.addObserver(
+                forName: AVCaptureSession.runtimeErrorNotification, object: engine.session,
+                queue: .main, using: failed))
     }
 }

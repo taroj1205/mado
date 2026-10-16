@@ -13,17 +13,23 @@ final class CameraEngine: @unchecked Sendable {
     }
 
     func close() {
-        queue.async {
-            if self.session.isRunning {
-                self.session.stopRunning()
-            }
-            self.session.inputs.forEach(self.session.removeInput)
+        queue.async { self.stop() }
+    }
+
+    private func stop() {
+        if session.isRunning {
+            session.stopRunning()
         }
+        session.inputs.forEach(session.removeInput)
     }
 
     private func configure(_ id: String) -> Result<CGSize, CameraSession.Failure> {
-        guard let device = AVCaptureDevice(uniqueID: id) else { return .failure(.noCamera) }
+        guard let device = AVCaptureDevice(uniqueID: id) else {
+            stop()
+            return .failure(.noCamera)
+        }
         guard let input = try? AVCaptureDeviceInput(device: device) else {
+            stop()
             return .failure(.unreadable)
         }
         session.beginConfiguration()
@@ -36,7 +42,10 @@ final class CameraEngine: @unchecked Sendable {
             session.addInput(input)
         }
         session.commitConfiguration()
-        guard canAdd else { return .failure(.unreadable) }
+        guard canAdd else {
+            stop()
+            return .failure(.unreadable)
+        }
         if !session.isRunning {
             session.startRunning()
         }
