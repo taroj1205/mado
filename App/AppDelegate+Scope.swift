@@ -197,6 +197,7 @@ extension AppDelegate {
         launcherView.show(sections, gridHome: home)
         launcherView.showLyrics(scope == .root && widgets.searched.contains(.lyrics))
         launcherView.showCamera(scope == .camera)
+        if scope != .camera { cameraMirror.closeInline() }
         (launcherView.context, launcherView.contextSymbol) =
             switch scope {
             case .clipboard:

@@ -28,6 +28,7 @@ final class CameraMirror {
     private var windowOpen = false
     private var inlineOpen = false
     private var capturing = false
+    private var captures = 0
     private var watching: Task<Void, Never>?
     private var run = 0
 
@@ -148,6 +149,7 @@ final class CameraMirror {
     private func releaseIfIdle() {
         guard !windowOpen, !inlineOpen else { return }
         capturing = false
+        captures += 1
         run += 1
         watching?.cancel()
         watching = nil
@@ -224,10 +226,13 @@ final class CameraMirror {
     private func capture() -> Bool {
         guard phase == .live, !capturing else { return false }
         capturing = true
+        captures += 1
+        let mine = captures
         Task { [weak self] in
             guard let self else { return }
             let mirrored = CameraSettings.load(from: modules()).mirrored
             let outcome = await takePhoto(mirrored: mirrored)
+            guard captures == mine else { return }
             capturing = false
             screens.forEach { $0.showPhoto(outcome) }
         }
