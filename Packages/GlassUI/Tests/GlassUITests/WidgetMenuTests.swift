@@ -27,8 +27,24 @@ import Testing
         #expect(menu.rows[5].isDestructive)
         #expect(view.selectedWidget == 1)
         #expect(tiles.map(\.menuOpen) == [false, true, false])
-        #expect(view.bounds.contains(menu.glass.frame))
-        #expect(menu.glass.frame.width == WidgetMenu.width)
+        #expect(view.popupBounds.contains(menu.panel.frame))
+        #expect(menu.panel.frame.width == WidgetMenu.width)
+    }
+
+    @Test func theMenuFloatsAboveTheLauncherInAWindowOfItsOwn() throws {
+        try rig.open(1)
+        let menu = try #require(view.widgetMenu)
+        #expect(menu.panel.parent === rig.panel)
+        #expect(unsafe menu.glass.window === menu.panel)
+        #expect(!menu.panel.ignoresMouseEvents)
+        #expect(!menu.panel.canBecomeKey)
+        menu.glass.layoutSubtreeIfNeeded()
+        #expect(menu.panel.frame.size == menu.popupSize)
+        let rows = menu.rows.map { menu.glass.convert($0.bounds, from: $0) }
+        #expect(rows.allSatisfy { menu.glass.bounds.contains($0) })
+        view.closeWidgetMenu()
+        #expect(menu.panel.parent == nil)
+        #expect(!menu.panel.isVisible)
     }
 
     @Test func theSizeEntryOpensTheNamedSizesAndChoosingOneResizesAndClosesBoth() throws {
@@ -41,9 +57,9 @@ import Testing
         #expect(sizes.rows.map(\.label.stringValue) == ["Small", "Medium", "Large"])
         #expect(sizes.rows.map(\.detail.stringValue) == ["1 × 1", "2 × 1", "2 × 2"])
         #expect(sizes.rows.map { $0.accessibilityValue() as? Bool } == [true, false, false])
-        let menu = try #require(view.widgetMenu).glass.frame
-        #expect(!sizes.glass.frame.intersects(menu))
-        #expect(view.bounds.contains(sizes.glass.frame))
+        let menu = try #require(view.widgetMenu).panel.frame
+        #expect(!sizes.panel.frame.intersects(menu))
+        #expect(view.popupBounds.contains(sizes.panel.frame))
         #expect(sizes.rows[1].accessibilityPerformPress())
         #expect(edits == [.resize("weather", .wide)])
         #expect(view.widgetMenu == nil && view.sizeMenu == nil)
@@ -86,17 +102,26 @@ import Testing
         #expect(titles.first == "Open Clock")
     }
 
-    @Test func theMenuIsPlacedAtThePointerAndKeptInsideTheLauncher() throws {
-        tiles[2].rightMouseDown(with: try rig.event(.rightMouseDown, on: tiles[2]))
-        view.layoutSubtreeIfNeeded()
-        let low = try #require(view.widgetMenu).glass.frame
-        #expect(low.minX > 0 && low.maxX <= view.bounds.maxX - 10)
+    @Test func theMenuHangsFromThePointerAndStaysOnScreen() throws {
+        let bounds = view.popupBounds
+        let spot = NSPoint(x: bounds.minX + 50, y: bounds.maxY - 50)
+        view.openWidgetMenu(1, at: spot)
+        let hanging = try #require(view.widgetMenu).panel.frame
+        #expect(hanging.minX == spot.x && hanging.maxY == spot.y)
         view.closeWidgetMenu()
-        let corner = try rig.event(.rightMouseDown, on: tiles[2], at: NSPoint(x: 2, y: 2))
-        tiles[2].rightMouseDown(with: corner)
-        view.layoutSubtreeIfNeeded()
-        let high = try #require(view.widgetMenu).glass.frame
-        #expect(high.minY >= 10)
+        view.openWidgetMenu(1, at: NSPoint(x: bounds.maxX + 500, y: bounds.minY - 500))
+        let cornered = try #require(view.widgetMenu).panel.frame
+        #expect(bounds.contains(cornered))
+        #expect(cornered.maxX == bounds.maxX && cornered.minY == bounds.minY)
+    }
+
+    @Test func theMenuIsNotKeptInsideTheLauncher() throws {
+        let launcher = rig.panel.frame
+        let bounds = view.popupBounds
+        try #require(bounds.maxX >= launcher.maxX + WidgetMenu.width)
+        view.openWidgetMenu(1, at: NSPoint(x: launcher.maxX - 40, y: launcher.midY))
+        let menu = try #require(view.widgetMenu).panel.frame
+        #expect(menu.maxX > launcher.maxX)
     }
 
     @Test func theEntriesRunTheirOwnActions() throws {
@@ -134,9 +159,10 @@ import Testing
         #expect(try #require(view.widgetMenu?.rows[1]).accessibilityPerformPress())
         view.layoutSubtreeIfNeeded()
         let picker = try #require(view.spotPicker)
-        let menu = try #require(view.widgetMenu).glass.frame
-        let beside = picker.glass.frame
+        let menu = try #require(view.widgetMenu).panel.frame
+        let beside = picker.panel.frame
         #expect(beside.maxX <= menu.minX || beside.minX >= menu.maxX)
+        #expect(picker.panel.parent === rig.panel)
         #expect(view.widgetMenu != nil)
         view.place("weather", at: .leftTop)
         #expect(view.widgetMenu == nil)
@@ -145,15 +171,14 @@ import Testing
     }
 
     @Test(arguments: [20.0, 200.0, 260.0, 330.0, 480.0, 700.0])
-    func theSpotPickerStaysInsideTheLauncherWhereverTheMenuOpens(menuX: Double) throws {
+    func theSpotPickerStaysOnScreenWhereverTheMenuOpens(menuX: Double) throws {
         let window = try #require(unsafe view.window)
         let spot = window.convertPoint(toScreen: view.convert(NSPoint(x: menuX, y: 300), to: nil))
         view.openWidgetMenu(1, at: spot)
         view.openSpotPicker(for: view.widgetGrid.shown[1])
-        view.layoutSubtreeIfNeeded()
-        let menu = try #require(view.widgetMenu).glass.frame
-        let picker = try #require(view.spotPicker).glass.frame
-        #expect(view.bounds.contains(picker))
+        let menu = try #require(view.widgetMenu).panel.frame
+        let picker = try #require(view.spotPicker).panel.frame
+        #expect(view.popupBounds.contains(picker))
         #expect(!picker.intersects(menu))
     }
 
@@ -185,14 +210,8 @@ import Testing
         #expect(view.widgetMenu == nil)
     }
 
-    @Test func clickingAnywhereElseClosesTheMenuButNotClickingInIt() throws {
+    @Test func clickingAnywhereInTheLauncherClosesTheMenu() throws {
         try rig.open(1)
-        let inside = try #require(view.widgetMenu).glass
-        let point = inside.convert(NSPoint(x: inside.bounds.midX, y: inside.bounds.midY), to: nil)
-        #expect(!view.handle(try rig.mouse(.leftMouseDown, at: point)))
-        #expect(view.widgetMenu != nil)
-        #expect(!view.handle(try rig.mouse(.rightMouseDown, at: point)))
-        #expect(view.widgetMenu != nil)
         #expect(!view.handle(try rig.mouse(.leftMouseDown, at: NSPoint(x: 5, y: 5))))
         #expect(view.widgetMenu == nil)
         try rig.open(1)
@@ -240,15 +259,15 @@ import Testing
         #expect(tiles[1].accessibilityPerformShowMenu() == false)
     }
 
-    @Test func aFloatingWidgetsMenuStaysInsideTheLauncher() throws {
+    @Test func aFloatingWidgetsMenuStaysOnScreen() throws {
         view.widgetSpots = ["clock": .leftTop, "weather": .rightBottom]
         view.layoutSubtreeIfNeeded()
         let tile = try #require(tiles.first { $0.widgetID == "weather" })
         #expect(tile.floating)
         tile.rightMouseDown(with: try rig.event(.rightMouseDown, on: tile))
         view.layoutSubtreeIfNeeded()
-        let menu = try #require(view.widgetMenu).glass.frame
-        #expect(view.bounds.contains(menu))
+        let menu = try #require(view.widgetMenu).panel.frame
+        #expect(view.popupBounds.contains(menu))
         #expect(titles.first == "Open Weather")
     }
 

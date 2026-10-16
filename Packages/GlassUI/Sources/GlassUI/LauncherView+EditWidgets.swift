@@ -179,7 +179,7 @@ extension LauncherView {
         case .leftMouseDown:
             let point = event.locationInWindow
             let onMove = editBar.move.convert(editBar.move.bounds, to: nil).contains(point)
-            if !onMove, spotPicker?.contains(point) != true {
+            if !onMove {
                 closeSpotPicker()
             }
             return false

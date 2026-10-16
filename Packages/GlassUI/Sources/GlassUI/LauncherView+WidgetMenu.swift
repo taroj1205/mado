@@ -4,6 +4,12 @@ extension LauncherView {
     static let moveToTitle = "Move to…"
     static let sizeTitle = "Size"
 
+    var popupBounds: NSRect {
+        guard let window = unsafe window else { return .zero }
+        return (window.screen ?? NSScreen.main)?.visibleFrame
+            .insetBy(dx: Self.capsuleInset, dy: Self.capsuleInset) ?? window.frame
+    }
+
     func openWidgetMenu(_ index: Int, at screen: NSPoint) {
         guard !editingWidgets, widgetGrid.shown.indices.contains(index), let window = unsafe window
         else { return }
@@ -17,27 +23,19 @@ extension LauncherView {
         menu.show(menuEntries(for: widget), for: widget.name)
         widgetMenu = menu
         widgetGrid.showMenu(of: index)
-        let point = convert(window.convertPoint(fromScreen: screen), from: nil)
-        addSubview(menu.glass)
-        let left = menu.glass.leadingAnchor.constraint(
-            equalTo: leadingAnchor, constant: point.x)
-        let top = menu.glass.topAnchor.constraint(
-            equalTo: topAnchor, constant: bounds.height - point.y)
-        for pin in [left, top] {
-            pin.priority = .defaultHigh
-        }
-        NSLayoutConstraint.activate([
-            left, top,
-            menu.glass.widthAnchor.constraint(equalToConstant: WidgetMenu.width),
-            menu.glass.leadingAnchor.constraint(
-                greaterThanOrEqualTo: leadingAnchor, constant: Self.capsuleInset),
-            menu.glass.trailingAnchor.constraint(
-                lessThanOrEqualTo: trailingAnchor, constant: -Self.capsuleInset),
-            menu.glass.topAnchor.constraint(
-                greaterThanOrEqualTo: topAnchor, constant: Self.capsuleInset),
-            menu.glass.bottomAnchor.constraint(
-                lessThanOrEqualTo: bottomAnchor, constant: -Self.capsuleInset),
-        ])
+        menu.panel.present(
+            PopupPlacement.frame(of: menu.popupSize, hangingFrom: screen, in: popupBounds),
+            over: window)
+    }
+
+    func screenFrame(of view: NSView) -> NSRect {
+        unsafe window?.convertToScreen(view.convert(view.bounds, to: nil)) ?? .zero
+    }
+
+    func beside(_ anchor: NSRect, size: NSSize, leftFirst: Bool) -> NSRect {
+        PopupPlacement.frame(
+            of: size, beside: anchor, gap: WidgetSpotPicker.gap, leftFirst: leftFirst,
+            in: popupBounds)
     }
 
     func closeWidgetMenu() {
@@ -68,31 +66,6 @@ extension LauncherView {
             return false
         }
         return true
-    }
-
-    func place(_ glass: GlassView, width: CGFloat, beside menu: WidgetMenu) {
-        layoutSubtreeIfNeeded()
-        let gap = WidgetSpotPicker.gap
-        let room = width + gap + Self.capsuleInset
-        let fitsRight = bounds.width - menu.glass.frame.maxX >= room
-        let fitsLeft = menu.glass.frame.minX >= room
-        let onLeft = !fitsRight && fitsLeft
-        if !fitsRight, !fitsLeft {
-            menu.glass.trailingAnchor.constraint(
-                lessThanOrEqualTo: trailingAnchor, constant: -room
-            ).isActive = true
-        }
-        let side =
-            onLeft
-            ? glass.trailingAnchor.constraint(equalTo: menu.glass.leadingAnchor, constant: -gap)
-            : glass.leadingAnchor.constraint(equalTo: menu.glass.trailingAnchor, constant: gap)
-        let level = glass.topAnchor.constraint(equalTo: menu.glass.topAnchor)
-        level.priority = .defaultHigh
-        NSLayoutConstraint.activate([
-            side, level,
-            glass.bottomAnchor.constraint(
-                lessThanOrEqualTo: bottomAnchor, constant: -Self.capsuleInset),
-        ])
     }
 
     func holdWidget(_ index: Int, grabbedAt grab: NSPoint) {
@@ -150,7 +123,7 @@ extension LauncherView {
 
 extension LauncherView {
     func openSizeMenu(for widget: WidgetGrid.Widget) {
-        guard sizeMenu == nil, let menu = widgetMenu else { return }
+        guard sizeMenu == nil, let menu = widgetMenu, let window = unsafe window else { return }
         closeSpotPicker()
         let current = widgetGrid.currentSize(of: widget.id)
         let sizes = WidgetMenu()
@@ -167,11 +140,8 @@ extension LauncherView {
                     size: option.size, checked: option.size == current)
             }, for: Self.sizeTitle)
         sizeMenu = sizes
-        addSubview(sizes.glass)
-        NSLayoutConstraint.activate([
-            sizes.glass.widthAnchor.constraint(equalToConstant: WidgetMenu.width)
-        ])
-        place(sizes.glass, width: WidgetMenu.width, beside: menu)
+        sizes.panel.present(
+            beside(menu.panel.frame, size: sizes.popupSize, leftFirst: false), over: window)
     }
 
     func closeSizeMenu() {
