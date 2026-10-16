@@ -35,12 +35,15 @@ enum WidgetInk {
 
     private static let half: CGFloat = 0.5
     private static let sizes = (
-        caption: 10.0, hour: 10.5, hourValue: 12.5, fact: 12.0, gauge: 20.0, ring: 12.0,
-        smallRing: 9.5
+        eyebrow: 11.0, caption: 10.0, hour: 10.5, hourValue: 12.5, fact: 12.0, gauge: 20.0,
+        ring: 12.0, smallRing: 9.5
     )
     private static let captionKern: CGFloat = 0.4
     private static let gaugeKern: CGFloat = -0.3
 
+    static let eyebrow = Style(
+        size: sizes.eyebrow, weight: .semibold, colour: .secondaryLabelColor,
+        kern: captionKern, caps: true)
     static let caption = Style(
         size: sizes.caption, weight: .semibold, colour: .secondaryLabelColor,
         kern: captionKern, caps: true)

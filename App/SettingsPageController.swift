@@ -132,6 +132,11 @@ final class SettingsPageController: NSViewController {
             stack.addArrangedSubview(section)
             section.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
+        if sections.isEmpty {
+            let empty = Self.emptyState(symbol: page.symbol)
+            stack.addArrangedSubview(empty)
+            empty.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
         if page.tabs.count > 1 {
             stack.insertArrangedSubview(tabPicker(), at: page.module == nil ? 0 : 1)
         }

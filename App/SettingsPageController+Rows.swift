@@ -7,6 +7,7 @@ extension SettingsPageController {
     private static let rowHeight: CGFloat = 40
     private static let iconMargin: CGFloat = 18
     private static let iconGap: CGFloat = 10
+    private static let detailSpacing: CGFloat = 2
 
     static func box(_ views: [NSView]) -> NSView {
         let rows = NSStackView()
@@ -61,7 +62,7 @@ extension SettingsPageController {
             let lines = NSStackView(views: [label, detailLabel])
             lines.orientation = .vertical
             lines.alignment = .leading
-            lines.spacing = 0
+            lines.spacing = Self.detailSpacing
             title = lines
         }
         title.setContentHuggingPriority(.defaultLow, for: .horizontal)

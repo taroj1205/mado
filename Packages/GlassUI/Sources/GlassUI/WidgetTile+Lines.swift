@@ -3,8 +3,6 @@ import AppKit
 extension WidgetTile {
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
-    private static let titleSize: CGFloat = 11
-    private static let titleKern: CGFloat = 0.4
     private static let detailSize: CGFloat = 11.5
     private static let headlineSize: CGFloat = 14
     private static let requestSize: CGFloat = 13
@@ -64,7 +62,7 @@ extension WidgetTile {
     }
 
     func arrangeCalendar() {
-        countdown.font = .systemFont(ofSize: Self.titleSize, weight: .medium)
+        countdown.font = .systemFont(ofSize: WidgetInk.eyebrow.size, weight: .medium)
         countdown.textColor = .secondaryLabelColor
         countdown.translatesAutoresizingMaskIntoConstraints = false
         [countdown, month].forEach(addSubview)
@@ -137,12 +135,7 @@ extension WidgetTile {
 
     func showTitle(_ name: String) {
         title.attributedStringValue = NSAttributedString(
-            string: name.localizedUppercase,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: Self.titleSize, weight: .semibold),
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .kern: Self.titleKern,
-            ])
+            string: WidgetInk.eyebrow.shown(name), attributes: WidgetInk.eyebrow.attributes)
     }
 
     func showMeters(_ readings: [WidgetGrid.Meter]) {

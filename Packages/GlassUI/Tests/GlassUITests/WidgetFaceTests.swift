@@ -66,6 +66,13 @@ private let tileSizes: [NSSize] = [
         #expect(!WidgetForm(size: NSSize(width: 361, height: 78)).tall)
     }
 
+    @Test func aFacesTextAndDrawnRowsStartOnOneEdge() {
+        let face = tile(Self.weather, tileSizes[1]).face
+        let edge = face.span.frame.minX
+        #expect(abs(face.value.alignmentRect(forFrame: face.value.frame).minX - edge) < 0.01)
+        #expect(abs(face.detail.alignmentRect(forFrame: face.detail.frame).minX - edge) < 0.01)
+    }
+
     @Test func theSmallestSizeKeepsTheOriginalTile() {
         let small = tile(Self.weather, tileSizes[0])
         #expect(small.face.isHidden)
@@ -146,15 +153,16 @@ private let tileSizes: [NSSize] = [
             let inner = face.bounds.insetBy(dx: WidgetTile.horizontal, dy: WidgetTile.vertical)
             let visible = shown(face).filter { $0 !== face.divider }
             if face.isHidden { continue }
-            for view in visible {
+            let rects = visible.map { $0.alignmentRect(forFrame: $0.frame) }
+            for (view, rect) in zip(visible, rects) {
                 #expect(
-                    inner.insetBy(dx: -1, dy: -1).contains(view.frame),
+                    inner.insetBy(dx: -1, dy: -1).contains(rect),
                     "\(widget.id) \(size): \(view) leaves the tile")
             }
             for (index, one) in visible.enumerated() {
-                for other in visible[(index + 1)...] {
+                for (other, rect) in zip(visible, rects).dropFirst(index + 1) {
                     #expect(
-                        !one.frame.insetBy(dx: 0.5, dy: 0.5).intersects(other.frame),
+                        !rects[index].insetBy(dx: 0.5, dy: 0.5).intersects(rect),
                         "\(widget.id) \(size): \(one) overlaps \(other)")
                 }
             }

@@ -152,6 +152,35 @@ import Testing
         #expect(view.selectedWidget == nil)
     }
 
+    @Test(arguments: [true, false]) func theEyebrowTitleAndArtistShareOneTextEdge(
+        isPlaying: Bool
+    ) throws {
+        view.widgets = [song(isPlaying: isPlaying)]
+        view.layoutSubtreeIfNeeded()
+        let track = try #require(view.widgetGrid.tiles.first).track
+        let edge = track.title.alignmentRect(forFrame: track.title.frame).minX
+        let eyebrow =
+            isPlaying
+            ? track.equalizer.frame.minX
+            : track.paused.alignmentRect(forFrame: track.paused.frame).minX
+        #expect(abs(track.artist.alignmentRect(forFrame: track.artist.frame).minX - edge) < 0.01)
+        #expect(abs(eyebrow - edge) < 0.01)
+    }
+
+    @Test(arguments: [NSSize(width: 239, height: 164), NSSize(width: 361, height: 164)])
+    func aTallTrackKeepsItsControlsBelowItsText(size: NSSize) {
+        let tile = WidgetTile(floating: false)
+        tile.frame = NSRect(origin: .zero, size: size)
+        tile.show(song(isPlaying: false))
+        tile.layoutSubtreeIfNeeded()
+        let track = tile.track
+        #expect(track.artist.frame.maxY <= track.disc.frame.minY)
+        #expect(track.cover.frame.maxX <= track.title.frame.minX)
+        #expect(track.disc.frame.maxX <= track.bounds.maxX)
+        #expect(track.cover.frame.minY == 0)
+        #expect(abs(track.disc.frame.maxY - track.bounds.maxY) < 0.01)
+    }
+
     private func press(
         _ keyCode: Int, _ characters: String, _ modifiers: NSEvent.ModifierFlags = []
     ) {

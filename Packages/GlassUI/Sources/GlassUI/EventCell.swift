@@ -2,7 +2,7 @@ import AppKit
 
 final class EventCell: NSTableCellView {
     static let id = NSUserInterfaceItemIdentifier("event")
-    private static let leadingInset: CGFloat = 10
+    private static let leadingInset: CGFloat = 12
     private static let trailingInset: CGFloat = 12
     private static let gap: CGFloat = 12
     private static let timeWidth: CGFloat = 62
