@@ -13,6 +13,7 @@ final class CameraMirror {
     private static let pollSeconds = 1
     private static let logger = Log.logger("CameraMirror")
 
+    private(set) var isRequestingAccess = false
     var onOpen: (() -> Void)?
     var onPopOut: (() -> Void)?
     private let modules: () -> ModuleManager?
@@ -23,6 +24,7 @@ final class CameraMirror {
     private var phase = CameraWindow.Phase.starting
     private var devices: [CameraDevice] = []
     private var current: String?
+    private var videoSize: CGSize?
     private var windowOpen = false
     private var inlineOpen = false
     private var capturing = false
@@ -94,6 +96,7 @@ final class CameraMirror {
         let settings = CameraSettings.load(from: modules())
         window.show(saved: settings.frame, mirrored: settings.mirrored)
         join(window)
+        if phase == .live, let videoSize { window.fit(to: videoSize) }
     }
 
     private func closeWindow() {
@@ -128,7 +131,7 @@ final class CameraMirror {
                 self?.begin(preferring: CameraSettings.load(from: self?.modules()).deviceID)
             }
         }
-        screen.onCapture = { [weak self] in self?.capture() }
+        screen.onCapture = { [weak self] in self?.capture() ?? false }
     }
 
     private func join(_ screen: any CameraScreen) {
@@ -149,6 +152,7 @@ final class CameraMirror {
         watching?.cancel()
         watching = nil
         current = nil
+        videoSize = nil
         camera.stop()
     }
 
@@ -170,7 +174,9 @@ final class CameraMirror {
         permissions.refresh()
         var status = permissions.status(for: .camera)
         if status == .notDetermined {
+            isRequestingAccess = true
             status = await permissions.request(.camera)
+            isRequestingAccess = false
         }
         guard run == mine else { return }
         guard status == .granted else {
@@ -183,6 +189,7 @@ final class CameraMirror {
         switch result {
         case .success(let opened):
             current = opened.device.id
+            videoSize = opened.size
             devices = CameraSession.devices()
             if windowOpen { window.fit(to: opened.size) }
             screens.forEach { $0.setDevices(devices, current: opened.device.id) }
@@ -190,10 +197,12 @@ final class CameraMirror {
 
         case .failure(.noCamera):
             current = nil
+            videoSize = nil
             show(.noCamera)
 
         case .failure(.unreadable):
             current = nil
+            videoSize = nil
             show(.failed)
         }
     }
@@ -212,8 +221,8 @@ final class CameraMirror {
         }
     }
 
-    private func capture() {
-        guard phase == .live, !capturing else { return }
+    private func capture() -> Bool {
+        guard phase == .live, !capturing else { return false }
         capturing = true
         Task { [weak self] in
             guard let self else { return }
@@ -222,6 +231,7 @@ final class CameraMirror {
             capturing = false
             screens.forEach { $0.showPhoto(outcome) }
         }
+        return true
     }
 
     private func takePhoto(mirrored: Bool) async -> CameraWindow.Capture {
@@ -232,8 +242,9 @@ final class CameraMirror {
             Self.logger.error("Saving the photo failed: \(error, privacy: .public)")
             return .failed
         }
-        if !CameraPhoto.copy(data, to: .general) {
+        guard CameraPhoto.copy(data, to: .general) else {
             Self.logger.error("Copying the photo failed")
+            return .savedNotCopied
         }
         return .saved
     }
@@ -241,6 +252,7 @@ final class CameraMirror {
     private func failed() {
         guard !screens.isEmpty else { return }
         current = nil
+        videoSize = nil
         show(.failed)
     }
 

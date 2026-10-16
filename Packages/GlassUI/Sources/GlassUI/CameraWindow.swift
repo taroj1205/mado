@@ -19,6 +19,7 @@ public final class CameraWindow: CameraScreen {
 
     public enum Capture: Equatable, Sendable {
         case saved
+        case savedNotCopied
         case failed
     }
 
@@ -31,7 +32,7 @@ public final class CameraWindow: CameraScreen {
     public var onClose: (() -> Void)?
     public var onSelect: ((CameraDevice) -> Void)?
     public var onMirror: ((Bool) -> Void)?
-    public var onCapture: (() -> Void)?
+    public var onCapture: (() -> Bool)?
     public var onFrame: ((CGRect) -> Void)?
     public private(set) var isShown = false
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -52,7 +53,7 @@ public final class CameraWindow: CameraScreen {
         surface.onMirror = { [weak self] in self?.onMirror?($0) }
         surface.onSelect = { [weak self] in self?.onSelect?($0) }
         surface.onAction = { [weak self] in self?.onAction?($0) }
-        surface.onCapture = { [weak self] in self?.onCapture?() }
+        surface.onCapture = { [weak self] in self?.onCapture?() ?? false }
     }
 
     public func show(saved: CGRect?, mirrored: Bool) {

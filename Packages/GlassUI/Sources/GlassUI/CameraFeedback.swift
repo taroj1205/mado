@@ -92,6 +92,7 @@ extension CameraWindow.Capture {
     var message: String {
         switch self {
         case .saved: "Saved to Pictures and copied"
+        case .savedNotCopied: "Saved to Pictures, but couldn't copy it"
         case .failed: "Couldn't take the photo"
         }
     }

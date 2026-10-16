@@ -68,11 +68,12 @@ final class CameraEngine: @unchecked Sendable {
         if canAdd {
             session.addInput(input)
         }
-        if !session.outputs.contains(output), session.canAddOutput(output) {
+        let hasOutput = session.outputs.contains(output) || session.canAddOutput(output)
+        if hasOutput, !session.outputs.contains(output) {
             session.addOutput(output)
         }
         session.commitConfiguration()
-        guard canAdd else {
+        guard canAdd, hasOutput else {
             stop()
             return .failure(.unreadable)
         }

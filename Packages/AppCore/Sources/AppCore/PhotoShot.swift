@@ -16,8 +16,8 @@ final class PhotoShot: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Senda
 
     func photoOutput(
         _: AVCapturePhotoOutput,
-        didFinishCaptureFor _: AVCaptureResolvedPhotoSettings, error _: (any Error)?
+        didFinishCaptureFor _: AVCaptureResolvedPhotoSettings, error: (any Error)?
     ) {
-        finish(data)
+        finish(error == nil ? data : nil)
     }
 }

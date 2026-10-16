@@ -8,7 +8,7 @@ public final class CameraPane: NSView, CameraScreen {
     public var onAction: ((CameraWindow.Action) -> Void)?
     public var onSelect: ((CameraDevice) -> Void)?
     public var onMirror: ((Bool) -> Void)?
-    public var onCapture: (() -> Void)?
+    public var onCapture: (() -> Bool)?
     public var onPopOut: (() -> Void)?
     private(set) var surface: CameraSurface?
 
@@ -28,7 +28,7 @@ public final class CameraPane: NSView, CameraScreen {
         made.onAction = { [weak self] in self?.onAction?($0) }
         made.onSelect = { [weak self] in self?.onSelect?($0) }
         made.onMirror = { [weak self] in self?.onMirror?($0) }
-        made.onCapture = { [weak self] in self?.onCapture?() }
+        made.onCapture = { [weak self] in self?.onCapture?() ?? false }
         made.onPopOut = { [weak self] in self?.onPopOut?() }
         made.translatesAutoresizingMaskIntoConstraints = false
         addSubview(made)

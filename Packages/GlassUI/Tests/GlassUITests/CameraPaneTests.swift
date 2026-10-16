@@ -45,7 +45,10 @@ import Testing
 
     @Test func returnTakesAPhotoOnlyOnceTheCameraIsLive() {
         var shots = 0
-        view.camera.onCapture = { shots += 1 }
+        view.camera.onCapture = {
+            shots += 1
+            return true
+        }
         view.showCamera(true)
         #expect(pressReturn())
         #expect(shots == 0)
@@ -56,7 +59,10 @@ import Testing
 
     @Test func returnDoesNothingWhenTheCameraIsNotShown() {
         var shots = 0
-        view.camera.onCapture = { shots += 1 }
+        view.camera.onCapture = {
+            shots += 1
+            return true
+        }
         view.camera.setPhase(.live)
         _ = pressReturn()
         #expect(shots == 0)
@@ -83,7 +89,10 @@ import Testing
     @Test func theShutterAndThePopOutButtonReport() throws {
         var shots = 0
         var popped = 0
-        view.camera.onCapture = { shots += 1 }
+        view.camera.onCapture = {
+            shots += 1
+            return true
+        }
         view.camera.onPopOut = { popped += 1 }
         view.camera.setPhase(.live)
         try surface.shutter.performClick(nil)
@@ -94,7 +103,10 @@ import Testing
 
     @Test func theWindowShutterTakesAPhotoToo() {
         var shots = 0
-        window.onCapture = { shots += 1 }
+        window.onCapture = {
+            shots += 1
+            return true
+        }
         window.surface.shutter.performClick(nil)
         #expect(shots == 0)
         window.setPhase(.live)
@@ -117,6 +129,29 @@ import Testing
         feedback.reducesMotion = { true }
         feedback.fire()
         #expect(feedback.flash.alphaValue == 0)
+    }
+
+    @Test func flashesOnlyForAPhotoThatWasAccepted() throws {
+        let feedback = try surface.feedback
+        var flashes = 0
+        feedback.reducesMotion = {
+            flashes += 1
+            return true
+        }
+        view.camera.setPhase(.live)
+        view.camera.onCapture = { false }
+        try surface.shutter.performClick(nil)
+        #expect(flashes == 0)
+        view.camera.onCapture = { true }
+        try surface.shutter.performClick(nil)
+        #expect(flashes == 1)
+    }
+
+    @Test func saysSoWhenThePhotoWasSavedButNotCopied() throws {
+        let feedback = try surface.feedback
+        feedback.reducesMotion = { true }
+        view.camera.showPhoto(.savedNotCopied)
+        #expect(feedback.message.stringValue == "Saved to Pictures, but couldn't copy it")
     }
 
     @Test func mirrorsTheSettingOnTheInlineViewToo() throws {

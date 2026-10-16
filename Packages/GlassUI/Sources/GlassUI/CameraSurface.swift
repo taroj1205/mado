@@ -27,7 +27,7 @@ final class CameraSurface: NSView {
     var onMirror: ((Bool) -> Void)?
     var onSelect: ((CameraDevice) -> Void)?
     var onAction: ((CameraWindow.Action) -> Void)?
-    var onCapture: (() -> Void)?
+    var onCapture: (() -> Bool)?
     var onPopOut: (() -> Void)?
     let style: Style
     private(set) var phase = CameraWindow.Phase.starting
@@ -117,9 +117,8 @@ final class CameraSurface: NSView {
     }
 
     func shoot() {
-        guard phase == .live else { return }
+        guard phase == .live, onCapture?() == true else { return }
         feedback.fire()
-        onCapture?()
     }
 
     func setHovered(_ hovered: Bool, animated: Bool) {
