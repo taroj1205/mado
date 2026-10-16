@@ -64,20 +64,25 @@ public final class FileIndex {
                     at: root, includingPropertiesForKeys: keys,
                     options: [.skipsHiddenFiles, .skipsPackageDescendants])
             else { continue }
+            guard FileManager.default.fileExists(atPath: root.path) else { continue }
+            found.append(entry(for: root))
             for case let url as URL in items {
                 guard !Task.isCancelled else { return [] }
-                let name = url.lastPathComponent
-                let values = try? url.resourceValues(forKeys: Set(keys))
-                found.append(
-                    File(
-                        name: name,
-                        folder: abbreviated(url.deletingLastPathComponent()),
-                        url: url, path: url.path, key: Fuzzy.Key(name),
-                        isFolder: values?.isDirectory == true && values?.isPackage != true,
-                        modified: values?.contentModificationDate))
+                found.append(entry(for: url))
             }
         }
         return found
+    }
+
+    nonisolated private static func entry(for url: URL) -> File {
+        let name = url.lastPathComponent
+        let values = try? url.resourceValues(forKeys: Set(keys))
+        return File(
+            name: name,
+            folder: abbreviated(url.deletingLastPathComponent()),
+            url: url, path: url.path, key: Fuzzy.Key(name),
+            isFolder: values?.isDirectory == true && values?.isPackage != true,
+            modified: values?.contentModificationDate)
     }
 
     nonisolated static func abbreviated(_ folder: URL) -> String {

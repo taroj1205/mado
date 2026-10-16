@@ -21,12 +21,25 @@ import Testing
     @Test func findsFilesAndFoldersButNotHiddenEntriesOrBundleContents() async {
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let files = await FileIndex.files(in: [root]).sorted { $0.name < $1.name }
+        let found = await FileIndex.files(in: [root])
+        let files = found.filter { $0.path != root.path }.sorted { $0.name < $1.name }
 
         #expect(files.map(\.name) == ["Mado.app", "Planning", "Q3 Roadmap.pdf", "notes.md"])
         #expect(files[2].folder.hasSuffix("/\(root.lastPathComponent)/Planning"))
         #expect(files[2].key == Fuzzy.Key("Q3 Roadmap.pdf"))
         #expect(files[2].path == files[2].url.path)
+    }
+
+    @Test func findsTheSearchedFoldersThemselvesButNotMissingOnes() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let found = await FileIndex.files(in: [root, root.appending(path: "Missing")])
+        let top = try #require(found.first { $0.path == root.path })
+
+        #expect(top.isFolder)
+        #expect(top.name == root.lastPathComponent)
+        #expect(top.key == Fuzzy.Key(root.lastPathComponent))
+        #expect(!found.contains { $0.name == "Missing" })
     }
 
     @Test func ranksFilesWithTheUseAndAliasesSavedForTheirPath() async {
@@ -134,7 +147,7 @@ import Testing
         index.onChange = { changes += 1 }
         index.start()
         await index.scan?.value
-        #expect(index.files.count == 4)
+        #expect(index.files.count == 5)
         #expect(changes == 1)
         let notes = try #require(index.files.first { $0.name == "notes.md" }).url.path
         #expect(index.file(atPath: notes)?.name == "notes.md")
@@ -142,7 +155,9 @@ import Testing
         try Data().write(to: root.appending(path: "draft.txt"))
         try FileManager.default.removeItem(at: root.appending(path: "notes.md"))
 
-        let expected = ["Mado.app", "Planning", "Q3 Roadmap.pdf", "draft.txt"]
+        let expected = [
+            root.lastPathComponent, "Mado.app", "Planning", "Q3 Roadmap.pdf", "draft.txt",
+        ].sorted()
         let deadline = ContinuousClock.now + .seconds(10)
         while index.files.map(\.name).sorted() != expected, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(100))
