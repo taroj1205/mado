@@ -15,6 +15,7 @@ struct SettingsPage {
         let clipboardHistory: ClipboardHistorySettings
         let ignoredApps: AppListSettings
         let withoutExpansion: AppListSettings
+        let fileFolders: FolderListSettings
         let inputKeys: InputSourceKeys
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
@@ -34,7 +35,9 @@ struct SettingsPage {
 
     static let all: [Self] = [
         Self("General", "gearshape") { general($0) },
-        Self("Search", "magnifyingglass") { answers($0.modules, $0.rates) },
+        Self("Search", "magnifyingglass") { context in
+            answers(context.modules, context.rates) + [context.fileFolders.section]
+        },
         Self(
             "Widgets", "square.grid.2x2",
             module: module(Widgets.moduleID, "Widgets", enabled: true)

@@ -1,10 +1,14 @@
 import AppKit
+import SearchKit
 
 extension AppDelegate {
     func makeSettingsContext() -> SettingsPage.Context {
         let recorder = HotKeyPopover(items: editor)
         let ignoredApps = AppListSettings.ignoredApps(modules: modules)
         let withoutExpansion = AppListSettings.withoutExpansion(modules: modules)
+        let fileFolders = FolderListSettings(modules: modules) { [weak self] folders in
+            self?.files.use(folders)
+        }
         let inputKeys = InputSourceKeys(modules: modules, recorder: recorder)
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
@@ -15,7 +19,7 @@ extension AppDelegate {
             apps: AppHotKeys(items: editor, recorder: recorder),
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
-            withoutExpansion: withoutExpansion, inputKeys: inputKeys,
+            withoutExpansion: withoutExpansion, fileFolders: fileFolders, inputKeys: inputKeys,
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: { [weak self] in self?.editWidgetsInLauncher() },
             lyricsChanged: { [weak self] in self?.applyLyricsSettings() },

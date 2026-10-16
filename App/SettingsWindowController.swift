@@ -45,6 +45,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             snippets?.reload()
             self?.reload()
         }
+        context.fileFolders.onChange = { [weak self] in self?.reload() }
         context.inputKeys.onChange = { [weak self] in self?.reload() }
         context.inputDefaults.onChange = { [weak self] in self?.reload() }
         context.remaps.onChange = { [weak self] in self?.reload() }

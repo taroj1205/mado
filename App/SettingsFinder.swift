@@ -142,7 +142,7 @@ final class SettingsFinder {
             places.append(place)
         }
         for section in sections {
-            for row in section.rows {
+            for row in section.rows where row.isSearchable {
                 let id = Self.id(
                     page: page.title, tab: tabTitle, section: section.title, key: row.key)
                 let keycaps =

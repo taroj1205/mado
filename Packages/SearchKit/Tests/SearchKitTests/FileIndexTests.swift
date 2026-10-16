@@ -42,6 +42,35 @@ import Testing
         #expect(!found.contains { $0.name == "Missing" })
     }
 
+    @Test func skipsDependencyFoldersAndListsOverlappingFoldersOnce() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let dependency = root.appending(path: "node_modules/left-pad")
+        try FileManager.default.createDirectory(
+            at: dependency, withIntermediateDirectories: true)
+        try Data().write(to: dependency.appending(path: "index.js"))
+
+        let found = await FileIndex.files(in: [root, root.appending(path: "Planning")])
+
+        #expect(!found.contains { $0.path.contains("node_modules") })
+        #expect(Set(found.map(\.path)).count == found.count)
+    }
+
+    @Test func searchesTheNewFoldersAfterTheyAreChanged() async {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let index = FileIndex(folders: [])
+        index.start()
+        await index.scan?.value
+        #expect(index.files.isEmpty)
+
+        index.use([root.appending(path: "Planning")])
+        await index.scan?.value
+        #expect(index.files.map(\.name).sorted() == ["Planning", "Q3 Roadmap.pdf"])
+
+        index.use([])
+        await index.scan?.value
+        #expect(index.files.isEmpty)
+    }
+
     @Test func ranksFilesWithTheUseAndAliasesSavedForTheirPath() async {
         defer { try? FileManager.default.removeItem(at: root) }
         let files = ["Report.pdf", "Recipe.pdf"].map { name in
@@ -80,6 +109,24 @@ import Testing
         #expect(await rank("planning/q3") == ["~/Documents/Planning"])
         #expect(await rank("docs/arch") == ["~/Documents/Archive"])
         #expect(await rank("/Users/me/Documents/Planning/q3") == ["~/Documents/Planning"])
+    }
+
+    @Test func aTrailingSlashFindsTheFolderAndWhatIsInsideIt() async {
+        let make = { (name: String, folder: String) in
+            let path = "/Users/me/\(folder.dropFirst(2))/\(name)"
+            return FileIndex.File(
+                name: name, folder: folder, url: URL(filePath: path), path: path,
+                key: Fuzzy.Key(name), isFolder: true, modified: nil)
+        }
+        let files = [
+            make("university", "~/coding"), make("compsci-220", "~/coding/university"),
+            make("notes", "~/Documents"),
+        ]
+
+        let found = await FileIndex.rank(
+            files, by: "coding/university/", items: ItemSettings(), usage: Usage(), at: .now)
+
+        #expect(Set(found.map(\.name)) == ["university", "compsci-220"])
     }
 
     @Test func showsAnotherPageOfMatchesUntilThePageIsReset() {
