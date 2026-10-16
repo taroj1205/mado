@@ -73,6 +73,7 @@ public final class LauncherView: NSView {
     let mergePane = MergePane()
     let calendarPane = CalendarPane()
     let lyricsPane = LyricsPane()
+    public let camera = CameraPane()
     let chip = ScopeChip()
     var shownDetail: Detail?
     var fittedForCalendarAnswer = false
@@ -126,7 +127,7 @@ public final class LauncherView: NSView {
         addLayoutGuide(bar)
         for view in [
             icon, back, chip, field, separator, widgetGrid, results, detail, comparisonPane,
-            mergePane, calendarPane, emojiGrid, lyricsPane,
+            mergePane, calendarPane, emojiGrid, lyricsPane, camera,
         ] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -145,6 +146,7 @@ public final class LauncherView: NSView {
         placeDetail(below: separator)
         placeGrid(below: separator)
         placeLyrics(below: separator)
+        placeCamera(below: separator)
         placeCapsules()
         placeMerge()
     }

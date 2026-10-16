@@ -3,7 +3,13 @@ import AppKit
 import AVFoundation
 
 final class CameraSurface: NSView {
+    enum Style {
+        case window
+        case inline
+    }
+
     static let radius: CGFloat = 22
+    static let inlineRadius: CGFloat = 16
     private static let inset: CGFloat = 12
     private static let barHeight: CGFloat = 36
     private static let barPadding: CGFloat = 4
@@ -21,41 +27,55 @@ final class CameraSurface: NSView {
     var onMirror: ((Bool) -> Void)?
     var onSelect: ((CameraDevice) -> Void)?
     var onAction: ((CameraWindow.Action) -> Void)?
+    var onCapture: (() -> Void)?
+    var onPopOut: (() -> Void)?
+    let style: Style
     private(set) var phase = CameraWindow.Phase.starting
     private(set) var isHovered = false
     let preview: CameraPreview
     let notice = CameraNotice()
+    let feedback = CameraFeedback()
     let picker = CapsuleButton("Camera", keys: [], symbol: "video", height: pickerHeight)
     let mirror = CameraButton(
         symbol: "flip.horizontal", onSymbol: "flip.horizontal.fill", label: "Mirror")
+    let shutter = CameraButton(
+        symbol: "camera.fill", onSymbol: "camera.fill", label: "Take photo")
+    let popOut = CameraButton(
+        symbol: "arrow.up.forward.square", onSymbol: "arrow.up.forward.square",
+        label: "Show in a window")
     let dismiss = CameraButton(symbol: "xmark", onSymbol: "xmark", label: "Close camera")
     private(set) var devices: [CameraDevice] = []
     private(set) var current: String?
-    private let shade = CameraShade()
+    let shade = CameraShade()
     private let grip = CameraGrip()
     private(set) lazy var bar = makeBar()
     private(set) lazy var closer = makeCloser()
 
-    override var mouseDownCanMoveWindow: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { style == .window }
 
-    init(session: AVCaptureSession) {
+    init(session: AVCaptureSession, style: Style) {
         preview = CameraPreview(session: session)
+        self.style = style
         super.init(frame: .zero)
         wantsLayer = true
+        let corner = style == .window ? Self.radius : Self.inlineRadius
         let clip = NSView()
         clip.wantsLayer = true
-        clip.layer?.cornerRadius = Self.radius
+        clip.layer?.cornerRadius = corner
         clip.layer?.cornerCurve = .continuous
         clip.layer?.masksToBounds = true
-        let border = GlassBorder(radius: Self.radius)
+        let border = GlassBorder(radius: corner)
         clip.addSubview(preview)
+        clip.addSubview(shade)
         pin(preview, to: clip)
-        for view in [clip, shade, notice, border, bar, closer, grip] {
+        for view in [clip, notice, feedback, border, bar, closer, grip] {
             addSubview(view)
         }
-        for view in [clip, notice, border] {
+        for view in [clip, notice, feedback, border] {
             pin(view, to: self)
         }
+        closer.isHidden = style == .inline
+        grip.isHidden = style == .inline
         arrange()
         connect()
         addTrackingArea(
@@ -96,6 +116,12 @@ final class CameraSurface: NSView {
         picker.setAccessibilityLabel("Camera: \(name)")
     }
 
+    func shoot() {
+        guard phase == .live else { return }
+        feedback.fire()
+        onCapture?()
+    }
+
     func setHovered(_ hovered: Bool, animated: Bool) {
         guard hovered != isHovered else { return }
         isHovered = hovered
@@ -118,6 +144,8 @@ final class CameraSurface: NSView {
             preview.mirror(mirror.isOn)
             onMirror?(mirror.isOn)
         }
+        shutter.onPress = { [weak self] in self?.shoot() }
+        popOut.onPress = { [weak self] in self?.onPopOut?() }
         picker.onPress = { [weak self] in self?.chooseCamera() }
         notice.onAction = { [weak self] in self?.onAction?($0) }
     }
@@ -147,7 +175,8 @@ final class CameraSurface: NSView {
     private func makeBar() -> GlassView {
         picker.cornerRadius = Self.pickerRadius
         picker.label.lineBreakMode = .byTruncatingTail
-        let stack = NSStackView(views: [picker, FloatingCapsule.divider(), mirror])
+        let tools = style == .window ? [mirror, shutter] : [mirror, shutter, popOut]
+        let stack = NSStackView(views: [picker, FloatingCapsule.divider()] + tools)
         stack.spacing = Self.barPadding
         return FloatingCapsule.make(
             stack, leading: Self.barPadding, trailing: Self.barPadding, height: Self.barHeight,
@@ -170,7 +199,7 @@ final class CameraSurface: NSView {
 
     private func refresh(animated: Bool) {
         let live = phase == .live
-        let glow: CGFloat = isHovered && live ? 1 : 0
+        let glow: CGFloat = (isHovered || style == .inline) && live ? 1 : 0
         let close: CGFloat = isHovered || !live ? 1 : 0
         NSAnimationContext.runAnimationGroup { context in
             context.duration = animated ? Self.fadeSeconds : 0

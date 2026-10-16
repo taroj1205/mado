@@ -40,7 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
     let colourPicker = ColourPicker()
-    lazy var cameraMirror = CameraMirror { [weak self] in self?.modules }
+    lazy var cameraMirror = CameraMirror(inline: launcherView.camera) { [weak self] in
+        self?.modules
+    }
     let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
     let menuBar = MenuBarItems()
@@ -97,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         notesRunningChanged()
         connectClipboardHistory()
         connectEmoji()
+        connectCamera()
         #if DEBUG
             toggleSignal = makeToggleSignal { [weak self] in self?.toggleLauncher() }
             if NoFocus.isEnabled, let launcher { NoFocus.forwardKeys(to: launcher) }
@@ -171,13 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func run(_ action: CommandAction, for item: ResultList.Item, recordingUse: Bool) {
-        let opensView =
-            CalculatorHistory.opens(item.id)
-            || [
-                Quicklink.createID, ClipboardHistory.commandID, TextTools.commandID,
-                EmojiPicker.commandID,
-            ].contains(item.id)
-        if !opensView { hideLauncher() }
+        if !opensInLauncher(action, for: item.id) { hideLauncher() }
         history.remember(item, in: modules)
         perform(action, for: item.id, recordingUse: recordingUse)
     }
@@ -192,9 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
         }
-        let keepsOpen = [ClipboardHistory.commandID, TextTools.commandID, EmojiPicker.commandID]
-            .contains(id)
-        if launcher?.isVisible == true, !keepsOpen {
+        if launcher?.isVisible == true, !keepsLauncherOpen(for: id) {
             hideLauncher()
         }
         perform(action, for: id, recordingUse: true)
