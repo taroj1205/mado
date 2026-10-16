@@ -49,6 +49,34 @@ import Testing
         #expect(await rank("taxes") == ["Report.pdf"])
     }
 
+    @Test func aQueryWithASlashMatchesTheFolderPathToo() async {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = ["~/Documents/Planning", "~/Documents/Archive"].map { folder in
+            FileIndex.File(
+                name: "Q3 Roadmap.pdf", folder: folder,
+                url: URL(filePath: "/tmp/\(folder)/Q3 Roadmap.pdf"),
+                path: "/tmp/\(folder)/Q3 Roadmap.pdf", key: Fuzzy.Key("Q3 Roadmap.pdf"),
+                isFolder: false, modified: nil)
+        }
+        let rank = { (query: String) async in
+            await FileIndex.rank(files, by: query, items: ItemSettings(), usage: Usage(), at: .now)
+                .map(\.folder)
+        }
+
+        #expect(await rank("q3").count == 2)
+        #expect(await rank("planning/q3") == ["~/Documents/Planning"])
+        #expect(await rank("docs/arch") == ["~/Documents/Archive"])
+    }
+
+    @Test func showsAnotherPageOfMatchesUntilTheQueryChanges() {
+        let index = FileIndex(folders: [])
+
+        #expect(index.limit(for: "re") == FileIndex.page)
+        index.showMore()
+        #expect(index.limit(for: "re") == FileIndex.page * 2)
+        #expect(index.limit(for: "rep") == FileIndex.page)
+    }
+
     @Test func aCancelledScanStopsWalkingTheFolders() async {
         defer { try? FileManager.default.removeItem(at: root) }
         let scan = Task { await FileIndex.files(in: [root]) }

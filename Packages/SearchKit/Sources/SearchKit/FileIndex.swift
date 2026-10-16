@@ -19,6 +19,7 @@ public final class FileIndex {
         .isDirectoryKey, .isPackageKey, .contentModificationDateKey,
     ]
     private static let daysShownAsWeekday = 6
+    static let page = 20
 
     public static let folders = [
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
@@ -31,6 +32,8 @@ public final class FileIndex {
 
     private let logger = Log.logger("FileIndex")
     private var byPath: [String: File] = [:]
+    private var shown = FileIndex.page
+    private var pagedQuery = ""
     private let folders: [URL]
     private var watcher: FolderWatcher?
     private(set) var scan: Task<Void, Never>?
@@ -47,7 +50,10 @@ public final class FileIndex {
         _ files: [File], by query: String, items: ItemSettings, usage: Usage, at now: Date
     ) async -> [File] {
         let bonus = { usage.bonus(for: $0, at: now) }
-        return items.rank(files, by: query, bonus: bonus, id: \.path) { [$0.key] }
+        let nested = query.contains("/")
+        return items.rank(files, by: query, bonus: bonus, id: \.path) { file in
+            [nested ? Fuzzy.Key("\(file.folder)/\(file.name)") : file.key]
+        }
     }
 
     nonisolated private static func walk(_ folders: [URL]) -> [File] {
@@ -100,6 +106,18 @@ public final class FileIndex {
 
     public func file(atPath path: String) -> File? {
         byPath[path]
+    }
+
+    public func limit(for query: String) -> Int {
+        if query != pagedQuery {
+            pagedQuery = query
+            shown = Self.page
+        }
+        return shown
+    }
+
+    public func showMore() {
+        shown += Self.page
     }
 
     public func start() {

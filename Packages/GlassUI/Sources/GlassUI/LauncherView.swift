@@ -215,6 +215,7 @@ public final class LauncherView: NSView {
         finishEditingWidgets()
         restoreQueryBeforeEditing()
         browsing = false
+        results.loadingMore = false
         leavePillsAndWidgets()
         closePreview()
         closeActions()

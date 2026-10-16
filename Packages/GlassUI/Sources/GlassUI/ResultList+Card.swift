@@ -8,6 +8,7 @@ extension ResultList {
         public let card: Card?
         public let colour: ColourCard?
         public var selectsFirst = false
+        public var hasMore = false
 
         public init(
             title: String, items: [Item], notice: Notice? = nil, card: Card? = nil,

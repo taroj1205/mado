@@ -43,6 +43,10 @@ extension AppDelegate {
         }
         clipboardHistory.onRunningChange = { [weak self] in self?.clipboardRunningChanged() }
         launcherView.results.onCheck = { [weak self] ids in self?.checked(ids) }
+        launcherView.results.onNearEnd = { [weak self] in
+            self?.files.showMore()
+            self?.searchAgain()
+        }
         launcherView.onEdit = { [weak self] item in self?.edit(item) }
         launcherView.onSaveSnippet = { [weak self] text in
             self?.hideLauncher()
