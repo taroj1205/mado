@@ -28,10 +28,8 @@ extension LauncherResult {
     }
 
     static func fileSection(
-        _ matches: [FileIndex.File], for query: String, in sources: Sources,
-        item: (Self) -> ResultList.Item
+        _ matches: [FileIndex.File], limit: Int, item: (Self) -> ResultList.Item
     ) -> ResultList.Section {
-        let limit = sources.files.limit(for: query)
         var section = ResultList.Section(
             title: "Files", items: matches.prefix(limit).map { item(.file($0)) })
         section.hasMore = matches.count > limit
