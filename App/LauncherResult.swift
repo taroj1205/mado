@@ -16,7 +16,6 @@ enum LauncherResult {
 
     private static let openApp = "Open Application"
     private static let answerID = "calculator"
-    private static let fileLimit = 20
     private static let searchSymbol = "magnifyingglass"
     private static let answerSymbol = "plus.forwardslash.minus"
 
@@ -116,14 +115,14 @@ enum LauncherResult {
         let item = { (result: Self) in
             result.item(icons: sources.apps, hotkey: items.hotkeys[result.id], at: now)
         }
-        let found = await rankedFiles.prefix(fileLimit).map(Self.file)
+        let fileResults = await fileSection(rankedFiles, limit: sources.files.shown, item: item)
         let results =
             home.sections(item) + [
                 ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
                 ResultList.Section(
                     title: SettingsLink.kind,
                     items: settingResults(for: trimmed, in: sources).map(item)),
-                ResultList.Section(title: "Files", items: found.map(item)),
+                fileResults,
             ]
         guard let answer = answerSection(for: trimmed, in: sources) else {
             let isEmpty = typed && results.allSatisfy(\.items.isEmpty)

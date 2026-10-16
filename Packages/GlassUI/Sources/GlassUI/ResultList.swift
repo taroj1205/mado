@@ -92,15 +92,11 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         didSet {
             reloading = true
             let shown = rows.count
+            let grown = takeGrownSelection()
             rows = Self.rows(for: sections)
             let pruned = pruneChecks()
             reloadRows(keeping: shown)
-            let keptRow = kept.flatMap { id in rows.firstIndex { $0.itemID == id } }
-            let preferred = rows.firstIndex(where: \.prefersSelection)
-            if let row = keptRow ?? preferred ?? rows.firstIndex(where: \.isItem) {
-                table.selectRowIndexes([row], byExtendingSelection: false)
-            }
-            reveal(keptRow ?? preferred ?? 0, context: keptRow == nil ? [0] : [], animated: false)
+            select(keeping: grown ?? kept, scrolling: grown == nil)
             reloading = false
             cursor = (nil, selectedItem?.id)
             onSelect?(selectedItem)
@@ -124,6 +120,8 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     public var onMove: (() -> Void)?
     public var onPick: ((String) -> Void)?
     public var onCheck: (([String]) -> Void)?
+    public var onNearEnd: (() -> Void)?
+    var loadingMore = false
     var onChecksChanged: (() -> Void)?
 
     public var selectedItem: Item? {
@@ -180,6 +178,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
     override public func scrollWheel(with event: NSEvent) {
         stopGliding()
         super.scrollWheel(with: event)
+        loadMoreIfNearEnd()
     }
 
     @objc
@@ -210,6 +209,7 @@ public final class ResultList: NSScrollView, NSTableViewDataSource, NSTableViewD
         guard !reloading else { return }
         cursor = (cursor.current, selectedItem?.id)
         onSelect?(selectedItem)
+        loadMoreIfNearEnd()
     }
 
     public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {

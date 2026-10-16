@@ -19,11 +19,13 @@ public final class FileIndex {
         .isDirectoryKey, .isPackageKey, .contentModificationDateKey,
     ]
     private static let daysShownAsWeekday = 6
+    static let page = 20
 
     public static let folders = [
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
     ]
 
+    public private(set) var shown = FileIndex.page
     public private(set) var files: [File] = [] {
         didSet { byPath = Dictionary(files.map { ($0.path, $0) }) { first, _ in first } }
     }
@@ -47,7 +49,11 @@ public final class FileIndex {
         _ files: [File], by query: String, items: ItemSettings, usage: Usage, at now: Date
     ) async -> [File] {
         let bonus = { usage.bonus(for: $0, at: now) }
-        return items.rank(files, by: query, bonus: bonus, id: \.path) { [$0.key] }
+        let typed = query.trimmingCharacters(in: .whitespaces)
+        return items.rank(files, by: query, bonus: bonus, id: \.path) { file in
+            guard typed.contains("/") else { return [file.key] }
+            return [Fuzzy.Key(typed.hasPrefix("/") ? file.path : "\(file.folder)/\(file.name)")]
+        }
     }
 
     nonisolated private static func walk(_ folders: [URL]) -> [File] {
@@ -100,6 +106,14 @@ public final class FileIndex {
 
     public func file(atPath path: String) -> File? {
         byPath[path]
+    }
+
+    public func showMore() {
+        shown += Self.page
+    }
+
+    public func resetPage() {
+        shown = Self.page
     }
 
     public func start() {

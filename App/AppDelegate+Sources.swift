@@ -13,6 +13,11 @@ extension AppDelegate {
             })
     }
 
+    func queryChanged(_ query: String) {
+        files.resetPage()
+        search?.run(query)
+    }
+
     func ratesChanged() {
         searchAgain()
         settings?.refresh()

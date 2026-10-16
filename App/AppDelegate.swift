@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var launcherClosed: ContinuousClock.Instant?
     private(set) var pasteTarget: PasteTarget?
     let launcherView = LauncherView()
-    private var search: SearchRunner<[ResultList.Section]>?
+    private(set) var search: SearchRunner<[ResultList.Section]>?
     let apps = AppIndex()
     let files = FileIndex()
     let rates = ExchangeRateFeed()
@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             kind: .panel,
             contentRect: NSRect(origin: .zero, size: launcherSize),
             shape: .rounded(Self.launcherRadius))
-        launcherView.onQuery = { [weak self] query in self?.search?.run(query) }
+        launcherView.onQuery = { [weak self] query in self?.queryChanged(query) }
         launcherView.onCancel = { [weak self] in self?.hideLauncher() }
         launcherView.onRun = { [weak self] item, action in self?.run(item, action: action) }
         connectActions()

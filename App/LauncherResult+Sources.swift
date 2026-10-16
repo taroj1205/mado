@@ -1,4 +1,5 @@
 import AppCore
+import GlassUI
 import SearchKit
 import WindowKit
 
@@ -24,6 +25,15 @@ extension LauncherResult {
                 : CommandAction(id: "toggle", title: "Toggle") { try await AppToggle.toggle(app) }
         }
         return result(for: id, in: sources)?.actions.first
+    }
+
+    static func fileSection(
+        _ matches: [FileIndex.File], limit: Int, item: (Self) -> ResultList.Item
+    ) -> ResultList.Section {
+        var section = ResultList.Section(
+            title: "Files", items: matches.prefix(limit).map { item(.file($0)) })
+        section.hasMore = matches.count > limit
+        return section
     }
 
     static func settingResults(for query: String, in sources: Sources) -> [Self] {
