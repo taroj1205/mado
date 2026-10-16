@@ -35,7 +35,8 @@ import Testing
         #expect(picker.title.stringValue == "Move Widget 2")
         #expect(picker.value == .panel)
         #expect(picker.marks.filter(\.isOn).map(\.spot) == [.panel])
-        #expect(abs(picker.glass.frame.maxX + WidgetSpotPicker.gap - menu.glass.frame.minX) < 1)
+        let beside = view.screenFrame(of: menu.glass)
+        #expect(abs(picker.panel.frame.maxX + WidgetSpotPicker.gap - beside.minX) < 1)
         press(kVK_RightArrow, "\u{F703}")
         #expect(picker.value == .rightMiddle)
         #expect(picker.label.stringValue == "Right · Middle")
@@ -107,17 +108,21 @@ import Testing
         #expect(view.spotPicker != nil)
     }
 
-    @Test func filteringTheActionsKeepsThePickerInsideTheLauncher() throws {
+    @Test func filteringTheActionsKeepsThePickerBesideThemAndOnScreen() throws {
         let menu = try openPicker(on: 0)
         let picker = try #require(view.spotPicker)
-        #expect(abs(picker.glass.frame.maxY - menu.glass.frame.maxY) < 1)
+        #expect(abs(picker.panel.frame.maxY - view.screenFrame(of: menu.glass).maxY) < 1)
+        let before = picker.panel.frame
         press(kVK_ANSI_R, "r")
         press(kVK_ANSI_E, "e")
         press(kVK_ANSI_M, "m")
         view.layoutSubtreeIfNeeded()
         #expect(menu.rows.count == 1)
-        #expect(picker.glass.frame.minY >= view.bounds.minY)
-        #expect(view.bounds.contains(picker.glass.frame))
+        #expect(picker.panel.frame != before)
+        let anchor = view.screenFrame(of: menu.glass)
+        let beside = view.beside(anchor, size: WidgetSpotPicker.size, leftFirst: true)
+        #expect(picker.panel.frame == beside)
+        #expect(view.popupBounds.contains(picker.panel.frame))
     }
 
     private func openPicker(on index: Int) throws -> ActionPanel {

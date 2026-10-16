@@ -35,38 +35,42 @@ extension LauncherView {
         }
         let picker = WidgetSpotPicker(moving: widget.name, from: widgetGrid.home(of: widget.id))
         picker.onPick = { [weak self] spot in self?.place(widget.id, at: spot) }
-        addSubview(picker.glass)
-        NSLayoutConstraint.activate([
-            picker.glass.widthAnchor.constraint(equalToConstant: WidgetSpotPicker.size.width),
-            picker.glass.heightAnchor.constraint(equalToConstant: WidgetSpotPicker.size.height),
-        ])
         spotPicker = picker
-        if let widgetMenu {
+        if widgetMenu != nil {
             closeSizeMenu()
-            place(picker.glass, width: WidgetSpotPicker.size.width, beside: widgetMenu)
-            return
-        }
-        guard let panel else {
-            NSLayoutConstraint.activate([
-                picker.glass.leadingAnchor.constraint(equalTo: editBar.move.leadingAnchor),
-                picker.glass.bottomAnchor.constraint(
-                    equalTo: editBar.topAnchor, constant: -WidgetSpotPicker.gap),
-            ])
+        } else if let panel {
+            panel.onCommand = { [weak self] selector in
+                self?.pickerCommand(selector, moving: widget.id) ?? false
+            }
+        } else {
             showWidgetTools()
-            return
         }
-        NSLayoutConstraint.activate([
-            picker.glass.trailingAnchor.constraint(
-                equalTo: panel.glass.leadingAnchor, constant: -WidgetSpotPicker.gap),
-            picker.glass.bottomAnchor.constraint(
-                lessThanOrEqualTo: bottomAnchor, constant: -Self.capsuleInset),
-        ])
-        let level = picker.glass.topAnchor.constraint(equalTo: panel.glass.topAnchor)
-        level.priority = .defaultHigh
-        level.isActive = true
-        panel.onCommand = { [weak self] selector in
-            self?.pickerCommand(selector, moving: widget.id) ?? false
+        layoutSubtreeIfNeeded()
+        placeSpotPicker()
+    }
+
+    func placeSpotPicker() {
+        guard let picker = spotPicker, let window = unsafe window else { return }
+        let size = WidgetSpotPicker.size
+        let frame: NSRect
+        if let widgetMenu {
+            frame = beside(widgetMenu.panel.frame, size: size, leftFirst: false)
+        } else if !editingWidgets, let actionPanel {
+            frame = beside(screenFrame(of: actionPanel.glass), size: size, leftFirst: true)
+        } else {
+            let bar = screenFrame(of: editBar)
+            frame = PopupPlacement.clamped(
+                NSRect(
+                    origin: NSPoint(
+                        x: screenFrame(of: editBar.move).minX, y: bar.maxY + WidgetSpotPicker.gap),
+                    size: size), in: popupBounds)
         }
+        picker.panel.present(frame, over: window)
+    }
+
+    func followActionPanel() {
+        guard !editingWidgets, widgetMenu == nil, actionPanel != nil else { return }
+        placeSpotPicker()
     }
 
     func closeSpotPicker() {

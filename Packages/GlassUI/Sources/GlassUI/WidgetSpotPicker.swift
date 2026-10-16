@@ -24,7 +24,8 @@ final class WidgetSpotPicker: NSView {
 
     static var size: NSSize { NSSize(width: width, height: height) }
 
-    let glass = GlassView(shape: .rounded(ActionPanel.radius))
+    let panel = GlassPanel.popup(radius: ActionPanel.radius)
+    var glass: GlassView { panel.glass }
     let title = NSTextField(labelWithString: "")
     let label = NSTextField(labelWithString: "")
     private let marker = NSView()
@@ -52,7 +53,6 @@ final class WidgetSpotPicker: NSView {
         marker.layer?.cornerRadius = Self.dot * Self.half
         arrange()
         glass.sheen.isHidden = true
-        glass.translatesAutoresizingMaskIntoConstraints = false
         glass.contentView = self
         setAccessibilityElement(true)
         setAccessibilityRole(.radioGroup)
@@ -83,12 +83,8 @@ final class WidgetSpotPicker: NSView {
         }
     }
 
-    func contains(_ point: NSPoint) -> Bool {
-        unsafe glass.superview != nil && glass.convert(glass.bounds, to: nil).contains(point)
-    }
-
     func dismiss() {
-        glass.removeFromSuperview()
+        panel.dismiss()
         glass.contentView = nil
     }
 

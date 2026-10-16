@@ -55,16 +55,19 @@ final class WidgetMenu {
     static let width: CGFloat = 244
     private static let tick: CGFloat = 16
 
-    let glass = GlassView(shape: .rounded(ActionPanel.radius))
+    let panel = GlassPanel.popup(radius: ActionPanel.radius)
     private let list = ActionList()
 
     var onChoose: ((Choice) -> Void)?
     var onSize: ((WidgetGrid.Size) -> Void)?
     var rows: [ActionRow] { list.rows }
-    var isVisible: Bool { unsafe glass.superview != nil }
+    var glass: GlassView { panel.glass }
+    var popupSize: NSSize {
+        let inset = ActionPanel.inset
+        return NSSize(width: Self.width, height: list.fittingSize.height + inset + inset)
+    }
 
     init() {
-        glass.translatesAutoresizingMaskIntoConstraints = false
         glass.sheen.isHidden = true
         let content = NSView()
         let border = GlassBorder(radius: ActionPanel.radius)
@@ -132,11 +135,7 @@ final class WidgetMenu {
         list.press()
     }
 
-    func contains(_ point: NSPoint) -> Bool {
-        isVisible && glass.convert(glass.bounds, to: nil).contains(point)
-    }
-
     func close() {
-        glass.removeFromSuperview()
+        panel.dismiss()
     }
 }

@@ -158,6 +158,7 @@ public final class LauncherView: NSView {
         super.layout()
         widgetGrid.placeFloats()
         fadeResultsBehindCapsules()
+        followActionPanel()
     }
 
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {

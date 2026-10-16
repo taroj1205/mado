@@ -69,14 +69,12 @@ extension LauncherView {
         case .leftMouseDown:
             let point = event.locationInWindow
             let onToggle = actionsToggle.convert(actionsToggle.bounds, to: nil).contains(point)
-            let inPicker = spotPicker?.contains(point) == true
-            let inMenu = widgetMenu?.contains(point) == true || sizeMenu?.contains(point) == true
-            if !onToggle, !inPicker, !inMenu, actionPanel?.contains(point) != true {
+            if !onToggle, actionPanel?.contains(point) != true {
                 closeActions()
             }
             return false
 
-        case .rightMouseDown where widgetMenu?.contains(event.locationInWindow) != true:
+        case .rightMouseDown:
             closeWidgetMenu()
             return false
 

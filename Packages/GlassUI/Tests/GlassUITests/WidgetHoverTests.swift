@@ -45,10 +45,10 @@ import Testing
         let button = NSPoint(x: tile.moreFrame.midX, y: tile.moreFrame.midY)
         tile.mouseDown(with: try rig.event(.leftMouseDown, on: tile, at: button))
         view.layoutSubtreeIfNeeded()
-        let menu = try #require(view.widgetMenu).glass.frame
-        let anchor = view.convert(tile.convert(tile.moreFrame, to: nil), from: nil)
-        #expect(abs(menu.maxY - (anchor.minY - 5)) < 1)
-        #expect(abs(menu.minX - (anchor.minX - 16)) < 1)
+        let menu = try #require(view.widgetMenu).panel.frame
+        let anchor = tile.buttonAnchor
+        #expect(abs(menu.maxY - anchor.y) < 1)
+        #expect(abs(menu.minX - anchor.x) < 1)
         tile.hovering = false
         #expect(!tile.more.isHidden)
         view.closeWidgetMenu()

@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite struct WidgetWorkbenchTests {
     private let panel = NSPanel(
-        contentRect: NSRect(x: 0, y: 0, width: 760, height: 548),
+        contentRect: NSRect(x: 0, y: 200, width: 760, height: 548),
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let view = LauncherView()
     private let widgets = ["clock", "weather", "battery"].map(Self.widget)
@@ -57,10 +57,10 @@ import Testing
         view.layoutSubtreeIfNeeded()
         let picker = try #require(view.spotPicker)
         #expect(view.editBar.move.fillColor == .controlAccentColor)
-        let frame = picker.glass.convert(picker.glass.bounds, to: view)
-        let move = view.editBar.move.convert(view.editBar.move.bounds, to: view)
+        let frame = picker.panel.frame
+        let move = view.screenFrame(of: view.editBar.move)
         #expect(abs(frame.minX - move.minX) < 0.5)
-        #expect(abs(frame.minY - (view.editBar.frame.maxY + 8)) < 0.5)
+        #expect(abs(frame.minY - (view.screenFrame(of: view.editBar).maxY + 8)) < 0.5)
         press(kVK_Escape, "\u{1B}")
         #expect(view.spotPicker == nil)
         #expect(view.editingWidgets)
