@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let textTools = TextTools()
     let emojiPicker = EmojiPicker()
     let colourPicker = ColourPicker()
+    lazy var cameraMirror = CameraMirror { [weak self] in self?.modules }
     let textCapture = TextCapture()
     let calendarAgenda = CalendarAgenda()
     let menuBar = MenuBarItems()
@@ -114,9 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             LauncherHotKeys.pauseKeysIfOff(in: manager)
             let library = try Snippets.registered(in: manager)
             snippets = library
-            let newLink = Quicklink.createCommand { [weak self] in self?.createQuicklink() }
-            try (SystemCommands.all + appCommands + [newLink, colourPicker.command])
-                .forEach(manager.commands.register)
+            try (SystemCommands.all + appCommands).forEach(manager.commands.register)
             for descriptor in SettingsPage.all.compactMap(\.module) {
                 try manager.register(
                     descriptor.makeModule(
@@ -183,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         perform(action, for: item.id, recordingUse: recordingUse)
     }
 
-    private func createQuicklink() {
+    func createQuicklink() {
         if launcher?.isVisible != true { showLauncher() }
         if let launcher { editor.openQuicklink(Quicklink(name: "", link: ""), in: launcher) }
     }

@@ -6,7 +6,7 @@ struct SystemPermissionProbe: PermissionProbe {
         granted ? .granted : .denied
     }
 
-    static func microphone(_ status: AVAuthorizationStatus) -> PermissionStatus {
+    static func media(_ status: AVAuthorizationStatus) -> PermissionStatus {
         switch status {
         case .authorized: .granted
 
@@ -30,7 +30,10 @@ struct SystemPermissionProbe: PermissionProbe {
             Self.flag(CGPreflightScreenCaptureAccess())
 
         case .microphone:
-            Self.microphone(AVCaptureDevice.authorizationStatus(for: .audio))
+            Self.media(AVCaptureDevice.authorizationStatus(for: .audio))
+
+        case .camera:
+            Self.media(AVCaptureDevice.authorizationStatus(for: .video))
 
         case .calendars, .location:
             .unsupported
@@ -50,6 +53,9 @@ struct SystemPermissionProbe: PermissionProbe {
 
         case .microphone:
             _ = await AVCaptureDevice.requestAccess(for: .audio)
+
+        case .camera:
+            _ = await AVCaptureDevice.requestAccess(for: .video)
 
         case .calendars, .location:
             break

@@ -89,6 +89,7 @@ import Testing
                 base + "Privacy_ListenEvent",
                 base + "Privacy_ScreenCapture",
                 base + "Privacy_Microphone",
+                base + "Privacy_Camera",
             ])
     }
 
@@ -102,11 +103,11 @@ import Testing
         #expect(probe.requests == [.microphone])
     }
 
-    @Test func mapsMicrophoneStatus() {
-        #expect(SystemPermissionProbe.microphone(.authorized) == .granted)
-        #expect(SystemPermissionProbe.microphone(.notDetermined) == .notDetermined)
-        #expect(SystemPermissionProbe.microphone(.denied) == .denied)
-        #expect(SystemPermissionProbe.microphone(.restricted) == .denied)
+    @Test func mapsMediaStatus() {
+        #expect(SystemPermissionProbe.media(.authorized) == .granted)
+        #expect(SystemPermissionProbe.media(.notDetermined) == .notDetermined)
+        #expect(SystemPermissionProbe.media(.denied) == .denied)
+        #expect(SystemPermissionProbe.media(.restricted) == .denied)
     }
 
     @Test func calendarsHaveNoSystemStatus() {

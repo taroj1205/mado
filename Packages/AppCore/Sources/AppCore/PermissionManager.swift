@@ -6,7 +6,7 @@ public import Observation
 @Observable
 public final class PermissionManager {
     public static let managed: [Permission] = [
-        .accessibility, .inputMonitoring, .screenRecording, .microphone,
+        .accessibility, .inputMonitoring, .screenRecording, .microphone, .camera,
     ]
 
     public private(set) var statuses: [Permission: PermissionStatus] = [:]
@@ -34,6 +34,7 @@ public final class PermissionManager {
             switch permission {
             case .accessibility: "Privacy_Accessibility"
             case .calendars: "Privacy_Calendars"
+            case .camera: "Privacy_Camera"
             case .inputMonitoring: "Privacy_ListenEvent"
             case .location: "Privacy_LocationServices"
             case .microphone: "Privacy_Microphone"
