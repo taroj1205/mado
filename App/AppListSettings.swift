@@ -5,9 +5,6 @@ import SearchKit
 
 @MainActor
 final class AppListSettings: NSObject {
-    private static let iconSize: CGFloat = 24
-    private static let removeSize: CGFloat = 20
-
     private let title: String
     private let modules: ModuleManager?
     private let apps: () -> [String]
@@ -20,12 +17,8 @@ final class AppListSettings: NSObject {
         let rows = apps()
             .compactMap(row)
             .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
-        let addButton = NSButton(
-            title: "Add App",
-            image: NSImage(systemSymbolName: "plus", accessibilityDescription: nil) ?? NSImage(),
-            target: self, action: #selector(addApp))
-        addButton.imagePosition = .imageLeading
-        addButton.isEnabled = modules != nil
+        let addButton = SettingsListRow.addButton(
+            "Add App", enabled: modules != nil, target: self, action: #selector(addApp))
         return SettingsSection(title, headerAccessory: addButton, rows)
     }
 
@@ -73,26 +66,11 @@ final class AppListSettings: NSObject {
         guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
             return nil
         }
-        let name = AppIndex.name(of: app)
-        let removeButton = NSButton(
-            image: NSImage(systemSymbolName: "minus", accessibilityDescription: nil) ?? NSImage(),
-            target: self, action: #selector(removeApp))
-        removeButton.isBordered = false
-        removeButton.contentTintColor = .secondaryLabelColor
-        removeButton.symbolConfiguration = .init(pointSize: Self.removeSize, weight: .medium)
-        removeButton.identifier = NSUserInterfaceItemIdentifier(id)
-        removeButton.setAccessibilityLabel("Remove \(name)")
-        removeButton.isEnabled = modules != nil
-        let control = NSStackView(views: [removeButton])
-        control.setHuggingPriority(.defaultHigh, for: .horizontal)
-        let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: app.path))
-        icon.widthAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-        icon.heightAnchor.constraint(equalToConstant: Self.iconSize).isActive = true
-        let kind = detail(id)
-        var row = SettingsSection.Row(
-            name, control, icon: icon, detail: kind.map { kind in { kind } })
-        row.key = id
-        return row
+        let entry = SettingsListRow.Entry(
+            name: AppIndex.name(of: app), key: id,
+            icon: NSWorkspace.shared.icon(forFile: app.path), detail: detail(id))
+        return SettingsListRow.make(
+            entry, enabled: modules != nil, removing: self, action: #selector(removeApp))
     }
 
     @objc

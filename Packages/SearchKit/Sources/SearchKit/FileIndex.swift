@@ -19,9 +19,10 @@ public final class FileIndex {
         .isDirectoryKey, .isPackageKey, .contentModificationDateKey,
     ]
     private static let daysShownAsWeekday = 6
+    nonisolated private static let dependencies = "node_modules"
     static let page = 20
 
-    public static let folders = [
+    nonisolated public static let folders = [
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
     ]
 
@@ -33,7 +34,8 @@ public final class FileIndex {
 
     private let logger = Log.logger("FileIndex")
     private var byPath: [String: File] = [:]
-    private let folders: [URL]
+    private var folders: [URL]
+    private var isStarted = false
     private var watcher: FolderWatcher?
     private(set) var scan: Task<Void, Never>?
 
@@ -52,12 +54,14 @@ public final class FileIndex {
         let typed = query.trimmingCharacters(in: .whitespaces)
         return items.rank(files, by: query, bonus: bonus, id: \.path) { file in
             guard typed.contains("/") else { return [file.key] }
-            return [Fuzzy.Key(typed.hasPrefix("/") ? file.path : "\(file.folder)/\(file.name)")]
+            let path = typed.hasPrefix("/") ? file.path : "\(file.folder)/\(file.name)"
+            return [Fuzzy.Key(file.isFolder ? path + "/" : path)]
         }
     }
 
     nonisolated private static func walk(_ folders: [URL]) -> [File] {
         var found: [File] = []
+        var seen: Set<String> = []
         for root in folders {
             guard
                 let items = FileManager.default.enumerator(
@@ -65,10 +69,14 @@ public final class FileIndex {
                     options: [.skipsHiddenFiles, .skipsPackageDescendants])
             else { continue }
             guard FileManager.default.fileExists(atPath: root.path) else { continue }
-            found.append(entry(for: root))
+            if seen.insert(root.path).inserted { found.append(entry(for: root)) }
             for case let url as URL in items {
                 guard !Task.isCancelled else { return [] }
-                found.append(entry(for: url))
+                if url.lastPathComponent == dependencies {
+                    items.skipDescendants()
+                } else if seen.insert(url.path).inserted {
+                    found.append(entry(for: url))
+                }
             }
         }
         return found
@@ -85,7 +93,7 @@ public final class FileIndex {
             modified: values?.contentModificationDate)
     }
 
-    nonisolated static func abbreviated(_ folder: URL) -> String {
+    nonisolated public static func abbreviated(_ folder: URL) -> String {
         let path = folder.path
         let home = URL.homeDirectory.path
         guard path == home || path.hasPrefix(home + "/") else { return path }
@@ -122,11 +130,25 @@ public final class FileIndex {
     }
 
     public func start() {
-        watcher = FolderWatcher(folders: folders, latency: Self.latency) { [weak self] in
-            self?.refresh()
-        }
-        if watcher == nil {
-            logger.error("Watching the file folders failed; new files show after relaunch")
+        isStarted = true
+        watch()
+    }
+
+    public func use(_ folders: [URL]) {
+        guard folders != self.folders else { return }
+        self.folders = folders
+        if isStarted { watch() }
+    }
+
+    private func watch() {
+        watcher = nil
+        if !folders.isEmpty {
+            watcher = FolderWatcher(folders: folders, latency: Self.latency) { [weak self] in
+                self?.refresh()
+            }
+            if watcher == nil {
+                logger.error("Watching the file folders failed; new files show after relaunch")
+            }
         }
         refresh()
     }

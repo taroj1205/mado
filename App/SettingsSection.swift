@@ -8,6 +8,7 @@ struct SettingsSection {
         let example: String?
         let detail: (() -> String)?
         var key: String
+        var isSearchable = true
 
         init(_ label: String, _ control: NSView) {
             self.init(label, control, icon: nil, example: nil, detail: nil)

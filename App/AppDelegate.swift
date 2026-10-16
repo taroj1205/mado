@@ -86,6 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         files.onChange = { [weak self] in self?.searchAgain() }
         rates.onChange = { [weak self] in self?.ratesChanged() }
         apps.start()
+        files.use(FileSettings.load(from: modules).folders)
         files.start()
         rates.start(every: AnswerSettings.load(from: modules).refresh.seconds)
         hotKeys.onChange = { [weak self] in self?.settings?.refresh() }
