@@ -97,10 +97,7 @@ extension AppDelegate {
             defer { signposter.endInterval("search", state) }
             let timers = timerSections(for: query)
             if !timers.isEmpty { return timers }
-            let fileLimit = files.limit(for: query)
-            return cards
-                + (await LauncherResult.sections(
-                    for: query, in: sources, usage: usage, fileLimit: fileLimit))
+            return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
         }
     }
 

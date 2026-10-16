@@ -25,6 +25,7 @@ public final class FileIndex {
         URL.desktopDirectory, URL.documentsDirectory, URL.downloadsDirectory,
     ]
 
+    public private(set) var shown = FileIndex.page
     public private(set) var files: [File] = [] {
         didSet { byPath = Dictionary(files.map { ($0.path, $0) }) { first, _ in first } }
     }
@@ -32,8 +33,6 @@ public final class FileIndex {
 
     private let logger = Log.logger("FileIndex")
     private var byPath: [String: File] = [:]
-    private var shown = FileIndex.page
-    private var pagedQuery = ""
     private let folders: [URL]
     private var watcher: FolderWatcher?
     private(set) var scan: Task<Void, Never>?
@@ -50,9 +49,10 @@ public final class FileIndex {
         _ files: [File], by query: String, items: ItemSettings, usage: Usage, at now: Date
     ) async -> [File] {
         let bonus = { usage.bonus(for: $0, at: now) }
-        let nested = query.contains("/")
+        let typed = query.trimmingCharacters(in: .whitespaces)
         return items.rank(files, by: query, bonus: bonus, id: \.path) { file in
-            [nested ? Fuzzy.Key("\(file.folder)/\(file.name)") : file.key]
+            guard typed.contains("/") else { return [file.key] }
+            return [Fuzzy.Key(typed.hasPrefix("/") ? file.path : "\(file.folder)/\(file.name)")]
         }
     }
 
@@ -108,16 +108,12 @@ public final class FileIndex {
         byPath[path]
     }
 
-    public func limit(for query: String) -> Int {
-        if query != pagedQuery {
-            pagedQuery = query
-            shown = Self.page
-        }
-        return shown
-    }
-
     public func showMore() {
         shown += Self.page
+    }
+
+    public func resetPage() {
+        shown = Self.page
     }
 
     public func start() {

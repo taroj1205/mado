@@ -87,7 +87,7 @@ enum LauncherResult {
     }
 
     static func sections(
-        for query: String, in sources: Sources, usage: Usage, fileLimit: Int
+        for query: String, in sources: Sources, usage: Usage
     ) async -> [ResultList.Section] {
         let items = sources.items
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -115,7 +115,7 @@ enum LauncherResult {
         let item = { (result: Self) in
             result.item(icons: sources.apps, hotkey: items.hotkeys[result.id], at: now)
         }
-        let fileResults = await fileSection(rankedFiles, limit: fileLimit, item: item)
+        let fileResults = await fileSection(rankedFiles, limit: sources.files.shown, item: item)
         let results =
             home.sections(item) + [
                 ResultList.Section(title: typed ? "Results" : "Commands", items: ranked.map(item)),
