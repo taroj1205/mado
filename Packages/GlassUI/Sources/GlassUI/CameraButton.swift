@@ -47,6 +47,10 @@ final class CameraButton: NSButton {
         )?
         .withSymbolConfiguration(.init(pointSize: Self.glyphSize, weight: .semibold))
         contentTintColor = isOn ? .controlAccentColor : .labelColor
+        if symbol != onSymbol {
+            setAccessibilityRole(.checkBox)
+            setAccessibilityValue(isOn)
+        }
     }
 
     @objc

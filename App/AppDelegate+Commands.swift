@@ -35,4 +35,9 @@ extension AppDelegate {
             cameraMirror.command,
         ]
     }
+
+    func shutDown() {
+        notes.flush()
+        cameraMirror.quit()
+    }
 }

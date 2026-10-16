@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationWillTerminate(_: Notification) {
-        notes.flush()
+        shutDown()
     }
 
     private func makeModules() -> ModuleManager? {

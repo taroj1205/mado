@@ -55,9 +55,15 @@ import Testing
 
     @Test func refitKeepsTheWidthAndTheTopLeft() {
         let frame = CGRect(x: 100, y: 500, width: 360, height: 203)
-        let next = CameraGeometry.refit(frame, aspect: 4 / 3)
+        let next = CameraGeometry.refit(frame, aspect: 4 / 3, areas: [screen])
         #expect(next == CGRect(x: 100, y: 433, width: 360, height: 270))
         #expect(next.minX == frame.minX)
         #expect(next.maxY == frame.maxY)
+    }
+
+    @Test func refitSlidesUpWhenTheTallerShapeWouldLeaveTheScreen() {
+        let frame = CGRect(x: 1_056, y: 24, width: 360, height: 203)
+        let next = CameraGeometry.refit(frame, aspect: 4 / 3, areas: [screen])
+        #expect(next == CGRect(x: 1_056, y: screen.minY, width: 360, height: 270))
     }
 }

@@ -7,12 +7,14 @@ public struct CameraDevice: Equatable, Sendable {
         self.name = name
     }
 
-    public static func choose(from devices: [Self], saved: String?, preferred: String?) -> Self? {
+    public static func ordered(from devices: [Self], saved: String?, preferred: String?) -> [Self] {
+        var rest = devices
+        var first: [Self] = []
         for wanted in [saved, preferred] {
-            if let match = devices.first(where: { $0.id == wanted }) {
-                return match
+            if let index = rest.firstIndex(where: { $0.id == wanted }) {
+                first.append(rest.remove(at: index))
             }
         }
-        return devices.first
+        return first + rest
     }
 }
