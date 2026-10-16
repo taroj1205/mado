@@ -3,7 +3,7 @@ import AppKit
 public import AVFoundation
 
 @MainActor
-public final class CameraWindow {
+public final class CameraWindow: CameraScreen {
     public enum Phase: Equatable, Sendable {
         case starting
         case live
@@ -17,6 +17,12 @@ public final class CameraWindow {
         case retry
     }
 
+    public enum Capture: Equatable, Sendable {
+        case saved
+        case savedNotCopied
+        case failed
+    }
+
     private static let fadeInSeconds = 0.26
     private static let fadeOutSeconds = 0.16
     private static let settled: CGFloat = 0.94
@@ -26,6 +32,7 @@ public final class CameraWindow {
     public var onClose: (() -> Void)?
     public var onSelect: ((CameraDevice) -> Void)?
     public var onMirror: ((Bool) -> Void)?
+    public var onCapture: (() -> Bool)?
     public var onFrame: ((CGRect) -> Void)?
     public private(set) var isShown = false
     var reducesMotion = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -38,7 +45,7 @@ public final class CameraWindow {
     private var hiding = 0
 
     public init(session: AVCaptureSession) {
-        surface = CameraSurface(session: session)
+        surface = CameraSurface(session: session, style: .window)
         let glass = GlassView(shape: .rounded(CameraSurface.radius))
         glass.contentView = surface
         panel.contentView = glass
@@ -46,6 +53,7 @@ public final class CameraWindow {
         surface.onMirror = { [weak self] in self?.onMirror?($0) }
         surface.onSelect = { [weak self] in self?.onSelect?($0) }
         surface.onAction = { [weak self] in self?.onAction?($0) }
+        surface.onCapture = { [weak self] in self?.onCapture?() ?? false }
     }
 
     public func show(saved: CGRect?, mirrored: Bool) {
@@ -93,6 +101,14 @@ public final class CameraWindow {
 
     public func setDevices(_ devices: [CameraDevice], current: String?) {
         surface.setDevices(devices, current: current)
+    }
+
+    public func setMirrored(_ mirrored: Bool) {
+        surface.setMirrored(mirrored)
+    }
+
+    public func showPhoto(_ capture: Capture) {
+        surface.feedback.show(capture)
     }
 
     public func fit(to video: CGSize) {

@@ -52,6 +52,10 @@ public final class CameraSession {
         return .failure(failure)
     }
 
+    public func takePhoto(mirrored: Bool) async -> Data? {
+        await engine.capture(mirrored: mirrored)
+    }
+
     public func stop() {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []

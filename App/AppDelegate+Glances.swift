@@ -8,16 +8,19 @@ extension AppDelegate {
     private static let launcherWidth: CGFloat = 760
     private static let launcherHeight: CGFloat = 476
     private static let gridLauncherHeight: CGFloat = 548
+    private static let cameraLauncherHeight: CGFloat = 500
     private static let half: CGFloat = 0.5
     private static let mediaPage = "Media"
 
     var launcherSize: CGSize {
         CGSize(
             width: Self.launcherWidth,
-            height: gridHeight(
-                otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
-                    || launcherView.showsCalendarAnswer || launcherView.showsLyrics
-                    ? Self.gridLauncherHeight : Self.launcherHeight))
+            height: launcherView.showsCamera
+                ? Self.cameraLauncherHeight
+                : gridHeight(
+                    otherwise: launcherView.editingWidgets || launcherView.widgetsFillPanel
+                        || launcherView.showsCalendarAnswer || launcherView.showsLyrics
+                        ? Self.gridLauncherHeight : Self.launcherHeight))
     }
 
     func arrangeWidgets() {

@@ -12,6 +12,7 @@ extension AppDelegate {
         case clipboard
         case textTools
         case emoji
+        case camera
     }
 
     private static let clipboardScopes: Set<Scope> = [.clipboard, .textTools, .emoji]
@@ -62,6 +63,7 @@ extension AppDelegate {
         launcherView.onLeave = { [weak self] in
             self?.clipboardHistory.close()
             self?.textTools.close()
+            self?.cameraMirror.closeInline()
         }
         clipboardRunningChanged()
     }
@@ -80,25 +82,47 @@ extension AppDelegate {
         case .calculator:
             return history.sections(for: query)
 
+        case .camera:
+            return []
+
         case .root:
-            let cards = widgets.sections(
-                for: query, enabled: modules?.isEnabled(Widgets.moduleID) != false,
-                in: launcherView)
-            if let emoji = emojiPicker.query(in: query) {
-                return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
-            }
-            let headings = calendarHeadings(for: query)
-            if !headings.isEmpty {
-                let answer = LauncherResult.dateSection(for: query, in: sources)
-                let events = await calendarAgenda.sections(for: headings, at: .now)
-                return [answer].compactMap(\.self) + events
-            }
-            let state = signposter.beginInterval("search")
-            defer { signposter.endInterval("search", state) }
-            let timers = timerSections(for: query)
-            if !timers.isEmpty { return timers }
-            return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
+            return await rootResults(for: query)
         }
+    }
+
+    private func rootResults(for query: String) async -> [ResultList.Section] {
+        let cards = widgets.sections(
+            for: query, enabled: modules?.isEnabled(Widgets.moduleID) != false, in: launcherView)
+        if let emoji = emojiPicker.query(in: query) {
+            return emojiPicker.sections(for: emoji, pastingInto: pasteTarget)
+        }
+        let headings = calendarHeadings(for: query)
+        if !headings.isEmpty {
+            let answer = LauncherResult.dateSection(for: query, in: sources)
+            let events = await calendarAgenda.sections(for: headings, at: .now)
+            return [answer].compactMap(\.self) + events
+        }
+        let state = signposter.beginInterval("search")
+        defer { signposter.endInterval("search", state) }
+        let timers = timerSections(for: query)
+        if !timers.isEmpty { return timers }
+        return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
+    }
+
+    func opensInLauncher(_ action: CommandAction, for id: String) -> Bool {
+        CalculatorHistory.opens(id)
+            || (id == CameraMirror.commandID && action.id == CameraMirror.inlineActionID)
+            || [
+                Quicklink.createID, ClipboardHistory.commandID, TextTools.commandID,
+                EmojiPicker.commandID,
+            ].contains(id)
+    }
+
+    func keepsLauncherOpen(for id: String) -> Bool {
+        [
+            ClipboardHistory.commandID, TextTools.commandID, EmojiPicker.commandID,
+            CameraMirror.commandID,
+        ].contains(id)
     }
 
     private func ownedMenu(for item: ResultList.Item) -> LauncherMenu? {
@@ -134,6 +158,9 @@ extension AppDelegate {
 
         case .calculator:
             LauncherMenu(actions: history.actions(for: item.id))
+
+        case .camera:
+            LauncherMenu(actions: [])
 
         case .root:
             LauncherMenu(
@@ -173,6 +200,8 @@ extension AppDelegate {
             showsCalendar ? { [calendarAgenda] in calendarAgenda.month(for: $0) } : nil)
         launcherView.show(sections, gridHome: home)
         launcherView.showLyrics(scope == .root && widgets.searched.contains(.lyrics))
+        launcherView.showCamera(scope == .camera)
+        if scope != .camera { cameraMirror.closeInline() }
         (launcherView.context, launcherView.contextSymbol) =
             switch scope {
             case .clipboard:
@@ -186,6 +215,9 @@ extension AppDelegate {
 
             case .calculator:
                 (CalculatorHistory.title, CalculatorHistory.symbol)
+
+            case .camera:
+                (CameraMirror.title, CameraMirror.symbol)
 
             case .root where showsCalendar:
                 (CalendarAgenda.title, CalendarAgenda.symbol)

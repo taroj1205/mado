@@ -1,59 +1,130 @@
 import AppCore
 import AppKit
 import GlassUI
+import os
 
 @MainActor
 final class CameraMirror {
     static let commandID = "system.camera"
+    static let inlineActionID = "inline"
+    static let title = "Camera"
+    static let symbol = "video"
+    static let placeholder = "Press ↵ to take a photo"
     private static let pollSeconds = 1
+    private static let logger = Log.logger("CameraMirror")
 
+    private(set) var isRequestingAccess = false
+    var onOpen: (() -> Void)?
+    var onPopOut: (() -> Void)?
     private let modules: () -> ModuleManager?
     private let camera = CameraSession()
     private let permissions = PermissionManager()
+    private let inline: CameraPane
     private lazy var window = makeWindow()
+    private var phase = CameraWindow.Phase.starting
+    private var devices: [CameraDevice] = []
     private var current: String?
-    private var isOpen = false
+    private var videoSize: CGSize?
+    private var windowOpen = false
+    private var inlineOpen = false
+    private var capturing = false
+    private var captures = 0
     private var watching: Task<Void, Never>?
     private var run = 0
 
     var command: Command {
         Command(
-            id: Self.commandID, name: "Camera", icon: "video",
+            id: Self.commandID, name: Self.title, icon: Self.symbol,
             actions: [
-                CommandAction(id: "toggle", title: "Show or Hide Camera") { [weak self] in
+                CommandAction(id: Self.inlineActionID, title: "Open Camera") { [weak self] in
+                    self?.onOpen?()
+                },
+                CommandAction(id: "toggle", title: "Show or Hide Camera Window") { [weak self] in
                     self?.toggle()
-                }
+                },
             ],
-            keywords: ["webcam", "mirror", "selfie", "facetime", "video"])
+            keywords: ["webcam", "mirror", "selfie", "facetime", "video", "photo", "picture"])
     }
 
-    init(modules: @escaping () -> ModuleManager?) {
+    private var screens: [any CameraScreen] {
+        var open: [any CameraScreen] = []
+        if inlineOpen { open.append(inline) }
+        if windowOpen { open.append(window) }
+        return open
+    }
+
+    init(inline: CameraPane, modules: @escaping () -> ModuleManager?) {
+        self.inline = inline
         self.modules = modules
+        inline.use(camera.captureSession)
+        wire(inline)
+        inline.onPopOut = { [weak self] in
+            self?.openWindow()
+            self?.onPopOut?()
+        }
         camera.onDevicesChanged = { [weak self] in self?.devicesChanged() }
         camera.onFailed = { [weak self] in self?.failed() }
     }
 
     func toggle() {
-        guard window.isShown else {
-            let settings = CameraSettings.load(from: modules())
-            isOpen = true
-            window.show(saved: settings.frame, mirrored: settings.mirrored)
-            begin(preferring: settings.deviceID)
-            return
+        if windowOpen {
+            closeWindow()
+        } else {
+            openWindow()
         }
-        close()
+    }
+
+    func openInline() {
+        guard !inlineOpen else { return }
+        inlineOpen = true
+        join(inline)
+    }
+
+    func closeInline() {
+        guard inlineOpen else { return }
+        inlineOpen = false
+        releaseIfIdle()
+    }
+
+    func quit() {
+        closeInline()
+        closeWindow()
+    }
+
+    private func openWindow() {
+        guard !windowOpen else { return }
+        windowOpen = true
+        let settings = CameraSettings.load(from: modules())
+        window.show(saved: settings.frame, mirrored: settings.mirrored)
+        join(window)
+        if phase == .live, let videoSize { window.fit(to: videoSize) }
+    }
+
+    private func closeWindow() {
+        guard windowOpen else { return }
+        windowOpen = false
+        window.hide()
+        releaseIfIdle()
     }
 
     private func makeWindow() -> CameraWindow {
         let made = CameraWindow(session: camera.captureSession)
-        made.onClose = { [weak self] in self?.close() }
-        made.onMirror = { [weak self] mirrored in self?.update { $0.mirrored = mirrored } }
+        wire(made)
+        made.onClose = { [weak self] in self?.closeWindow() }
         made.onFrame = { [weak self] frame in self?.update { $0.frame = frame } }
-        made.onSelect = { [weak self] device in
+        return made
+    }
+
+    private func wire(_ screen: any CameraScreen) {
+        screen.onMirror = { [weak self] mirrored in
+            self?.update { $0.mirrored = mirrored }
+            self?.screens.forEach { $0.setMirrored(mirrored) }
+        }
+        screen.onSelect = { [weak self] device in
             self?.update { $0.deviceID = device.id }
             self?.begin(preferring: device.id)
         }
-        made.onAction = { [weak self] action in
+        screen.onAction = { [weak self] action in
             switch action {
             case .openSettings: self?.permissions.openSettings(for: .camera)
 
@@ -61,17 +132,35 @@ final class CameraMirror {
                 self?.begin(preferring: CameraSettings.load(from: self?.modules()).deviceID)
             }
         }
-        return made
+        screen.onCapture = { [weak self] in self?.capture() ?? false }
     }
 
-    private func close() {
-        isOpen = false
+    private func join(_ screen: any CameraScreen) {
+        let settings = CameraSettings.load(from: modules())
+        screen.setMirrored(settings.mirrored)
+        if screens.count > 1 {
+            screen.setDevices(devices, current: current)
+            screen.setPhase(phase)
+        } else {
+            begin(preferring: settings.deviceID)
+        }
+    }
+
+    private func releaseIfIdle() {
+        guard !windowOpen, !inlineOpen else { return }
+        capturing = false
+        captures += 1
         run += 1
         watching?.cancel()
         watching = nil
         current = nil
-        window.hide()
+        videoSize = nil
         camera.stop()
+    }
+
+    private func show(_ next: CameraWindow.Phase) {
+        phase = next
+        screens.forEach { $0.setPhase(next) }
     }
 
     private func begin(preferring saved: String?) {
@@ -83,15 +172,17 @@ final class CameraMirror {
     }
 
     private func connect(_ mine: Int, preferring saved: String?) async {
-        window.setPhase(.starting)
+        show(.starting)
         permissions.refresh()
         var status = permissions.status(for: .camera)
         if status == .notDetermined {
+            isRequestingAccess = true
             status = await permissions.request(.camera)
+            isRequestingAccess = false
         }
         guard run == mine else { return }
         guard status == .granted else {
-            window.setPhase(.denied)
+            show(.denied)
             waitForPermission(mine)
             return
         }
@@ -100,17 +191,21 @@ final class CameraMirror {
         switch result {
         case .success(let opened):
             current = opened.device.id
-            window.fit(to: opened.size)
-            window.setDevices(CameraSession.devices(), current: opened.device.id)
-            window.setPhase(.live)
+            videoSize = opened.size
+            devices = CameraSession.devices()
+            if windowOpen { window.fit(to: opened.size) }
+            screens.forEach { $0.setDevices(devices, current: opened.device.id) }
+            show(.live)
 
         case .failure(.noCamera):
             current = nil
-            window.setPhase(.noCamera)
+            videoSize = nil
+            show(.noCamera)
 
         case .failure(.unreadable):
             current = nil
-            window.setPhase(.failed)
+            videoSize = nil
+            show(.failed)
         }
     }
 
@@ -128,21 +223,50 @@ final class CameraMirror {
         }
     }
 
-    func quit() {
-        if isOpen { close() }
+    private func capture() -> Bool {
+        guard phase == .live, !capturing else { return false }
+        capturing = true
+        captures += 1
+        let mine = captures
+        Task { [weak self] in
+            guard let self else { return }
+            let mirrored = CameraSettings.load(from: modules()).mirrored
+            let outcome = await takePhoto(mirrored: mirrored)
+            guard captures == mine else { return }
+            capturing = false
+            screens.forEach { $0.showPhoto(outcome) }
+        }
+        return true
+    }
+
+    private func takePhoto(mirrored: Bool) async -> CameraWindow.Capture {
+        guard let data = await camera.takePhoto(mirrored: mirrored) else { return .failed }
+        do {
+            _ = try CameraPhoto.save(data, in: CameraPhoto.folder)
+        } catch {
+            Self.logger.error("Saving the photo failed: \(error, privacy: .public)")
+            return .failed
+        }
+        guard CameraPhoto.copy(data, to: .general) else {
+            Self.logger.error("Copying the photo failed")
+            return .savedNotCopied
+        }
+        return .saved
     }
 
     private func failed() {
-        guard window.isShown else { return }
+        guard !screens.isEmpty else { return }
         current = nil
-        window.setPhase(.failed)
+        videoSize = nil
+        show(.failed)
     }
 
     private func devicesChanged() {
-        guard window.isShown else { return }
-        let devices = CameraSession.devices()
-        if let current, devices.contains(where: { $0.id == current }) {
-            window.setDevices(devices, current: current)
+        guard !screens.isEmpty else { return }
+        let found = CameraSession.devices()
+        if let current, found.contains(where: { $0.id == current }) {
+            devices = found
+            screens.forEach { $0.setDevices(found, current: current) }
         } else {
             begin(preferring: CameraSettings.load(from: modules()).deviceID)
         }

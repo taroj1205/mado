@@ -3,7 +3,7 @@ import GlassUI
 
 extension AppDelegate {
     func windowDidResignKey(_: Notification) {
-        guard !launcherView.sharing else { return }
+        guard !launcherView.sharing, !cameraMirror.isRequestingAccess else { return }
         #if DEBUG
             if KeepLauncherOpen.isEnabled { return }
         #endif
@@ -12,9 +12,10 @@ extension AppDelegate {
 
     #if DEBUG
         func applicationDidResignActive(_: Notification) {
-            if !KeepLauncherOpen.isEnabled, !launcherView.sharing, launcher?.isVisible == true {
-                hideLauncher()
-            }
+            guard !KeepLauncherOpen.isEnabled, !launcherView.sharing,
+                !cameraMirror.isRequestingAccess
+            else { return }
+            if launcher?.isVisible == true { hideLauncher() }
         }
     #endif
 }
