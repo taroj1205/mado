@@ -8,7 +8,7 @@ final class ResultCell: NSTableCellView {
     private static let tileBorder: CGFloat = 0.5
     private static let tileBorderAlpha: CGFloat = 0.18
     private static let symbolSize: CGFloat = 12
-    private static let leadingInset: CGFloat = 10
+    private static let leadingInset: CGFloat = 12
     private static let trailingInset: CGFloat = 12
     private static let gap: CGFloat = 12
     private static let titleSize: CGFloat = 14

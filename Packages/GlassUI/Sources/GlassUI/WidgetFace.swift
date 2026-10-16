@@ -186,7 +186,7 @@ final class WidgetFace: NSView {
 
     func put(_ views: [NSView: NSRect]) {
         for (view, frame) in views {
-            view.frame = frame
+            view.frame = view.frame(forAlignmentRect: frame)
             view.isHidden = false
         }
     }

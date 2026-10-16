@@ -10,13 +10,10 @@ final class WidgetTrack: NSView {
         }
     }
 
-    private static let pausedSize: CGFloat = 10
-    private static let pausedKern: CGFloat = 0.8
-    private static let eyebrowHeight: CGFloat = 12
     private static let lineGap: CGFloat = 2
-    private static let coverGap: CGFloat = 10
-    private static let columnGap: CGFloat = 14
-    private static let controlsGap: CGFloat = 6
+    private static let coverGap: CGFloat = 12
+    private static let columnGap: CGFloat = 16
+    private static let controlsGap: CGFloat = 8
     private static let gap: CGFloat = 10
     private static let skipReach: CGFloat = 4
     private static let skipAlpha = (dark: 0.8, light: 0.72)
@@ -24,9 +21,8 @@ final class WidgetTrack: NSView {
     private static let boxScale: CGFloat = 1.5
     private static let nudge: CGFloat = 3
     private static let nudgeSeconds = 0.24
-    private static let artShare: CGFloat = 0.38
+    private static let artShare: CGFloat = 0.45
     private static let tallestArt: CGFloat = 96
-    private static let stackedArt: CGFloat = 64
     private static let shortestLines: CGFloat = 70
     private static let half: CGFloat = 0.5
     private static let lookupBar = (width: 150.0, height: 8.0)
@@ -43,7 +39,6 @@ final class WidgetTrack: NSView {
     let disc = WidgetDisc()
     let previous = WidgetTrack.symbol("backward.fill")
     let next = WidgetTrack.symbol("forward.fill")
-    private let eyebrow: NSStackView
     private(set) var tint: NSColor?
     private var shown: WidgetGrid.Track?
 
@@ -58,33 +53,32 @@ final class WidgetTrack: NSView {
 
     override var isFlipped: Bool { true }
 
+    private var eyebrowHeight: CGFloat {
+        paused.intrinsicContentSize.height
+    }
+
     private var showsLyric: Bool {
         (shown?.lyric != nil || shown?.lookingUp == true) && !form.tall && form.reach == .wide
     }
 
     init() {
-        eyebrow = NSStackView(views: [equalizer, paused])
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         title.textColor = .labelColor
         artist.textColor = .secondaryLabelColor
         paused.attributedStringValue = NSAttributedString(
-            string: "PAUSED",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: Self.pausedSize, weight: .semibold),
-                .foregroundColor: NSColor.tertiaryLabelColor,
-                .kern: Self.pausedKern,
-            ])
+            string: WidgetInk.eyebrow.shown("Paused"), attributes: WidgetInk.eyebrow.attributes)
         for label in [title, artist] {
             label.lineBreakMode = .byTruncatingTail
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
-        for view in [cover, disc, lyric, lookup] {
+        for view in [cover, equalizer, paused, disc, lyric, lookup] {
             view.translatesAutoresizingMaskIntoConstraints = true
         }
         lyric.isHidden = true
         lookup.isHidden = true
-        [cover, eyebrow, title, artist, lyric, lookup, previous, disc, next].forEach(addSubview)
+        [cover, equalizer, paused, title, artist, lyric, lookup, previous, disc, next]
+            .forEach(addSubview)
         restyle()
     }
 
@@ -108,14 +102,12 @@ final class WidgetTrack: NSView {
         let lines =
             showsLyric
             ? title.intrinsicContentSize.height + Self.lineGap + lyric.intrinsicContentSize.height
-            : Self.eyebrowHeight + title.intrinsicContentSize.height
+            : eyebrowHeight + title.intrinsicContentSize.height
                 + artist.intrinsicContentSize.height + Self.lineGap + Self.lineGap
-        if !form.tall {
-            layOutShort(controls: controls, lines: lines)
-        } else if form.reach != .wide {
-            layOutStacked(controls: controls, lines: lines)
+        if form.tall {
+            layOutTall(controls: controls, lines: lines)
         } else {
-            layOutWide(controls: controls, lines: lines)
+            layOutShort(controls: controls, lines: lines)
         }
     }
 
@@ -151,8 +143,6 @@ final class WidgetTrack: NSView {
         title.stringValue = track.title
         artist.stringValue = track.artist
         equalizer.isActive = track.isPlaying
-        equalizer.isHidden = !track.isPlaying
-        paused.isHidden = track.isPlaying
         if flipped {
             disc.show(playing: track.isPlaying, animated: !first)
             cover.setPlaying(track.isPlaying, animated: !first)
@@ -169,7 +159,8 @@ final class WidgetTrack: NSView {
 
     private func showLines() {
         let visible = showsLyric
-        eyebrow.isHidden = visible
+        equalizer.isHidden = visible || shown?.isPlaying != true
+        paused.isHidden = visible || shown?.isPlaying != false
         artist.isHidden = visible
         lyric.isHidden = !visible || shown?.lyric == nil
         lookup.isHidden = !visible || shown?.lookingUp != true
@@ -209,35 +200,31 @@ final class WidgetTrack: NSView {
             at: NSPoint(x: end, y: (bounds.height - WidgetDisc.size) * Self.half))
     }
 
-    private func layOutStacked(controls: Controls, lines: CGFloat) {
-        let side = Self.stackedArt
+    private func layOutTall(controls: Controls, lines: CGFloat) {
+        let side = min(
+            bounds.height - WidgetDisc.size - Self.gap, bounds.width * Self.artShare,
+            Self.tallestArt)
         let room = bounds.width - controls.skip - controls.skip - WidgetDisc.size
-        cover.frame = NSRect(x: 0, y: 0, width: side, height: side)
-        placeLines(NSRect(x: 0, y: side + Self.gap, width: bounds.width, height: lines))
-        placeControls(
-            Controls(skip: controls.skip, space: room * Self.half), showsSkips: true,
-            at: NSPoint(x: 0, y: bounds.height - WidgetDisc.size))
-    }
-
-    private func layOutWide(controls: Controls, lines: CGFloat) {
-        let side = min(bounds.height, bounds.width * Self.artShare, Self.tallestArt)
-        let top = (bounds.height - side) * Self.half
+        let spaced = Controls(skip: controls.skip, space: min(controls.space, room * Self.half))
         let start = side + Self.columnGap
-        let room = bounds.width - start - controls.skip - controls.skip - WidgetDisc.size
-        cover.frame = NSRect(x: 0, y: top, width: side, height: side)
+        cover.frame = NSRect(x: 0, y: 0, width: side, height: side)
         placeLines(
-            NSRect(x: start, y: top + Self.gap, width: bounds.width - start, height: lines))
+            NSRect(
+                x: start, y: (side - lines) * Self.half, width: max(bounds.width - start, 0),
+                height: lines))
         placeControls(
-            Controls(skip: controls.skip, space: min(controls.space, room * Self.half)),
-            showsSkips: true,
-            at: NSPoint(x: start, y: top + side - WidgetDisc.size - Self.gap))
+            spaced, showsSkips: true,
+            at: NSPoint(
+                x: (bounds.width - spaced.width) * Self.half,
+                y: bounds.height - WidgetDisc.size))
     }
 
     private func placeLines(_ frame: NSRect) {
         let titleHeight = title.intrinsicContentSize.height
         if showsLyric {
-            title.frame = NSRect(
-                x: frame.minX, y: frame.minY, width: frame.width, height: titleHeight)
+            place(
+                title,
+                in: NSRect(x: frame.minX, y: frame.minY, width: frame.width, height: titleHeight))
             lyric.frame = NSRect(
                 x: frame.minX, y: frame.minY + titleHeight + Self.lineGap, width: frame.width,
                 height: lyric.intrinsicContentSize.height)
@@ -247,14 +234,27 @@ final class WidgetTrack: NSView {
                 width: min(frame.width, Self.lookupBar.width), height: Self.lookupBar.height)
             return
         }
-        let eyebrowWidth = min(eyebrow.fittingSize.width, frame.width)
-        eyebrow.frame = NSRect(
-            x: frame.minX, y: frame.minY, width: eyebrowWidth, height: Self.eyebrowHeight)
-        let top = frame.minY + Self.eyebrowHeight + Self.lineGap
-        title.frame = NSRect(x: frame.minX, y: top, width: frame.width, height: titleHeight)
-        artist.frame = NSRect(
-            x: frame.minX, y: top + titleHeight + Self.lineGap, width: frame.width,
-            height: artist.intrinsicContentSize.height)
+        place(
+            paused,
+            in: NSRect(
+                x: frame.minX, y: frame.minY,
+                width: min(paused.intrinsicContentSize.width, frame.width),
+                height: eyebrowHeight))
+        equalizer.frame = NSRect(
+            x: frame.minX,
+            y: frame.minY + paused.firstBaselineOffsetFromTop - WidgetEqualizer.height,
+            width: equalizer.intrinsicContentSize.width, height: WidgetEqualizer.height)
+        let top = frame.minY + eyebrowHeight + Self.lineGap
+        place(title, in: NSRect(x: frame.minX, y: top, width: frame.width, height: titleHeight))
+        place(
+            artist,
+            in: NSRect(
+                x: frame.minX, y: top + titleHeight + Self.lineGap, width: frame.width,
+                height: artist.intrinsicContentSize.height))
+    }
+
+    private func place(_ label: NSTextField, in rect: NSRect) {
+        label.frame = label.frame(forAlignmentRect: rect)
     }
 
     private func placeControls(_ controls: Controls, showsSkips: Bool, at origin: NSPoint) {
