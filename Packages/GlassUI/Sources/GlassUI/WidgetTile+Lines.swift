@@ -3,6 +3,7 @@ import AppKit
 extension WidgetTile {
     private static let valueSize: CGFloat = 22
     private static let valueKern: CGFloat = -0.4
+    private static let noteSize: CGFloat = 12
     private static let titleSize: CGFloat = 11
     private static let titleKern: CGFloat = 0.4
     private static let detailSize: CGFloat = 11.5
@@ -92,7 +93,7 @@ extension WidgetTile {
             span.show(range)
             return [value, detail, span]
 
-        case .meters, .track, .verse, .month:
+        case .meters, .track, .verse, .month, .camera:
             return []
 
         case let .event(name, next):

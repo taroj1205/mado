@@ -8,7 +8,7 @@ final class CameraMirror {
     private static let pollSeconds = 1
 
     private let modules: () -> ModuleManager?
-    private let camera = CameraSession()
+    let camera = CameraSession()
     private let permissions = PermissionManager()
     private lazy var window = makeWindow()
     private var current: String?
@@ -26,19 +26,29 @@ final class CameraMirror {
             keywords: ["webcam", "mirror", "selfie", "facetime", "video"])
     }
 
+    var settings: CameraSettings {
+        CameraSettings.load(from: modules())
+    }
+
     init(modules: @escaping () -> ModuleManager?) {
         self.modules = modules
         camera.onDevicesChanged = { [weak self] in self?.devicesChanged() }
     }
 
     func toggle() {
-        guard window.isShown else {
-            let settings = CameraSettings.load(from: modules())
-            window.show(saved: settings.frame, mirrored: settings.mirrored)
-            begin(preferring: settings.deviceID)
-            return
+        if window.isShown {
+            close()
+        } else {
+            show()
         }
-        close()
+    }
+
+    func show() {
+        guard !window.isShown else { return }
+        let saved = settings
+        camera.retain()
+        window.show(saved: saved.frame, mirrored: saved.mirrored)
+        begin(preferring: saved.deviceID)
     }
 
     private func makeWindow() -> CameraWindow {
@@ -55,19 +65,20 @@ final class CameraMirror {
             case .openSettings: self?.permissions.openSettings(for: .camera)
 
             case .retry:
-                self?.begin(preferring: CameraSettings.load(from: self?.modules()).deviceID)
+                self?.begin(preferring: self?.settings.deviceID)
             }
         }
         return made
     }
 
     private func close() {
+        guard window.isShown else { return }
         run += 1
         watching?.cancel()
         watching = nil
         current = nil
         window.hide()
-        camera.stop()
+        camera.release()
     }
 
     private func begin(preferring saved: String?) {
@@ -117,7 +128,7 @@ final class CameraMirror {
                 guard let self, run == mine else { return }
                 permissions.refresh()
                 if permissions.status(for: .camera) == .granted {
-                    begin(preferring: CameraSettings.load(from: modules()).deviceID)
+                    begin(preferring: settings.deviceID)
                     return
                 }
             }
@@ -130,13 +141,13 @@ final class CameraMirror {
         if let current, devices.contains(where: { $0.id == current }) {
             window.setDevices(devices, current: current)
         } else {
-            begin(preferring: CameraSettings.load(from: modules()).deviceID)
+            begin(preferring: settings.deviceID)
         }
     }
 
     private func update(_ change: (inout CameraSettings) -> Void) {
-        var settings = CameraSettings.load(from: modules())
-        change(&settings)
-        settings.save(to: modules())
+        var updated = settings
+        change(&updated)
+        updated.save(to: modules())
     }
 }

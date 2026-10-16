@@ -20,6 +20,8 @@ final class Widgets {
     static let weather = "weather"
     static let logger = Log.logger("Widgets")
     static let battery = "battery"
+    static let camera = "camera"
+    private static let optIn: Set<String> = [camera]
     static let gallery: [WidgetGallery.Card] = [
         .init(
             id: calendarWidget, name: "Calendar", summary: "Month and today", group: .today,
@@ -34,6 +36,9 @@ final class Widgets {
             isWide: true),
         .init(
             id: lyrics, name: "Lyrics", summary: "Synced lyrics, click to jump", group: .media,
+            isWide: true, isTall: true),
+        .init(
+            id: camera, name: "Camera", summary: "Live mirror, click to open", group: .media,
             isWide: true, isTall: true),
         .init(id: battery, name: "Battery", summary: "Mac and devices", group: .system),
         .init(id: system, name: "System", summary: "CPU and memory", group: .system),
@@ -64,6 +69,8 @@ final class Widgets {
     var delivered: [ResultList.Item] = []
     var onSearchedChange: (() -> Void)?
     let nowPlaying: NowPlaying
+    let cameraMirror: CameraMirror
+    let cameraFeed: CameraFeed
     private weak var view: LauncherView?
     private var ticking: Task<Void, Never>?
 
@@ -75,16 +82,22 @@ final class Widgets {
         nowPlaying.track
     }
 
-    init(nowPlaying: NowPlaying) {
+    init(nowPlaying: NowPlaying, camera: CameraMirror) {
         self.nowPlaying = nowPlaying
+        cameraMirror = camera
+        cameraFeed = CameraFeed(camera: camera.camera) { camera.settings }
     }
 
     static func added(in modules: ModuleManager?) -> [String] {
-        WidgetSettings.load(from: modules).added(from: ids)
+        settings(in: modules).added(from: ids)
+    }
+
+    static func settings(in modules: ModuleManager?) -> WidgetSettings {
+        WidgetSettings.load(from: modules).keeping(optIn: optIn)
     }
 
     static func edit(_ edit: WidgetSettings.Edit, in modules: ModuleManager?) {
-        var settings = WidgetSettings.load(from: modules)
+        var settings = Self.settings(in: modules)
         let spot: WidgetGrid.Spot? =
             switch edit {
             case .add: .panel
@@ -162,6 +175,7 @@ final class Widgets {
         case Self.system: return StatusPills.open(StatusPills.activityMonitor, title: title)
         case Self.battery: return SettingsPane.battery.open
         case Self.weather: return weatherAction(titled: title)
+        case Self.camera: return cameraAction(titled: title)
         case Self.calendarWidget: return Self.openApp(Self.calendarApp, titled: title)
         case Self.upNext: return upNextAction(titled: title)
         default: break
@@ -180,7 +194,12 @@ final class Widgets {
             guard let self, let view else { return }
             refresh(view)
         }
+        cameraFeed.onChange = { [weak self, weak view] in
+            guard let self, let view else { return }
+            refresh(view)
+        }
         refreshWeather()
+        refreshCamera()
         refreshCalendars(in: view)
         refresh(view)
         ticking = Task { [weak self, weak view] in
@@ -204,6 +223,7 @@ final class Widgets {
     func show(_ ids: [String], in view: LauncherView) {
         shown = ids
         refreshWeather()
+        refreshCamera()
         refreshCalendars(in: view)
         refresh(view)
     }
@@ -235,6 +255,8 @@ final class Widgets {
         view = nil
         calendars.stop()
         weatherFeed.cancel()
+        cameraFeed.onChange = nil
+        cameraFeed.stop()
         searched = []
         delivered = []
     }
@@ -245,6 +267,7 @@ final class Widgets {
                 at: .now, shift: calendars.monthShift, events: calendars.monthEvents,
                 calendars: calendars)
         ]
+            + [Self.widget(for: cameraFeed)]
             + Self.current(
                 at: .now, stats: stats, media: mediaWidgets(), weather: weatherFeed.state,
                 schedule: calendars.schedule)

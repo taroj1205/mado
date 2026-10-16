@@ -64,6 +64,10 @@ extension WidgetGrid {
             track != nil
         }
 
+        var isLive: Bool {
+            if case .camera = content { true } else { false }
+        }
+
         var isMonth: Bool {
             if case .month = content { true } else { false }
         }
@@ -116,6 +120,12 @@ extension WidgetGrid {
         public init(id: String, name: String, verse: Verse, action: String, spoken: String) {
             self.init(
                 id: id, name: name, content: .verse(verse), action: action, spoken: spoken,
+                isWide: true, isTall: true)
+        }
+
+        public init(id: String, name: String, live: Live, action: String, spoken: String) {
+            self.init(
+                id: id, name: name, content: .camera(live), action: action, spoken: spoken,
                 isWide: true, isTall: true)
         }
 

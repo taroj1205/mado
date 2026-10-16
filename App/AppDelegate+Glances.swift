@@ -27,7 +27,7 @@ extension AppDelegate {
             WidgetOpenGesture.load(from: modules) == .singleClick
         launcherView.keepsOutsideWidgetsWhileSearching =
             OutsideWidgetsWhileSearching.stays(in: modules)
-        let settings = WidgetSettings.load(from: modules)
+        let settings = Widgets.settings(in: modules)
         launcherView.widgetSpots = settings.spots(
             WidgetPlacement.load(from: modules).arrangement, from: Widgets.ids,
             wide: Widgets.wide, tall: Widgets.tall)

@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let rates = ExchangeRateFeed()
     let systemFeed = SystemFeed()
     let nowPlaying = NowPlaying()
-    lazy var widgets = Widgets(nowPlaying: nowPlaying)
+    lazy var widgets = Widgets(nowPlaying: nowPlaying, camera: cameraMirror)
     lazy var lyricsStage = LyricsStage(
         nowPlaying: nowPlaying, modules: { [weak self] in self?.modules },
         statusItem: { [weak self] in self?.statusItem },

@@ -4,7 +4,6 @@ final class WidgetTile: NSView {
     static let radius: CGFloat = 16
     static let horizontal: CGFloat = 12
     static let vertical: CGFloat = 10
-    static let noteSize: CGFloat = 12
     static let delays = (hover: 0.3, hold: 0.5)
     private static let iconSize: CGFloat = 13
     private static let iconGap: CGFloat = 4
@@ -25,6 +24,7 @@ final class WidgetTile: NSView {
     let meters = NSStackView()
     let track = WidgetTrack()
     let verse = WidgetLyrics()
+    let camera = WidgetCamera()
     let face = WidgetFace()
     let wash = WidgetWash()
     let month = WidgetMonth()
@@ -118,7 +118,7 @@ final class WidgetTile: NSView {
         addSubview(wash)
         face.autoresizingMask = [.width, .height]
         face.isHidden = true
-        addSubview(face)
+        [face, camera].forEach(addSubview)
         arrangeLines()
         arrangeCalendar()
         arrangeEditing()

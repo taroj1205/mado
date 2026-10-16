@@ -12,6 +12,7 @@ extension WidgetTile {
         case let .meters(list): readings = list
         case let .track(playing): track.show(playing)
         case let .verse(lyrics): verse.show(lyrics)
+        case let .camera(live): camera.show(live)
         case .month, .event, .loading, .notice, .permission, .unavailable: break
         }
         wash.tint = widget.track != nil ? track.tint : widget.verse != nil ? verse.tint : nil
@@ -25,6 +26,7 @@ extension WidgetTile {
         showMeters(readings)
         showTrack(widget.track != nil)
         showVerse(widget.verse != nil)
+        camera.isHidden = !widget.isLive
         month.isInteractive = onPage != nil && !editing
         setAccessibilityLabel(widget.spoken)
         setAccessibilityCustomActions(customActions())

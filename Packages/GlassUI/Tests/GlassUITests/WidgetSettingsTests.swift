@@ -15,6 +15,23 @@ import Testing
         #expect(WidgetSettings().added(from: Self.available) == Self.available)
     }
 
+    @Test func anOptInWidgetStaysOutUntilItIsAdded() {
+        var widgets = WidgetSettings().keeping(optIn: ["battery"])
+        #expect(widgets.added(from: Self.available) == ["clock", "system"])
+        widgets.apply(.add("battery"), from: Self.available)
+        #expect(widgets.added(from: Self.available) == ["clock", "system", "battery"])
+        widgets.apply(.remove("clock"), from: Self.available)
+        #expect(widgets.added(from: Self.available) == ["system", "battery"])
+    }
+
+    @Test func theOptInListIsNotWrittenToTheSettingsFile() throws {
+        let data = try JSONEncoder().encode(WidgetSettings().keeping(optIn: ["battery"]))
+        let text = try #require(String(bytes: data, encoding: .utf8))
+        #expect(!text.contains("optIn"))
+        let loaded = try JSONDecoder().decode(WidgetSettings.self, from: data)
+        #expect(loaded.added(from: Self.available) == Self.available)
+    }
+
     @Test func addingPutsTheWidgetLastAndSurvivesSavingAndLoading() throws {
         var widgets = try settings(#"{"custom": true, "added": ["system", "clock"]}"#)
         widgets.apply(.add("battery"), from: Self.available)

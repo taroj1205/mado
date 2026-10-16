@@ -6,6 +6,7 @@ public final class WidgetGrid: NSView {
         case meters([Meter])
         case track(Track)
         case verse(Verse)
+        case camera(Live)
         case month(Month)
         case event(title: String, Event)
         case loading(title: String)

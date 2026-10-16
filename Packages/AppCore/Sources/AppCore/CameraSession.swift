@@ -17,6 +17,12 @@ public final class CameraSession {
 
     private let engine: CameraEngine
     private var observers: [any NSObjectProtocol] = []
+    private var users = 0
+    private var opened: Opened?
+
+    public var isInUse: Bool {
+        users > 0
+    }
 
     public var captureSession: AVCaptureSession {
         engine.session
@@ -41,12 +47,25 @@ public final class CameraSession {
         guard
             let device = CameraDevice.choose(
                 from: Self.devices(), saved: saved, preferred: preferred)
-        else { return .failure(.noCamera) }
+        else {
+            opened = nil
+            return .failure(.noCamera)
+        }
+        if let opened, opened.device == device { return .success(opened) }
         watch()
-        return await engine.open(device.id).map { Opened(device: device, size: $0) }
+        let result = await engine.open(device.id).map { Opened(device: device, size: $0) }
+        opened = isInUse ? try? result.get() : nil
+        return result
     }
 
-    public func stop() {
+    public func retain() {
+        users += 1
+    }
+
+    public func release() {
+        users = max(users - 1, 0)
+        guard users == 0 else { return }
+        opened = nil
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
         engine.close()

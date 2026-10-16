@@ -41,10 +41,18 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         }
     }
 
+    private enum CodingKeys: CodingKey {
+        case custom
+        case added
+        case spots
+        case sizes
+    }
+
     private var custom: Bool
     private var added: [String]
     private var spots: [String: WidgetGrid.Spot]
     private var sizes: [String: WidgetGrid.Size]
+    private var optIn: Set<String> = []
 
     public init() {
         custom = false
@@ -61,8 +69,18 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
         sizes = try values.decodeIfPresent([String: WidgetGrid.Size].self, forKey: .sizes) ?? [:]
     }
 
+    public func keeping(optIn: Set<String>) -> Self {
+        var copy = self
+        copy.optIn = optIn
+        return copy
+    }
+
+    private func initial(from available: [String]) -> [String] {
+        available.filter { !optIn.contains($0) }
+    }
+
     public func added(from available: [String]) -> [String] {
-        guard custom else { return available }
+        guard custom else { return initial(from: available) }
         var seen: Set<String> = []
         return added.filter { available.contains($0) && seen.insert($0).inserted }
     }
@@ -143,13 +161,13 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
 
     private mutating func add(_ id: String, from available: [String]) {
         guard available.contains(id), !added(from: available).contains(id) else { return }
-        added = (custom ? added : available) + [id]
+        added = (custom ? added : initial(from: available)) + [id]
         custom = true
     }
 
     private mutating func move(_ id: String, before target: String?, from available: [String]) {
         guard id != target, added(from: available).contains(id) else { return }
-        var order = (custom ? added : available).filter { $0 != id }
+        var order = (custom ? added : initial(from: available)).filter { $0 != id }
         order.insert(id, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
         added = order
         custom = true
@@ -162,7 +180,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
 
     private mutating func remove(_ id: String, from available: [String]) {
         guard added(from: available).contains(id) else { return }
-        added = (custom ? added : available).filter { $0 != id }
+        added = (custom ? added : initial(from: available)).filter { $0 != id }
         spots[id] = nil
         sizes[id] = nil
         custom = true
@@ -176,7 +194,7 @@ public struct WidgetSettings: Codable, Equatable, Sendable {
             apply(.add(id), from: available)
             spots[id] = spot
         }
-        var order = (custom ? added : available).filter { !ids.contains($0) }
+        var order = (custom ? added : initial(from: available)).filter { !ids.contains($0) }
         order.insert(contentsOf: ids, at: target.flatMap(order.firstIndex(of:)) ?? order.endIndex)
         added = order
         custom = true
