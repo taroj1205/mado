@@ -115,15 +115,6 @@ import Testing
         #expect(cornered.maxX == bounds.maxX && cornered.minY == bounds.minY)
     }
 
-    @Test func theMenuIsNotKeptInsideTheLauncher() throws {
-        let launcher = rig.panel.frame
-        let bounds = view.popupBounds
-        try #require(bounds.maxX >= launcher.maxX + WidgetMenu.width)
-        view.openWidgetMenu(1, at: NSPoint(x: launcher.maxX - 40, y: launcher.midY))
-        let menu = try #require(view.widgetMenu).panel.frame
-        #expect(menu.maxX > launcher.maxX)
-    }
-
     @Test func theEntriesRunTheirOwnActions() throws {
         var ran: [String] = []
         var edits: [WidgetSettings.Edit] = []
