@@ -49,6 +49,10 @@ final class CameraEngine: @unchecked Sendable {
         if !session.isRunning {
             session.startRunning()
         }
+        guard session.isRunning else {
+            stop()
+            return .failure(.unreadable)
+        }
         let size = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
         return .success(CGSize(width: Int(size.width), height: Int(size.height)))
     }
