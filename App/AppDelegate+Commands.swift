@@ -30,6 +30,14 @@ extension AppDelegate {
                 keywords: ["widgets", "gallery", "new"]),
             CalculatorHistory.command { [weak self] in self?.openCalculatorHistory() },
             textCapture.command,
+            Quicklink.createCommand { [weak self] in self?.createQuicklink() },
+            colourPicker.command,
+            cameraMirror.command,
         ]
+    }
+
+    func shutDown() {
+        notes.flush()
+        cameraMirror.quit()
     }
 }
