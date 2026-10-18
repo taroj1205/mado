@@ -22,7 +22,8 @@ public actor Transcriber {
     static func hasSound(_ samples: [Float]) -> Bool {
         let size = min(Int(sampleRate * soundWindowSeconds), samples.count)
         guard size > 0 else { return false }
-        return stride(from: 0, through: samples.count - size, by: size).contains { start in
+        let last = samples.count - size
+        return (Array(stride(from: 0, to: last, by: size)) + [last]).contains { start in
             samples[start..<start + size].reduce(0) { $0 + $1 * $1 } / Float(size) > soundFloorPower
         }
     }

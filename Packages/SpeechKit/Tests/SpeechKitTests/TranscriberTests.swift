@@ -57,6 +57,12 @@ import Testing
         #expect(!Transcriber.hasSound([]))
     }
 
+    @Test func speechAfterTheLastFullWindowIsSound() {
+        var samples = [Float](repeating: 0, count: 3_199)
+        samples.replaceSubrange(1_700..<3_199, with: Self.tone.prefix(1_499))
+        #expect(Transcriber.hasSound(samples))
+    }
+
     @Test func parakeetModelsAreRecognisedByTheirFolderName() {
         #expect(Parakeet.version(folder: "parakeet-tdt-0.6b-v3") != nil)
         #expect(Parakeet.version(folder: "parakeet-ja") != nil)
