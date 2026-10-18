@@ -5,8 +5,6 @@ public struct FocusedText: Sendable {
     private static let treeAttempts = 8
     private static let treePollMilliseconds = 300
 
-    @AccessibilityActor private static var requestedTrees = Set<pid_t>()
-
     public let isSecure: Bool
     public let caret: CGRect?
     public let textBeforeCaret: String?
@@ -38,19 +36,18 @@ public struct FocusedText: Sendable {
     public static func selection(in app: pid_t) async -> String? {
         let application = AXUIElementCreateApplication(app)
         AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)
-        let isBuildingTree = requestAccessibilityTree(of: application, pid: app)
-        for attempt in 0..<(isBuildingTree ? treeAttempts : 1) {
+        let attempts = requestAccessibilityTree(of: application) ? treeAttempts : 1
+        for attempt in 0..<attempts {
             if attempt > 0 {
                 try? await Task.sleep(for: .milliseconds(treePollMilliseconds))
             }
-            if let text = selectedText(in: application) { return text }
+            if let element = focusedElement(of: application) { return selectedText(of: element) }
         }
         return nil
     }
 
     @AccessibilityActor
-    private static func requestAccessibilityTree(of application: AXUIElement, pid: pid_t) -> Bool {
-        guard requestedTrees.insert(pid).inserted else { return false }
+    private static func requestAccessibilityTree(of application: AXUIElement) -> Bool {
         let error = AccessibilityActor.call(on: application) {
             AXUIElementSetAttributeValue(
                 application, manualAccessibility as CFString, kCFBooleanTrue)
@@ -59,12 +56,17 @@ public struct FocusedText: Sendable {
     }
 
     @AccessibilityActor
-    private static func selectedText(in application: AXUIElement) -> String? {
+    private static func focusedElement(of application: AXUIElement) -> AXUIElement? {
         guard let value = try? FocusedWindow.copy(kAXFocusedUIElementAttribute, of: application),
             CFGetTypeID(value) == AXUIElementGetTypeID()
         else { return nil }
         let element = unsafe unsafeDowncast(value, to: AXUIElement.self)
         AXUIElementSetMessagingTimeout(element, FocusedWindow.messagingTimeout)
+        return element
+    }
+
+    @AccessibilityActor
+    private static func selectedText(of element: AXUIElement) -> String? {
         let subrole = (try? FocusedWindow.copy(kAXSubroleAttribute, of: element)) as? String
         guard subrole != kAXSecureTextFieldSubrole,
             let text = (try? FocusedWindow.copy(kAXSelectedTextAttribute, of: element)) as? String,
