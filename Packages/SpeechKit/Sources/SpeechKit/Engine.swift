@@ -1,3 +1,3 @@
 protocol Engine: Sendable {
-    func transcribe(_ samples: [Float]) async throws -> String
+    func transcribe(_ samples: [Float], languages: [String]) async throws -> String
 }
