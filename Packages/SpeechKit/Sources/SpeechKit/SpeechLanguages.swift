@@ -7,6 +7,7 @@ public struct SpeechLanguages: Codable, Equatable, Sendable {
     }
 
     private static let standard = ["en", "ja"]
+    private static let vocabularyWithoutLanguages = 51_766
 
     public private(set) var codes: [String]
 
@@ -19,6 +20,13 @@ public struct SpeechLanguages: Codable, Equatable, Sendable {
         var seen = Set<String>()
         let valid = saved.filter { Self.supported.contains($0) && seen.insert($0).inserted }
         codes = valid.isEmpty ? Self.standard : valid
+    }
+
+    static func usable(_ codes: [String], vocabulary: Int) -> [String] {
+        let count = vocabulary - vocabularyWithoutLanguages
+        return codes.filter { code in
+            supported.firstIndex(of: code).map { $0 < count } ?? false
+        }
     }
 
     public func encode(to encoder: any Encoder) throws {

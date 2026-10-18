@@ -22,7 +22,9 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         of samples: [Float], among languages: [String], threads: Int32
     ) -> String {
         guard unsafe whisper_is_multilingual(pointer) != 0 else { return Self.english }
-        guard languages.count > 1 else { return languages.first ?? Self.automatic }
+        let usable = SpeechLanguages.usable(
+            languages, vocabulary: Int(unsafe whisper_model_n_vocab(pointer)))
+        guard usable.count > 1 else { return usable.first ?? Self.automatic }
         let converted = samples.withUnsafeBufferPointer { buffer in
             unsafe whisper_pcm_to_mel(pointer, buffer.baseAddress, Int32(buffer.count), threads)
         }
@@ -30,7 +32,7 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         guard converted == 0,
             unsafe whisper_lang_auto_detect(pointer, 0, threads, &probabilities) >= 0
         else { return Self.automatic }
-        let scored = languages.compactMap { code -> (code: String, score: Float)? in
+        let scored = usable.compactMap { code -> (code: String, score: Float)? in
             let id = Int(unsafe whisper_lang_id(code))
             return probabilities.indices.contains(id) ? (code, probabilities[id]) : nil
         }

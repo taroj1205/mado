@@ -42,6 +42,13 @@ import Testing
         #expect(try decoded(#"["xx"]"#).codes == ["en", "ja"])
     }
 
+    @Test func cantoneseNeedsALargeV3Vocabulary() {
+        let chosen = ["en", "yue", "ja"]
+        #expect(SpeechLanguages.usable(chosen, vocabulary: 51_865) == ["en", "ja"])
+        #expect(SpeechLanguages.usable(chosen, vocabulary: 51_866) == chosen)
+        #expect(SpeechLanguages.usable(["yue"], vocabulary: 51_865).isEmpty)
+    }
+
     @Test func everyChoiceIsAWhisperLanguage() {
         #expect(SpeechLanguages.supported.count > 90)
         #expect(Set(["en", "ja", "ko", "zh"]).isSubset(of: SpeechLanguages.supported))
