@@ -71,7 +71,7 @@ The Parakeet columns show only the language each model supports. Parakeet's ja3 
 
 ## Custom words
 
-Settings › Voice › Custom words holds a list of names and terms, such as "Mado, Kanary, SwiftUI". Dictation sends it to Whisper as the `initial_prompt`, so Whisper spells those words the way the list does (M4-16). Parakeet ignores the list.
+Settings › Voice › Custom words holds an ordered list of names and terms, such as Mado, Kanary and SwiftUI. Words are added in a field above the list and moved up or down with the arrows; the top of the list has the highest priority. Dictation sends it to Whisper as the `initial_prompt`, so Whisper spells those words the way the list does (M4-16). Parakeet ignores the list.
 
 - **What the sources say.** OpenAI's [speech-to-text guide](https://developers.openai.com/api/docs/guides/speech-to-text) says a prompt helps with "product names, technical terms, and acronyms", that Whisper "doesn't follow instructions like a general-purpose text model", and that the prompt is limited to 224 tokens. whisper.h says "maximum of whisper_n_text_ctx()/2 tokens are used (typically 224)".
 - **A long list loses its beginning in whisper.cpp,** which keeps the last tokens of the prompt (`prompt_past1`, `n_take1` at commit `927cfce`). Mado counts the tokens with `whisper_tokenize` and drops words from the end of the list until it fits, so the words written first are the ones kept.

@@ -24,20 +24,37 @@ enum SettingsListRow {
         return button
     }
 
+    static func iconButton(
+        _ symbol: String, label: String, key: String, target: AnyObject, action: Selector
+    ) -> NSButton {
+        let button = NSButton(
+            image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage(),
+            target: target, action: action)
+        button.isBordered = false
+        button.contentTintColor = .secondaryLabelColor
+        button.symbolConfiguration = .init(pointSize: removeSize, weight: .medium)
+        button.identifier = NSUserInterfaceItemIdentifier(key)
+        button.setAccessibilityLabel(label)
+        return button
+    }
+
     static func make(
         _ entry: Entry, enabled: Bool, removing target: AnyObject, action: Selector
     ) -> SettingsSection.Row {
-        let removeButton = NSButton(
-            image: NSImage(systemSymbolName: "minus", accessibilityDescription: nil) ?? NSImage(),
-            target: target, action: action)
-        removeButton.isBordered = false
-        removeButton.contentTintColor = .secondaryLabelColor
-        removeButton.symbolConfiguration = .init(pointSize: removeSize, weight: .medium)
-        removeButton.identifier = NSUserInterfaceItemIdentifier(entry.key)
-        removeButton.setAccessibilityLabel("Remove \(entry.name)")
-        removeButton.isEnabled = enabled
-        let control = NSStackView(views: [removeButton])
+        make(entry, enabled: enabled, removing: target, action: action, beforeRemove: [])
+    }
+
+    static func make(
+        _ entry: Entry, enabled: Bool, removing target: AnyObject, action: Selector,
+        beforeRemove extra: [NSButton]
+    ) -> SettingsSection.Row {
+        let removeButton = iconButton(
+            "minus", label: "Remove \(entry.name)", key: entry.key, target: target, action: action)
+        let control = NSStackView(views: extra + [removeButton])
         control.setHuggingPriority(.defaultHigh, for: .horizontal)
+        for button in control.arrangedSubviews.compactMap({ $0 as? NSButton }) {
+            button.isEnabled = enabled && button.isEnabled
+        }
         let iconView = NSImageView(image: entry.icon)
         iconView.widthAnchor.constraint(equalToConstant: iconSize).isActive = true
         iconView.heightAnchor.constraint(equalToConstant: iconSize).isActive = true

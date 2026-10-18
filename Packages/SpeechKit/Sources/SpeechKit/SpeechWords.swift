@@ -7,10 +7,6 @@ public struct SpeechWords: Codable, Equatable, Sendable {
 
     public private(set) var list: [String]
 
-    public var text: String {
-        list.joined(separator: Self.joiner)
-    }
-
     public init() {
         list = []
     }
@@ -30,6 +26,21 @@ public struct SpeechWords: Codable, Equatable, Sendable {
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(list)
+    }
+
+    public mutating func add(_ text: String) {
+        self = Self(text: (list + [text]).joined(separator: "\n"))
+    }
+
+    public mutating func remove(_ word: String) {
+        list.removeAll { $0 == word }
+    }
+
+    public mutating func move(_ word: String, by offset: Int) {
+        guard let index = list.firstIndex(of: word), list.indices.contains(index + offset) else {
+            return
+        }
+        list.swapAt(index, index + offset)
     }
 
     func prompt(fitting budget: Int, counting tokens: (String) -> Int) -> String? {

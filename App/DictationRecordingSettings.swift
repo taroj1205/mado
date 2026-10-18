@@ -18,6 +18,7 @@ enum DictationRecordingSettings {
                 at: directory, withIntermediateDirectories: true)
             NSWorkspace.shared.open(directory)
         }
+        folder.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         return SettingsSection(
             "Recordings",
             [

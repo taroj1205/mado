@@ -23,6 +23,7 @@ struct SettingsPage {
         let addWidgets: @MainActor () -> Void
         let lyricsChanged: LyricsSettingsEditor.Change
         let dictationLanguages: DictationLanguageSettings
+        let dictationWords: DictationWordsSettings
         let speechModels: SpeechModelSettings
         let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
@@ -124,9 +125,9 @@ struct SettingsPage {
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)) { context in
             [
                 context.dictationLanguages.section,
-                DictationWordsSettings.section(context.modules),
-                context.speechModels.section,
+                context.dictationWords.section,
                 DictationRecordingSettings.section(context.modules),
+                context.speechModels.section,
             ]
         },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),

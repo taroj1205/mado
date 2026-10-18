@@ -81,6 +81,12 @@ struct SettingsSection {
             headerAccessory: headerAccessory)
     }
 
+    init(_ title: String, headerAccessory: NSView, _ rows: [Row], footer: NSAttributedString) {
+        self.init(
+            title, note: nil, rows, footer: footer, accessory: nil, content: nil,
+            headerAccessory: headerAccessory)
+    }
+
     init(_ title: String, _ rows: [Row], content: NSView) {
         self.init(title, note: nil, rows, footer: nil, accessory: nil, content: content)
     }

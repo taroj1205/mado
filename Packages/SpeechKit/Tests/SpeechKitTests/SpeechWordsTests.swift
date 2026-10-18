@@ -10,7 +10,6 @@ import Testing
 
     @Test func startsEmpty() {
         #expect(SpeechWords().list.isEmpty)
-        #expect(SpeechWords().text.isEmpty)
     }
 
     @Test func wordsAreSplitOnCommasAndLinesInEitherScript() {
@@ -21,7 +20,33 @@ import Testing
     @Test func blanksAndRepeatsAreDropped() {
         let words = SpeechWords(text: " Mado ,, ,\n Mado, Kanary ,")
         #expect(words.list == ["Mado", "Kanary"])
-        #expect(words.text == "Mado, Kanary")
+    }
+
+    @Test func addedWordsGoLastAndRepeatsAreIgnored() {
+        var words = SpeechWords(text: "Mado")
+        words.add("Kanary, 窓")
+        words.add(" Mado ")
+        words.add("   ")
+        #expect(words.list == ["Mado", "Kanary", "窓"])
+    }
+
+    @Test func removingAWordKeepsTheOrderOfTheRest() {
+        var words = SpeechWords(text: "Mado, Kanary, SwiftUI")
+        words.remove("Kanary")
+        words.remove("Missing")
+        #expect(words.list == ["Mado", "SwiftUI"])
+    }
+
+    @Test func aWordMovesUpAndDownButNotPastTheEnds() {
+        var words = SpeechWords(text: "Mado, Kanary, SwiftUI")
+        words.move("SwiftUI", by: -1)
+        #expect(words.list == ["Mado", "SwiftUI", "Kanary"])
+        words.move("Mado", by: -1)
+        words.move("Kanary", by: 1)
+        words.move("Missing", by: -1)
+        #expect(words.list == ["Mado", "SwiftUI", "Kanary"])
+        words.move("Mado", by: 1)
+        #expect(words.list == ["SwiftUI", "Mado", "Kanary"])
     }
 
     @Test func savedWordsSurviveSavingAndLoading() throws {
