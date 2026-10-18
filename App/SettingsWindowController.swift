@@ -47,6 +47,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         }
         context.fileFolders.onChange = { [weak self] in self?.reload() }
         context.dictationLanguages.onChange = { [weak self] in self?.reload() }
+        context.dictationWords.onChange = { [weak self] in self?.reload() }
         context.inputKeys.onChange = { [weak self] in self?.reload() }
         context.inputDefaults.onChange = { [weak self] in self?.reload() }
         context.remaps.onChange = { [weak self] in self?.reload() }

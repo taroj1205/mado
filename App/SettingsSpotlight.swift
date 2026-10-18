@@ -99,7 +99,9 @@ final class SettingsSpotlight {
             row.layer?.borderColor = tint(row, Self.edgeAlpha)
         }
         for header in headers {
-            fade(header.view, to: header.ids.contains(where: isLit) ? 1 : Self.dimmed)
+            let lit =
+                header.ids.isEmpty ? focus?.dimsOthers != true : header.ids.contains(where: isLit)
+            fade(header.view, to: lit ? 1 : Self.dimmed)
         }
         for (id, label) in labels {
             Self.mark(label, at: focus?.matches[id] ?? [])
