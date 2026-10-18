@@ -48,7 +48,7 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         return Int(abs(count))
     }
 
-    private func prompt(for words: SpeechWords) -> String {
+    private func initialPrompt(for words: SpeechWords) -> String {
         let budget =
             Int(unsafe whisper_n_text_ctx(pointer)) / Self.promptShareOfContext
             - Self.reservedForPreviousMarker
@@ -59,8 +59,10 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         var params = unsafe whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH)
         unsafe params.print_progress = false
         let spoken = language(of: samples, among: languages, threads: unsafe params.n_threads)
+        let prompt = initialPrompt(for: words)
+        unsafe params.carry_initial_prompt = !prompt.isEmpty
         let code = spoken.withCString { language in
-            prompt(for: words).withCString { prompt in
+            prompt.withCString { prompt in
                 unsafe params.language = language
                 unsafe params.initial_prompt = prompt
                 return samples.withUnsafeBufferPointer { buffer in

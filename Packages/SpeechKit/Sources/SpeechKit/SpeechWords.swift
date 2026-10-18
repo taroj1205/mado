@@ -3,6 +3,7 @@ import Foundation
 public struct SpeechWords: Codable, Equatable, Sendable {
     private static let separators: Set<Character> = [",", "，", "、", "\n"]
     private static let joiner = ", "
+    private static let halves = 2
 
     public private(set) var list: [String]
 
@@ -32,12 +33,19 @@ public struct SpeechWords: Codable, Equatable, Sendable {
     }
 
     func prompt(fitting budget: Int, counting tokens: (String) -> Int) -> String? {
-        var kept = list[...]
-        while !kept.isEmpty {
-            let prompt = kept.joined(separator: Self.joiner) + "."
-            if tokens(prompt) <= budget { return prompt }
-            kept = kept.dropLast()
+        func sentence(_ count: Int) -> String {
+            list.prefix(count).joined(separator: Self.joiner) + "."
         }
-        return nil
+        var fits = 0
+        var tooMany = list.count + 1
+        while tooMany - fits > 1 {
+            let middle = fits + (tooMany - fits) / Self.halves
+            if tokens(sentence(middle)) <= budget {
+                fits = middle
+            } else {
+                tooMany = middle
+            }
+        }
+        return fits == 0 ? nil : sentence(fits)
     }
 }

@@ -50,6 +50,18 @@ import Testing
         #expect(words.prompt(fitting: 5) { $0.count } == "Mado.")
     }
 
+    @Test func aHugeListIsTrimmedWithAFewTokenCounts() throws {
+        let words = SpeechWords(text: (0..<5_000).map { "word\($0)" }.joined(separator: ", "))
+        var calls = 0
+        let prompt = words.prompt(fitting: 100) { text in
+            calls += 1
+            return text.count
+        }
+        #expect(try #require(prompt).count <= 100)
+        #expect(prompt?.hasPrefix("word0, word1, word2") == true)
+        #expect(calls <= 20)
+    }
+
     @Test func nothingIsSentWhenEvenTheFirstWordIsTooLong() {
         #expect(SpeechWords(text: "Mado").prompt(fitting: 4) { $0.count } == nil)
     }

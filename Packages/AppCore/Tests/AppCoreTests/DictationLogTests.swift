@@ -46,6 +46,30 @@ import Testing
         #expect(unsafe abs(heard[0][1] + 0.5) < 0.001)
     }
 
+    @Test func fileNamesAreInUTCSoTheirOrderFollowsTime() {
+        let name = DictationLog.name(for: Date(timeIntervalSince1970: Self.start))
+        #expect(name == "20231114-221320-000")
+    }
+
+    @Test func aRecordingWhoseNotesCantBeWrittenLeavesNoAudio() async throws {
+        let name = DictationLog.name(for: Date(timeIntervalSince1970: Self.start))
+        try FileManager.default.createDirectory(
+            at: root.appending(path: "\(name).json"), withIntermediateDirectories: true)
+        await #expect(throws: (any Error).self) { try await keep("lost", at: Self.start) }
+        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "\(name).wav").path))
+    }
+
+    @Test func audioLeftWithoutNotesIsCleanedUp() async throws {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let orphan = root.appending(path: "19990101-000000-000.wav")
+        try Data([0]).write(to: orphan)
+        for index in 0..<DictationLog.limit {
+            try await keep("take \(index)", at: Self.start + Double(index))
+        }
+        #expect(!FileManager.default.fileExists(atPath: orphan.path))
+        #expect(try files().count == DictationLog.limit * 2)
+    }
+
     @Test func twoRecordingsInOneSecondAreBothKept() async throws {
         try await keep("first", at: Self.start)
         try await keep("second", at: Self.start + 0.5)

@@ -26,6 +26,9 @@ public struct DictationLog: Sendable {
 
     private static let channels = 1
     private static let bitDepth = 16
+    private static let audio = "wav"
+    private static let metadata = "json"
+    private static let extensions = [audio, metadata]
 
     public static let standard: Self = {
         #if DEBUG
@@ -41,6 +44,7 @@ public struct DictationLog: Sendable {
     static func name(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .gmt
         formatter.dateFormat = "yyyyMMdd-HHmmss-SSS"
         return formatter.string(from: date)
     }
@@ -75,34 +79,46 @@ public struct DictationLog: Sendable {
         try folder.setResourceValues(values)
 
         let name = Self.name(for: entry.date)
-        try Self.write(samples, sampleRate: sampleRate, to: folder.appending(path: "\(name).wav"))
+        let audioFile = folder.appending(path: "\(name).\(Self.audio)")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .iso8601
-        try encoder.encode(entry).write(
-            to: folder.appending(path: "\(name).json"), options: .atomic)
+        do {
+            try Self.write(samples, sampleRate: sampleRate, to: audioFile)
+            try encoder.encode(entry).write(
+                to: folder.appending(path: "\(name).\(Self.metadata)"), options: .atomic)
+        } catch {
+            try? FileManager.default.removeItem(at: audioFile)
+            throw error
+        }
         prune()
     }
 
     func entries() throws -> [Entry] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try names().map { name in
+        return try stems(of: [Self.metadata]).map { name in
             try decoder.decode(
-                Entry.self, from: Data(contentsOf: directory.appending(path: "\(name).json")))
+                Entry.self,
+                from: Data(contentsOf: directory.appending(path: "\(name).\(Self.metadata)")))
         }
     }
 
-    private func names() throws -> [String] {
-        try FileManager.default.contentsOfDirectory(atPath: directory.path(percentEncoded: false))
-            .filter { $0.hasSuffix(".json") }
-            .map { String($0.dropLast(".json".count)) }
-            .sorted()
+    private func stems(of extensions: [String]) throws -> [String] {
+        let files = try FileManager.default.contentsOfDirectory(
+            atPath: directory.path(percentEncoded: false))
+        return Set(
+            files.compactMap { file in
+                let url = URL(filePath: file)
+                return extensions.contains(url.pathExtension)
+                    ? url.deletingPathExtension().lastPathComponent : nil
+            }
+        ).sorted()
     }
 
     private func prune() {
-        for name in ((try? names()) ?? []).dropLast(Self.limit) {
-            for ext in ["wav", "json"] {
+        for name in ((try? stems(of: Self.extensions)) ?? []).dropLast(Self.limit) {
+            for ext in Self.extensions {
                 try? FileManager.default.removeItem(at: directory.appending(path: "\(name).\(ext)"))
             }
         }
