@@ -122,7 +122,12 @@ struct SettingsPage {
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)) { context in
-            [context.dictationLanguages.section, context.speechModels.section]
+            [
+                context.dictationLanguages.section,
+                DictationWordsSettings.section(context.modules),
+                context.speechModels.section,
+                DictationRecordingSettings.section(context.modules),
+            ]
         },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self(

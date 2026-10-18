@@ -7,7 +7,8 @@ import Testing
     private static let tone = (0..<16_000).map { Float(0.1 * sin(Double($0) * 0.1)) }
 
     private func transcribe(_ samples: [Float], with model: URL) async throws -> String {
-        try await Transcriber().transcribe(samples, with: model, languages: SpeechLanguages())
+        try await Transcriber().transcribe(
+            samples, with: model, languages: SpeechLanguages(), words: SpeechWords())
     }
 
     @Test func segmentsJoinIntoOneTrimmedLine() {

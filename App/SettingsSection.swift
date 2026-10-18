@@ -39,6 +39,8 @@ struct SettingsSection {
         }
     }
 
+    private static let footnoteSize: CGFloat = 12
+
     let title: String?
     let note: String?
     var rows: [Row]
@@ -102,5 +104,14 @@ struct SettingsSection {
         self.accessory = accessory
         self.headerAccessory = headerAccessory
         self.content = content
+    }
+
+    static func footnote(_ text: String) -> NSAttributedString {
+        NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: footnoteSize),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ])
     }
 }

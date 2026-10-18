@@ -15,7 +15,9 @@ final class ParakeetEngine: Engine {
         try AsrModels.loadLocal(from: folder, version: version)
     }
 
-    func transcribe(_ samples: [Float], languages _: [String]) async throws -> String {
+    func transcribe(
+        _ samples: [Float], languages _: [String], words _: SpeechWords
+    ) async throws -> String {
         let sampleRate = Int(Transcriber.sampleRate)
         guard samples.count >= ASRConstants.minimumRequiredSamples(forSampleRate: sampleRate) else {
             return ""

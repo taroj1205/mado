@@ -69,6 +69,35 @@ The Parakeet columns show only the language each model supports. Parakeet's ja3 
 - **Apple** needs the locale up front. English read as `ja_JP` came back as "Mayeplentn atesnstersecause havehr thankony。". One Japanese clip read as `en_US` came back empty.
 - If Apple is ever used, the language has to come from somewhere reliable: a setting, or the input source when dictation starts.
 
+## Custom words
+
+Settings › Voice › Custom words holds a list of names and terms, such as "Mado, Kanary, SwiftUI". Dictation sends it to Whisper as the `initial_prompt`, so Whisper spells those words the way the list does (M4-16). Parakeet ignores the list.
+
+- **What the sources say.** OpenAI's [speech-to-text guide](https://developers.openai.com/api/docs/guides/speech-to-text) says a prompt helps with "product names, technical terms, and acronyms", that Whisper "doesn't follow instructions like a general-purpose text model", and that the prompt is limited to 224 tokens. whisper.h says "maximum of whisper_n_text_ctx()/2 tokens are used (typically 224)".
+- **A long list loses its beginning in whisper.cpp,** which keeps the last tokens of the prompt (`prompt_past1`, `n_take1` at commit `927cfce`). Mado counts the tokens with `whisper_tokenize` and drops words from the end of the list until it fits, so the words written first are the ones kept.
+- **The prompt is dropped when Whisper retries at a temperature of 0.5 or more** (`WHISPER_HISTORY_CONDITIONING_TEMP_CUTOFF`). A hard clip can still come out unchanged.
+- **Long recordings need `carry_initial_prompt`.** Whisper reads 30 seconds at a time, and without that flag the list is pushed out of the prompt by the text it has already decoded. Mado sets the flag whenever there is a list, so every window starts with it. A recording without a list is decoded as before. On an 84-second clip (eight plain paragraphs, then "Now the technical part of the update. Open Mado settings and bind the Kanary key, then check the SwiftUI build in Xcode with the Ponytail plugin turned on."), the five words were spelled as listed 1 time without a list, 2 times with the list but without the flag, and 4 times with the flag ("Kanary" still came out as "Canary").
+- **The list is sent as one sentence: the words joined with ", " and a full stop at the end.** The format mattered. In trial runs with `whisper-cli` on an earlier set of clips, the bare list made Whisper copy its style: a plain Japanese sentence lost its commas and full stop, and an English one started in lowercase. With the full stop, plain sentences came out exactly as without a list. "Terms used: …" and a list with Japanese commas spelled fewer of the words right in the same trial.
+
+Results, measured with Mado's own `Transcriber` and `ggml-large-v3-turbo.bin` on 2026-10-18 (M5 Pro, 64 GB, macOS 26.7.1). The list was "Mado, Kanary, SwiftUI, Claude Code, taroj1205, Ponytail, Xcode". A word counts when it appears in the text exactly as written in the list.
+
+| Clip | Words to find | Without the list | With the list |
+| --- | --- | --- | --- |
+| en1 | Mado, Kanary, SwiftUI | 0 of 3 | 3 of 3 |
+| en2 | taroj1205, Claude Code, Ponytail | 2 of 3 | 2 of 3 |
+| en3 | Kanary, Xcode, Claude Code | 1 of 3 | 3 of 3 |
+| en4 | Mado, SwiftUI, Ponytail, Xcode | 2 of 4 | 3 of 4 |
+| ja1 | Mado, Kanary, SwiftUI | 0 of 3 | 2 of 3 |
+| ja2 | Xcode, Claude Code | 0 of 2 | 1 of 2 |
+| ja3 | Ponytail, Mado | 0 of 2 | 0 of 2 |
+| **Total** | | **5 of 20** | **14 of 20** |
+
+Three plain sentences with none of the words (c1–c3, two English and one Japanese) came out letter for letter the same with and without the list.
+
+- **Still wrong with the list:** "Maddo" for Mado in en4 (it was "Maddo" without the list too), "Shift2" for SwiftUI in ja1, "Taroj1205" instead of "taroj1205" in en2 (the list spells it in lowercase), "Cloud Code" in ja2, and ja3, where Whisper writes Ponytail in katakana ("ポニテイル") and Mado as "窓". A list helps with how a heard word is spelled, not with whether it is heard.
+- **Not measured:** a real microphone, real speakers, and any list longer than seven words. The clips are macOS `say` voices (Samantha for English, Kyoko for Japanese), where the English words in Japanese are read in a Japanese accent. The full-stop format was chosen by looking at clips like en1, en2 and ja1, so those three are not an independent test. en3, en4, ja2, ja3 and the three plain sentences were not used for the choice.
+- **Clips.** en1: "Open Mado settings and bind the Kanary key, then check the SwiftUI build." en2: "Ask taroj1205 to review the Claude Code change in Ponytail mode." en3: "Did Kanary open the Xcode project before the Claude Code review?" en4: "Mado shows the SwiftUI preview while Ponytail runs in Xcode." ja1: "明日の午後、Madoの設定画面でKanaryのキーを割り当てて、SwiftUIのビルドを確認します。" ja2: "Xcodeで開いたプロジェクトを、Claude Codeでレビューしてもらいました。" ja3: "Ponytailの設定を変えてから、Madoを再起動します。" Plain: "Please send the report to the team by Friday afternoon." / "今日は天気がいいので、午後から公園へ散歩に行きます。" / "I will call you back after the meeting, and then we can plan the trip." Made with `say -v Samantha -o clip.aiff "…"` and `afconvert -f WAVE -d LEI16@16000 -c 1`, transcribed with English and 日本語 as the chosen languages.
+
 ## Parakeet
 
 M4-15 measured Parakeet through [FluidAudio](https://github.com/FluidInference/FluidAudio) 0.17.5, which runs NVIDIA's Parakeet TDT models as Core ML models. Mado uses `FluidInference/parakeet-tdt-0.6b-v3-coreml` and `FluidInference/parakeet-0.6b-ja-coreml`, both CC-BY-4.0.
@@ -98,7 +127,7 @@ M4-15 measured Parakeet through [FluidAudio](https://github.com/FluidInference/F
 ## Not measured
 
 - **Slower Macs and less memory**, such as an M1 with 8 GB. Everything ran on one M5 Pro with 64 GB.
-- **Mixed Japanese and English in one sentence**, such as English product names inside Japanese speech.
+- **Mixed Japanese and English in one sentence** on real speech. Custom words has a small run on synthetic voices; see "Custom words".
 - **Live microphone input, noise and distance.** FLEURS clips are read speech recorded close to the microphone.
 - **More speakers.** All five Japanese clips are male voices, and the English clips are two male and three female. FLEURS doesn't say whether clips share a speaker.
 

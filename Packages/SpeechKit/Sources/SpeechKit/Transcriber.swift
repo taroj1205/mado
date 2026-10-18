@@ -65,12 +65,13 @@ public actor Transcriber {
     }
 
     public func transcribe(
-        _ samples: [Float], with model: URL, languages: SpeechLanguages
+        _ samples: [Float], with model: URL, languages: SpeechLanguages, words: SpeechWords
     ) async throws -> String {
         defer { unload() }
         guard Double(samples.count) >= Self.sampleRate * Self.shortestSeconds,
             Self.hasSound(samples)
         else { return "" }
-        return try await engine(for: model).transcribe(samples, languages: languages.codes)
+        return try await engine(for: model).transcribe(
+            samples, languages: languages.codes, words: words)
     }
 }
