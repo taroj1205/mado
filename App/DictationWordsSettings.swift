@@ -14,13 +14,20 @@ final class DictationWordsSettings: NSObject {
     var section: SettingsSection {
         let words = DictationSettings.load(from: modules).words.list
         let rows = words.enumerated().map { row(for: $1, rank: $0 + 1, of: words.count) }
-        return SettingsSection(
+        var built = SettingsSection(
             "Custom words — dictation spells these your way, top ones first",
             headerAccessory: addField(), rows,
             footer: SettingsSection.footnote(
                 "Names and terms you say. They help Whisper spell those words the way you write "
-                    + "them here, but don't guarantee it. When the list is too long for Whisper, "
-                    + "the words at the bottom are left out. Parakeet models ignore it."))
+                    + "them here, but don't guarantee it. Drag a word, or use the arrows, to move "
+                    + "it. When the list is too long for Whisper, the words at the bottom are "
+                    + "left out. Parakeet models ignore it."))
+        if modules != nil {
+            built.reorder = { [weak self] word, target in
+                self?.update { $0.move(word, before: target) }
+            }
+        }
+        return built
     }
 
     init(modules: ModuleManager?) {

@@ -49,6 +49,20 @@ import Testing
         #expect(words.list == ["SwiftUI", "Mado", "Kanary"])
     }
 
+    @Test func aWordDropsBeforeAnotherOrAtTheEnd() {
+        var words = SpeechWords(text: "Mado, Kanary, SwiftUI, 窓")
+        words.move("窓", before: "Kanary")
+        #expect(words.list == ["Mado", "窓", "Kanary", "SwiftUI"])
+        words.move("Mado", before: nil)
+        #expect(words.list == ["窓", "Kanary", "SwiftUI", "Mado"])
+        words.move("Kanary", before: "SwiftUI")
+        words.move("Kanary", before: "Kanary")
+        words.move("Missing", before: "Mado")
+        words.move("Mado", before: "Missing")
+        words.move("Mado", before: nil)
+        #expect(words.list == ["窓", "Kanary", "SwiftUI", "Mado"])
+    }
+
     @Test func savedWordsSurviveSavingAndLoading() throws {
         let saved = SpeechWords(text: "Mado, 窓")
         let data = try JSONEncoder().encode(saved)

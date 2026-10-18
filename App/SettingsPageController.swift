@@ -214,13 +214,16 @@ final class SettingsPageController: NSViewController {
     }
 
     private func box(_ sectionRows: [SettingsSection.Row], in section: SettingsSection) -> NSView {
-        Self.box(
-            sectionRows.map { row in
-                let (view, label) = rowView(row)
-                spotlight.add(
-                    row: view, label: label, control: row.control, id: rowID(row, in: section))
-                return view
-            })
+        let views = sectionRows.map { row in
+            let (view, label) = rowView(row)
+            spotlight.add(
+                row: view, label: label, control: row.control, id: rowID(row, in: section))
+            return view
+        }
+        let box = Self.box(views)
+        guard let reorder = section.reorder, section.columns == 1 else { return box }
+        return SettingsReorderList(
+            box: box, rows: views, keys: sectionRows.map(\.key), onMove: reorder)
     }
 
     private func header(_ title: String, note: String?, accessory: NSView?) -> NSView {

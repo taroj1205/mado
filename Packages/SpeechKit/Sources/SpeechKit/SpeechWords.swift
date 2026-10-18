@@ -43,6 +43,16 @@ public struct SpeechWords: Codable, Equatable, Sendable {
         list.swapAt(index, index + offset)
     }
 
+    public mutating func move(_ word: String, before target: String?) {
+        guard let index = list.firstIndex(of: word), word != target else { return }
+        var rest = list
+        rest.remove(at: index)
+        guard let slot = target == nil ? rest.endIndex : rest.firstIndex(where: { $0 == target })
+        else { return }
+        rest.insert(word, at: slot)
+        list = rest
+    }
+
     func prompt(fitting budget: Int, counting tokens: (String) -> Int) -> String? {
         func sentence(_ count: Int) -> String {
             list.prefix(count).joined(separator: Self.joiner) + "."
