@@ -8,6 +8,7 @@ final class DictationWordsSettings: NSObject {
     private static let rankLimit = 50
 
     private let modules: ModuleManager?
+    private var addedField: NSTextField?
     var onChange: (() -> Void)?
 
     var section: SettingsSection {
@@ -27,6 +28,7 @@ final class DictationWordsSettings: NSObject {
     }
 
     private func addField() -> NSTextField {
+        if let addedField { return addedField }
         let field = NSTextField()
         field.placeholderString = "Add a word"
         field.setAccessibilityLabel("Add a word")
@@ -34,6 +36,7 @@ final class DictationWordsSettings: NSObject {
         field.action = #selector(addWord)
         field.isEnabled = modules != nil
         field.widthAnchor.constraint(equalToConstant: Self.fieldWidth).isActive = true
+        addedField = field
         return field
     }
 
@@ -68,7 +71,10 @@ final class DictationWordsSettings: NSObject {
 
     @objc
     private func addWord(_ sender: NSTextField) {
-        update { $0.add(sender.stringValue) }
+        let text = sender.stringValue
+        sender.stringValue = ""
+        update { $0.add(text) }
+        unsafe sender.window?.makeFirstResponder(sender)
     }
 
     @objc
