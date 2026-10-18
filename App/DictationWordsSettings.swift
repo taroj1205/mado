@@ -17,9 +17,10 @@ enum DictationWordsSettings {
         return SettingsSection(
             "Custom words", [.init("Words", field)],
             footer: SettingsSection.footnote(
-                "Names and terms you say, separated by commas. Dictation spells them the way "
-                    + "you write them here. When the list is too long for Whisper, the words "
-                    + "written last are left out. Parakeet models ignore it."),
+                "Names and terms you say, separated by commas. They help Whisper spell those "
+                    + "words the way you write them here, but don't guarantee it. When the list "
+                    + "is too long for Whisper, the words written last are left out. Parakeet "
+                    + "models ignore it."),
             accessory: nil)
     }
 }

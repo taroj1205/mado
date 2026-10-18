@@ -137,9 +137,8 @@ final class Dictation {
                     samples, with: file, languages: current.languages, words: current.words)
                 guard !Task.isCancelled else { return }
                 await self?.insert(text)
-                if current.keepsRecordings, !text.isEmpty {
-                    await self?.keep(samples, heard: text, model: model.id, settings: current)
-                }
+                guard !Task.isCancelled, current.keepsRecordings, !text.isEmpty else { return }
+                await self?.keep(samples, heard: text, model: model.id, settings: current)
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.failToTranscribe(error)
