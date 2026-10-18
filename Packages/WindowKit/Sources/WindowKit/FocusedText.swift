@@ -1,6 +1,12 @@
 public import ApplicationServices
 
 public struct FocusedText: Sendable {
+    private static let manualAccessibility = "AXManualAccessibility"
+    private static let treeAttempts = 8
+    private static let treePollMilliseconds = 300
+
+    @AccessibilityActor private static var requestedTrees = Set<pid_t>()
+
     public let isSecure: Bool
     public let caret: CGRect?
     public let textBeforeCaret: String?
@@ -29,9 +35,31 @@ public struct FocusedText: Sendable {
     }
 
     @AccessibilityActor
-    public static func selection(in app: pid_t) -> String? {
+    public static func selection(in app: pid_t) async -> String? {
         let application = AXUIElementCreateApplication(app)
         AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)
+        let isBuildingTree = requestAccessibilityTree(of: application, pid: app)
+        for attempt in 0..<(isBuildingTree ? treeAttempts : 1) {
+            if attempt > 0 {
+                try? await Task.sleep(for: .milliseconds(treePollMilliseconds))
+            }
+            if let text = selectedText(in: application) { return text }
+        }
+        return nil
+    }
+
+    @AccessibilityActor
+    private static func requestAccessibilityTree(of application: AXUIElement, pid: pid_t) -> Bool {
+        guard requestedTrees.insert(pid).inserted else { return false }
+        let error = AccessibilityActor.call(on: application) {
+            AXUIElementSetAttributeValue(
+                application, manualAccessibility as CFString, kCFBooleanTrue)
+        }
+        return error == .success
+    }
+
+    @AccessibilityActor
+    private static func selectedText(in application: AXUIElement) -> String? {
         guard let value = try? FocusedWindow.copy(kAXFocusedUIElementAttribute, of: application),
             CFGetTypeID(value) == AXUIElementGetTypeID()
         else { return nil }
