@@ -4,6 +4,7 @@ import whisper
 @safe
 final class WhisperEngine: Engine, @unchecked Sendable {
     private static let automatic = "auto"
+    private static let english = "en"
 
     private let pointer: OpaquePointer
 
@@ -20,8 +21,8 @@ final class WhisperEngine: Engine, @unchecked Sendable {
     private func language(
         of samples: [Float], among languages: [String], threads: Int32
     ) -> String {
+        guard unsafe whisper_is_multilingual(pointer) != 0 else { return Self.english }
         guard languages.count > 1 else { return languages.first ?? Self.automatic }
-        guard unsafe whisper_is_multilingual(pointer) != 0 else { return Self.automatic }
         let converted = samples.withUnsafeBufferPointer { buffer in
             unsafe whisper_pcm_to_mel(pointer, buffer.baseAddress, Int32(buffer.count), threads)
         }
