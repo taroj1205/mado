@@ -13,6 +13,7 @@ extension AppDelegate {
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
         let enterGuard = EnterGuardPage(modules: modules)
+        let dictationLanguages = DictationLanguageSettings(modules: modules)
         let speechModels = SpeechModelSettings(modules: modules)
         return SettingsPage.Context(
             modules: modules, hotKeys: hotKeys, rates: rates, recorder: recorder,
@@ -23,7 +24,7 @@ extension AppDelegate {
             inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
             addWidgets: { [weak self] in self?.editWidgetsInLauncher() },
             lyricsChanged: { [weak self] in self?.applyLyricsSettings() },
-            speechModels: speechModels,
+            dictationLanguages: dictationLanguages, speechModels: speechModels,
             colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
             menuBarAgenda: menuBar.agenda)
     }

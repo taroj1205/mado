@@ -22,6 +22,7 @@ struct SettingsPage {
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
         let lyricsChanged: LyricsSettingsEditor.Change
+        let dictationLanguages: DictationLanguageSettings
         let speechModels: SpeechModelSettings
         let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
@@ -121,7 +122,7 @@ struct SettingsPage {
                 Tab(title: "Remaps") { $0.remaps.sections },
             ]),
         Self("Voice", "mic", module: module("dictation", "Dictation", enabled: false)) { context in
-            [SettingsSection("Dictation", []), context.speechModels.section]
+            [context.dictationLanguages.section, context.speechModels.section]
         },
         Self("AI", "sparkle", module: module("ai", "AI", enabled: false)),
         Self(

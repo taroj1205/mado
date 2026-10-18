@@ -10,10 +10,21 @@ public actor Transcriber {
     public static let sampleRate = Double(WHISPER_SAMPLE_RATE)
     private static let shortestSeconds = 0.1
 
+    private static let soundWindowSeconds = 0.1
+    private static let soundFloorPower: Float = 1e-5
+
     private var loaded: (model: URL, task: Task<any Engine, any Error>)?
 
     public init() {
         loaded = nil
+    }
+
+    static func hasSound(_ samples: [Float]) -> Bool {
+        let size = min(Int(sampleRate * soundWindowSeconds), samples.count)
+        guard size > 0 else { return false }
+        return stride(from: 0, through: samples.count - size, by: size).contains { start in
+            samples[start..<start + size].reduce(0) { $0 + $1 * $1 } / Float(size) > soundFloorPower
+        }
     }
 
     static func text(_ segments: [String]) -> String {
@@ -52,9 +63,13 @@ public actor Transcriber {
         loaded = nil
     }
 
-    public func transcribe(_ samples: [Float], with model: URL) async throws -> String {
+    public func transcribe(
+        _ samples: [Float], with model: URL, languages: SpeechLanguages
+    ) async throws -> String {
         defer { unload() }
-        guard Double(samples.count) >= Self.sampleRate * Self.shortestSeconds else { return "" }
-        return try await engine(for: model).transcribe(samples)
+        guard Double(samples.count) >= Self.sampleRate * Self.shortestSeconds,
+            Self.hasSound(samples)
+        else { return "" }
+        return try await engine(for: model).transcribe(samples, languages: languages.codes)
     }
 }

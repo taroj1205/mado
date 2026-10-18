@@ -65,6 +65,7 @@ The Parakeet columns show only the language each model supports. Parakeet's ja3 
 ## Language
 
 - **Whisper** detected the language by itself on all 10 clips, with both small and large-v3-turbo.
+- **Mado limits that detection to the languages chosen in Settings › Voice,** English and 日本語 by default. Left to choose among all ~100 languages, Whisper sometimes read quiet or short Japanese as Korean. Dictation compares only the chosen languages' scores and transcribes in the highest one; a single language is used as is, with no detection. English-only Whisper models skip the check, and Parakeet ignores the setting. Recordings whose loudest 0.1 s stays under −50 dB (the pill's silence floor) are not transcribed at all, because Whisper writes lines like "Thank you." for silence.
 - **Apple** needs the locale up front. English read as `ja_JP` came back as "Mayeplentn atesnstersecause havehr thankony。". One Japanese clip read as `en_US` came back empty.
 - If Apple is ever used, the language has to come from somewhere reliable: a setting, or the input source when dictation starts.
 

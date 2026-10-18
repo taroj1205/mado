@@ -130,9 +130,11 @@ final class Dictation {
         }
         pill.show(.transcribing, on: nil)
         let file = models.location(of: model)
+        let languages = settings().languages
         work = Task { [weak self, transcriber] in
             do {
-                let text = try await transcriber.transcribe(samples, with: file)
+                let text = try await transcriber.transcribe(
+                    samples, with: file, languages: languages)
                 guard !Task.isCancelled else { return }
                 await self?.insert(text)
             } catch {
