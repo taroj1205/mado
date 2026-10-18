@@ -5,6 +5,9 @@ import whisper
 final class WhisperEngine: Engine, @unchecked Sendable {
     private static let automatic = "auto"
     private static let english = "en"
+    private static let tokenBuffer = 1_024
+    private static let promptShareOfContext = 2
+    private static let reservedForPreviousMarker = 1
 
     private let pointer: OpaquePointer
 
@@ -39,14 +42,30 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         return scored.max { $0.score < $1.score }?.code ?? Self.automatic
     }
 
-    func transcribe(_ samples: [Float], languages: [String]) throws -> String {
+    private func tokenCount(of text: String) -> Int {
+        var tokens = [whisper_token](repeating: 0, count: Self.tokenBuffer)
+        let count = unsafe whisper_tokenize(pointer, text, &tokens, Int32(tokens.count))
+        return Int(abs(count))
+    }
+
+    private func prompt(for words: SpeechWords) -> String {
+        let budget =
+            Int(unsafe whisper_n_text_ctx(pointer)) / Self.promptShareOfContext
+            - Self.reservedForPreviousMarker
+        return words.prompt(fitting: budget, counting: tokenCount(of:)) ?? ""
+    }
+
+    func transcribe(_ samples: [Float], languages: [String], words: SpeechWords) throws -> String {
         var params = unsafe whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH)
         unsafe params.print_progress = false
         let spoken = language(of: samples, among: languages, threads: unsafe params.n_threads)
         let code = spoken.withCString { language in
-            unsafe params.language = language
-            return samples.withUnsafeBufferPointer { buffer in
-                unsafe whisper_full(pointer, params, buffer.baseAddress, Int32(buffer.count))
+            prompt(for: words).withCString { prompt in
+                unsafe params.language = language
+                unsafe params.initial_prompt = prompt
+                return samples.withUnsafeBufferPointer { buffer in
+                    unsafe whisper_full(pointer, params, buffer.baseAddress, Int32(buffer.count))
+                }
             }
         }
         guard code == 0 else { throw Transcriber.Failure.failed(code: code) }

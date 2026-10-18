@@ -130,17 +130,34 @@ final class Dictation {
         }
         pill.show(.transcribing, on: nil)
         let file = models.location(of: model)
-        let languages = settings().languages
+        let current = settings()
         work = Task { [weak self, transcriber] in
             do {
                 let text = try await transcriber.transcribe(
-                    samples, with: file, languages: languages)
+                    samples, with: file, languages: current.languages, words: current.words)
                 guard !Task.isCancelled else { return }
                 await self?.insert(text)
+                if current.keepsRecordings, !text.isEmpty {
+                    await self?.keep(samples, heard: text, model: model.id, settings: current)
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.failToTranscribe(error)
             }
+        }
+    }
+
+    private func keep(
+        _ samples: [Float], heard text: String, model: String, settings: DictationSettings
+    ) async {
+        do {
+            try await DictationLog.standard.keep(
+                samples, sampleRate: Transcriber.sampleRate,
+                as: .init(
+                    date: .now, model: model, languages: settings.languages.codes,
+                    words: settings.words.list, text: text))
+        } catch {
+            logger.error("Keeping a recording failed: \(error, privacy: .public)")
         }
     }
 
