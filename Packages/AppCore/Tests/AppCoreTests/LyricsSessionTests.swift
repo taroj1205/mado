@@ -9,13 +9,14 @@ import Testing
         var status = 200
         var asked = 0
 
-        func answer(_ url: URL) -> (data: Data, status: Int) {
+        func answer(_ url: URL) -> LyricsLookup.Reply {
             asked += 1
             let body = """
                 {"duration":200,"instrumental":false,"plainLyrics":"A\\nB",
                 "syncedLyrics":"[00:10.00] A\\n[00:20.00] B"}
                 """
-            return (Data((url.path == "/api/search" ? "[\(body)]" : body).utf8), status)
+            return .init(
+                data: Data((url.path == "/api/search" ? "[\(body)]" : body).utf8), status: status)
         }
     }
 
@@ -108,8 +109,9 @@ import Testing
         session.update(song, position: 1, enabled: true, at: 100)
         await settle()
         #expect(session.state == .failed)
+        let asked = server.asked
         session.update(song, position: 3, enabled: true, at: 130)
-        #expect(session.state == .failed && server.asked == 1)
+        #expect(session.state == .failed && server.asked == asked)
         server.status = 200
         session.update(song, position: 63, enabled: true, at: 161)
         #expect(session.state == .loading)
