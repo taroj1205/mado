@@ -14,18 +14,18 @@ import Testing
         func recognizer(
             window: Duration, bound: Set<ModifierTap.Tap>
         ) -> ModifierTap.Recognizer {
-            recognizer(window: window, bound: bound, anotherKeyHeld: false)
+            recognizer(window: window, bound: bound, anotherInputHeld: false)
         }
 
         func recognizer(
-            window: Duration, bound: Set<ModifierTap.Tap>, anotherKeyHeld: Bool
+            window: Duration, bound: Set<ModifierTap.Tap>, anotherInputHeld: Bool
         ) -> ModifierTap.Recognizer {
             let bindings = Dictionary(
                 uniqueKeysWithValues: bound.map { tap -> (ModifierTap.Tap, @MainActor () -> Void) in
                     (tap, { [weak self] in self?.taps.append(tap) })
                 })
             return ModifierTap.Recognizer(
-                window: window, bindings: bindings, anotherKeyHeld: { anotherKeyHeld },
+                window: window, bindings: bindings, anotherInputHeld: { anotherInputHeld },
                 run: { [weak self] wait in self?.waits.append(Task { await wait() }) })
         }
 
@@ -63,10 +63,10 @@ import Testing
         #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
     }
 
-    @Test func aTapWhileAnotherKeyIsHeldIsNeverDelivered() async throws {
+    @Test func aTapWhileAnotherInputIsHeldIsNeverDelivered() async throws {
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
-            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)], anotherKeyHeld: true)
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)], anotherInputHeld: true)
         try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
         await inbox.settle()
         #expect(inbox.taps.isEmpty)

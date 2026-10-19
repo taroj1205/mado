@@ -79,13 +79,18 @@ import Testing
         #expect(recorder.taps.isEmpty)
     }
 
-    @Test func aScrollWhileHeldIsNotATap() {
+    @Test func systemDefinedEventsAreObserved() {
+        #expect(ModifierTap.systemDefined != nil)
+    }
+
+    @Test(arguments: [CGEventType.scrollWheel, ModifierTap.systemDefined].compactMap(\.self))
+    func scrollAndMediaKeysWhileHeldAreNotATap(_ type: CGEventType) {
         var recorder = Recorder()
         recorder.down(.leftControl)
-        recorder.send(.scrollWheel)
+        recorder.send(type)
         recorder.up(.leftControl)
         #expect(recorder.taps.isEmpty)
-        #expect(ModifierTap.types.contains(.scrollWheel))
+        #expect(ModifierTap.types.contains(type))
     }
 
     @Test func capsLockWhileHeldIsNotATap() {

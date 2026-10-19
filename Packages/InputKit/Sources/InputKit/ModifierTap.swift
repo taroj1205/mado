@@ -95,26 +95,26 @@ public struct ModifierTap {
     final class Recognizer {
         private let window: Duration
         private let bindings: [Tap: @MainActor () -> Void]
-        private let anotherKeyHeld: () -> Bool
+        private let anotherInputHeld: () -> Bool
         private let run: @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         private var tap: ModifierTap
         private var waits = 0
 
         init(
             window: Duration, bindings: [Tap: @MainActor () -> Void],
-            anotherKeyHeld: @escaping () -> Bool,
+            anotherInputHeld: @escaping () -> Bool,
             run: @escaping @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         ) {
             self.window = window
             self.bindings = bindings
-            self.anotherKeyHeld = anotherKeyHeld
+            self.anotherInputHeld = anotherInputHeld
             self.run = run
             tap = ModifierTap(window: window, bound: Set(bindings.keys))
         }
 
         func handle(_ type: CGEventType, _ event: CGEvent) {
             let previous = tap.held
-            let interrupted = type == .flagsChanged && anotherKeyHeld()
+            let interrupted = type == .flagsChanged && anotherInputHeld()
             let fired = tap.handle(
                 interrupted ? .keyDown : type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
@@ -141,12 +141,15 @@ public struct ModifierTap {
 
     private static let defaultWindowMilliseconds = 300
     private static let keyCodeCount = 128
+    private static let mouseButtonCount: UInt32 = 32
 
     public static let defaultWindow: Duration = .milliseconds(defaultWindowMilliseconds)
 
-    static let types: [CGEventType] = [
-        .flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
-    ]
+    static let systemDefined = CGEventType(rawValue: UInt32(NX_SYSDEFINED))
+
+    static let types: [CGEventType] =
+        [.flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]
+        + [systemDefined].compactMap(\.self)
 
     private let window: Duration
     private let bound: Set<Tap>
@@ -159,11 +162,22 @@ public struct ModifierTap {
         self.bound = bound
     }
 
-    static func anotherKeyIsDown() -> Bool {
+    static func anotherInputIsDown() -> Bool {
+        keyIsDown() || mouseButtonIsDown()
+    }
+
+    private static func keyIsDown() -> Bool {
         let modifiers = Set(Key.allCases.map(\.keyCode) + [Int64(kVK_CapsLock)])
         return (0..<keyCodeCount).contains { code in
             !modifiers.contains(Int64(code))
                 && CGEventSource.keyState(.combinedSessionState, key: CGKeyCode(code))
+        }
+    }
+
+    private static func mouseButtonIsDown() -> Bool {
+        (0..<mouseButtonCount).contains { number in
+            guard let button = CGMouseButton(rawValue: number) else { return false }
+            return CGEventSource.buttonState(.combinedSessionState, button: button)
         }
     }
 
@@ -173,7 +187,7 @@ public struct ModifierTap {
         window: Duration = defaultWindow
     ) throws(ModuleError) {
         let recognizer = Recognizer(
-            window: window, bindings: bindings, anotherKeyHeld: anotherKeyIsDown
+            window: window, bindings: bindings, anotherInputHeld: anotherInputIsDown
         ) { [weak context] wait in
             context?.run("\(name) window", operation: wait)
         }
