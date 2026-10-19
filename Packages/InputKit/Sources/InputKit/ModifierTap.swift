@@ -95,24 +95,28 @@ public struct ModifierTap {
     final class Recognizer {
         private let window: Duration
         private let bindings: [Tap: @MainActor () -> Void]
+        private let anotherKeyHeld: () -> Bool
         private let run: @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         private var tap: ModifierTap
         private var waits = 0
 
         init(
             window: Duration, bindings: [Tap: @MainActor () -> Void],
+            anotherKeyHeld: @escaping () -> Bool,
             run: @escaping @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         ) {
             self.window = window
             self.bindings = bindings
+            self.anotherKeyHeld = anotherKeyHeld
             self.run = run
             tap = ModifierTap(window: window, bound: Set(bindings.keys))
         }
 
         func handle(_ type: CGEventType, _ event: CGEvent) {
             let previous = tap.held
+            let interrupted = type == .flagsChanged && anotherKeyHeld()
             let fired = tap.handle(
-                type, flags: event.flags,
+                interrupted ? .keyDown : type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
                 timestamp: event.timestamp)
             if let fired, bindings[fired] != nil {
@@ -136,6 +140,7 @@ public struct ModifierTap {
     }
 
     private static let defaultWindowMilliseconds = 300
+    private static let keyCodeCount = 128
 
     public static let defaultWindow: Duration = .milliseconds(defaultWindowMilliseconds)
 
@@ -154,12 +159,22 @@ public struct ModifierTap {
         self.bound = bound
     }
 
+    static func anotherKeyIsDown() -> Bool {
+        let modifiers = Set(Key.allCases.map(\.keyCode) + [Int64(kVK_CapsLock)])
+        return (0..<keyCodeCount).contains { code in
+            !modifiers.contains(Int64(code))
+                && CGEventSource.keyState(.combinedSessionState, key: CGKeyCode(code))
+        }
+    }
+
     @MainActor
     public static func install(
         name: String, context: ModuleContext, bindings: [Tap: @MainActor () -> Void],
         window: Duration = defaultWindow
     ) throws(ModuleError) {
-        let recognizer = Recognizer(window: window, bindings: bindings) { [weak context] wait in
+        let recognizer = Recognizer(
+            window: window, bindings: bindings, anotherKeyHeld: anotherKeyIsDown
+        ) { [weak context] wait in
             context?.run("\(name) window", operation: wait)
         }
         try context.observeEvents(name, matching: types, observe: recognizer.handle)
