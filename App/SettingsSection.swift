@@ -49,6 +49,7 @@ struct SettingsSection {
     let headerAccessory: NSView?
     let content: NSView?
     var refresh: (() -> Void)?
+    var reorder: ((_ key: String, _ before: String?) -> Void)?
     private(set) var columns = 1
 
     var columnRows: [[Row]] {
