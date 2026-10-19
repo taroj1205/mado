@@ -2,7 +2,7 @@ public import ApplicationServices
 
 public struct FocusedText: Sendable {
     private static let manualAccessibility = "AXManualAccessibility"
-    private static let treeAttempts = 48
+    private static let treeWaitMilliseconds = 2_100
     private static let treePollMilliseconds = 50
 
     public let isSecure: Bool
@@ -36,14 +36,13 @@ public struct FocusedText: Sendable {
     public static func selection(in app: pid_t) async -> String? {
         let application = AXUIElementCreateApplication(app)
         AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)
-        let attempts = requestAccessibilityTree(of: application) ? treeAttempts : 1
-        for attempt in 0..<attempts {
-            if attempt > 0 {
-                try? await Task.sleep(for: .milliseconds(treePollMilliseconds))
-            }
+        let wait = requestAccessibilityTree(of: application) ? treeWaitMilliseconds : 0
+        let deadline = ContinuousClock.now + .milliseconds(wait)
+        while true {
             if let element = focusedElement(of: application) { return selectedText(of: element) }
+            guard ContinuousClock.now < deadline, !Task.isCancelled else { return nil }
+            try? await Task.sleep(for: .milliseconds(treePollMilliseconds))
         }
-        return nil
     }
 
     @AccessibilityActor
