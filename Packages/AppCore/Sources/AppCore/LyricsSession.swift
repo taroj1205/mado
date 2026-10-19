@@ -14,6 +14,7 @@ public final class LyricsSession {
     }
 
     private static let retryAfter: TimeInterval = 60
+    private static let lead: TimeInterval = 0.3
 
     public var onChange: (() -> Void)?
     public private(set) var state = State.idle {
@@ -79,7 +80,7 @@ public final class LyricsSession {
     }
 
     public func moment(at now: TimeInterval) -> Lyrics.Moment? {
-        lyrics?.moment(at: clock.position(at: now), duration: duration)
+        lyrics?.moment(at: clock.position(at: now) + Self.lead, duration: duration)
     }
 
     public func start(ofLine line: Int) -> TimeInterval? {
