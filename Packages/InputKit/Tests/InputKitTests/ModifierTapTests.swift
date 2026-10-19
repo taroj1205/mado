@@ -142,7 +142,20 @@ import Testing
         #expect(recorder.taps.allSatisfy { $0.keys == [.rightCommand] })
     }
 
-    @Test func aSingleWaitsOnlyWhenItsDoubleIsAlsoBound() {
+    @Test func aSingleWaitsWhenOnlyATripleIsAlsoBound() {
+        let single = ModifierTap.Tap(.leftOption)
+        let triple = ModifierTap.Tap(.leftOption, count: 3)
+        var recorder = Self.recorder([single, triple])
+        recorder.tap(.leftOption)
+        #expect(recorder.taps.isEmpty)
+        #expect(recorder.tap.held == single)
+        recorder.tap(.leftOption)
+        recorder.tap(.leftOption)
+        #expect(recorder.taps.filter { [single, triple].contains($0) } == [triple])
+        #expect(recorder.tap.held == nil)
+    }
+
+    @Test func aSingleWaitsOnlyWhenALongerTapIsAlsoBound() {
         var recorder = Self.recorder(Self.shiftTaps.union([ModifierTap.Tap(.rightShift)]))
         recorder.tap(.rightShift)
         recorder.tap(.leftShift)

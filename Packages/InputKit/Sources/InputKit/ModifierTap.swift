@@ -196,9 +196,9 @@ public struct ModifierTap {
         }
         let tap = Tap(keys: press.keys, count: (streak?.last.count ?? 0) + 1)
         held = nil
-        streak =
-            bound.contains { $0.keys == tap.keys && $0.count > tap.count } ? (tap, timestamp) : nil
-        guard bound.contains(tap), bound.contains(Tap(keys: tap.keys, count: tap.count + 1)) else {
+        let repeats = bound.contains { $0.keys == tap.keys && $0.count > tap.count }
+        streak = repeats ? (tap, timestamp) : nil
+        guard bound.contains(tap), repeats else {
             return tap
         }
         held = tap
