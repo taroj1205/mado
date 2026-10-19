@@ -19,9 +19,13 @@ public actor LyricsLookup {
         let plainLyrics: String?
         let syncedLyrics: String?
 
+        var lyrics: Lyrics? {
+            Lyrics(synced: syncedLyrics, plain: plainLyrics)
+        }
+
         var result: Outcome {
             if instrumental { return .instrumental }
-            return Lyrics(synced: syncedLyrics, plain: plainLyrics).map(Outcome.found) ?? .missing
+            return lyrics.map(Outcome.found) ?? .missing
         }
     }
 
@@ -70,7 +74,8 @@ public actor LyricsLookup {
             URLQueryItem(name: "duration", value: String(Int(duration.rounded()))),
         ]
         guard let data = try await fetch("/api/get", query) else { return nil }
-        return try JSONDecoder().decode(LyricsEntry.self, from: data).result
+        let outcome = try JSONDecoder().decode(LyricsEntry.self, from: data).result
+        return outcome == .missing ? nil : outcome
     }
 
     private func search(_ track: MusicPlayer.Track) async throws -> Outcome? {
@@ -79,11 +84,18 @@ public actor LyricsLookup {
             URLQueryItem(name: "artist_name", value: track.artist),
         ]
         guard let data = try await fetch("/api/search", query) else { return nil }
-        let near = try JSONDecoder().decode([LyricsEntry].self, from: data).filter { entry in
-            guard let wanted = track.duration, let actual = entry.duration else { return true }
-            return abs(wanted - actual) <= Self.durationSlack
+        let entries = try JSONDecoder().decode([LyricsEntry].self, from: data)
+        let gap = { (entry: LyricsEntry) -> Double in
+            guard let wanted = track.duration else { return 0 }
+            return entry.duration.map { abs(wanted - $0) } ?? Self.durationSlack
         }
-        return (near.first { $0.syncedLyrics != nil } ?? near.first)?.result
+        let near = entries.filter { gap($0) <= Self.durationSlack }
+        let timed = near.compactMap { entry in entry.lyrics.map { (gap: gap(entry), lyrics: $0) } }
+        let closest = timed.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
+        if let best = closest ?? timed.first { return .found(best.lyrics) }
+        if near.contains(where: \.instrumental) { return .instrumental }
+        return entries.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }.first
+            .map(Outcome.found)
     }
 
     private func fetch(_ path: String, _ query: [URLQueryItem]) async throws -> Data? {

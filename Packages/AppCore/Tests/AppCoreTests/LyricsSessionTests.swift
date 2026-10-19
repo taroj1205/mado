@@ -48,6 +48,13 @@ import Testing
         #expect(session.start(ofLine: 5) == nil)
     }
 
+    @Test func aLineShowsJustBeforeItsTimestamp() async {
+        session.update(song, position: 9.5, enabled: true, at: 100)
+        await settle()
+        #expect(session.moment(at: 100)?.index == nil)
+        #expect(session.moment(at: 100.25)?.index == 0)
+    }
+
     @Test func seekingMovesTheClock() async {
         session.update(song, position: 12, enabled: true, at: 100)
         await settle()

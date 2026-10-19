@@ -71,6 +71,35 @@ import Testing
         #expect(server.asked.map(\.path) == ["/api/search"])
     }
 
+    @Test func ofSeveralSyncedMatchesTheClosestLengthWins() async throws {
+        server.replies["/api/search"] = (
+            200,
+            "[\(entry(duration: 203, synced: "[00:09.00] Late")),\(entry(duration: 201))]"
+        )
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func anExactMatchWithoutWordsStillTriesTheSearch() async throws {
+        server.replies["/api/get"] = (200, entry(synced: nil, plain: nil))
+        server.replies["/api/search"] = (200, "[\(entry(duration: 202))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func aNearEntryWithoutWordsDoesNotHideALaterOneWithWords() async throws {
+        server.replies["/api/search"] = (
+            200, "[\(entry(synced: nil, plain: nil)),\(entry(duration: 202))]"
+        )
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func otherLengthsStillShowTheirWordsUnsynced() async throws {
+        server.replies["/api/search"] = (
+            200, "[\(entry(duration: 260, synced: nil, plain: nil)),\(entry(duration: 260))]"
+        )
+        let words = Lyrics(lines: [.init(time: nil, text: "Hi")], isSynced: false)
+        #expect(try await lookup.lyrics(for: track) == .found(words))
+    }
+
     @Test func instrumentalAndUnknownTracksAreReportedAsSuch() async throws {
         server.replies["/api/get"] = (200, entry(synced: nil, plain: nil, instrumental: true))
         #expect(try await lookup.lyrics(for: track) == .instrumental)
