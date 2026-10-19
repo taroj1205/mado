@@ -106,7 +106,10 @@ extension AppDelegate {
         defer { signposter.endInterval("search", state) }
         let timers = timerSections(for: query)
         if !timers.isEmpty { return timers }
-        return cards + (await LauncherResult.sections(for: query, in: sources, usage: usage))
+        let found = await LauncherResult.sections(for: query, in: sources, usage: usage)
+        let sections = cards + found
+        textTools.prepare(for: sections)
+        return sections
     }
 
     func opensInLauncher(_ action: CommandAction, for id: String) -> Bool {

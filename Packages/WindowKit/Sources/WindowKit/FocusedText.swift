@@ -33,6 +33,13 @@ public struct FocusedText: Sendable {
     }
 
     @AccessibilityActor
+    public static func prepare(app: pid_t) {
+        let application = AXUIElementCreateApplication(app)
+        AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)
+        _ = requestAccessibilityTree(of: application)
+    }
+
+    @AccessibilityActor
     public static func selection(in app: pid_t) async -> String? {
         let application = AXUIElementCreateApplication(app)
         AXUIElementSetMessagingTimeout(application, FocusedWindow.messagingTimeout)

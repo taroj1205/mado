@@ -53,6 +53,7 @@ final class TextTools {
     private var pasteTarget: PasteTarget?
     private var request = 0
     private var reading = false
+    private var prepared: pid_t?
 
     private static func tool(for id: String) -> TextTool? {
         id.hasPrefix(toolPrefix) ? TextTool(rawValue: String(id.dropFirst(toolPrefix.count))) : nil
@@ -90,6 +91,14 @@ final class TextTools {
                     "Text tool \(command.id, privacy: .public) failed: \(error, privacy: .public)")
             }
         }
+    }
+
+    func prepare(for sections: [ResultList.Section]) {
+        guard sections.contains(where: { $0.items.contains { Self.commandIDs.contains($0.id) } }),
+            let app = findTarget?()?.app.processIdentifier, app != prepared
+        else { return }
+        prepared = app
+        Task { await FocusedText.prepare(app: app) }
     }
 
     private func stop() {
