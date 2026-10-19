@@ -127,8 +127,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                         notes: .init(menuBar: menuBar, board: notes),
                         clipboard: .init(
                             history: clipboardHistory, textTools: textTools, emoji: emojiPicker,
-                            snippets: library)
-                    ) { [weak self] in $0 ? self?.toggleLauncher() : self?.showLauncher() })
+                            snippets: library),
+                        launcher: keyboardLauncher))
             }
             try manager.startEnabledModules()
             return manager
@@ -185,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let launcher { editor.openQuicklink(Quicklink(name: "", link: ""), in: launcher) }
     }
 
-    private func runHotKey(of id: String) {
+    func runHotKey(of id: String) {
         guard let action = LauncherResult.hotKeyAction(for: id, in: sources) else {
             logger.error("Hotkey item \(id, privacy: .private) is gone")
             return
@@ -238,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherClosed = .now
     }
 
-    private func toggleLauncher() {
+    func toggleLauncher() {
         if launcher?.isVisible == true {
             hideLauncher()
         } else {

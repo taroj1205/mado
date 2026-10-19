@@ -4,16 +4,30 @@ import CoreGraphics
 import IOKit.hidsystem
 
 public struct ModifierTap {
-    public enum Key: CaseIterable, Sendable {
-        case leftCommand
-        case rightCommand
-        case leftShift
-        case rightShift
-        case leftOption
-        case rightOption
-        case leftControl
-        case rightControl
-        case function
+    public enum Key: String, Codable, CaseIterable, Sendable {
+        case leftCommand = "left_command"
+        case rightCommand = "right_command"
+        case leftShift = "left_shift"
+        case rightShift = "right_shift"
+        case leftOption = "left_option"
+        case rightOption = "right_option"
+        case leftControl = "left_control"
+        case rightControl = "right_control"
+        case function = "function"
+
+        public var modifierKey: HotKey.ModifierKey? {
+            switch self {
+            case .leftCommand: .leftCommand
+            case .rightCommand: .rightCommand
+            case .leftShift: .leftShift
+            case .rightShift: .rightShift
+            case .leftOption: .leftOption
+            case .rightOption: .rightOption
+            case .leftControl: .leftControl
+            case .rightControl: .rightControl
+            case .function: nil
+            }
+        }
 
         var keyCode: Int64 {
             switch self {

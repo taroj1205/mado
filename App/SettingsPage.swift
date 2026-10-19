@@ -19,6 +19,7 @@ struct SettingsPage {
         let inputKeys: InputSourceKeys
         let inputDefaults: AppInputDefaults
         let remaps: RemapsSettings
+        let modifierKeys: ModifierKeysSettings
         let enterGuard: EnterGuardPage
         let addWidgets: @MainActor () -> Void
         let lyricsChanged: LyricsSettingsEditor.Change
@@ -117,7 +118,7 @@ struct SettingsPage {
             "Keyboard", "keyboard",
             module: module("keyboard", "Keyboard", enabled: true),
             tabs: [
-                Tab(title: "Modifier Keys", sections: nil),
+                Tab(title: "Modifier Keys") { $0.modifierKeys.sections },
                 Tab(title: "Input Sources") { $0.inputKeys.sections + [$0.inputDefaults.section] },
                 Tab(title: "Enter Guard") { $0.enterGuard.sections },
                 Tab(title: "Remaps") { $0.remaps.sections },

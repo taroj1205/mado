@@ -55,7 +55,7 @@ final class AppHotKeys: NSObject {
         super.init()
     }
 
-    private static func name(of app: URL) -> String {
+    static func name(of app: URL) -> String {
         FileManager.default.displayName(atPath: app.path).replacing(/\.app$/, with: "")
     }
 

@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 @MainActor
 enum AppPicker {
-    static func pick(from sender: NSButton, then add: @escaping (URL) -> Void) {
+    static func pick(from sender: NSView, then add: @escaping (URL) -> Void) {
         guard let window = unsafe sender.window else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.application]

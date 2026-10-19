@@ -19,7 +19,7 @@ extension ModuleDescriptor {
     func makeModule(
         in modules: ModuleManager, hotKeys: HotKeyRegistry?, notes: NotesModule.Screens,
         clipboard: ClipboardModule.Screens,
-        showLauncher: @escaping @MainActor (_ toggles: Bool) -> Void
+        launcher: KeyboardModule.Launcher
     ) -> any Module {
         switch id {
         case ClipboardModule.id:
@@ -34,9 +34,10 @@ extension ModuleDescriptor {
             KeyboardModule(
                 descriptor: self, hotKeys: hotKeys,
                 inputSourceSettings: { [weak modules] in .load(from: modules) },
+                modifierBindings: { [weak modules] in .load(from: modules) },
                 remapSettings: { [weak modules] in .load(from: modules) },
                 enterGuardSettings: { [weak modules] in .load(from: modules) },
-                showLauncher: showLauncher)
+                launcher: launcher)
 
         case WindowsModule.id:
             WindowsModule(

@@ -12,6 +12,7 @@ extension AppDelegate {
         let inputKeys = InputSourceKeys(modules: modules, recorder: recorder)
         let inputDefaults = AppInputDefaults(modules: modules)
         let remaps = RemapsSettings(modules: modules, recorder: recorder)
+        let modifierKeys = ModifierKeysSettings(modules: modules, remaps: remaps)
         let enterGuard = EnterGuardPage(modules: modules)
         let dictationLanguages = DictationLanguageSettings(modules: modules)
         let dictationWords = DictationWordsSettings(modules: modules)
@@ -22,7 +23,8 @@ extension AppDelegate {
             radial: RadialMenuSettings(modules: modules),
             clipboardHistory: ClipboardHistorySettings(modules: modules), ignoredApps: ignoredApps,
             withoutExpansion: withoutExpansion, fileFolders: fileFolders, inputKeys: inputKeys,
-            inputDefaults: inputDefaults, remaps: remaps, enterGuard: enterGuard,
+            inputDefaults: inputDefaults, remaps: remaps, modifierKeys: modifierKeys,
+            enterGuard: enterGuard,
             addWidgets: { [weak self] in self?.editWidgetsInLauncher() },
             lyricsChanged: { [weak self] in self?.applyLyricsSettings() },
             dictationLanguages: dictationLanguages, dictationWords: dictationWords,
