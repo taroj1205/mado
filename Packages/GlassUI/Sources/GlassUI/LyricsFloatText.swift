@@ -33,6 +33,7 @@ struct LyricsFloatText: Equatable {
 
     func lyric(of verse: WidgetGrid.Verse) -> WidgetGrid.Lyric {
         guard let line else { return WidgetGrid.Lyric(text: heading, progress: 0, remaining: nil) }
-        return WidgetGrid.Lyric(text: line, progress: verse.progress, remaining: verse.remaining)
+        return WidgetGrid.Lyric(
+            text: line, progress: verse.progress, remaining: verse.remaining, ahead: verse.ahead)
     }
 }

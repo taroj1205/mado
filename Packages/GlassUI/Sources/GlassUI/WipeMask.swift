@@ -1,3 +1,4 @@
+import AppCore
 import AppKit
 
 final class WipeMask: CALayer {
@@ -38,31 +39,54 @@ final class WipeMask: CALayer {
     }
 
     func run(from start: Double, remaining: Double?, playing: Bool, restart: Bool) {
-        run(from: start, remaining: remaining, delay: 0, playing: playing, restart: restart)
+        run(
+            WipeSweep(start: start, remaining: remaining, ahead: []), playing: playing,
+            restart: restart)
     }
 
-    func run(from start: Double, remaining: Double?, delay: Double, playing: Bool, restart: Bool) {
-        let from = max(start, Self.smallest)
-        let runs = playing && (remaining ?? 0) > 0
+    func run(_ sweep: WipeSweep, playing: Bool, restart: Bool) {
+        run(sweep, delay: 0, playing: playing, restart: restart)
+    }
+
+    func run(_ sweep: WipeSweep, delay: Double, playing: Bool, restart: Bool) {
+        let from = max(sweep.start, Self.smallest)
+        let runs = playing && (sweep.remaining ?? 0) > 0
         guard
             restart || state?.playing != playing || state?.runs != runs
-                || abs(progress - start) > Self.drift
+                || abs(progress - sweep.start) > Self.drift
         else { return }
         state = (playing, runs)
         CATransaction.quietly {
             removeAnimation(forKey: Self.key)
             transform = CATransform3DMakeScale(runs ? 1 : from, 1, 1)
         }
-        guard runs, let remaining else { return }
-        let sweep = CABasicAnimation(keyPath: Self.scale)
-        sweep.fromValue = from
-        sweep.toValue = 1
-        sweep.duration = remaining
-        sweep.timingFunction = CAMediaTimingFunction(name: .linear)
+        guard runs, let remaining = sweep.remaining else { return }
+        let animation = animation(from: from, over: remaining, through: sweep.ahead)
         if delay > 0 {
-            sweep.beginTime = convertTime(CACurrentMediaTime(), from: nil) + delay
-            sweep.fillMode = .backwards
+            animation.beginTime = convertTime(CACurrentMediaTime(), from: nil) + delay
+            animation.fillMode = .backwards
         }
-        add(sweep, forKey: Self.key)
+        add(animation, forKey: Self.key)
+    }
+
+    private func animation(
+        from start: Double, over remaining: Double, through ahead: [Lyrics.Step]
+    ) -> CAPropertyAnimation {
+        guard let last = ahead.last?.seconds, last > 0 else {
+            let sweep = CABasicAnimation(keyPath: Self.scale)
+            sweep.fromValue = start
+            sweep.toValue = 1
+            sweep.duration = remaining
+            sweep.timingFunction = CAMediaTimingFunction(name: .linear)
+            return sweep
+        }
+        let sweep = CAKeyframeAnimation(keyPath: Self.scale)
+        let reaches: [Double] = [start] + ahead.map { step in max(step.reach, start) }
+        let times: [Double] = [0] + ahead.map { step in min(step.seconds / last, 1) }
+        sweep.values = reaches
+        sweep.setValue(times, forKey: "keyTimes")
+        sweep.calculationMode = .linear
+        sweep.duration = remaining
+        return sweep
     }
 }

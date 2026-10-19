@@ -1,3 +1,4 @@
+public import AppCore
 public import Foundation
 
 extension WidgetGrid {
@@ -14,11 +15,15 @@ extension WidgetGrid {
         public let text: String
         public let progress: Double
         public let remaining: Double?
+        public let ahead: [Lyrics.Step]
 
-        public init(text: String, progress: Double, remaining: Double?) {
+        public init(
+            text: String, progress: Double, remaining: Double?, ahead: [Lyrics.Step] = []
+        ) {
             self.text = text
             self.progress = progress
             self.remaining = remaining
+            self.ahead = ahead
         }
     }
 
@@ -32,13 +37,14 @@ extension WidgetGrid {
         public let current: Int?
         public let progress: Double
         public let remaining: Double?
+        public let ahead: [Lyrics.Step]
         public let position: TimeInterval?
         public let duration: TimeInterval?
 
         public init(
             title: String, artist: String, artwork: Data?, isPlaying: Bool, status: LyricsStatus,
             lines: [String] = [], current: Int? = nil, progress: Double = 0,
-            remaining: Double? = nil, position: TimeInterval? = nil,
+            remaining: Double? = nil, ahead: [Lyrics.Step] = [], position: TimeInterval? = nil,
             duration: TimeInterval? = nil
         ) {
             self.title = title
@@ -50,6 +56,7 @@ extension WidgetGrid {
             self.current = current
             self.progress = progress
             self.remaining = remaining
+            self.ahead = ahead
             self.position = position
             self.duration = duration
         }

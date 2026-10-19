@@ -105,8 +105,7 @@ final class LyricLine: NSView {
             CATransaction.quietly { wipe.fit(wipeRects) }
             rise()
         }
-        wipe.run(
-            from: lyric.progress, remaining: lyric.remaining, playing: playing, restart: changed)
+        wipe.run(lyric.sweep, playing: playing, restart: changed)
     }
 
     private func set(_ text: String) {

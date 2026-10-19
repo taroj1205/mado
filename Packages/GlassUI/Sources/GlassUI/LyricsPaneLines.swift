@@ -250,9 +250,7 @@ final class LyricsPaneLines: NSView {
             }
         }
         guard let current, rows[current].text != nil else { return }
-        wipe.run(
-            from: still ? 1 : progress, remaining: still ? nil : remaining, playing: runs,
-            restart: restart)
+        wipe.run(still ? .still : verse.sweep, playing: runs, restart: restart)
     }
 
     private func paint() {

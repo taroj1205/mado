@@ -85,7 +85,9 @@ import Testing
         view.onSeek = { sought.append($0) }
         let column = LyricsColumn(look: .init(pitch: 30, size: 16, rest: 12.5))
         column.frame = NSRect(x: 0, y: 0, width: 300, height: 120)
-        column.show(lines, current: 2, progress: 0, remaining: nil, playing: false)
+        column.show(
+            lines, current: 2, sweep: WipeSweep(start: 0, remaining: nil, ahead: []), playing: false
+        )
         column.layoutSubtreeIfNeeded()
         let middle = column.bounds.midY
         #expect(column.line(at: NSPoint(x: 20, y: middle)) == 2)
@@ -124,7 +126,9 @@ import Testing
     @Test func plainLyricsHaveNoCurrentLineToSeekTo() {
         let column = LyricsColumn(look: .init(pitch: 30, size: 16, rest: 12.5))
         column.frame = NSRect(x: 0, y: 0, width: 300, height: 120)
-        column.show(lines, current: nil, progress: 0, remaining: nil, playing: false)
+        column.show(
+            lines, current: nil, sweep: WipeSweep(start: 0, remaining: nil, ahead: []),
+            playing: false)
         column.layoutSubtreeIfNeeded()
         #expect(column.line(at: NSPoint(x: 20, y: 60)) == nil)
     }
