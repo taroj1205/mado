@@ -91,7 +91,7 @@ final class InputSourceKeys: NSObject {
         return tile
     }
 
-    private static func label(of target: InputTarget) -> String {
+    static func label(of target: InputTarget) -> String {
         if case .source(let id) = target {
             return InputSource.named(id) ?? id
         }
@@ -197,6 +197,9 @@ final class InputSourceKeys: NSObject {
         if hotKey == .modifierTap(.rightControl), claimed {
             return "Caps Lock’s tap uses Right ⌃ while Caps Lock is Control. Try another key."
         }
+        if case .modifierTap(let key) = hotKey, hasBinding(for: key) {
+            return "Modifier Keys already gives this tap an action. Clear it there first."
+        }
         let keys = InputSourceSettings.load(from: modules).keys
         if let owner = keys.first(where: { $0.hotKey == hotKey && $0.target != target }) {
             return "\(Self.label(of: owner.target)) already uses this key. Clear it there first."
@@ -206,6 +209,10 @@ final class InputSourceKeys: NSObject {
             !recorder.accepts(shortcut)
         else { return nil }
         return "macOS wouldn’t register this hotkey. Try another."
+    }
+
+    private func hasBinding(for key: HotKey.ModifierKey) -> Bool {
+        ModifierBindings.load(from: modules).action(for: ModifierTap.Tap(key)) != nil
     }
 
     private func bind(_ hotKey: HotKey?, to target: InputTarget) {

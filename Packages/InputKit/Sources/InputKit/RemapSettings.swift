@@ -96,6 +96,10 @@ public struct RemapSettings: Codable, Equatable, Sendable {
             ?? excludedKeyboards
     }
 
+    public func claims(_ tap: ModifierTap.Tap) -> Bool {
+        claimsRightControlTap && tap.keys.contains(.rightControl)
+    }
+
     public func applies(to keyboard: Keyboard) -> Bool {
         !excludedKeyboards.contains(keyboard)
     }

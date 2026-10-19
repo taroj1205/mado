@@ -54,6 +54,20 @@ import Testing
         #expect((settings.tap == .capsLock) == [.control, .hyper].contains(capsLock))
     }
 
+    @Test func aCapsLockTapClaimsEveryRightControlGesture() {
+        var settings = RemapSettings()
+        let gestures = [
+            ModifierTap.Tap(.rightControl), ModifierTap.Tap(.rightControl, count: 2),
+            ModifierTap.Tap(.rightOption, .rightControl),
+        ]
+        #expect(gestures.allSatisfy { !settings.claims($0) })
+        settings.capsLock = .control
+        settings.tapAction = .capsLock
+        #expect(gestures.allSatisfy(settings.claims))
+        #expect(!settings.claims(ModifierTap.Tap(.leftControl)))
+        #expect(!settings.claims(ModifierTap.Tap(.rightOption, count: 2)))
+    }
+
     @Test func eachTapActionMapsToWhatATapDoes() {
         var settings = RemapSettings()
         settings.capsLock = .control

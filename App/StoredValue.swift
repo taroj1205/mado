@@ -75,6 +75,10 @@ extension InputSourceSettings: StoredValue {
     static let key = "input_sources"
 }
 
+extension ModifierBindings: StoredValue {
+    static let key = "modifier_taps"
+}
+
 extension GestureSettings: StoredValue {
     static let key = "gestures"
 }

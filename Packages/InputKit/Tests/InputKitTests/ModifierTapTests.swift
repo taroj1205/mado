@@ -79,6 +79,20 @@ import Testing
         #expect(recorder.taps.isEmpty)
     }
 
+    @Test func systemDefinedEventsAreObserved() {
+        #expect(ModifierTap.systemDefined != nil)
+    }
+
+    @Test(arguments: [CGEventType.scrollWheel, ModifierTap.systemDefined].compactMap(\.self))
+    func scrollAndMediaKeysWhileHeldAreNotATap(_ type: CGEventType) {
+        var recorder = Recorder()
+        recorder.down(.leftControl)
+        recorder.send(type)
+        recorder.up(.leftControl)
+        #expect(recorder.taps.isEmpty)
+        #expect(ModifierTap.types.contains(type))
+    }
+
     @Test func capsLockWhileHeldIsNotATap() {
         var recorder = Recorder()
         recorder.down(.leftShift)
@@ -133,7 +147,20 @@ import Testing
         #expect(recorder.taps.allSatisfy { $0.keys == [.rightCommand] })
     }
 
-    @Test func aSingleWaitsOnlyWhenItsDoubleIsAlsoBound() {
+    @Test func aSingleWaitsWhenOnlyATripleIsAlsoBound() {
+        let single = ModifierTap.Tap(.leftOption)
+        let triple = ModifierTap.Tap(.leftOption, count: 3)
+        var recorder = Self.recorder([single, triple])
+        recorder.tap(.leftOption)
+        #expect(recorder.taps.isEmpty)
+        #expect(recorder.tap.held == single)
+        recorder.tap(.leftOption)
+        recorder.tap(.leftOption)
+        #expect(recorder.taps.filter { [single, triple].contains($0) } == [triple])
+        #expect(recorder.tap.held == nil)
+    }
+
+    @Test func aSingleWaitsOnlyWhenALongerTapIsAlsoBound() {
         var recorder = Self.recorder(Self.shiftTaps.union([ModifierTap.Tap(.rightShift)]))
         recorder.tap(.rightShift)
         recorder.tap(.leftShift)

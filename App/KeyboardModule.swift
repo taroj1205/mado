@@ -5,24 +5,33 @@ import InputKit
 import os
 
 struct KeyboardModule: Module {
+    struct Launcher {
+        let show: @MainActor (_ toggles: Bool) -> Void
+        let run: @MainActor (_ id: String) -> Void
+    }
+
     static let id = "keyboard"
     private static let inputTapMilliseconds = 500
 
     let descriptor: ModuleDescriptor
     let hotKeys: HotKeyRegistry?
     let inputSourceSettings: @MainActor () -> InputSourceSettings
+    let modifierBindings: @MainActor () -> ModifierBindings
     let remapSettings: @MainActor () -> RemapSettings
     let enterGuardSettings: @MainActor () -> EnterGuardSettings
-    let showLauncher: @MainActor (_ toggles: Bool) -> Void
+    let launcher: Launcher
     let inputMemory = AppInputSwitch.Memory()
 
     func start(context: ModuleContext) {
         AppInputSwitch.trackActivationsWhileStopped(context: context, memory: inputMemory)
         context.startKeyFeatures {
             let remaps = remapSettings()
-            let claimed = remaps.claimsRightControlTap ? HotKey.modifierTap(.rightControl) : nil
-            installInputKeys(
-                inputSourceSettings().keys.filter { $0.hotKey != claimed }, context: context)
+            let inputSources = inputSourceSettings()
+            installInputShortcuts(inputSources.keys, context: context)
+            let assignments = TapAssignments(
+                inputSources: inputSources, bindings: modifierBindings())
+            installModifierTaps(
+                assignments.entries.filter { !remaps.claims($0.tap) }, context: context)
             AppInputSwitch.install(
                 context: context, settings: inputSourceSettings, memory: inputMemory)
             startRemaps(remaps, context: context)
@@ -34,37 +43,41 @@ struct KeyboardModule: Module {
         Log.logger(descriptor.id).debug("Stopped")
     }
 
-    private func installInputKeys(_ keys: [InputKey], context: ModuleContext) {
-        var taps: [ModifierTap.Tap: @MainActor () -> Void] = [:]
+    private func installInputShortcuts(_ keys: [InputKey], context: ModuleContext) {
         for key in keys {
-            let select = { @MainActor in
-                guard !(NSApp.keyWindow?.firstResponder is HotKeyRecorder) else { return }
-                key.target.select()
-            }
-            switch key.hotKey {
-            case .modifierTap(let modifier):
-                taps[ModifierTap.Tap(modifier)] = select
-
-            case .shortcut(let shortcut):
-                do {
-                    try hotKeys?.register(
-                        shortcut, name: "input source hotkey", context: context, handler: select)
-                } catch {
-                    context.logger.error(
-                        "Input source hotkey failed: \(String(describing: error), privacy: .public)"
-                    )
-                }
+            guard case .shortcut(let shortcut) = key.hotKey else { continue }
+            do {
+                try hotKeys?.register(
+                    shortcut, name: "input source hotkey", context: context,
+                    handler: perform(.inputSource(target: key.target)))
+            } catch {
+                context.logger.error(
+                    "Input source hotkey failed: \(String(describing: error), privacy: .public)")
             }
         }
+    }
+
+    private func installModifierTaps(_ entries: [ModifierBindings.Entry], context: ModuleContext) {
+        let taps = Dictionary(entries.map { ($0.tap, perform($0.action)) }) { first, _ in first }
         guard !taps.isEmpty else { return }
-        context.installWhenTrusted("input mode taps") {
+        context.installWhenTrusted("modifier taps") {
             do {
                 try ModifierTap.install(
-                    name: "input mode taps", context: context, bindings: taps,
+                    name: "modifier taps", context: context, bindings: taps,
                     window: .milliseconds(Self.inputTapMilliseconds))
                 return true
             } catch {
                 return false
+            }
+        }
+    }
+
+    private func perform(_ action: ModifierAction) -> @MainActor () -> Void {
+        { [launcher] in
+            guard !(NSApp.keyWindow?.firstResponder is HotKeyRecorder) else { return }
+            switch action {
+            case .inputSource(let target): target.select()
+            case .item(let id): launcher.run(id)
             }
         }
     }
@@ -89,7 +102,7 @@ struct KeyboardModule: Module {
         ) { _ in remapper.stop() }
         let onTap = settings.tap.map { tap in
             { @MainActor (flags: CGEventFlags) in
-                tap.perform(holding: flags, showMado: showLauncher)
+                tap.perform(holding: flags, showMado: launcher.show)
             }
         }
         guard settings.capsLock == .hyper else {

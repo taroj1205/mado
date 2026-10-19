@@ -51,6 +51,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         context.inputKeys.onChange = { [weak self] in self?.reload() }
         context.inputDefaults.onChange = { [weak self] in self?.reload() }
         context.remaps.onChange = { [weak self] in self?.reload() }
+        context.modifierKeys.onChange = { [weak self] in self?.reload() }
         context.enterGuard.onChange = { [weak self] in self?.reload() }
     }
 

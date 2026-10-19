@@ -14,13 +14,19 @@ import Testing
         func recognizer(
             window: Duration, bound: Set<ModifierTap.Tap>
         ) -> ModifierTap.Recognizer {
+            recognizer(window: window, bound: bound, anotherInputHeld: false)
+        }
+
+        func recognizer(
+            window: Duration, bound: Set<ModifierTap.Tap>, anotherInputHeld: Bool
+        ) -> ModifierTap.Recognizer {
             let bindings = Dictionary(
                 uniqueKeysWithValues: bound.map { tap -> (ModifierTap.Tap, @MainActor () -> Void) in
                     (tap, { [weak self] in self?.taps.append(tap) })
                 })
-            return ModifierTap.Recognizer(window: window, bindings: bindings) { [weak self] wait in
-                self?.waits.append(Task { await wait() })
-            }
+            return ModifierTap.Recognizer(
+                window: window, bindings: bindings, anotherInputHeld: { anotherInputHeld },
+                run: { [weak self] wait in self?.waits.append(Task { await wait() }) })
         }
 
         func settle() async {
@@ -55,6 +61,15 @@ import Testing
         let settling = await ContinuousClock().measure { await inbox.settle() }
         #expect(settling < .seconds(1))
         #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
+    }
+
+    @Test func aTapWhileAnotherInputIsHeldIsNeverDelivered() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)], anotherInputHeld: true)
+        try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
+        await inbox.settle()
+        #expect(inbox.taps.isEmpty)
     }
 
     @Test func aTapIsDroppedWhenAPauseCancelsItsDelivery() async throws {

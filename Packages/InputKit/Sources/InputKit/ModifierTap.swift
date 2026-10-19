@@ -4,16 +4,30 @@ import CoreGraphics
 import IOKit.hidsystem
 
 public struct ModifierTap {
-    public enum Key: CaseIterable, Sendable {
-        case leftCommand
-        case rightCommand
-        case leftShift
-        case rightShift
-        case leftOption
-        case rightOption
-        case leftControl
-        case rightControl
-        case function
+    public enum Key: String, Codable, CaseIterable, Sendable {
+        case leftCommand = "left_command"
+        case rightCommand = "right_command"
+        case leftShift = "left_shift"
+        case rightShift = "right_shift"
+        case leftOption = "left_option"
+        case rightOption = "right_option"
+        case leftControl = "left_control"
+        case rightControl = "right_control"
+        case function = "function"
+
+        public var modifierKey: HotKey.ModifierKey? {
+            switch self {
+            case .leftCommand: .leftCommand
+            case .rightCommand: .rightCommand
+            case .leftShift: .leftShift
+            case .rightShift: .rightShift
+            case .leftOption: .leftOption
+            case .rightOption: .rightOption
+            case .leftControl: .leftControl
+            case .rightControl: .rightControl
+            case .function: nil
+            }
+        }
 
         var keyCode: Int64 {
             switch self {
@@ -81,24 +95,28 @@ public struct ModifierTap {
     final class Recognizer {
         private let window: Duration
         private let bindings: [Tap: @MainActor () -> Void]
+        private let anotherInputHeld: () -> Bool
         private let run: @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         private var tap: ModifierTap
         private var waits = 0
 
         init(
             window: Duration, bindings: [Tap: @MainActor () -> Void],
+            anotherInputHeld: @escaping () -> Bool,
             run: @escaping @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         ) {
             self.window = window
             self.bindings = bindings
+            self.anotherInputHeld = anotherInputHeld
             self.run = run
             tap = ModifierTap(window: window, bound: Set(bindings.keys))
         }
 
         func handle(_ type: CGEventType, _ event: CGEvent) {
             let previous = tap.held
+            let interrupted = type == .flagsChanged && anotherInputHeld()
             let fired = tap.handle(
-                type, flags: event.flags,
+                interrupted ? .keyDown : type, flags: event.flags,
                 keyCode: event.getIntegerValueField(.keyboardEventKeycode),
                 timestamp: event.timestamp)
             if let fired, bindings[fired] != nil {
@@ -122,12 +140,16 @@ public struct ModifierTap {
     }
 
     private static let defaultWindowMilliseconds = 300
+    private static let keyCodeCount = 128
+    private static let mouseButtonCount: UInt32 = 32
 
     public static let defaultWindow: Duration = .milliseconds(defaultWindowMilliseconds)
 
-    static let types: [CGEventType] = [
-        .flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown,
-    ]
+    static let systemDefined = CGEventType(rawValue: UInt32(NX_SYSDEFINED))
+
+    static let types: [CGEventType] =
+        [.flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]
+        + [systemDefined].compactMap(\.self)
 
     private let window: Duration
     private let bound: Set<Tap>
@@ -140,12 +162,33 @@ public struct ModifierTap {
         self.bound = bound
     }
 
+    static func anotherInputIsDown() -> Bool {
+        keyIsDown() || mouseButtonIsDown()
+    }
+
+    private static func keyIsDown() -> Bool {
+        let modifiers = Set(Key.allCases.map(\.keyCode) + [Int64(kVK_CapsLock)])
+        return (0..<keyCodeCount).contains { code in
+            !modifiers.contains(Int64(code))
+                && CGEventSource.keyState(.combinedSessionState, key: CGKeyCode(code))
+        }
+    }
+
+    private static func mouseButtonIsDown() -> Bool {
+        (0..<mouseButtonCount).contains { number in
+            guard let button = CGMouseButton(rawValue: number) else { return false }
+            return CGEventSource.buttonState(.combinedSessionState, button: button)
+        }
+    }
+
     @MainActor
     public static func install(
         name: String, context: ModuleContext, bindings: [Tap: @MainActor () -> Void],
         window: Duration = defaultWindow
     ) throws(ModuleError) {
-        let recognizer = Recognizer(window: window, bindings: bindings) { [weak context] wait in
+        let recognizer = Recognizer(
+            window: window, bindings: bindings, anotherInputHeld: anotherInputIsDown
+        ) { [weak context] wait in
             context?.run("\(name) window", operation: wait)
         }
         try context.observeEvents(name, matching: types, observe: recognizer.handle)
@@ -182,9 +225,9 @@ public struct ModifierTap {
         }
         let tap = Tap(keys: press.keys, count: (streak?.last.count ?? 0) + 1)
         held = nil
-        streak =
-            bound.contains { $0.keys == tap.keys && $0.count > tap.count } ? (tap, timestamp) : nil
-        guard bound.contains(tap), bound.contains(Tap(keys: tap.keys, count: tap.count + 1)) else {
+        let repeats = bound.contains { $0.keys == tap.keys && $0.count > tap.count }
+        streak = repeats ? (tap, timestamp) : nil
+        guard bound.contains(tap), repeats else {
             return tap
         }
         held = tap

@@ -63,6 +63,13 @@ final class RemapsSettings: NSObject {
         ]
     }
 
+    var capsLockTapRow: SettingsSection.Row {
+        let settings = RemapSettings.load(from: modules)
+        return .init("Caps Lock", tapControls(settings), example: nil) { [modules] in
+            Self.tapDetail(RemapSettings.load(from: modules).capsLock)
+        }
+    }
+
     init(modules: ModuleManager?, recorder: HotKeyPopover) {
         self.modules = modules
         self.recorder = recorder
