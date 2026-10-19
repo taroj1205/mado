@@ -9,8 +9,7 @@ final class TapChip: NSView {
     }
 
     private static let height: CGFloat = 34
-    private static let minimumWidth: CGFloat = 76
-    private static let maximumWidth: CGFloat = 148
+    private static let width: CGFloat = 148
     private static let radius: CGFloat = 8
     private static let inset: CGFloat = 10
     private static let titleSize: CGFloat = 12.5
@@ -51,8 +50,7 @@ final class TapChip: NSView {
         addSubview(text)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: Self.height),
-            widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumWidth),
-            widthAnchor.constraint(lessThanOrEqualToConstant: Self.maximumWidth),
+            widthAnchor.constraint(equalToConstant: Self.width),
             text.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
             text.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.inset),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),

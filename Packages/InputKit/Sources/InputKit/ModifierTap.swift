@@ -140,7 +140,7 @@ public struct ModifierTap {
     public static let defaultWindow: Duration = .milliseconds(defaultWindowMilliseconds)
 
     static let types: [CGEventType] = [
-        .flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown,
+        .flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
     ]
 
     private let window: Duration

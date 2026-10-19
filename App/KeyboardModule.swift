@@ -26,12 +26,12 @@ struct KeyboardModule: Module {
         AppInputSwitch.trackActivationsWhileStopped(context: context, memory: inputMemory)
         context.startKeyFeatures {
             let remaps = remapSettings()
-            let claimed = remaps.claimsRightControlTap ? ModifierTap.Tap(.rightControl) : nil
             let inputSources = inputSourceSettings()
             installInputShortcuts(inputSources.keys, context: context)
             let assignments = TapAssignments(
                 inputSources: inputSources, bindings: modifierBindings())
-            installModifierTaps(assignments.entries.filter { $0.tap != claimed }, context: context)
+            installModifierTaps(
+                assignments.entries.filter { !remaps.claims($0.tap) }, context: context)
             AppInputSwitch.install(
                 context: context, settings: inputSourceSettings, memory: inputMemory)
             startRemaps(remaps, context: context)

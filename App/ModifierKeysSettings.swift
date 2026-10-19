@@ -31,6 +31,8 @@ final class ModifierKeysSettings: NSObject {
         "A tap fires only when the key is pressed and released alone, so normal shortcuts like "
         + "⌘C keep working. Left and right keys are separate."
     private static let chipGap: CGFloat = 8
+    private static let chipsPerLine = 2
+    private static let cellInset: CGFloat = 3
     private static let warningMark = "⚠︎ "
 
     let modules: ModuleManager?
@@ -45,12 +47,19 @@ final class ModifierKeysSettings: NSObject {
 
     var sections: [SettingsSection] {
         let current = assignments
-        let claimed = Self.claimed(in: modules)
-        let rows = Self.keys.map { row($0, current, claimed: claimed) } + [remaps.capsLockTapRow]
+        let capsLock = RemapSettings.load(from: modules)
+        let rows = Self.keys.map { row($0, current, capsLock: capsLock) } + [remaps.capsLockTapRow]
+        var tapAlone = SettingsSection(
+            "Tap alone", rows, footer: footer(for: current), accessory: nil)
+        let shownClaims = Self.systemClaims(of: current)
+        tapAlone.refresh = { [weak self] in
+            guard let self, Self.systemClaims(of: assignments) != shownClaims else { return }
+            onChange?()
+        }
         return [
             SettingsSection(
                 content: SettingsPageController.footer(SettingsSection.footnote(Self.note))),
-            SettingsSection("Tap alone", rows, footer: footer(for: current), accessory: nil),
+            tapAlone,
         ]
     }
 
@@ -70,9 +79,8 @@ final class ModifierKeysSettings: NSObject {
         return repeats.first { $0.count == tap.count }?.title ?? "Tap"
     }
 
-    static func claimed(in modules: ModuleManager?) -> ModifierTap.Tap? {
-        RemapSettings.load(from: modules).claimsRightControlTap
-            ? ModifierTap.Tap(.rightControl) : nil
+    private static func systemClaims(of assignments: TapAssignments) -> [String?] {
+        assignments.entries.map { SystemTapClaims.use(of: $0.tap) }
     }
 
     static func taps(of key: ModifierTap.Key) -> [ModifierTap.Tap] {
@@ -117,28 +125,39 @@ final class ModifierKeysSettings: NSObject {
     }
 
     private func row(
-        _ entry: KeyRow, _ current: TapAssignments, claimed: ModifierTap.Tap?
+        _ entry: KeyRow, _ current: TapAssignments, capsLock: RemapSettings
     ) -> SettingsSection.Row {
         let taps = Self.taps(of: entry.key)
         var chips = taps.compactMap { tap in
-            current.action(for: tap).map { chip(for: tap, $0, on: entry, claimed: claimed) }
+            current.action(for: tap).map { chip(for: tap, $0, on: entry, capsLock: capsLock) }
         }
-        let free = taps.filter { $0 != claimed && current.action(for: $0) == nil }
+        let free = taps.filter { !capsLock.claims($0) && current.action(for: $0) == nil }
         if !free.isEmpty {
             chips.append(addChip(for: entry, free: free))
         }
-        let cell = NSStackView(views: chips)
+        let lines = stride(from: 0, to: chips.count, by: Self.chipsPerLine).map { start in
+            let line = NSStackView(
+                views: Array(chips[start..<min(start + Self.chipsPerLine, chips.count)]))
+            line.spacing = Self.chipGap
+            line.setHuggingPriority(.required, for: .horizontal)
+            return line
+        }
+        let cell = NSStackView(views: lines)
+        cell.orientation = .vertical
+        cell.alignment = .leading
         cell.spacing = Self.chipGap
+        cell.edgeInsets = NSEdgeInsets(
+            top: Self.cellInset, left: 0, bottom: Self.cellInset, right: 0)
         cell.setHuggingPriority(.defaultHigh, for: .horizontal)
         return .init(entry.name, cell, example: nil) { entry.kind }
     }
 
     private func chip(
         for tap: ModifierTap.Tap, _ action: ModifierAction, on entry: KeyRow,
-        claimed: ModifierTap.Tap?
+        capsLock: RemapSettings
     ) -> TapChip {
         let warning =
-            tap == claimed
+            capsLock.claims(tap)
             ? "Caps Lock’s tap uses this key"
             : SystemTapClaims.use(of: tap).map { _ in "macOS also uses \(entry.name)" }
         let gesture =

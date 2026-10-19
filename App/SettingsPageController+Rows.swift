@@ -82,7 +82,7 @@ extension SettingsPageController {
             view.setCustomSpacing(Self.iconGap, after: icon)
         }
         let height = max(Self.rowHeight, (row.icon?.fittingSize.height ?? 0) + Self.iconMargin)
-        view.heightAnchor.constraint(equalToConstant: height).isActive = true
+        view.heightAnchor.constraint(greaterThanOrEqualToConstant: height).isActive = true
         return (view, label)
     }
 }

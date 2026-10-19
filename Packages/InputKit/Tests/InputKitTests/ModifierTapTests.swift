@@ -79,6 +79,15 @@ import Testing
         #expect(recorder.taps.isEmpty)
     }
 
+    @Test func aScrollWhileHeldIsNotATap() {
+        var recorder = Recorder()
+        recorder.down(.leftControl)
+        recorder.send(.scrollWheel)
+        recorder.up(.leftControl)
+        #expect(recorder.taps.isEmpty)
+        #expect(ModifierTap.types.contains(.scrollWheel))
+    }
+
     @Test func capsLockWhileHeldIsNotATap() {
         var recorder = Recorder()
         recorder.down(.leftShift)
