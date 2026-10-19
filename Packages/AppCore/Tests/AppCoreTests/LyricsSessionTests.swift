@@ -9,13 +9,14 @@ import Testing
         var status = 200
         var asked = 0
 
-        func answer(_ url: URL) -> (data: Data, status: Int) {
+        func answer(_ url: URL) -> LyricsLookup.Reply {
             asked += 1
             let body = """
                 {"duration":200,"instrumental":false,"plainLyrics":"A\\nB",
                 "syncedLyrics":"[00:10.00] A\\n[00:20.00] B"}
                 """
-            return (Data((url.path == "/api/search" ? "[\(body)]" : body).utf8), status)
+            return .init(
+                data: Data((url.path == "/api/search" ? "[\(body)]" : body).utf8), status: status)
         }
     }
 

@@ -1,7 +1,13 @@
 import Foundation
 
 public actor LyricsLookup {
-    typealias Load = @Sendable (URL) async throws -> (data: Data, status: Int)
+    typealias Load = @Sendable (URL) async throws -> Reply
+
+    struct Reply: Sendable {
+        let data: Data
+        let status: Int
+        var retryAfter: TimeInterval?
+    }
 
     public enum Outcome: Equatable, Sendable {
         case found(Lyrics)
@@ -14,6 +20,7 @@ public actor LyricsLookup {
     }
 
     private struct LyricsEntry: Decodable {
+        let trackName: String?
         let duration: Double?
         let instrumental: Bool
         let plainLyrics: String?
@@ -27,6 +34,13 @@ public actor LyricsLookup {
             if instrumental { return .instrumental }
             return lyrics.map(Outcome.found) ?? .missing
         }
+
+        func isTitled(_ title: String) -> Bool {
+            let same: String.CompareOptions = [
+                .caseInsensitive, .diacriticInsensitive, .widthInsensitive,
+            ]
+            return trackName?.compare(title, options: same) == .orderedSame
+        }
     }
 
     private static let host = "lrclib.net"
@@ -36,6 +50,7 @@ public actor LyricsLookup {
     private static let httpTooManyRequests = 429
     private static let httpServerError = 500
     private static let retries = 2
+    private static let longestWait: TimeInterval = 10
     private static let remembered = 24
     private static let durationSlack = 3.0
     private static let titleOnlySlack = 1.0
@@ -45,22 +60,26 @@ public actor LyricsLookup {
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue(agent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
-        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
+        let http = response as? HTTPURLResponse
+        let header = http?.value(forHTTPHeaderField: "Retry-After")
+        return Reply(
+            data: data, status: http?.statusCode ?? 0,
+            retryAfter: header.map { Double($0) ?? .infinity })
     }
 
     private let load: Load
-    private let pause: Duration
+    private let pause: TimeInterval
     private var cache: [String: Outcome] = [:]
     private var order: [String] = []
 
     public init() {
         load = Self.fromWeb
-        pause = .seconds(1)
+        pause = 1
     }
 
     init(load: @escaping Load) {
         self.load = load
-        pause = .zero
+        pause = 0
     }
 
     private static func match(
@@ -102,14 +121,20 @@ public actor LyricsLookup {
     private func search(_ track: MusicPlayer.Track) async throws -> Outcome? {
         let named = try await hits(track, artist: track.artist)
         if let match = Self.match(named, for: track, within: Self.durationSlack) { return match }
+        let plain = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }.first
+            .map(Outcome.found)
         if track.duration != nil {
-            let titled = try await hits(track, artist: nil).filter { !$0.instrumental }
-            if let match = Self.match(titled, for: track, within: Self.titleOnlySlack) {
-                return match
+            do {
+                let titled = try await hits(track, artist: nil)
+                    .filter { !$0.instrumental && $0.isTitled(track.title) }
+                if let match = Self.match(titled, for: track, within: Self.titleOnlySlack) {
+                    return match
+                }
+            } catch _ where plain != nil {
+                return plain
             }
         }
-        return named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }.first
-            .map(Outcome.found)
+        return plain
     }
 
     private func hits(_ track: MusicPlayer.Track, artist: String?) async throws -> [LyricsEntry] {
@@ -127,12 +152,14 @@ public actor LyricsLookup {
         parts.queryItems = query
         guard let url = parts.url else { throw Failure.badResponse }
         for attempt in 0...Self.retries {
-            let (data, status) = try await load(url)
-            if status == Self.httpOK { return data }
-            if status == Self.httpNotFound { return nil }
-            let busy = status == Self.httpTooManyRequests || status >= Self.httpServerError
-            guard busy, attempt < Self.retries else { break }
-            try await Task.sleep(for: pause * (attempt + 1))
+            let reply = try await load(url)
+            if reply.status == Self.httpOK { return reply.data }
+            if reply.status == Self.httpNotFound { return nil }
+            let busy =
+                reply.status == Self.httpTooManyRequests || reply.status >= Self.httpServerError
+            let wait = reply.retryAfter ?? pause * Double(attempt + 1)
+            guard busy, attempt < Self.retries, wait <= Self.longestWait else { break }
+            try await Task.sleep(for: .seconds(wait))
         }
         throw Failure.badResponse
     }

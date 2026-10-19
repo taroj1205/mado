@@ -8,18 +8,19 @@ import Testing
         var replies: [String: (Int, String)] = [:]
         var titleOnly: (Int, String)?
         var busy: [String: Int] = [:]
+        var retryAfter: TimeInterval?
         var asked: [URL] = []
 
-        func answer(_ url: URL) -> (data: Data, status: Int) {
+        func answer(_ url: URL) -> LyricsLookup.Reply {
             asked.append(url)
             if let left = busy[url.path], left > 0 {
                 busy[url.path] = left - 1
-                return (Data(), 503)
+                return .init(data: Data(), status: 503, retryAfter: retryAfter)
             }
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
             let named = items?.contains { $0.name == "artist_name" } ?? false
             let reply = (named ? nil : titleOnly) ?? replies[url.path] ?? (404, "{}")
-            return (Data(reply.1.utf8), reply.0)
+            return .init(data: Data(reply.1.utf8), status: reply.0, retryAfter: retryAfter)
         }
     }
 
@@ -36,13 +37,14 @@ import Testing
     }
 
     private func entry(
-        duration: Double = 201, synced: String? = "[00:01.00] Hi", plain: String? = "Hi",
-        instrumental: Bool = false
+        title: String? = nil, duration: Double = 201, synced: String? = "[00:01.00] Hi",
+        plain: String? = "Hi", instrumental: Bool = false
     ) -> String {
+        let name = title.map { "\"trackName\":\"\($0)\"," } ?? ""
         let sync = synced.map { "\"\($0)\"" } ?? "null"
         let rows = plain.map { "\"\($0)\"" } ?? "null"
         return """
-            {"duration":\(duration),"instrumental":\(instrumental),
+            {\(name)"duration":\(duration),"instrumental":\(instrumental),
             "plainLyrics":\(rows),"syncedLyrics":\(sync)}
             """
     }
@@ -110,20 +112,40 @@ import Testing
 
     @Test func aDifferentlySpeltArtistIsFoundByTitleAndLength() async throws {
         server.replies["/api/search"] = (200, "[\(entry(duration: 260))]")
-        server.titleOnly = (200, "[\(entry(duration: 202))]")
+        server.titleOnly = (200, "[\(entry(title: "LOW TIDE", duration: 202))]")
         #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
     }
 
     @Test func aTitleAloneNeedsAnAlmostIdenticalLength() async throws {
-        server.titleOnly = (200, "[\(entry(duration: 203))]")
+        server.titleOnly = (200, "[\(entry(title: "Low Tide", duration: 203))]")
+        #expect(try await lookup.lyrics(for: track) == .missing)
+    }
+
+    @Test func aTitleAloneNeedsTheSameTitle() async throws {
+        let live = entry(title: "Low Tide (Live)", duration: 202)
+        server.titleOnly = (200, "[\(live),\(entry(duration: 202))]")
         #expect(try await lookup.lyrics(for: track) == .missing)
     }
 
     @Test func aTitleAloneNeverMakesATrackInstrumental() async throws {
         server.titleOnly = (
-            200, "[\(entry(synced: nil, plain: nil, instrumental: true))]"
+            200, "[\(entry(title: "Low Tide", synced: nil, plain: nil, instrumental: true))]"
         )
         #expect(try await lookup.lyrics(for: track) == .missing)
+    }
+
+    @Test func aFailedTitleSearchKeepsTheWordsFromTheArtistSearch() async throws {
+        server.replies["/api/search"] = (200, "[\(entry(duration: 260, synced: nil))]")
+        server.titleOnly = (503, "")
+        let words = Lyrics(lines: [.init(time: nil, text: "Hi")], isSynced: false)
+        #expect(try await lookup.lyrics(for: track) == .found(words))
+    }
+
+    @Test func aFailedTitleSearchWithNothingElseIsAFailureNotAMiss() async throws {
+        server.titleOnly = (503, "")
+        await #expect(throws: LyricsLookup.Failure.badResponse) {
+            _ = try await lookup.lyrics(for: track)
+        }
     }
 
     @Test func aBusyServerIsAskedAgain() async throws {
@@ -131,6 +153,24 @@ import Testing
         server.replies["/api/get"] = (200, entry())
         #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
         #expect(server.asked.count == 3)
+    }
+
+    @Test func aRetryAfterIsWaitedOutBeforeAskingAgain() async throws {
+        server.busy["/api/get"] = 1
+        server.retryAfter = 0.2
+        server.replies["/api/get"] = (200, entry())
+        let start = ContinuousClock.now
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+        #expect(ContinuousClock.now - start >= .milliseconds(200))
+    }
+
+    @Test func aRetryAfterThatIsTooLongIsNotWaitedFor() async throws {
+        server.busy["/api/get"] = 10
+        server.retryAfter = 3_600
+        await #expect(throws: LyricsLookup.Failure.badResponse) {
+            _ = try await lookup.lyrics(for: track)
+        }
+        #expect(server.asked.count == 1)
     }
 
     @Test func aServerThatStaysBusyEndsInAFailure() async throws {

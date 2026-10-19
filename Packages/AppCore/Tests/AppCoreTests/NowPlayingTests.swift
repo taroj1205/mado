@@ -44,13 +44,13 @@ import Testing
     private final class Server: @unchecked Sendable {
         var asked = 0
 
-        func answer(_: URL) -> (data: Data, status: Int) {
+        func answer(_: URL) -> LyricsLookup.Reply {
             asked += 1
             let body = """
                 {"duration":200,"instrumental":false,"plainLyrics":"A\\nB",
                 "syncedLyrics":"[00:10.00] A\\n[00:20.00] B"}
                 """
-            return (Data(body.utf8), 200)
+            return .init(data: Data(body.utf8), status: 200)
         }
     }
 
