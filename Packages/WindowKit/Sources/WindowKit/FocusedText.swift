@@ -2,8 +2,8 @@ public import ApplicationServices
 
 public struct FocusedText: Sendable {
     private static let manualAccessibility = "AXManualAccessibility"
-    private static let treeAttempts = 8
-    private static let treePollMilliseconds = 300
+    private static let treeAttempts = 48
+    private static let treePollMilliseconds = 50
 
     public let isSecure: Bool
     public let caret: CGRect?
