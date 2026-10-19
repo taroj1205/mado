@@ -46,7 +46,7 @@ struct LyricsFeed {
         let text = lyrics.lines[moment.index].text
         return .init(
             text: text.isEmpty ? Self.breakText : text, progress: moment.progress,
-            remaining: moment.remaining)
+            remaining: moment.remaining, ahead: moment.ahead)
     }
 
     func verse(of track: MusicPlayer.Track) -> WidgetGrid.Verse {
@@ -63,6 +63,7 @@ struct LyricsFeed {
             isPlaying: track.isPlaying, status: status,
             lines: session.lyrics?.lines.map(\.text) ?? [], current: moment?.index,
             progress: moment?.progress ?? 0, remaining: moment?.remaining,
+            ahead: moment?.ahead ?? [],
             position: status == .off ? nil : session.position(at: Self.now),
             duration: track.duration ?? (status == .off ? nil : session.length))
     }

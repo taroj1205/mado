@@ -95,7 +95,7 @@ final class LyricsColumn: NSView {
     }
 
     func show(
-        _ next: [String], current: Int?, progress: Double, remaining: Double?, playing: Bool
+        _ next: [String], current: Int?, sweep: WipeSweep, playing: Bool
     ) {
         let changed = next != lines
         let moved = changed || current != self.current
@@ -111,7 +111,7 @@ final class LyricsColumn: NSView {
         place(animated: moved && settled && !changed && !reducesMotion)
         settled = true
         fill.isHidden = !(current.map(hasText) ?? false)
-        wipe.run(from: progress, remaining: remaining, playing: playing, restart: moved)
+        wipe.run(sweep, playing: playing, restart: moved)
     }
 
     private func hasText(_ index: Int) -> Bool {

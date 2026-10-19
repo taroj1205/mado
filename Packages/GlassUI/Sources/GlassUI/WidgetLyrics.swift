@@ -143,8 +143,9 @@ final class WidgetLyrics: NSView {
             originals = compact.kept
             column.show(
                 compact.kept.map { verse.lines[$0] }, current: compact.current,
-                progress: compact.gap ?? verse.progress,
-                remaining: compact.gap == nil ? verse.remaining : nil, playing: verse.isPlaying)
+                sweep: compact.gap.map { WipeSweep(start: $0, remaining: nil, ahead: []) }
+                    ?? verse.sweep,
+                playing: verse.isPlaying)
         }
         shown = verse
     }

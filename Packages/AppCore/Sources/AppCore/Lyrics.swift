@@ -11,22 +11,41 @@ public struct Lyrics: Equatable, Sendable {
         }
     }
 
+    public struct Step: Equatable, Sendable {
+        public let seconds: Double
+        public let reach: Double
+
+        public init(seconds: Double, reach: Double) {
+            self.seconds = seconds
+            self.reach = reach
+        }
+    }
+
     public struct Moment: Equatable, Sendable {
         public let index: Int
         public let progress: Double
         public let remaining: Double?
+        public let ahead: [Step]
     }
 
     private static let secondsPerMinute = 60.0
     private static let lastLineSeconds = 5.0
     private static let timestampParts = 2
+    private static let measuredLines = 8
+    private static let shortestLine = 1.0
+    private static let paceSlack = 2.0
+    private static let medianDivisor = 2
 
     public let lines: [Line]
     public let isSynced: Bool
+    private let paces: [LyricsPaceCurve]
+    private let sungLimits: [TimeInterval]
 
     public init(lines: [Line], isSynced: Bool) {
         self.lines = lines
         self.isSynced = isSynced
+        paces = isSynced ? lines.map { LyricsPaceCurve($0.text) } : []
+        sungLimits = isSynced ? Self.sungLimits(for: lines, curves: paces) : []
     }
 
     public init?(synced: String?, plain: String?) {
@@ -66,6 +85,24 @@ public struct Lyrics: Equatable, Sendable {
             .map(\.element)
     }
 
+    private static func sungLimits(
+        for lines: [Line], curves: [LyricsPaceCurve]
+    ) -> [TimeInterval] {
+        let morae = curves.map(\.morae)
+        let rates = zip(lines.indices, lines.dropFirst()).compactMap { index, next -> Double? in
+            guard morae[index] > 0, let start = lines[index].time, let end = next.time, end > start
+            else { return nil }
+            return (end - start) / Double(morae[index])
+        }
+        guard rates.count >= measuredLines else {
+            return Array(repeating: .infinity, count: lines.count)
+        }
+        let typical = rates.sorted()[rates.count / medianDivisor]
+        return morae.map { count in
+            count > 0 ? max(Double(count) * typical * paceSlack, shortestLine) : .infinity
+        }
+    }
+
     private static func timestamp(_ tag: Substring) -> TimeInterval? {
         let parts = tag.split(separator: ":", omittingEmptySubsequences: false)
         guard parts.count == timestampParts, let minutes = Int(parts[0]), minutes >= 0,
@@ -84,8 +121,11 @@ public struct Lyrics: Equatable, Sendable {
         guard let index = index(at: time), let start = lines[index].time else { return nil }
         let following = lines.dropFirst(index + 1).first { ($0.time ?? start) > start }?.time
         let end = following ?? max(duration ?? 0, start + Self.lastLineSeconds)
-        let length = end - start
+        let length = min(end - start, sungLimits[index])
         let into = min(max(time - start, 0), length)
-        return Moment(index: index, progress: into / length, remaining: length - into)
+        let sung = into / length
+        return Moment(
+            index: index, progress: paces[index].reach(at: sung), remaining: length - into,
+            ahead: paces[index].ahead(of: sung, over: length))
     }
 }

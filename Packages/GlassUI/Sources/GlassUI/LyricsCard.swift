@@ -157,8 +157,7 @@ final class LyricsCard: NSView {
         lyric.show(words, playing: playing)
         following.stringValue = shown.next ?? ""
         column.show(
-            shown.lines, current: shown.current, progress: verse.progress,
-            remaining: verse.remaining, playing: playing)
+            shown.lines, current: shown.current, sweep: verse.sweep, playing: playing)
         setAccessibilityValue(shown.spoken)
         reveal()
     }

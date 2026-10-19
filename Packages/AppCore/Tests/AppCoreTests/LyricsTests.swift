@@ -34,8 +34,11 @@ import Testing
     @Test func theMomentFillsTheLineUntilTheNextOneStarts() throws {
         let lyrics = try #require(Lyrics(synced: synced, plain: nil))
         #expect(lyrics.moment(at: 2, duration: 100) == nil)
-        let first = Lyrics.Moment(index: 0, progress: 0.5, remaining: 4.75)
-        #expect(lyrics.moment(at: 7.75, duration: 100) == first)
+        let first = try #require(lyrics.moment(at: 7.75, duration: 100))
+        #expect(first.index == 0)
+        #expect(first.remaining == 4.75)
+        #expect(abs((first.ahead.last?.seconds ?? 0) - 4.75) < 1e-9)
+        #expect(first.ahead.last?.reach == 1)
         #expect(lyrics.moment(at: 12.5, duration: 100)?.progress == 0)
         #expect(lyrics.moment(at: 25.25, duration: 100)?.index == 3)
         #expect(lyrics.moment(at: 25.25, duration: 100)?.remaining == 39.75)
