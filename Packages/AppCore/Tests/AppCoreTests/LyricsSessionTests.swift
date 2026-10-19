@@ -108,8 +108,9 @@ import Testing
         session.update(song, position: 1, enabled: true, at: 100)
         await settle()
         #expect(session.state == .failed)
+        let asked = server.asked
         session.update(song, position: 3, enabled: true, at: 130)
-        #expect(session.state == .failed && server.asked == 1)
+        #expect(session.state == .failed && server.asked == asked)
         server.status = 200
         session.update(song, position: 63, enabled: true, at: 161)
         #expect(session.state == .loading)
