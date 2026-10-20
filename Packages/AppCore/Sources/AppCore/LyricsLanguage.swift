@@ -20,15 +20,16 @@ enum LyricsLanguage: CaseIterable {
     init?(detecting lyrics: Lyrics) {
         let letters = lyrics.lines.lazy.flatMap(\.text.unicodeScalars)
             .filter(\.properties.isAlphabetic)
-        let total = Double(letters.count)
-        let found = Self.allCases.first { language in
-            let written = letters.filter { letter in
-                language.script.contains { $0.contains(letter) }
-            }
-            return !written.isEmpty && Double(written.count) >= total * Self.enoughShare
+        let counts = Self.allCases.map { language in
+            (
+                language,
+                letters.filter { letter in language.script.contains { $0.contains(letter) } }.count
+            )
         }
-        guard let found else { return nil }
-        self = found
+        guard let top = counts.max(by: { $0.1 < $1.1 }), top.1 > 0,
+            Double(top.1) >= Double(letters.count) * Self.enoughShare
+        else { return nil }
+        self = top.0
     }
 
     static func prevailing(in languages: [Self]) -> Self? {

@@ -38,6 +38,10 @@ public actor LyricsLookup {
             Lyrics(synced: syncedLyrics, plain: plainLyrics)
         }
 
+        var isInOriginalLanguage: Bool {
+            lyrics.map { LyricsLanguage(detecting: $0) != nil } ?? false
+        }
+
         func isTitled(_ title: String) -> Bool {
             let same: String.CompareOptions = [
                 .caseInsensitive, .diacriticInsensitive, .widthInsensitive,
@@ -113,12 +117,12 @@ public actor LyricsLookup {
     }
 
     private func find(_ track: MusicPlayer.Track) async throws -> Outcome? {
-        var pool = try await exact(track).map { [$0] } ?? []
-        if let known = Self.match(pool, for: track, within: Self.durationSlack), known.isFinal {
-            return known
-        }
-        pool += await sameAlbum(track)
-        if let match = Self.match(pool, for: track, within: Self.durationSlack) { return match }
+        let exact = try await exact(track).map { [$0] } ?? []
+        let known = Self.match(exact, for: track, within: Self.durationSlack)
+        if known?.isFinal == true { return known }
+        let original = await sameAlbum(track).filter(\.isInOriginalLanguage)
+        if let match = Self.match(original, for: track, within: Self.durationSlack) { return match }
+        if known != nil { return known }
         return try await search(track)
     }
 

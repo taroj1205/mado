@@ -254,6 +254,26 @@ import Testing
         #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
     }
 
+    @Test func anAlbumEntryInLatinTextDoesNotSkipTheArtistSearch() async throws {
+        server.sameAlbum = (200, "[\(written("Wrong"))]")
+        server.replies["/api/search"] = (200, "[\(entry(duration: 202))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func anInstrumentalAlbumEntryDoesNotSkipTheArtistSearch() async throws {
+        server.sameAlbum = (
+            200, "[\(entry(duration: 201, synced: nil, plain: nil, instrumental: true))]"
+        )
+        server.replies["/api/search"] = (200, "[\(entry(duration: 202))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func aCloserAlbumEntryInLatinTextDoesNotReplaceTheExactMatch() async throws {
+        server.replies["/api/get"] = (200, entry(duration: 202))
+        server.sameAlbum = (200, "[\(written("Other", duration: 201.4))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
     @Test func answersAreRememberedButFailuresAreNot() async throws {
         server.replies["/api/get"] = (500, "")
         await #expect(throws: LyricsLookup.Failure.badResponse) {
