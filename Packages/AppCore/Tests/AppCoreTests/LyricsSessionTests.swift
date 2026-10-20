@@ -119,6 +119,18 @@ import Testing
         #expect(session.lyrics != nil)
     }
 
+    @Test func changingTheLanguageLooksTheSongUpAgain() async {
+        session.update(song, position: 1, enabled: true, at: 100)
+        await settle()
+        session.language = .japanese
+        session.update(song, position: 3, enabled: true, at: 102)
+        #expect(session.state == .loading)
+        await settle()
+        #expect(server.asked == 4)
+        session.update(song, position: 5, enabled: true, at: 104)
+        #expect(session.pending == nil)
+    }
+
     @Test func aNewSongReplacesTheOldLookup() async {
         session.update(song, position: 1, enabled: true, at: 100)
         let next = MusicPlayer.Track(

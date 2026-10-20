@@ -25,6 +25,8 @@ import Testing
     }
 
     private static let greeting = Lyrics(lines: [.init(time: 1, text: "Hi")], isSynced: true)
+    private static let japanese = Lyrics(
+        lines: [.init(time: 1, text: "こんにちは")], isSynced: true)
 
     private let server = Server()
     private let lookup: LyricsLookup
@@ -47,6 +49,10 @@ import Testing
             {\(name)"duration":\(duration),"instrumental":\(instrumental),
             "plainLyrics":\(rows),"syncedLyrics":\(sync)}
             """
+    }
+
+    private func japaneseEntry(title: String? = nil) -> String {
+        entry(title: title, duration: 202, synced: "[00:01.00] こんにちは", plain: "こんにちは")
     }
 
     @Test func anExactMatchSendsTheTrackDetails() async throws {
@@ -187,6 +193,39 @@ import Testing
         server.replies["/api/get"] = nil
         let other = MusicPlayer.Track(id: "Z", title: "Nope", artist: "Nobody", isPlaying: true)
         #expect(try await lookup.lyrics(for: other) == .missing)
+    }
+
+    @Test func aPreferredLanguageWinsOverACloserEntryInAnother() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (200, "[\(entry(duration: 201)),\(japaneseEntry())]")
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
+    }
+
+    @Test func aPreferredLanguageIsFoundUnderAnotherArtistToo() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (200, "[\(entry())]")
+        server.titleOnly = (200, "[\(japaneseEntry(title: "Low Tide"))]")
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
+    }
+
+    @Test func withoutALyricInThePreferredLanguageTheNearestOneStays() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (200, "[\(entry())]")
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
+    }
+
+    @Test func automaticKeepsTheExactMatchWithoutSearching() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (200, "[\(japaneseEntry())]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+        #expect(server.asked.map(\.path) == ["/api/get"])
+    }
+
+    @Test func eachLanguageIsRememberedSeparately() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (200, "[\(japaneseEntry())]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
     }
 
     @Test func answersAreRememberedButFailuresAreNot() async throws {

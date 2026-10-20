@@ -53,6 +53,9 @@ extension LyricsSettings {
                 "Lookup",
                 [
                     .init("Players", editor.playerChecks()),
+                    .init("Language", editor.languagePopUp(), icon: nil) {
+                        "Picks the lyrics written in this language when lrclib.net has several."
+                    },
                     .init("Source", caption(site)),
                     .init("Kept on this Mac", caption("in memory until you quit")),
                 ], footer: footer, accessory: nil),

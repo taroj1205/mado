@@ -36,6 +36,7 @@ struct LyricsSettings: StoredValue, Equatable {
         case dockSide = "dock_side"
         case hideDelay = "hide_after"
         case hidesInSharing = "hides_in_sharing"
+        case language = "language"
         case look = "look"
         case lookup = "lookup"
         case pin = "pin"
@@ -53,6 +54,7 @@ struct LyricsSettings: StoredValue, Equatable {
     var screen: LauncherScreen
     var hideDelay: HideDelay
     var hidesInSharing: Bool
+    var language: LyricsLanguage
     var players: Set<MusicPlayer.Player>
 
     var isActive: Bool {
@@ -72,6 +74,7 @@ struct LyricsSettings: StoredValue, Equatable {
         screen = .mouse
         hideDelay = .ten
         hidesInSharing = true
+        language = .any
         players = Set(MusicPlayer.Player.allCases)
     }
 
@@ -96,6 +99,9 @@ struct LyricsSettings: StoredValue, Equatable {
             .flatMap(HideDelay.init(rawValue:)) ?? hideDelay
         hidesInSharing =
             try values.decodeIfPresent(Bool.self, forKey: .hidesInSharing) ?? hidesInSharing
+        language =
+            try values.decodeIfPresent(String.self, forKey: .language)
+            .flatMap(LyricsLanguage.init(rawValue:)) ?? language
         players =
             try values.decodeIfPresent([String].self, forKey: .players)
             .map { names in Set(names.compactMap(MusicPlayer.Player.init(rawValue:))) } ?? players
@@ -117,6 +123,7 @@ struct LyricsSettings: StoredValue, Equatable {
         try values.encode(screen.json, forKey: .screen)
         try values.encode(hideDelay.rawValue, forKey: .hideDelay)
         try values.encode(hidesInSharing, forKey: .hidesInSharing)
+        try values.encode(language.rawValue, forKey: .language)
         try values.encode(players.map(\.rawValue).sorted(), forKey: .players)
     }
 }

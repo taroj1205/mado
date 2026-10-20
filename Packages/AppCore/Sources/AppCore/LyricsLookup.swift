@@ -13,6 +13,14 @@ public actor LyricsLookup {
         case found(Lyrics)
         case instrumental
         case missing
+
+        func suits(_ language: LyricsLanguage) -> Bool {
+            switch self {
+            case .found(let lyrics): language.accepts(lyrics)
+            case .instrumental: true
+            case .missing: false
+            }
+        }
     }
 
     public enum Failure: Error {
@@ -83,7 +91,8 @@ public actor LyricsLookup {
     }
 
     private static func match(
-        _ entries: [LyricsEntry], for track: MusicPlayer.Track, within slack: Double
+        _ entries: [LyricsEntry], for track: MusicPlayer.Track, in language: LyricsLanguage,
+        within slack: Double
     ) -> Outcome? {
         let gap = { (entry: LyricsEntry) -> Double in
             guard let wanted = track.duration else { return 0 }
@@ -91,17 +100,24 @@ public actor LyricsLookup {
         }
         let near = entries.filter { gap($0) <= slack }
         let timed = near.compactMap { entry in entry.lyrics.map { (gap: gap(entry), lyrics: $0) } }
-        let closest = timed.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
-        if let best = closest ?? timed.first { return .found(best.lyrics) }
+        let written = timed.filter { language.accepts($0.lyrics) }
+        let pool = written.isEmpty ? timed : written
+        let closest = pool.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
+        if let best = closest ?? pool.first { return .found(best.lyrics) }
         return near.contains(where: \.instrumental) ? .instrumental : nil
     }
 
-    public func lyrics(for track: MusicPlayer.Track) async throws -> Outcome {
-        if let known = cache[track.id] { return known }
+    public func lyrics(
+        for track: MusicPlayer.Track, in language: LyricsLanguage = .any
+    ) async throws -> Outcome {
+        let key = "\(language.rawValue)/\(track.id)"
+        if let known = cache[key] { return known }
         var found = try await exact(track)
-        if found == nil { found = try await search(track) }
+        if found?.suits(language) != true {
+            found = try await search(track, in: language, after: found)
+        }
         let outcome = found ?? .missing
-        remember(outcome, as: track.id)
+        remember(outcome, as: key)
         return outcome
     }
 
@@ -118,23 +134,26 @@ public actor LyricsLookup {
         return outcome == .missing ? nil : outcome
     }
 
-    private func search(_ track: MusicPlayer.Track) async throws -> Outcome? {
+    private func search(
+        _ track: MusicPlayer.Track, in language: LyricsLanguage, after earlier: Outcome?
+    ) async throws -> Outcome? {
         let named = try await hits(track, artist: track.artist)
-        if let match = Self.match(named, for: track, within: Self.durationSlack) { return match }
-        let plain = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }.first
-            .map(Outcome.found)
-        if track.duration != nil {
-            do {
-                let titled = try await hits(track, artist: nil)
-                    .filter { !$0.instrumental && $0.isTitled(track.title) }
-                if let match = Self.match(titled, for: track, within: Self.titleOnlySlack) {
-                    return match
-                }
-            } catch _ where plain != nil {
-                return plain
-            }
+        let nearest = Self.match(named, for: track, in: language, within: Self.durationSlack)
+        if nearest?.suits(language) == true { return nearest }
+        let words = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }
+        let plain = (words.first(where: language.accepts) ?? words.first).map(Outcome.found)
+        let spare = [earlier, nearest, plain].compactMap(\.self)
+        let best = spare.first { $0.suits(language) } ?? spare.first
+        guard track.duration != nil else { return best }
+        do {
+            let titled = try await hits(track, artist: nil)
+                .filter { !$0.instrumental && $0.isTitled(track.title) }
+            let match = Self.match(titled, for: track, in: language, within: Self.titleOnlySlack)
+            if let match, match.suits(language) { return match }
+        } catch _ where best != nil {
+            return best
         }
-        return plain
+        return best
     }
 
     private func hits(_ track: MusicPlayer.Track, artist: String?) async throws -> [LyricsEntry] {
