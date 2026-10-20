@@ -1,7 +1,6 @@
-public enum LyricsLanguage: String, CaseIterable, Sendable {
-    case any = "automatic"
-    case japanese = "japanese"
-    case korean = "korean"
+enum LyricsLanguage: CaseIterable {
+    case japanese
+    case korean
 
     private static let kana: [ClosedRange<Unicode.Scalar>] = [
         "\u{3040}"..."\u{30FF}", "\u{31F0}"..."\u{31FF}",
@@ -11,27 +10,30 @@ public enum LyricsLanguage: String, CaseIterable, Sendable {
     ]
     private static let enoughShare = 0.1
 
-    public var title: String {
-        switch self {
-        case .any: "Automatic"
-        case .japanese: "Japanese"
-        case .korean: "Korean"
-        }
-    }
-
     private var script: [ClosedRange<Unicode.Scalar>] {
         switch self {
-        case .any: []
         case .japanese: Self.kana
         case .korean: Self.hangul
         }
     }
 
-    public func accepts(_ lyrics: Lyrics) -> Bool {
-        if script.isEmpty { return true }
+    init?(detecting lyrics: Lyrics) {
         let letters = lyrics.lines.lazy.flatMap(\.text.unicodeScalars)
             .filter(\.properties.isAlphabetic)
-        let written = letters.filter { letter in script.contains { $0.contains(letter) } }
-        return !written.isEmpty && Double(written.count) >= Double(letters.count) * Self.enoughShare
+        let total = Double(letters.count)
+        let found = Self.allCases.first { language in
+            let written = letters.filter { letter in
+                language.script.contains { $0.contains(letter) }
+            }
+            return !written.isEmpty && Double(written.count) >= total * Self.enoughShare
+        }
+        guard let found else { return nil }
+        self = found
+    }
+
+    static func prevailing(in languages: [Self]) -> Self? {
+        let counts = Dictionary(grouping: languages, by: \.self).mapValues(\.count)
+        return allCases.filter { counts[$0] != nil }
+            .max { counts[$0, default: 0] < counts[$1, default: 0] }
     }
 }

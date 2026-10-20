@@ -14,9 +14,9 @@ public actor LyricsLookup {
         case instrumental
         case missing
 
-        func suits(_ language: LyricsLanguage) -> Bool {
+        var isFinal: Bool {
             switch self {
-            case .found(let lyrics): language.accepts(lyrics)
+            case .found(let lyrics): LyricsLanguage(detecting: lyrics) != nil
             case .instrumental: true
             case .missing: false
             }
@@ -36,11 +36,6 @@ public actor LyricsLookup {
 
         var lyrics: Lyrics? {
             Lyrics(synced: syncedLyrics, plain: plainLyrics)
-        }
-
-        var result: Outcome {
-            if instrumental { return .instrumental }
-            return lyrics.map(Outcome.found) ?? .missing
         }
 
         func isTitled(_ title: String) -> Bool {
@@ -91,37 +86,43 @@ public actor LyricsLookup {
     }
 
     private static func match(
-        _ entries: [LyricsEntry], for track: MusicPlayer.Track, in language: LyricsLanguage,
-        within slack: Double
+        _ entries: [LyricsEntry], for track: MusicPlayer.Track, within slack: Double
     ) -> Outcome? {
         let gap = { (entry: LyricsEntry) -> Double in
             guard let wanted = track.duration else { return 0 }
             return entry.duration.map { abs(wanted - $0) } ?? Self.durationSlack
         }
         let near = entries.filter { gap($0) <= slack }
-        let timed = near.compactMap { entry in entry.lyrics.map { (gap: gap(entry), lyrics: $0) } }
-        let written = timed.filter { language.accepts($0.lyrics) }
-        let pool = written.isEmpty ? timed : written
+        let timed = near.compactMap { entry in
+            entry.lyrics.map { lyrics in
+                (gap: gap(entry), lyrics: lyrics, language: LyricsLanguage(detecting: lyrics))
+            }
+        }
+        let original = LyricsLanguage.prevailing(in: timed.compactMap(\.language))
+        let pool = original.map { language in timed.filter { $0.language == language } } ?? timed
         let closest = pool.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
         if let best = closest ?? pool.first { return .found(best.lyrics) }
         return near.contains(where: \.instrumental) ? .instrumental : nil
     }
 
-    public func lyrics(
-        for track: MusicPlayer.Track, in language: LyricsLanguage = .any
-    ) async throws -> Outcome {
-        let key = "\(language.rawValue)/\(track.id)"
-        if let known = cache[key] { return known }
-        var found = try await exact(track)
-        if found?.suits(language) != true {
-            found = try await search(track, in: language, after: found)
-        }
-        let outcome = found ?? .missing
-        remember(outcome, as: key)
+    public func lyrics(for track: MusicPlayer.Track) async throws -> Outcome {
+        if let known = cache[track.id] { return known }
+        let outcome = try await find(track) ?? .missing
+        remember(outcome, as: track.id)
         return outcome
     }
 
-    private func exact(_ track: MusicPlayer.Track) async throws -> Outcome? {
+    private func find(_ track: MusicPlayer.Track) async throws -> Outcome? {
+        var pool = try await exact(track).map { [$0] } ?? []
+        if let known = Self.match(pool, for: track, within: Self.durationSlack), known.isFinal {
+            return known
+        }
+        pool += await sameAlbum(track)
+        if let match = Self.match(pool, for: track, within: Self.durationSlack) { return match }
+        return try await search(track)
+    }
+
+    private func exact(_ track: MusicPlayer.Track) async throws -> LyricsEntry? {
         guard !track.album.isEmpty, let duration = track.duration else { return nil }
         let query = [
             URLQueryItem(name: "track_name", value: track.title),
@@ -130,41 +131,39 @@ public actor LyricsLookup {
             URLQueryItem(name: "duration", value: String(Int(duration.rounded()))),
         ]
         guard let data = try await fetch("/api/get", query) else { return nil }
-        let outcome = try JSONDecoder().decode(LyricsEntry.self, from: data).result
-        return outcome == .missing ? nil : outcome
+        return try JSONDecoder().decode(LyricsEntry.self, from: data)
     }
 
-    private func search(
-        _ track: MusicPlayer.Track, in language: LyricsLanguage, after earlier: Outcome?
-    ) async throws -> Outcome? {
-        let named: [LyricsEntry]
-        do {
-            named = try await hits(track, artist: track.artist)
-        } catch _ where earlier != nil {
-            return earlier
-        }
-        var nearest = Self.match(named, for: track, in: language, within: Self.durationSlack)
-        if earlier != nil, nearest == .instrumental { nearest = nil }
-        if nearest?.suits(language) == true { return nearest }
-        let words = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }
-        let plain = (words.first(where: language.accepts) ?? words.first).map(Outcome.found)
-        let spare = [earlier, nearest, plain].compactMap(\.self)
-        let best = spare.first { $0.suits(language) } ?? spare.first
-        guard track.duration != nil else { return best }
-        do {
-            let titled = try await hits(track, artist: nil)
-                .filter { !$0.instrumental && $0.isTitled(track.title) }
-            let match = Self.match(titled, for: track, in: language, within: Self.titleOnlySlack)
-            if let match, match.suits(language) || best == nil { return match }
-        } catch _ where best != nil {
-            return best
-        }
-        return best
+    private func sameAlbum(_ track: MusicPlayer.Track) async -> [LyricsEntry] {
+        guard !track.album.isEmpty else { return [] }
+        return (try? await hits(track, artist: nil, album: track.album)) ?? []
     }
 
-    private func hits(_ track: MusicPlayer.Track, artist: String?) async throws -> [LyricsEntry] {
+    private func search(_ track: MusicPlayer.Track) async throws -> Outcome? {
+        let named = try await hits(track, artist: track.artist)
+        if let match = Self.match(named, for: track, within: Self.durationSlack) { return match }
+        let plain = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }.first
+            .map(Outcome.found)
+        if track.duration != nil {
+            do {
+                let titled = try await hits(track, artist: nil)
+                    .filter { !$0.instrumental && $0.isTitled(track.title) }
+                if let match = Self.match(titled, for: track, within: Self.titleOnlySlack) {
+                    return match
+                }
+            } catch _ where plain != nil {
+                return plain
+            }
+        }
+        return plain
+    }
+
+    private func hits(
+        _ track: MusicPlayer.Track, artist: String?, album: String? = nil
+    ) async throws -> [LyricsEntry] {
         var query = [URLQueryItem(name: "track_name", value: track.title)]
         if let artist { query.append(URLQueryItem(name: "artist_name", value: artist)) }
+        if let album { query.append(URLQueryItem(name: "album_name", value: album)) }
         guard let data = try await fetch("/api/search", query) else { return [] }
         return try JSONDecoder().decode([LyricsEntry].self, from: data)
     }

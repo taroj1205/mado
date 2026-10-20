@@ -22,14 +22,6 @@ public final class LyricsSession {
             if state != oldValue { onChange?() }
         }
     }
-    public var language = LyricsLanguage.any {
-        didSet {
-            guard language != oldValue else { return }
-            fetching?.task.cancel()
-            fetching = nil
-            tried = nil
-        }
-    }
 
     private let logger = Log.logger("Lyrics")
     private let lookup: LyricsLookup
@@ -107,9 +99,9 @@ public final class LyricsSession {
         let id = track.id
         fetching = (
             id,
-            Task { [lookup, language] in
+            Task { [lookup] in
                 do {
-                    let found = try await lookup.lyrics(for: track, in: language)
+                    let found = try await lookup.lyrics(for: track)
                     finish(id, found)
                 } catch {
                     guard !Task.isCancelled else { return }

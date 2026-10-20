@@ -22,7 +22,6 @@ extension AppDelegate {
         let settings = LyricsSettings.load(from: modules)
         nowPlaying.players = settings.players
         nowPlaying.lookup = settings.lookup
-        nowPlaying.session.language = settings.language
         launcherView.pinnedLyrics = settings.pin
         lyricsStage.apply(settings)
     }

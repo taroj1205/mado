@@ -7,26 +7,29 @@ import Testing
         Lyrics(lines: [.init(time: nil, text: text)], isSynced: false)
     }
 
-    @Test func automaticAcceptsAnything() {
-        #expect(LyricsLanguage.any.accepts(lyrics("Hello")))
-        #expect(LyricsLanguage.any.accepts(lyrics("")))
+    @Test func japaneseNeedsKana() {
+        #expect(LyricsLanguage(detecting: lyrics("夜に駆ける")) == .japanese)
+        #expect(LyricsLanguage(detecting: lyrics("ヨルシカ")) == .japanese)
+        #expect(LyricsLanguage(detecting: lyrics("夜")) == nil)
     }
 
-    @Test func japaneseNeedsKana() {
-        #expect(LyricsLanguage.japanese.accepts(lyrics("夜に駆ける")))
-        #expect(LyricsLanguage.japanese.accepts(lyrics("ヨルシカ")))
-        #expect(!LyricsLanguage.japanese.accepts(lyrics("Yoru ni kakeru")))
-        #expect(!LyricsLanguage.japanese.accepts(lyrics("夜")))
-        #expect(!LyricsLanguage.japanese.accepts(lyrics("")))
+    @Test func koreanNeedsHangul() {
+        #expect(LyricsLanguage(detecting: lyrics("안녕하세요")) == .korean)
+    }
+
+    @Test func romanizedAndEnglishLyricsHaveNoOriginalLanguage() {
+        #expect(LyricsLanguage(detecting: lyrics("Yoru ni kakeru")) == nil)
+        #expect(LyricsLanguage(detecting: lyrics("")) == nil)
     }
 
     @Test func aFewJapaneseWordsInAnEnglishSongDoNotCount() {
         let song = "Oh baby hold me close tonight I need you here with me stay till the light ありがとう"
-        #expect(!LyricsLanguage.japanese.accepts(lyrics(song)))
+        #expect(LyricsLanguage(detecting: lyrics(song)) == nil)
     }
 
-    @Test func koreanNeedsHangul() {
-        #expect(LyricsLanguage.korean.accepts(lyrics("안녕하세요")))
-        #expect(!LyricsLanguage.korean.accepts(lyrics("こんにちは")))
+    @Test func theMostCommonLanguageWinsAndTiesGoToJapanese() {
+        #expect(LyricsLanguage.prevailing(in: [.korean, .japanese, .korean]) == .korean)
+        #expect(LyricsLanguage.prevailing(in: [.korean, .japanese]) == .japanese)
+        #expect(LyricsLanguage.prevailing(in: []) == nil)
     }
 }

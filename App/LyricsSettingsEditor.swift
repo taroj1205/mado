@@ -101,17 +101,6 @@ struct LyricsSettingsEditor {
         }
     }
 
-    func languagePopUp() -> SettingsPopUp {
-        popUp {
-            let choices = LyricsLanguage.allCases.map { language in
-                SettingsPopUp.Choice(
-                    title: language.title, isSelected: language == current.language
-                ) { edit { settings in settings.language = language } }
-            }
-            return [SettingsPopUp.Section(title: nil, choices: choices)]
-        }
-    }
-
     func playerChecks() -> NSStackView {
         let checks = Self.players.map { entry in
             let check = SettingsCheckbox(

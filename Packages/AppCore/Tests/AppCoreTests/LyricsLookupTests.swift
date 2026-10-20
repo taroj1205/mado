@@ -7,6 +7,7 @@ import Testing
     private final class Server: @unchecked Sendable {
         var replies: [String: (Int, String)] = [:]
         var titleOnly: (Int, String)?
+        var sameAlbum: (Int, String)?
         var busy: [String: Int] = [:]
         var retryAfter: TimeInterval?
         var asked: [URL] = []
@@ -19,7 +20,16 @@ import Testing
             }
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
             let named = items?.contains { $0.name == "artist_name" } ?? false
-            let reply = (named ? nil : titleOnly) ?? replies[url.path] ?? (404, "{}")
+            let album = items?.contains { $0.name == "album_name" } ?? false
+            let known = replies[url.path] ?? (404, "{}")
+            let reply =
+                if named {
+                    known
+                } else if album {
+                    sameAlbum ?? (404, "{}")
+                } else {
+                    titleOnly ?? known
+                }
             return .init(data: Data(reply.1.utf8), status: reply.0, retryAfter: retryAfter)
         }
     }
@@ -27,6 +37,8 @@ import Testing
     private static let greeting = Lyrics(lines: [.init(time: 1, text: "Hi")], isSynced: true)
     private static let japanese = Lyrics(
         lines: [.init(time: 1, text: "こんにちは")], isSynced: true)
+    private static let korean = Lyrics(
+        lines: [.init(time: 1, text: "안녕하세요")], isSynced: true)
 
     private let server = Server()
     private let lookup: LyricsLookup
@@ -51,8 +63,8 @@ import Testing
             """
     }
 
-    private func japaneseEntry(title: String? = nil) -> String {
-        entry(title: title, duration: 202, synced: "[00:01.00] こんにちは", plain: "こんにちは")
+    private func written(_ words: String, duration: Double = 201) -> String {
+        entry(duration: duration, synced: "[00:01.00] \(words)", plain: words)
     }
 
     @Test func anExactMatchSendsTheTrackDetails() async throws {
@@ -158,7 +170,7 @@ import Testing
         server.busy["/api/get"] = 2
         server.replies["/api/get"] = (200, entry())
         #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
-        #expect(server.asked.count == 3)
+        #expect(server.asked.filter { $0.path == "/api/get" }.count == 3)
     }
 
     @Test func aRetryAfterIsWaitedOutBeforeAskingAgain() async throws {
@@ -195,56 +207,51 @@ import Testing
         #expect(try await lookup.lyrics(for: other) == .missing)
     }
 
-    @Test func aPreferredLanguageWinsOverACloserEntryInAnother() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (200, "[\(entry(duration: 201)),\(japaneseEntry())]")
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
-    }
-
-    @Test func aPreferredLanguageIsFoundUnderAnotherArtistToo() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (200, "[\(entry())]")
-        server.titleOnly = (200, "[\(japaneseEntry(title: "Low Tide"))]")
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
-    }
-
-    @Test func withoutALyricInThePreferredLanguageTheNearestOneStays() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (200, "[\(entry())]")
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
-    }
-
-    @Test func aFailedSearchKeepsTheExactLyricsInAnotherLanguage() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (503, "")
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
-    }
-
-    @Test func anInstrumentalSearchResultDoesNotReplaceTheExactLyrics() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (
-            200, "[\(entry(duration: 201, synced: nil, plain: nil, instrumental: true))]"
-        )
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
-    }
-
-    @Test func aTitleOnlyMatchInAnotherLanguageStillBeatsNothing() async throws {
-        server.titleOnly = (200, "[\(entry(title: "Low Tide", duration: 202))]")
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
-    }
-
-    @Test func automaticKeepsTheExactMatchWithoutSearching() async throws {
-        server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (200, "[\(japaneseEntry())]")
-        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    @Test func anExactMatchInTheOriginalLanguageNeedsNoMoreSearching() async throws {
+        server.replies["/api/get"] = (200, written("こんにちは"))
+        #expect(try await lookup.lyrics(for: track) == .found(Self.japanese))
         #expect(server.asked.map(\.path) == ["/api/get"])
     }
 
-    @Test func eachLanguageIsRememberedSeparately() async throws {
+    @Test func aRomanizedExactMatchGivesWayToTheOriginalLyricsOnTheSameAlbum() async throws {
         server.replies["/api/get"] = (200, entry())
-        server.replies["/api/search"] = (200, "[\(japaneseEntry())]")
+        server.sameAlbum = (200, "[\(entry()),\(written("こんにちは", duration: 203))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.japanese))
+    }
+
+    @Test func theOriginalLanguageBeatsACloserRomanizedEntryInTheSearch() async throws {
+        let farther = written("こんにちは", duration: 203)
+        server.replies["/api/search"] = (200, "[\(entry(duration: 201)),\(farther)]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.japanese))
+    }
+
+    @Test func whenTheOriginalsDifferTheMostCommonOneWins() async throws {
+        server.replies["/api/get"] = (200, entry())
+        let hangul = written("안녕하세요")
+        let again = written("안녕하세요", duration: 202)
+        server.sameAlbum = (200, "[\(hangul),\(again),\(written("こんにちは"))]")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.korean))
+    }
+
+    @Test func aSongWithoutAnOriginalLanguageKeepsTheExactMatch() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.sameAlbum = (200, "[\(entry(duration: 202, synced: nil))]")
         #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
-        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.japanese))
+        #expect(server.asked.map(\.path) == ["/api/get", "/api/search"])
+    }
+
+    @Test func aFailedAlbumSearchKeepsTheExactLyrics() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.sameAlbum = (503, "")
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
+    }
+
+    @Test func anInstrumentalAlbumEntryDoesNotReplaceTheExactLyrics() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.sameAlbum = (
+            200, "[\(entry(duration: 201, synced: nil, plain: nil, instrumental: true))]"
+        )
+        #expect(try await lookup.lyrics(for: track) == .found(Self.greeting))
     }
 
     @Test func answersAreRememberedButFailuresAreNot() async throws {
