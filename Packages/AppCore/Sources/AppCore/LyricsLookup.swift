@@ -13,6 +13,14 @@ public actor LyricsLookup {
         case found(Lyrics)
         case instrumental
         case missing
+
+        var isFinal: Bool {
+            switch self {
+            case .found(let lyrics): LyricsLanguage(detecting: lyrics) != nil
+            case .instrumental: true
+            case .missing: false
+            }
+        }
     }
 
     public enum Failure: Error {
@@ -30,9 +38,8 @@ public actor LyricsLookup {
             Lyrics(synced: syncedLyrics, plain: plainLyrics)
         }
 
-        var result: Outcome {
-            if instrumental { return .instrumental }
-            return lyrics.map(Outcome.found) ?? .missing
+        var isInOriginalLanguage: Bool {
+            lyrics.map { LyricsLanguage(detecting: $0) != nil } ?? false
         }
 
         func isTitled(_ title: String) -> Bool {
@@ -90,22 +97,36 @@ public actor LyricsLookup {
             return entry.duration.map { abs(wanted - $0) } ?? Self.durationSlack
         }
         let near = entries.filter { gap($0) <= slack }
-        let timed = near.compactMap { entry in entry.lyrics.map { (gap: gap(entry), lyrics: $0) } }
-        let closest = timed.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
-        if let best = closest ?? timed.first { return .found(best.lyrics) }
+        let timed = near.compactMap { entry in
+            entry.lyrics.map { lyrics in
+                (gap: gap(entry), lyrics: lyrics, language: LyricsLanguage(detecting: lyrics))
+            }
+        }
+        let original = LyricsLanguage.prevailing(in: timed.compactMap(\.language))
+        let pool = original.map { language in timed.filter { $0.language == language } } ?? timed
+        let closest = pool.filter(\.lyrics.isSynced).min { $0.gap < $1.gap }
+        if let best = closest ?? pool.first { return .found(best.lyrics) }
         return near.contains(where: \.instrumental) ? .instrumental : nil
     }
 
     public func lyrics(for track: MusicPlayer.Track) async throws -> Outcome {
         if let known = cache[track.id] { return known }
-        var found = try await exact(track)
-        if found == nil { found = try await search(track) }
-        let outcome = found ?? .missing
+        let outcome = try await find(track) ?? .missing
         remember(outcome, as: track.id)
         return outcome
     }
 
-    private func exact(_ track: MusicPlayer.Track) async throws -> Outcome? {
+    private func find(_ track: MusicPlayer.Track) async throws -> Outcome? {
+        let exact = try await exact(track).map { [$0] } ?? []
+        let known = Self.match(exact, for: track, within: Self.durationSlack)
+        if known?.isFinal == true { return known }
+        let original = await sameAlbum(track).filter(\.isInOriginalLanguage)
+        if let match = Self.match(original, for: track, within: Self.durationSlack) { return match }
+        if known != nil { return known }
+        return try await search(track)
+    }
+
+    private func exact(_ track: MusicPlayer.Track) async throws -> LyricsEntry? {
         guard !track.album.isEmpty, let duration = track.duration else { return nil }
         let query = [
             URLQueryItem(name: "track_name", value: track.title),
@@ -114,8 +135,12 @@ public actor LyricsLookup {
             URLQueryItem(name: "duration", value: String(Int(duration.rounded()))),
         ]
         guard let data = try await fetch("/api/get", query) else { return nil }
-        let outcome = try JSONDecoder().decode(LyricsEntry.self, from: data).result
-        return outcome == .missing ? nil : outcome
+        return try JSONDecoder().decode(LyricsEntry.self, from: data)
+    }
+
+    private func sameAlbum(_ track: MusicPlayer.Track) async -> [LyricsEntry] {
+        guard !track.album.isEmpty else { return [] }
+        return (try? await hits(track, artist: nil, album: track.album)) ?? []
     }
 
     private func search(_ track: MusicPlayer.Track) async throws -> Outcome? {
@@ -137,9 +162,12 @@ public actor LyricsLookup {
         return plain
     }
 
-    private func hits(_ track: MusicPlayer.Track, artist: String?) async throws -> [LyricsEntry] {
+    private func hits(
+        _ track: MusicPlayer.Track, artist: String?, album: String? = nil
+    ) async throws -> [LyricsEntry] {
         var query = [URLQueryItem(name: "track_name", value: track.title)]
         if let artist { query.append(URLQueryItem(name: "artist_name", value: artist)) }
+        if let album { query.append(URLQueryItem(name: "album_name", value: album)) }
         guard let data = try await fetch("/api/search", query) else { return [] }
         return try JSONDecoder().decode([LyricsEntry].self, from: data)
     }

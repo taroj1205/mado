@@ -208,7 +208,7 @@ import Testing
         defer { nowPlaying.stop(.launcher) }
         await nowPlaying.perform(.next)
         #expect(await until { nowPlaying.session.lyrics != nil })
-        #expect(server.asked == 1)
+        #expect(server.asked == 2)
     }
 
     @Test func aControlThatLandsAfterPollingStoppedOnlyUpdatesTheTrack() async {
