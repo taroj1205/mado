@@ -137,8 +137,14 @@ public actor LyricsLookup {
     private func search(
         _ track: MusicPlayer.Track, in language: LyricsLanguage, after earlier: Outcome?
     ) async throws -> Outcome? {
-        let named = try await hits(track, artist: track.artist)
-        let nearest = Self.match(named, for: track, in: language, within: Self.durationSlack)
+        let named: [LyricsEntry]
+        do {
+            named = try await hits(track, artist: track.artist)
+        } catch _ where earlier != nil {
+            return earlier
+        }
+        var nearest = Self.match(named, for: track, in: language, within: Self.durationSlack)
+        if earlier != nil, nearest == .instrumental { nearest = nil }
         if nearest?.suits(language) == true { return nearest }
         let words = named.lazy.compactMap { Lyrics(synced: nil, plain: $0.plainLyrics) }
         let plain = (words.first(where: language.accepts) ?? words.first).map(Outcome.found)
@@ -149,7 +155,7 @@ public actor LyricsLookup {
             let titled = try await hits(track, artist: nil)
                 .filter { !$0.instrumental && $0.isTitled(track.title) }
             let match = Self.match(titled, for: track, in: language, within: Self.titleOnlySlack)
-            if let match, match.suits(language) { return match }
+            if let match, match.suits(language) || best == nil { return match }
         } catch _ where best != nil {
             return best
         }

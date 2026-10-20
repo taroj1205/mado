@@ -214,6 +214,25 @@ import Testing
         #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
     }
 
+    @Test func aFailedSearchKeepsTheExactLyricsInAnotherLanguage() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (503, "")
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
+    }
+
+    @Test func anInstrumentalSearchResultDoesNotReplaceTheExactLyrics() async throws {
+        server.replies["/api/get"] = (200, entry())
+        server.replies["/api/search"] = (
+            200, "[\(entry(duration: 201, synced: nil, plain: nil, instrumental: true))]"
+        )
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
+    }
+
+    @Test func aTitleOnlyMatchInAnotherLanguageStillBeatsNothing() async throws {
+        server.titleOnly = (200, "[\(entry(title: "Low Tide", duration: 202))]")
+        #expect(try await lookup.lyrics(for: track, in: .japanese) == .found(Self.greeting))
+    }
+
     @Test func automaticKeepsTheExactMatchWithoutSearching() async throws {
         server.replies["/api/get"] = (200, entry())
         server.replies["/api/search"] = (200, "[\(japaneseEntry())]")
