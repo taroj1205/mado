@@ -41,6 +41,16 @@ import Testing
         #expect(lyrics.moment(at: 10, duration: 100)?.progress == 0.5)
     }
 
+    @Test func aSongWithOneEnglishLineFillsItFromStartToEnd() throws {
+        let lyrics = try #require(Lyrics(synced: "[00:10.00] Hello world", plain: nil))
+        #expect(lyrics.moment(at: 10, duration: 100)?.progress == 0)
+        let half = try #require(lyrics.moment(at: 55, duration: 100)?.progress)
+        #expect(half > 0 && half < 1)
+        let end = try #require(lyrics.moment(at: 100, duration: 100))
+        #expect(end.progress == 1)
+        #expect(end.remaining == 0)
+    }
+
     @Test func plainKanaAdvanceAtTheSameSpeedAsTheirWidth() {
         let curve = LyricsPaceCurve("あいうえおかきく")
         #expect(abs(curve.reach(at: 0.5) - 0.5) < 1e-9)
