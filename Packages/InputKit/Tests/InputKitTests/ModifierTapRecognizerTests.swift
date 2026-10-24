@@ -14,18 +14,18 @@ import Testing
         func recognizer(
             window: Duration, bound: Set<ModifierTap.Tap>
         ) -> ModifierTap.Recognizer {
-            recognizer(window: window, bound: bound, anotherInputHeld: false)
+            recognizer(window: window, bound: bound, mouseButtonHeld: false)
         }
 
         func recognizer(
-            window: Duration, bound: Set<ModifierTap.Tap>, anotherInputHeld: Bool
+            window: Duration, bound: Set<ModifierTap.Tap>, mouseButtonHeld: Bool
         ) -> ModifierTap.Recognizer {
             let bindings = Dictionary(
                 uniqueKeysWithValues: bound.map { tap -> (ModifierTap.Tap, @MainActor () -> Void) in
                     (tap, { [weak self] in self?.taps.append(tap) })
                 })
             return ModifierTap.Recognizer(
-                window: window, bindings: bindings, anotherInputHeld: { anotherInputHeld },
+                window: window, bindings: bindings, mouseButtonHeld: { mouseButtonHeld },
                 run: { [weak self] wait in self?.waits.append(Task { await wait() }) })
         }
 
@@ -52,6 +52,14 @@ import Testing
         recognizer.handle(.flagsChanged, event)
     }
 
+    static func key(
+        _ type: CGEventType, _ code: Int, into recognizer: ModifierTap.Recognizer
+    ) throws {
+        let event = try #require(
+            CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(code), keyDown: true))
+        recognizer.handle(type, event)
+    }
+
     @Test func aSingleWithoutADoubleArrivesWithoutWaiting() async throws {
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
@@ -63,13 +71,34 @@ import Testing
         #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
     }
 
-    @Test func aTapWhileAnotherInputIsHeldIsNeverDelivered() async throws {
+    @Test func aTapWhileAMouseButtonIsHeldIsNeverDelivered() async throws {
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
-            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)], anotherInputHeld: true)
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)], mouseButtonHeld: true)
         try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
         await inbox.settle()
         #expect(inbox.taps.isEmpty)
+    }
+
+    @Test func aTapWhileAKeyIsHeldIsNeverDelivered() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
+        try Self.key(.keyDown, 13, into: recognizer)
+        try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
+        await inbox.settle()
+        #expect(inbox.taps.isEmpty)
+    }
+
+    @Test func aTapAfterTheKeyIsReleasedIsDelivered() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
+        try Self.key(.keyDown, 13, into: recognizer)
+        try Self.key(.keyUp, 13, into: recognizer)
+        try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
+        await inbox.settle()
+        #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
     }
 
     @Test func aTapIsDroppedWhenAPauseCancelsItsDelivery() async throws {
