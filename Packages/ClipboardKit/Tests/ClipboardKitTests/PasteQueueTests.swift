@@ -41,11 +41,17 @@ import Testing
         #expect(PasteQueue.key(for: escape) == .clear)
     }
 
+    @Test func readsCommandShiftVAsPasteWithoutFormatting() throws {
+        let paste = try TestKeys.event(Self.pasteKey(), "v", [.maskCommand, .maskShift])
+
+        #expect(PasteQueue.key(for: paste) == .paste)
+    }
+
     @Test func leavesOtherKeysAlone() throws {
         let keys = [
             try TestKeys.event(Self.pasteKey(), "v", []),
-            try TestKeys.event(Self.pasteKey(), "v", [.maskCommand, .maskShift]),
             try TestKeys.event(Self.pasteKey(), "v", [.maskCommand, .maskAlternate]),
+            try TestKeys.event(Self.pasteKey(), "v", [.maskCommand, .maskShift, .maskAlternate]),
             try TestKeys.event(kVK_Escape, "\u{1b}", .maskCommand),
             try TestKeys.event(kVK_ANSI_C, "c", .maskCommand),
         ]

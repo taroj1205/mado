@@ -31,7 +31,7 @@ public struct PasteQueue: Sendable {
         else { return nil }
         let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
         switch event.flags.intersection(shortcutFlags) {
-        case .maskCommand:
+        case .maskCommand, [.maskCommand, .maskShift]:
             let paste = KeyboardLayout.commandKeyCode(typing: "v") ?? CGKeyCode(kVK_ANSI_V)
             return code == paste ? .paste : nil
 
