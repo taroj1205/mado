@@ -123,6 +123,7 @@ final class LyricsPaneTrack: NSView {
             transport.topAnchor.constraint(
                 equalTo: progress.bottomAnchor, constant: Self.transportGap),
             transport.centerXAnchor.constraint(equalTo: centerXAnchor),
+            bottomAnchor.constraint(equalTo: transport.bottomAnchor),
             disc.widthAnchor.constraint(equalToConstant: Self.discSize),
             disc.heightAnchor.constraint(equalToConstant: Self.discSize),
             previous.widthAnchor.constraint(equalToConstant: Self.skipBox),

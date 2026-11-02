@@ -16,7 +16,7 @@ public actor LyricsLookup {
 
         var isFinal: Bool {
             switch self {
-            case .found(let lyrics): LyricsLanguage(detecting: lyrics) != nil
+            case .found(let lyrics): lyrics.isSynced && LyricsLanguage(detecting: lyrics) != nil
             case .instrumental: true
             case .missing: false
             }
@@ -121,8 +121,22 @@ public actor LyricsLookup {
         let known = Self.match(exact, for: track, within: Self.durationSlack)
         if known?.isFinal == true { return known }
         let original = await sameAlbum(track).filter(\.isInOriginalLanguage)
-        if let match = Self.match(original, for: track, within: Self.durationSlack) { return match }
-        if known != nil { return known }
+        let preferred = Self.match(original, for: track, within: Self.durationSlack) ?? known
+        if case .found(let lyrics) = preferred, !lyrics.isSynced {
+            do {
+                let named = try await hits(track, artist: track.artist)
+                let language = LyricsLanguage(detecting: lyrics)
+                let candidates = (exact + original + named).filter { entry in
+                    language == nil
+                        || entry.lyrics.flatMap { LyricsLanguage(detecting: $0) } == language
+                }
+                return Self.match(candidates, for: track, within: Self.durationSlack)
+                    ?? preferred
+            } catch {
+                return preferred
+            }
+        }
+        if preferred != nil { return preferred }
         return try await search(track)
     }
 

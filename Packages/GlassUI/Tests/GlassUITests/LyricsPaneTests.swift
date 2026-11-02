@@ -233,12 +233,19 @@ import Testing
         #expect(spots[2].centre == LyricsPaneLines.anchor)
     }
 
-    @Test func transportCallsSkipAndPlayPause() {
+    @Test(arguments: [
+        WidgetGrid.LyricsStatus.synced, .plain, .instrumental, .missing, .loading, .off,
+    ])
+    func transportCallsSkipAndPlayPause(status: WidgetGrid.LyricsStatus) {
         var skips: [WidgetGrid.Skip] = []
         var toggles = 0
         view.onSkip = { skips.append($0) }
         view.onPlayPause = { toggles += 1 }
-        open(verse(.synced, playing: false))
+        open(verse(status, playing: false))
+        for button in [pane.track.previous, pane.track.play, pane.track.next] {
+            let centre = NSPoint(x: button.bounds.midX, y: button.bounds.midY)
+            #expect(view.hitTest(view.convert(centre, from: button)) === button)
+        }
         #expect(pane.track.play.accessibilityLabel() == "Play")
         pane.track.previous.performClick(nil)
         pane.track.next.performClick(nil)
