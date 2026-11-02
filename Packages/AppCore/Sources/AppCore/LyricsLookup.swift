@@ -120,7 +120,13 @@ public actor LyricsLookup {
         let exact = try await exact(track).map { [$0] } ?? []
         let known = Self.match(exact, for: track, within: Self.durationSlack)
         if known?.isFinal == true { return known }
-        let original = await sameAlbum(track).filter(\.isInOriginalLanguage)
+        let exactLanguage: LyricsLanguage? =
+            if case .found(let lyrics) = known { LyricsLanguage(detecting: lyrics) } else { nil }
+        let original = await sameAlbum(track).filter { entry in
+            entry.isInOriginalLanguage
+                && (exactLanguage == nil
+                    || entry.lyrics.flatMap { LyricsLanguage(detecting: $0) } == exactLanguage)
+        }
         let preferred = Self.match(original, for: track, within: Self.durationSlack) ?? known
         if case .found(let lyrics) = preferred, !lyrics.isSynced {
             do {
