@@ -93,12 +93,15 @@ public struct ModifierTap {
 
     @MainActor
     final class Recognizer {
+        private static let keyHoldExpirySeconds = 2
+        private static let keyHoldExpiry: Duration = .seconds(keyHoldExpirySeconds)
+
         private let window: Duration
         private let bindings: [Tap: @MainActor () -> Void]
         private let mouseButtonHeld: () -> Bool
         private let run: @MainActor (@escaping @MainActor @Sendable () async -> Void) -> Void
         private var tap: ModifierTap
-        private var heldKeys: Set<Int64> = []
+        private var heldKeys: [Int64: CGEventTimestamp] = [:]
         private var waits = 0
 
         init(
@@ -117,17 +120,18 @@ public struct ModifierTap {
             let code = event.getIntegerValueField(.keyboardEventKeycode)
             switch type {
             case .keyUp:
-                heldKeys.remove(code)
+                heldKeys[code] = nil
                 return
 
             case .keyDown:
-                heldKeys.insert(code)
+                heldKeys[code] = event.timestamp
 
             default:
                 break
             }
             let previous = tap.held
-            let interrupted = type == .flagsChanged && (!heldKeys.isEmpty || mouseButtonHeld())
+            let interrupted =
+                type == .flagsChanged && (keyHeld(at: event.timestamp) || mouseButtonHeld())
             let fired = tap.handle(
                 interrupted ? .keyDown : type, flags: event.flags,
                 keyCode: code, timestamp: event.timestamp)
@@ -148,6 +152,10 @@ public struct ModifierTap {
                 }
                 bindings[expired]?()
             }
+        }
+
+        private func keyHeld(at time: CGEventTimestamp) -> Bool {
+            heldKeys.values.contains { time < $0 || .nanoseconds(time - $0) <= Self.keyHoldExpiry }
         }
     }
 
