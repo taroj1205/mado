@@ -27,6 +27,11 @@ import Testing
         #expect(languages.codes == ["ja"])
     }
 
+    @Test func narrowingKeepsOnlyAChosenLanguage() {
+        #expect(SpeechLanguages().only("ja").codes == ["ja"])
+        #expect(SpeechLanguages().only("ko").codes == ["en", "ja"])
+    }
+
     @Test func savedChoicesSurviveSavingAndLoading() throws {
         var languages = SpeechLanguages()
         languages.add("fr")

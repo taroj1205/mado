@@ -39,6 +39,13 @@ public struct SpeechLanguages: Codable, Equatable, Sendable {
         codes.append(code)
     }
 
+    func only(_ code: String) -> Self {
+        guard codes.contains(code) else { return self }
+        var only = self
+        only.codes = [code]
+        return only
+    }
+
     public mutating func remove(_ code: String) {
         guard codes.count > 1 else { return }
         codes.removeAll { $0 == code }

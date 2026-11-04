@@ -64,6 +64,18 @@ public actor Transcriber {
         loaded = nil
     }
 
+    public func narrow(
+        _ languages: SpeechLanguages, to samples: [Float], with model: URL
+    ) async throws -> SpeechLanguages {
+        try Task.checkCancellation()
+        let engine = try await engine(for: model)
+        try Task.checkCancellation()
+        guard let code = engine.language(of: samples, among: languages.codes) else {
+            return languages
+        }
+        return languages.only(code)
+    }
+
     public func transcribe(
         _ samples: [Float], with model: URL, languages: SpeechLanguages, words: SpeechWords
     ) async throws -> String {

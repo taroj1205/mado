@@ -76,4 +76,20 @@ import Testing
             try await transcribe(Self.tone, with: missing)
         }
     }
+
+    @Test func narrowingWithAMissingModelFails() async {
+        let missing = FileManager.default.temporaryDirectory.appending(path: "no-such-model.bin")
+        await #expect(throws: Transcriber.Failure.self) {
+            try await Transcriber().narrow(SpeechLanguages(), to: Self.tone, with: missing)
+        }
+    }
+
+    @Test func aCancelledNarrowingLoadsNothing() async {
+        let missing = FileManager.default.temporaryDirectory.appending(path: "no-such-model.bin")
+        let task = Task {
+            unsafe withUnsafeCurrentTask { unsafe $0?.cancel() }
+            return try await Transcriber().narrow(SpeechLanguages(), to: Self.tone, with: missing)
+        }
+        await #expect(throws: CancellationError.self) { try await task.value }
+    }
 }
