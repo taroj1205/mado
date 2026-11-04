@@ -156,7 +156,12 @@ final class Dictation {
         detection = nil
         work = Task { [weak self, transcriber] in
             do {
-                let languages = await detected?.value ?? current.languages
+                let languages = await withTaskCancellationHandler {
+                    await detected?.value ?? current.languages
+                } onCancel: {
+                    detected?.cancel()
+                }
+                guard !Task.isCancelled else { return }
                 let text = try await transcriber.transcribe(
                     samples, with: file, languages: languages, words: current.words)
                 guard !Task.isCancelled else { return }
