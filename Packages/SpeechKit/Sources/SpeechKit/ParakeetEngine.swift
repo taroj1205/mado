@@ -15,6 +15,10 @@ final class ParakeetEngine: Engine {
         try AsrModels.loadLocal(from: folder, version: version)
     }
 
+    func language(of _: [Float], among _: [String]) -> String? {
+        nil
+    }
+
     func transcribe(
         _ samples: [Float], languages _: [String], words _: SpeechWords
     ) async throws -> String {

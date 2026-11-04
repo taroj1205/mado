@@ -24,7 +24,7 @@ public final class Microphone {
     private let sampleRate: Double
     nonisolated private let pending = OSAllocatedUnfairLock<[Chunk]>(initialState: [])
     private var converter: AVAudioConverter?
-    private(set) var recorded: [Float] = []
+    public private(set) var recorded: [Float] = []
     private var onLevel: (@MainActor (Double) -> Void)?
     private var onFailure: (@MainActor (any Error) -> Void)?
     private var observer: (any NSObjectProtocol)?

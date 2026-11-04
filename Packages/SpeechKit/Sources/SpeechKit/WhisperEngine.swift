@@ -42,6 +42,12 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         return scored.max { $0.score < $1.score }?.code ?? Self.automatic
     }
 
+    func language(of samples: [Float], among languages: [String]) -> String? {
+        let threads = unsafe whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH).n_threads
+        let spoken = language(of: samples, among: languages, threads: threads)
+        return spoken == Self.automatic ? nil : spoken
+    }
+
     private func tokenCount(of text: String) -> Int {
         var tokens = [whisper_token](repeating: 0, count: Self.tokenBuffer)
         let count = unsafe whisper_tokenize(pointer, text, &tokens, Int32(tokens.count))

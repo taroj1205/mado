@@ -27,6 +27,8 @@ final class Dictation {
     private var request: Task<Void, Never>?
     private var work: Task<Void, Never>?
     private var model: SpeechModel?
+    private var window = DetectionWindow()
+    private var detection: (languages: SpeechLanguages, task: Task<SpeechLanguages, Never>)?
     private var asksOnRelease = false
 
     var isActive: Bool {
@@ -64,6 +66,9 @@ final class Dictation {
     }
 
     private func unload() {
+        detection?.task.cancel()
+        detection = nil
+        window = DetectionWindow()
         Task { [transcriber] in await transcriber.unload() }
     }
 
@@ -113,6 +118,21 @@ final class Dictation {
             pill.show(.listening(since: .now), on: nil)
         }
         pill.hear(level)
+        detectLanguage()
+    }
+
+    private func detectLanguage() {
+        guard detection == nil, let model, let range = window.range(in: microphone.recorded)
+        else { return }
+        let samples = Array(microphone.recorded[range])
+        let file = models.location(of: model)
+        let languages = settings().languages
+        detection = (
+            languages,
+            Task { [transcriber] in
+                (try? await transcriber.narrow(languages, to: samples, with: file)) ?? languages
+            }
+        )
     }
 
     private func fail(_ error: any Error) {
@@ -131,10 +151,14 @@ final class Dictation {
         pill.show(.transcribing, on: nil)
         let file = models.location(of: model)
         let current = settings()
+        let detected = detection?.languages == current.languages ? detection?.task : nil
+        if detected == nil { detection?.task.cancel() }
+        detection = nil
         work = Task { [weak self, transcriber] in
             do {
+                let languages = await detected?.value ?? current.languages
                 let text = try await transcriber.transcribe(
-                    samples, with: file, languages: current.languages, words: current.words)
+                    samples, with: file, languages: languages, words: current.words)
                 guard !Task.isCancelled else { return }
                 await self?.insert(text)
                 guard !Task.isCancelled, current.keepsRecordings, !text.isEmpty else { return }
