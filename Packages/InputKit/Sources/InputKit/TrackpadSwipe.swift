@@ -3,7 +3,8 @@ import AppKit
 import TouchPosition
 
 public struct TrackpadSwipe {
-    static let stepDistance: CGFloat = 0.03
+    static let openDistance: CGFloat = 20
+    static let stepDistance: CGFloat = 14
     static let fingersToKeepSwiping = 2
 
     let fingers: Int
@@ -25,8 +26,10 @@ public struct TrackpadSwipe {
             let touches =
                 NSEvent(cgEvent: event)?.allTouches().filter { $0.type == .indirect } ?? []
             guard !touches.isEmpty else { return }
-            let points = touches.filter { NSTouch.Phase.touching.contains($0.phase) }
-                .map(MadoTouchPosition)
+            let points = touches.filter { touch in
+                NSTouch.Phase.touching.contains(touch.phase) && !touch.isResting
+            }
+            .map(MadoTouchPosition)
             guard !points.contains(where: { $0.x.isNaN || $0.y.isNaN }) else { return }
             swipe.handle(points, emit: onEvent)
         }
@@ -61,15 +64,28 @@ public struct TrackpadSwipe {
             return
         }
         let travel = CGPoint(x: center.x - anchor.x, y: center.y - anchor.y)
-        guard max(abs(travel.x), abs(travel.y)) >= Self.stepDistance else { return }
-        self.anchor = center
-        if abs(travel.x) > abs(travel.y) {
-            emit(.stepped(backward: travel.x < 0))
-            isSwiping = true
-        } else if isSwiping {
-            emit(.steppedRow(upward: travel.y > 0))
+        let horizontal = abs(travel.x) > abs(travel.y)
+        guard isSwiping else {
+            guard max(abs(travel.x), abs(travel.y)) >= Self.openDistance else { return }
+            if horizontal {
+                emit(.stepped(backward: travel.x < 0))
+                isSwiping = true
+                self.anchor = center
+            } else {
+                isBlocked = true
+            }
+            return
+        }
+        let distance = horizontal ? travel.x : travel.y
+        let steps = Int(abs(distance) / Self.stepDistance)
+        guard steps > 0 else { return }
+        let moved = CGFloat(steps) * Self.stepDistance * (distance < 0 ? -1 : 1)
+        if horizontal {
+            for _ in 0..<steps { emit(.stepped(backward: distance < 0)) }
+            self.anchor = CGPoint(x: anchor.x + moved, y: center.y)
         } else {
-            isBlocked = true
+            for _ in 0..<steps { emit(.steppedRow(upward: distance > 0)) }
+            self.anchor = CGPoint(x: center.x, y: anchor.y + moved)
         }
     }
 }

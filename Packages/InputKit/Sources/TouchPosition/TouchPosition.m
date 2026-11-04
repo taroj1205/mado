@@ -2,7 +2,9 @@
 
 NSPoint MadoTouchPosition(NSTouch *touch) {
     @try {
-        return touch.normalizedPosition;
+        NSPoint position = touch.normalizedPosition;
+        NSSize size = touch.deviceSize;
+        return NSMakePoint(position.x * size.width, position.y * size.height);
     } @catch (NSException *exception) {
         return NSMakePoint(NAN, NAN);
     }
