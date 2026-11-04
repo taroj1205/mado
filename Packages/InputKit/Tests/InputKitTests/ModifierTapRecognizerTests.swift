@@ -53,10 +53,12 @@ import Testing
     }
 
     static func key(
-        _ type: CGEventType, _ code: Int, into recognizer: ModifierTap.Recognizer
+        _ type: CGEventType, _ code: Int, at time: CGEventTimestamp,
+        into recognizer: ModifierTap.Recognizer
     ) throws {
         let event = try #require(
             CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(code), keyDown: true))
+        event.timestamp = time
         recognizer.handle(type, event)
     }
 
@@ -84,18 +86,39 @@ import Testing
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
             window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
-        try Self.key(.keyDown, 13, into: recognizer)
+        try Self.key(.keyDown, 13, at: 900_000_000, into: recognizer)
         try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
         await inbox.settle()
         #expect(inbox.taps.isEmpty)
+    }
+
+    @Test func aKeyStillRepeatingKeepsBlockingTaps() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
+        try Self.key(.keyDown, 13, at: 1_000_000_000, into: recognizer)
+        try Self.key(.keyDown, 13, at: 4_000_000_000, into: recognizer)
+        try Self.tap(.rightShift, at: 4_500_000_000, into: recognizer)
+        await inbox.settle()
+        #expect(inbox.taps.isEmpty)
+    }
+
+    @Test func aKeyWhoseKeyUpWasMissedStopsBlockingTaps() async throws {
+        let inbox = Inbox()
+        let recognizer = inbox.recognizer(
+            window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
+        try Self.key(.keyDown, 13, at: 1_000_000_000, into: recognizer)
+        try Self.tap(.rightShift, at: 4_000_000_000, into: recognizer)
+        await inbox.settle()
+        #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
     }
 
     @Test func aTapAfterTheKeyIsReleasedIsDelivered() async throws {
         let inbox = Inbox()
         let recognizer = inbox.recognizer(
             window: .seconds(5), bound: [ModifierTap.Tap(.rightShift)])
-        try Self.key(.keyDown, 13, into: recognizer)
-        try Self.key(.keyUp, 13, into: recognizer)
+        try Self.key(.keyDown, 13, at: 900_000_000, into: recognizer)
+        try Self.key(.keyUp, 13, at: 950_000_000, into: recognizer)
         try Self.tap(.rightShift, at: 1_000_000_000, into: recognizer)
         await inbox.settle()
         #expect(inbox.taps == [ModifierTap.Tap(.rightShift)])
