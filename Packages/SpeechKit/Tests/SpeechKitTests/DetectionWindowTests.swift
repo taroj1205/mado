@@ -38,6 +38,13 @@ import Testing
         #expect(found == Self.second..<4 * Self.second)
     }
 
+    @Test func aClickBeforeSpeakingIsSkipped() {
+        var window = DetectionWindow()
+        var samples = recording(silence: 2 * Self.second, voice: 4 * Self.second)
+        samples.replaceSubrange(8_000..<8_320, with: Self.voice.prefix(320))
+        #expect(window.range(in: samples) == 2 * Self.second..<5 * Self.second)
+    }
+
     @Test func quietNoiseIsNotSpeech() {
         var window = DetectionWindow()
         let hiss = (0..<(5 * Self.second)).map { Float(0.001 * sin(Double($0) * 0.1)) }

@@ -68,8 +68,11 @@ public actor Transcriber {
         _ languages: SpeechLanguages, to samples: [Float], with model: URL
     ) async throws -> SpeechLanguages {
         try Task.checkCancellation()
-        guard let code = try await engine(for: model).language(of: samples, among: languages.codes)
-        else { return languages }
+        let engine = try await engine(for: model)
+        try Task.checkCancellation()
+        guard let code = engine.language(of: samples, among: languages.codes) else {
+            return languages
+        }
         return languages.only(code)
     }
 
