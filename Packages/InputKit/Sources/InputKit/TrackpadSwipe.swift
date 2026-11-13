@@ -15,6 +15,7 @@ public struct TrackpadSwipe {
 
     let fingers: Int
     private var starts: [AnyHashable: CGPoint] = [:]
+    private var openedWith = 0
     private var isSwiping = false
     private var isBlocked = false
 
@@ -57,7 +58,7 @@ public struct TrackpadSwipe {
             return
         }
         let moving = touches.filter { $0.phase == .began || $0.phase == .moved }
-        if moving.count > fingers {
+        if moving.count > fingers || (isSwiping && touches.count > openedWith) {
             if isSwiping { emit(.cancelled) }
             isSwiping = false
             isBlocked = true
@@ -65,19 +66,38 @@ public struct TrackpadSwipe {
         guard !isBlocked else { return }
         let down = Set(touches.map(\.id))
         starts = starts.filter { down.contains($0.key) }
-        guard !touches.contains(where: { $0.phase == .began || starts[$0.id] == nil }) else {
-            rebase(touches, keeping: .zero)
+        let landed = touches.filter { $0.phase == .began || starts[$0.id] == nil }
+        guard landed.isEmpty else {
+            land(landed, among: touches)
             return
         }
         follow(moving, touches, emit: emit)
     }
 
+    private func travel(of touches: [Touch]) -> [CGPoint] {
+        touches.compactMap { touch in
+            starts[touch.id].map { CGPoint(x: touch.position.x - $0.x, y: touch.position.y - $0.y) }
+        }
+    }
+
+    private mutating func land(_ landed: [Touch], among touches: [Touch]) {
+        let ids = Set(landed.map(\.id))
+        let held = travel(of: touches.filter { !ids.contains($0.id) })
+        guard isSwiping, !held.isEmpty else {
+            rebase(touches, keeping: .zero)
+            return
+        }
+        let carried = Self.average(held)
+        for touch in landed {
+            starts[touch.id] = CGPoint(
+                x: touch.position.x - carried.x, y: touch.position.y - carried.y)
+        }
+    }
+
     private mutating func follow(
         _ moving: [Touch], _ touches: [Touch], emit: (SwitcherKeys.Event) -> Void
     ) {
-        let travel = moving.compactMap { touch in
-            starts[touch.id].map { CGPoint(x: touch.position.x - $0.x, y: touch.position.y - $0.y) }
-        }
+        let travel = travel(of: moving)
         if isSwiping {
             guard travel.count >= Self.fingersToKeepSwiping else { return }
             step(Self.average(travel), touches, emit: emit)
@@ -107,6 +127,7 @@ public struct TrackpadSwipe {
         else { return }
         emit(.stepped(backward: backward))
         isSwiping = true
+        openedWith = touches.count
         rebase(touches, keeping: .zero)
     }
 

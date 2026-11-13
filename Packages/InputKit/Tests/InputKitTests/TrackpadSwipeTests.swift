@@ -134,21 +134,35 @@ import Testing
         #expect(recorder.events == [.stepped(backward: false), .chosen])
     }
 
-    @Test func aFingerSlippingOffMidSwipeKeepsTheTravelAndComingBackDoesNotJump() {
+    @Test func aFingerSlippingOffMidSwipeKeepsTheTravelAndLandingAgainDoesNotJump() {
         let recorder = Recorder()
         let opened = 0.2 + Self.open
         let halfStep = TrackpadSwipe.stepDistance * 0.55
+        let spread = Recorder.spread
         recorder.touch(3, across: 0.2)
         recorder.touch(3, across: opened)
         recorder.touch(3, across: opened + halfStep)
         recorder.touch(2, across: opened + halfStep * 2)
         #expect(recorder.events == [.stepped(backward: false), .stepped(backward: false)])
-        let back = opened + 0.2
-        recorder.touch(3, across: back)
-        recorder.touch(3, across: back + halfStep)
+        recorder.touch(at: [opened + halfStep * 2, opened + spread + halfStep * 2, 0.9])
+        recorder.touch(at: [opened + halfStep * 3, opened + spread + halfStep * 3, 0.9 + halfStep])
         #expect(recorder.events == [.stepped(backward: false), .stepped(backward: false)])
-        recorder.touch(3, across: back + halfStep * 2)
+        recorder.touch(
+            at: [opened + halfStep * 4, opened + spread + halfStep * 4, 0.9 + halfStep * 2])
         #expect(recorder.events == Array(repeating: .stepped(backward: false), count: 3))
+    }
+
+    @Test func aFingerLandingMidSwipeJoinsAtTheTravelSoFar() {
+        let recorder = Recorder()
+        let opened = 0.2 + Self.open
+        let almost = TrackpadSwipe.stepDistance * 0.95
+        recorder.touch(3, across: 0.2)
+        recorder.touch(3, across: opened)
+        recorder.touch(2, across: opened + almost)
+        recorder.touch(3, across: opened + almost)
+        #expect(recorder.events == [.stepped(backward: false)])
+        recorder.touch(3, across: opened + TrackpadSwipe.stepDistance * 1.05)
+        #expect(recorder.events == [.stepped(backward: false), .stepped(backward: false)])
     }
 
     @Test func aFingerPausingMidSwipeKeepsTheTravelSoFar() {
@@ -231,6 +245,16 @@ import Testing
         recorder.touch(4, across: 0.2 + Self.open)
         recorder.touch(4, across: 0.2 + Self.open * 3)
         recorder.touch(3, across: 0.2 + Self.open * 3)
+        recorder.lift()
+        #expect(recorder.events == [.stepped(backward: false), .cancelled])
+    }
+
+    @Test func anExtraFingerLandingWhileTheOthersHoldStillCancels() {
+        let recorder = Recorder()
+        let opened = 0.2 + Self.open
+        recorder.touch(3, across: 0.2)
+        recorder.touch(3, across: opened)
+        recorder.touch(0..<4, across: opened, still: [0, 1, 2])
         recorder.lift()
         #expect(recorder.events == [.stepped(backward: false), .cancelled])
     }
