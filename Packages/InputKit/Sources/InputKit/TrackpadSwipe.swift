@@ -66,7 +66,7 @@ public struct TrackpadSwipe {
         let down = Set(touches.map(\.id))
         starts = starts.filter { down.contains($0.key) }
         guard !touches.contains(where: { $0.phase == .began || starts[$0.id] == nil }) else {
-            rebase(touches)
+            rebase(touches, keeping: .zero)
             return
         }
         follow(moving, touches, emit: emit)
@@ -87,8 +87,10 @@ public struct TrackpadSwipe {
         }
     }
 
-    private mutating func rebase(_ touches: [Touch]) {
-        starts = Dictionary(touches.map { ($0.id, $0.position) }) { $1 }
+    private mutating func rebase(_ touches: [Touch], keeping rest: CGPoint) {
+        starts = Dictionary(
+            touches.map { ($0.id, CGPoint(x: $0.position.x - rest.x, y: $0.position.y - rest.y)) }
+        ) { $1 }
     }
 
     private mutating func open(
@@ -105,7 +107,7 @@ public struct TrackpadSwipe {
         else { return }
         emit(.stepped(backward: backward))
         isSwiping = true
-        rebase(touches)
+        rebase(touches, keeping: .zero)
     }
 
     private mutating func step(
@@ -118,13 +120,7 @@ public struct TrackpadSwipe {
         for _ in 0..<steps {
             emit(horizontal ? .stepped(backward: distance < 0) : .steppedRow(upward: distance > 0))
         }
-        let moved = CGFloat(steps) * Self.stepDistance * (distance < 0 ? -1 : 1)
-        for touch in touches {
-            guard let start = starts[touch.id] else { continue }
-            starts[touch.id] =
-                horizontal
-                ? CGPoint(x: start.x + moved, y: touch.position.y)
-                : CGPoint(x: touch.position.x, y: start.y + moved)
-        }
+        let rest = distance.truncatingRemainder(dividingBy: Self.stepDistance)
+        rebase(touches, keeping: horizontal ? CGPoint(x: rest, y: 0) : CGPoint(x: 0, y: rest))
     }
 }

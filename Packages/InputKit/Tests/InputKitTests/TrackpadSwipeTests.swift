@@ -162,6 +162,18 @@ import Testing
         #expect(recorder.events == [.stepped(backward: false), .stepped(backward: false)])
     }
 
+    @Test func aPausedFingerMovingAgainAfterStepsDoesNotStepBack() {
+        let recorder = Recorder()
+        let opened = 0.2 + Self.open
+        recorder.touch(3, across: 0.2)
+        recorder.touch(3, across: opened)
+        recorder.touch(0..<3, across: opened + 0.16, still: [2])
+        #expect(recorder.events == Array(repeating: .stepped(backward: false), count: 6))
+        let spread = Recorder.spread
+        recorder.touch(at: [opened + 0.161, opened + spread + 0.161, opened + spread * 2 + 0.001])
+        #expect(recorder.events == Array(repeating: .stepped(backward: false), count: 6))
+    }
+
     @Test func aRestingThumbDoesNotStopTheSwipe() {
         let recorder = Recorder()
         recorder.touch(3..<4, across: 0.2, still: [])
