@@ -3,12 +3,19 @@ import AppKit
 import TouchPosition
 
 public struct TrackpadSwipe {
-    static let openDistance: CGFloat = 20
-    static let stepDistance: CGFloat = 14
+    struct Touch {
+        let id: AnyHashable
+        let position: CGPoint
+        let phase: NSTouch.Phase
+    }
+
+    static let openDistance: CGFloat = 0.015
+    static let stepDistance: CGFloat = 0.03
     static let fingersToKeepSwiping = 2
 
     let fingers: Int
-    private var anchor: CGPoint?
+    private var starts: [AnyHashable: CGPoint] = [:]
+    private var openedWith = 0
     private var isSwiping = false
     private var isBlocked = false
 
@@ -23,69 +30,118 @@ public struct TrackpadSwipe {
     ) throws(ModuleError) {
         var swipe = Self(fingers: fingers)
         try context.observeGestures(name) { event in
-            let touches =
-                NSEvent(cgEvent: event)?.allTouches().filter { $0.type == .indirect } ?? []
-            guard !touches.isEmpty else { return }
-            let points = touches.filter { touch in
-                NSTouch.Phase.touching.contains(touch.phase) && !touch.isResting
+            let all = NSEvent(cgEvent: event)?.allTouches().filter { $0.type == .indirect } ?? []
+            guard !all.isEmpty else { return }
+            let touches = all.compactMap { touch -> Touch? in
+                guard NSTouch.Phase.touching.contains(touch.phase), !touch.isResting,
+                    let id = touch.identity as? NSObject
+                else { return nil }
+                return Touch(id: id, position: MadoTouchPosition(touch), phase: touch.phase)
             }
-            .map(MadoTouchPosition)
-            guard !points.contains(where: { $0.x.isNaN || $0.y.isNaN }) else { return }
-            swipe.handle(points, emit: onEvent)
+            guard !touches.contains(where: { $0.position.x.isNaN || $0.position.y.isNaN }) else {
+                return
+            }
+            swipe.handle(touches, emit: onEvent)
         }
     }
 
-    mutating func handle(_ points: [CGPoint], emit: (SwitcherKeys.Event) -> Void) {
-        guard points.count >= (isSwiping ? Self.fingersToKeepSwiping : fingers) else {
+    private static func average(_ points: [CGPoint]) -> CGPoint {
+        let count = CGFloat(points.count)
+        return CGPoint(
+            x: points.map(\.x).reduce(0, +) / count, y: points.map(\.y).reduce(0, +) / count)
+    }
+
+    mutating func handle(_ touches: [Touch], emit: (SwitcherKeys.Event) -> Void) {
+        guard touches.count >= (isSwiping ? Self.fingersToKeepSwiping : fingers) else {
             if isSwiping { emit(.chosen) }
             self = Self(fingers: fingers)
             return
         }
-        if points.count > fingers {
+        let moving = touches.filter { $0.phase == .began || $0.phase == .moved }
+        if moving.count > fingers || (isSwiping && touches.count > openedWith) {
             if isSwiping { emit(.cancelled) }
             isSwiping = false
             isBlocked = true
         }
         guard !isBlocked else { return }
-        guard points.count == fingers else {
-            anchor = nil
+        let down = Set(touches.map(\.id))
+        starts = starts.filter { down.contains($0.key) }
+        let landed = touches.filter { $0.phase == .began || starts[$0.id] == nil }
+        guard landed.isEmpty else {
+            land(landed, among: touches)
             return
         }
-        let count = CGFloat(points.count)
-        move(
-            to: CGPoint(
-                x: points.map(\.x).reduce(0, +) / count, y: points.map(\.y).reduce(0, +) / count),
-            emit: emit)
+        follow(moving, touches, emit: emit)
     }
 
-    private mutating func move(to center: CGPoint, emit: (SwitcherKeys.Event) -> Void) {
-        guard let anchor else {
-            anchor = center
+    private func travel(of touches: [Touch]) -> [CGPoint] {
+        touches.compactMap { touch in
+            starts[touch.id].map { CGPoint(x: touch.position.x - $0.x, y: touch.position.y - $0.y) }
+        }
+    }
+
+    private mutating func land(_ landed: [Touch], among touches: [Touch]) {
+        let ids = Set(landed.map(\.id))
+        let held = travel(of: touches.filter { !ids.contains($0.id) })
+        guard isSwiping, !held.isEmpty else {
+            rebase(touches, keeping: .zero)
             return
         }
-        let travel = CGPoint(x: center.x - anchor.x, y: center.y - anchor.y)
+        let carried = Self.average(held)
+        for touch in landed {
+            starts[touch.id] = CGPoint(
+                x: touch.position.x - carried.x, y: touch.position.y - carried.y)
+        }
+    }
+
+    private mutating func follow(
+        _ moving: [Touch], _ touches: [Touch], emit: (SwitcherKeys.Event) -> Void
+    ) {
+        let travel = travel(of: moving)
+        if isSwiping {
+            guard travel.count >= Self.fingersToKeepSwiping else { return }
+            step(Self.average(travel), touches, emit: emit)
+        } else {
+            guard travel.count == fingers else { return }
+            open(travel, touches, emit: emit)
+        }
+    }
+
+    private mutating func rebase(_ touches: [Touch], keeping rest: CGPoint) {
+        starts = Dictionary(
+            touches.map { ($0.id, CGPoint(x: $0.position.x - rest.x, y: $0.position.y - rest.y)) }
+        ) { $1 }
+    }
+
+    private mutating func open(
+        _ travel: [CGPoint], _ touches: [Touch], emit: (SwitcherKeys.Event) -> Void
+    ) {
+        let average = Self.average(travel)
+        guard max(abs(average.x), abs(average.y)) >= Self.openDistance else { return }
+        guard abs(average.x) > abs(average.y) else {
+            isBlocked = true
+            return
+        }
+        let backward = average.x < 0
+        guard travel.allSatisfy({ ($0.x < 0) == backward && abs($0.x) >= Self.openDistance })
+        else { return }
+        emit(.stepped(backward: backward))
+        isSwiping = true
+        openedWith = touches.count
+        rebase(touches, keeping: .zero)
+    }
+
+    private mutating func step(
+        _ travel: CGPoint, _ touches: [Touch], emit: (SwitcherKeys.Event) -> Void
+    ) {
         let horizontal = abs(travel.x) > abs(travel.y)
-        guard isSwiping else {
-            guard max(abs(travel.x), abs(travel.y)) >= Self.openDistance else { return }
-            if horizontal {
-                emit(.stepped(backward: travel.x < 0))
-                isSwiping = true
-                self.anchor = center
-            } else {
-                isBlocked = true
-            }
-            return
-        }
         let distance = horizontal ? travel.x : travel.y
         let steps = Int(abs(distance) / Self.stepDistance)
         guard steps > 0 else { return }
-        let moved = CGFloat(steps) * Self.stepDistance * (distance < 0 ? -1 : 1)
-        if horizontal {
-            for _ in 0..<steps { emit(.stepped(backward: distance < 0)) }
-            self.anchor = CGPoint(x: anchor.x + moved, y: center.y)
-        } else {
-            for _ in 0..<steps { emit(.steppedRow(upward: distance > 0)) }
-            self.anchor = CGPoint(x: center.x, y: anchor.y + moved)
+        for _ in 0..<steps {
+            emit(horizontal ? .stepped(backward: distance < 0) : .steppedRow(upward: distance > 0))
         }
+        let rest = distance.truncatingRemainder(dividingBy: Self.stepDistance)
+        rebase(touches, keeping: horizontal ? CGPoint(x: rest, y: 0) : CGPoint(x: 0, y: rest))
     }
 }
