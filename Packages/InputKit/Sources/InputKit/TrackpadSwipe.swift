@@ -128,7 +128,6 @@ public struct TrackpadSwipe {
         emit(.stepped(backward: backward))
         isSwiping = true
         openedWith = touches.count
-        rebase(touches, keeping: .zero)
     }
 
     private mutating func step(
