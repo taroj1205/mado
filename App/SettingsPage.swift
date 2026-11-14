@@ -29,6 +29,7 @@ struct SettingsPage {
         let colourKeys: ColourPickerKeysPage
         let statusItem: NSStatusItem?
         let menuBarAgenda: MenuBarAgendaItem
+        let calendars: CalendarSettings
     }
 
     struct Tab {
@@ -137,6 +138,7 @@ struct SettingsPage {
         ) { context in
             [
                 NotesSettings.section(context.recorder),
+                context.calendars.section,
                 MenuBarAgendaSettings.section(context.modules, context.menuBarAgenda),
                 MeetingHUDSettings.section(context.modules),
             ]

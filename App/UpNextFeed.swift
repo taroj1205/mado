@@ -22,11 +22,11 @@ final class UpNextFeed {
         context.own(.other, "up next cache") { [weak self] in
             MainActor.assumeIsolated { self?.invalidate() }
         }
-        context.observe(
-            .EKEventStoreChanged, on: .default, reading: \.name
-        ) { [weak self] _ in
-            self?.invalidate()
-            refresh()
+        for name in [Notification.Name.EKEventStoreChanged, CalendarSettings.changed] {
+            context.observe(name, on: .default, reading: \.name) { [weak self] _ in
+                self?.invalidate()
+                refresh()
+            }
         }
     }
 

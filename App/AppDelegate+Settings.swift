@@ -30,7 +30,7 @@ extension AppDelegate {
             dictationLanguages: dictationLanguages, dictationWords: dictationWords,
             speechModels: speechModels,
             colourKeys: ColourPickerKeysPage(modules: modules), statusItem: statusItem,
-            menuBarAgenda: menuBar.agenda)
+            menuBarAgenda: menuBar.agenda, calendars: CalendarSettings(modules: modules))
     }
 
     func finder() -> SettingsFinder {

@@ -53,6 +53,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         context.remaps.onChange = { [weak self] in self?.reload() }
         context.modifierKeys.onChange = { [weak self] in self?.reload() }
         context.enterGuard.onChange = { [weak self] in self?.reload() }
+        context.calendars.onChange = { [weak self] in self?.reload() }
     }
 
     @available(*, unavailable)
