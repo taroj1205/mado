@@ -78,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         HyperGlyph.isShown = RemapSettings.load(from: modules).showsHyperGlyph
         usage = Usage.load(from: modules)
         history = CalculatorHistory.load(from: modules)
+        CalendarSettings.apply(from: modules)
         NSApp.mainMenu = MainMenu.make(target: self, settings: #selector(showSettings))
         statusItem = makeStatusItem(settings: #selector(showSettings))
         launcher = makeLauncher()

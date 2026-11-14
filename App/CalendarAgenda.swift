@@ -29,11 +29,14 @@ final class CalendarAgenda {
     private actor Events {
         private lazy var store = EKEventStore()
 
-        func found(in span: DateInterval) -> [Found] {
+        func found(in span: DateInterval, hiding hidden: Set<String>) -> [Found] {
             let predicate = store.predicateForEvents(
                 withStart: span.start, end: span.end, calendars: nil)
             let found = store.events(matching: predicate)
-                .filter { $0.status != .canceled }
+                .filter { event in
+                    event.status != .canceled
+                        && !hidden.contains(event.calendar?.calendarIdentifier ?? "")
+                }
                 .map { source in
                     Found(
                         event: CalendarAgenda.event(from: source), colour: source.calendar?.color,
@@ -59,6 +62,7 @@ final class CalendarAgenda {
     static let joinTitle = "Join Meeting"
     static let openTitle = "Open in Calendar"
     private static let events = Events()
+    static var hiddenCalendars: Set<String> = []
 
     static var hasAccess: Bool {
         EKEventStore.authorizationStatus(for: .event) == .fullAccess
@@ -119,7 +123,8 @@ final class CalendarAgenda {
         let today = Calendar.current.startOfDay(for: now)
         guard let end = Calendar.current.date(byAdding: .day, value: upNextDays, to: today)
         else { return [] }
-        return await events.found(in: DateInterval(start: today, end: end))
+        return await events.found(
+            in: DateInterval(start: today, end: end), hiding: hiddenCalendars)
     }
 
     static func month(around day: Date) async -> [Found] {
@@ -128,7 +133,8 @@ final class CalendarAgenda {
             let start = calendar.date(byAdding: .month, value: -monthsAround, to: month.start),
             let end = calendar.date(byAdding: .month, value: monthsAround + 1, to: month.start)
         else { return [] }
-        return await events.found(in: DateInterval(start: start, end: end))
+        return await events.found(
+            in: DateInterval(start: start, end: end), hiding: hiddenCalendars)
     }
 
     static func open(_ found: Found) -> CommandAction {
@@ -201,7 +207,7 @@ final class CalendarAgenda {
         }
         let calendar = Calendar.current
         guard let span = Agenda.span(of: headings, calendar: calendar) else { return [] }
-        let fetched = await Self.events.found(in: span)
+        let fetched = await Self.events.found(in: span, hiding: Self.hiddenCalendars)
         guard !Task.isCancelled else { return [] }
         let found = Dictionary(uniqueKeysWithValues: fetched.map { ($0.event.id, $0) })
         let agenda = Agenda(events: found.values.map(\.event))
