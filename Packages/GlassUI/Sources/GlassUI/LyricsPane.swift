@@ -28,7 +28,7 @@ final class LyricsPane: NSView {
     let hints = LyricsPaneHints()
     let empty = NSTextField(labelWithString: nothingPlaying)
     let body = NSView()
-    var pasteboard = NSPasteboard.general
+    lazy var pasteboard = NSPasteboard.general
     var onSeek: ((Int) -> Void)?
     private(set) var verse: WidgetGrid.Verse?
 

@@ -96,18 +96,23 @@ import Testing
         #expect(lyrics.moment(at: 1.25, duration: 30)?.remaining == 1.25)
     }
 
-    @Test func onlyACandidateWithTheTrackTitleAndLengthIsDownloaded() async throws {
+    @Test func onlyACandidateWithTheTrackTitleEditionAndLengthIsDownloaded() async throws {
         server.candidates =
             "[\(candidate("1", length: 260_000)),\(candidate("2", song: "Low")),"
+            + "\(candidate("4", song: "Low Tide (Live)")),"
             + "\(candidate("3", song: "LOW TIDE (Remastered)", length: 202_000))]"
         server.files["3"] = try Self.encoded(Self.song)
+        server.files["4"] = try Self.encoded(Self.song)
         let lyrics = await KuGouLyrics(load: server.answer).lyrics(for: track)
         #expect(lyrics?.lines.first?.text == "あい")
-        #expect(server.asked.map(\.path) == ["/search", "/download"])
-        let query = URLComponents(url: server.asked[0], resolvingAgainstBaseURL: false)?
-            .queryItems?.reduce(into: [String: String]()) { $0[$1.name] = $1.value }
-        #expect(query?["keyword"] == "Harbour Lights - Low Tide")
-        #expect(query?["duration"] == "201400")
+        try #require(server.asked.map(\.path) == ["/search", "/download"])
+        let queries = server.asked.map { url in
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.reduce(into: [String: String]()) { $0[$1.name] = $1.value }
+        }
+        #expect(queries[0]?["keyword"] == "Harbour Lights - Low Tide")
+        #expect(queries[0]?["duration"] == "201400")
+        #expect(queries[1]?["id"] == "3")
     }
 
     @Test func aTrackWithoutALengthIsNotLookedUp() async {
