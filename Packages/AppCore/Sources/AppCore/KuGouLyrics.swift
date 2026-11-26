@@ -27,6 +27,7 @@ struct KuGouLyrics: Sendable {
     }
     private static let zlibHeader = 2
     private static let byteOrderMark = "\u{FEFF}"
+    private static let editionAliases = ["ライブ": "live", "现场": "live", "伴奏": "instrumental"]
     private static let same: String.CompareOptions = [
         .caseInsensitive, .diacriticInsensitive, .widthInsensitive,
     ]
@@ -60,7 +61,7 @@ struct KuGouLyrics: Sendable {
     static func lyrics(fromKRC text: String, title: String) -> Lyrics? {
         let rows = text.split(whereSeparator: \.isNewline)
         let named = rows.lazy.compactMap { $0.wholeMatch(of: /\[ti:(.*)\]/)?.1 }.first ?? ""
-        guard !isOtherEdition(String(named), than: title) else { return nil }
+        guard editions(of: String(named)).isSubset(of: editions(of: title)) else { return nil }
         let offset = rows.lazy.compactMap { $0.wholeMatch(of: /\[offset:(-?\d+)\]/)?.1 }.first
         let shift = offset.flatMap { Double($0) }.map { $0 / milliseconds } ?? 0
         let sung = rows.compactMap { line($0, shift: shift) }.drop(while: isCredit)
@@ -90,9 +91,13 @@ struct KuGouLyrics: Sendable {
         return title[..<suffix].trimmingCharacters(in: .whitespaces)
     }
 
-    private static func isOtherEdition(_ name: String, than title: String) -> Bool {
-        let edition = /(?i)\b(live|remix|instrumental)\b|ライブ|现场|伴奏/
-        return name.contains(edition) && !title.contains(edition)
+    private static func editions(of name: String) -> Set<String> {
+        let marker = /(?i)\b(live|remix|instrumental)\b|ライブ|现场|伴奏/
+        return Set(
+            name.matches(of: marker).map { match in
+                let word = match.output.0.lowercased()
+                return editionAliases[word, default: word]
+            })
     }
 
     private static func isCredit(_ line: Lyrics.Line) -> Bool {
@@ -121,7 +126,7 @@ struct KuGouLyrics: Sendable {
         let near = found.candidates.filter { candidate in
             abs(candidate.duration / Self.milliseconds - duration) <= Self.durationSlack
                 && Self.bare(candidate.song).compare(title, options: Self.same) == .orderedSame
-                && !Self.isOtherEdition(candidate.song, than: track.title)
+                && Self.editions(of: candidate.song) == Self.editions(of: track.title)
         }
         for candidate in near.prefix(Self.triedCandidates) {
             guard
