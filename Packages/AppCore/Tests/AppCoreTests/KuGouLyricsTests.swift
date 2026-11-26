@@ -115,6 +115,22 @@ import Testing
         #expect(queries[1]?["id"] == "3")
     }
 
+    @Test func aLiveTrackOnlyTakesALiveCandidate() async throws {
+        server.candidates =
+            "[\(candidate("1", song: "Low Tide (Remix)")),\(candidate("2")),"
+            + "\(candidate("3", song: "Low Tide (ライブ)"))]"
+        for id in ["1", "2", "3"] { server.files[id] = try Self.encoded(Self.song) }
+        let live = MusicPlayer.Track(
+            id: "L", title: "Low Tide (Live)", artist: "Harbour Lights", isPlaying: true,
+            album: "Salt", duration: 201.4)
+        #expect(await KuGouLyrics(load: server.answer).lyrics(for: live) != nil)
+        let ids = server.asked.compactMap { url in
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "id" }?.value
+        }
+        #expect(ids == ["3"])
+    }
+
     @Test func aTrackWithoutALengthIsNotLookedUp() async {
         let bare = MusicPlayer.Track(id: "B", title: "Low Tide", artist: "Harbour", isPlaying: true)
         #expect(await KuGouLyrics(load: server.answer).lyrics(for: bare) == nil)
