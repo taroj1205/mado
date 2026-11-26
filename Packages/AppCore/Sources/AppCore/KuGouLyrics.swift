@@ -6,6 +6,7 @@ struct KuGouLyrics: Sendable {
         let id: String
         let accesskey: String
         let song: String
+        let singer: String
         let duration: Double
     }
 
@@ -100,6 +101,17 @@ struct KuGouLyrics: Sendable {
             })
     }
 
+    private static func artists(in name: String) -> [Substring] {
+        name.split(separator: /(?i)\s*[,、&\/×]\s*|\s+(?:feat\.?|ft\.?|with)\s+/)
+    }
+
+    private static func sharesAnArtist(_ singer: String, with artist: String) -> Bool {
+        let wanted = artists(in: artist)
+        return artists(in: singer).contains { name in
+            wanted.contains { name.compare($0, options: same) == .orderedSame }
+        }
+    }
+
     private static func isCredit(_ line: Lyrics.Line) -> Bool {
         line.text.contains(" - ") || line.text.contains(":") || line.text.contains("：")
     }
@@ -127,20 +139,27 @@ struct KuGouLyrics: Sendable {
             abs(candidate.duration / Self.milliseconds - duration) <= Self.durationSlack
                 && Self.bare(candidate.song).compare(title, options: Self.same) == .orderedSame
                 && Self.editions(of: candidate.song) == Self.editions(of: track.title)
+                && Self.sharesAnArtist(candidate.singer, with: track.artist)
         }
-        for candidate in near.prefix(Self.triedCandidates) {
-            guard
-                let file: Download = try? await fetch(
-                    "/download",
-                    [
-                        "id": candidate.id, "accesskey": candidate.accesskey, "fmt": "krc",
-                        "charset": "utf8",
-                    ]),
-                let text = Self.decode(file.content),
-                let lyrics = Self.lyrics(fromKRC: text, title: track.title)
-            else { continue }
-            return lyrics
+        return await withTaskGroup(of: (Int, Lyrics?).self) { group in
+            for (rank, candidate) in near.prefix(Self.triedCandidates).enumerated() {
+                group.addTask { (rank, await download(candidate, title: track.title)) }
+            }
+            var ready: [Int: Lyrics] = [:]
+            for await (rank, lyrics) in group { ready[rank] = lyrics }
+            return ready.keys.min().flatMap { ready[$0] }
         }
-        return nil
+    }
+
+    private func download(_ candidate: Candidate, title: String) async -> Lyrics? {
+        guard
+            let file: Download = try? await fetch(
+                "/download",
+                [
+                    "id": candidate.id, "accesskey": candidate.accesskey, "fmt": "krc",
+                    "charset": "utf8",
+                ])
+        else { return nil }
+        return Self.decode(file.content).flatMap { Self.lyrics(fromKRC: $0, title: title) }
     }
 }
