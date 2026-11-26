@@ -73,7 +73,8 @@ public final class NowPlaying {
 
     public func perform(_ control: MusicPlayer.Control) async {
         do {
-            await apply(try await source.perform(control))
+            let found = try await source.perform(control)
+            await apply(found, as: nextTicket())
         } catch {
             logger.error("Music control failed: \(error, privacy: .private)")
         }
@@ -84,7 +85,10 @@ public final class NowPlaying {
         do {
             let wasPaused = track?.isPlaying == false
             try await source.seek(to: start)
-            if wasPaused { await apply(try await source.perform(.playPause)) }
+            if wasPaused {
+                let found = try await source.perform(.playPause)
+                await apply(found, as: nextTicket())
+            }
             session.moved(to: start, isPlaying: track?.isPlaying ?? false, at: uptime())
             line = session.moment(at: uptime())?.index
             onChange?()
@@ -133,20 +137,25 @@ public final class NowPlaying {
     }
 
     private func poll() async {
-        await apply(await source.track(among: players))
+        let ticket = nextTicket()
+        await apply(await source.track(among: players), as: ticket)
     }
 
-    private func apply(_ found: MusicPlayer.Track?) async {
+    private func nextTicket() -> Int {
+        latest += 1
+        return latest
+    }
+
+    private func apply(_ found: MusicPlayer.Track?, as ticket: Int) async {
+        guard ticket == latest else { return }
         guard isRunning else {
             track = found
             onChange?()
             return
         }
-        latest += 1
-        let mine = latest
         let enabled = allows(found)
         let position = found != nil && enabled ? await source.position() : nil
-        guard !Task.isCancelled, isRunning, mine == latest else { return }
+        guard !Task.isCancelled, isRunning, ticket == latest else { return }
         track = found
         session.update(found, position: position, enabled: enabled, at: uptime())
         line = session.moment(at: uptime())?.index
