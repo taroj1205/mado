@@ -6,6 +6,7 @@ struct DictationSettings: StoredValue, Equatable {
         case languages = "spoken_languages"
         case words = "custom_words"
         case keepsRecordings = "keeps_recordings"
+        case showsLiveText = "shows_live_text"
     }
 
     static let key = "dictation"
@@ -14,12 +15,14 @@ struct DictationSettings: StoredValue, Equatable {
     var languages: SpeechLanguages
     var words: SpeechWords
     var keepsRecordings: Bool
+    var showsLiveText: Bool
 
     init() {
         model = nil
         languages = SpeechLanguages()
         words = SpeechWords()
         keepsRecordings = false
+        showsLiveText = false
     }
 
     init(from decoder: any Decoder) throws {
@@ -28,5 +31,6 @@ struct DictationSettings: StoredValue, Equatable {
         languages = try values.decodeIfPresent(SpeechLanguages.self, forKey: .languages) ?? .init()
         words = try values.decodeIfPresent(SpeechWords.self, forKey: .words) ?? .init()
         keepsRecordings = try values.decodeIfPresent(Bool.self, forKey: .keepsRecordings) ?? false
+        showsLiveText = try values.decodeIfPresent(Bool.self, forKey: .showsLiveText) ?? false
     }
 }
