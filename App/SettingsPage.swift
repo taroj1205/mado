@@ -128,6 +128,7 @@ struct SettingsPage {
             [
                 context.dictationLanguages.section,
                 context.dictationWords.section,
+                DictationLiveTextSettings.section(context.modules),
                 DictationRecordingSettings.section(context.modules),
                 context.speechModels.section,
             ]

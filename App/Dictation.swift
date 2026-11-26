@@ -16,6 +16,9 @@ final class Dictation {
     private static let noModel = "Download a speech model in Settings › Voice"
     private static let notTranscribed = "Couldn’t transcribe"
     private static let notPasted = "Couldn’t paste, so it’s copied"
+    private static let liveInterval: Duration = .seconds(1)
+    private static let liveSeconds = 30.0
+    private static let liveSamples = Int(Transcriber.sampleRate * liveSeconds)
 
     private let logger: Logger
     private let settings: @MainActor () -> DictationSettings
@@ -29,6 +32,7 @@ final class Dictation {
     private var model: SpeechModel?
     private var window = DetectionWindow()
     private var detection: (languages: SpeechLanguages, task: Task<SpeechLanguages, Never>)?
+    private var live: Task<Void, Never>?
     private var asksOnRelease = false
 
     var isActive: Bool {
@@ -66,6 +70,8 @@ final class Dictation {
     }
 
     private func unload() {
+        live?.cancel()
+        live = nil
         detection?.task.cancel()
         detection = nil
         window = DetectionWindow()
@@ -108,9 +114,39 @@ final class Dictation {
             } onFailure: { [weak self] error in
                 self?.fail(error)
             }
+            if settings().showsLiveText { showLiveText(with: file) }
         } catch {
             fail(error)
         }
+    }
+
+    private func showLiveText(with file: URL) {
+        live = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.liveInterval)
+                guard let self else { return }
+                await transcribeSoFar(with: file)
+            }
+        }
+    }
+
+    private func transcribeSoFar(with file: URL) async {
+        let current = settings()
+        guard let languages = await spokenLanguages(among: current.languages), !Task.isCancelled
+        else { return }
+        let samples = Array(microphone.recorded.suffix(Self.liveSamples))
+        guard
+            let text = try? await transcriber.preview(
+                samples, with: file, languages: languages, words: current.words),
+            !Task.isCancelled
+        else { return }
+        pill.showLiveText(text)
+    }
+
+    private func spokenLanguages(among chosen: SpeechLanguages) async -> SpeechLanguages? {
+        guard chosen.codes.count > 1 else { return chosen }
+        guard let detection, detection.languages == chosen else { return nil }
+        return await detection.task.value
     }
 
     private func hear(_ level: Double) {
@@ -143,6 +179,8 @@ final class Dictation {
     }
 
     private func finish() {
+        live?.cancel()
+        live = nil
         let samples = microphone.stop()
         guard let model else {
             stop()

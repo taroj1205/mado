@@ -80,6 +80,12 @@ public actor Transcriber {
         _ samples: [Float], with model: URL, languages: SpeechLanguages, words: SpeechWords
     ) async throws -> String {
         defer { unload() }
+        return try await preview(samples, with: model, languages: languages, words: words)
+    }
+
+    public func preview(
+        _ samples: [Float], with model: URL, languages: SpeechLanguages, words: SpeechWords
+    ) async throws -> String {
         guard Double(samples.count) >= Self.sampleRate * Self.shortestSeconds,
             Self.hasSound(samples)
         else { return "" }

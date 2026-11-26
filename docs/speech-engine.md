@@ -113,10 +113,38 @@ M4-15 measured Parakeet through [FluidAudio](https://github.com/FluidInference/F
 - **Downloads are not checksummed.** FluidAudio fetches the model files from Hugging Face's `main` branch. Mado downloads them into a staging folder, moves it into place when the download finishes, and loads the models with `AsrModels.loadLocal`, which never downloads.
 - **In the app.** Both models are in the model list and work in dictation. Turbo stays the recommended model, and Parakeet is rated Fastest with Medium accuracy.
 
+## Live text
+
+With Settings › Voice › Show live text on (off by default), dictation transcribes the recording again about once a second while the key is held, and shows the result in the pill to the right of the time, cut from the front so the newest words stay visible (M4-19). Only the text transcribed after letting go is pasted, as before.
+
+- **Live text waits for the language.** With one language chosen it starts at the first pass. With two or more, it starts once the language has been found from the first 3 s of speech (see "Language"), so recordings shorter than about 4 s never show any. That held for 24 of the 50 kept dictations below with turbo, and 22 with Parakeet.
+- **Each pass reads the last 30 s at most.** Whisper reads 30 s at a time anyway, so a pass costs about the same as transcribing a recording up to that length, and long recordings don't make passes slower.
+- **A pass still running when the key is let go is stopped,** through whisper.cpp's `abort_callback`, so the transcription after letting go doesn't queue behind it. Parakeet passes are short enough not to need it.
+
+Measured on 2026-11-26 (M5 Pro, 64 GB, macOS 27.2.1) by replaying recordings through Mado's `Transcriber` on the same schedule as dictation: a pass one second after the previous one ends. Kept: the 50 kept dictations from one speaker, mostly Japanese, with English and 日本語 chosen and "PR, issue" as custom words. `say`: 6 English sentences read by Samantha, 4–8 s long, with the same settings. Parakeet TDT Japanese ran the kept set and Parakeet TDT v3 the `say` set.
+
+| | Turbo, kept | Turbo, `say` | Parakeet, kept | Parakeet, `say` |
+| --- | --- | --- | --- | --- |
+| Recordings with live text | 21 of 50 | 6 of 6 | 23 of 50 | 6 of 6 |
+| Time per pass (median, max) | 0.64 s, 1.43 s | 0.56 s, 1.44 s | 0.04 s, 0.25 s | 0.05 s, 0.07 s |
+| Share of talking time spent transcribing | 18% | 19% | 2% | 2% |
+| CPU time per second of talking | 0.02 s | 0.02 s | 0.01 s | 0.02 s |
+| GPU time per second of talking | 0.035 s | 0.037 s | 0 s (Neural Engine not counted) | 0 s |
+| Pass still running when the key was let go | 10 | 4 | 1 | 0 |
+| Wait after letting go, live text off → on (median) | 0.79 → 0.89 s | 0.57 → 0.63 s | 0.04 → 0.04 s | 0.05 → 0.05 s |
+| Last live text same as the pasted text | 0 of 19 | 0 of 5 | 2 of 23 | 4 of 6 |
+| Character difference, last live text to pasted text | 36% | 20% | 16% | 2% |
+
+- **Turbo makes the wait a little longer.** When a pass was still running at the release, stopping it took 0.13 s at the median and 0.50 s at most, against 0.39–0.45 s (0.78 s at most) for letting it finish. Over all recordings with live text the median wait went from 0.67 s to 0.71 s. Parakeet's wait didn't change.
+- **The pasted text didn't change.** The 15 recordings whose pass was stopped came out letter for letter the same as without live text.
+- **The last live text is behind the pasted text, not wrong.** It misses the words said after the last pass started: a median 1.7 s of speech with turbo (2.4 s at most) and 0.6 s with Parakeet. In the recordings read through, the rest of the difference was punctuation and small fixes Whisper makes once it hears the whole sentence ("描き方" became "書き方", "db" became "DB").
+- **The load numbers are rough.** CPU time comes from `getrusage` and GPU time from the driver's `accumulatedGPUTime` for the process. For 5 back-to-back turbo passes they added up to 0.09 s of CPU and 0.35 s of GPU out of 2.19 s, so they don't explain the whole pass. Energy wasn't measured, since `powermetrics` needs root.
+- **Not measured:** a real microphone while talking. The replay ran passes back to back without the 1 s pauses taking real time, so the GPU stayed warmer than it would.
+
 ## Notes for M4-11 and M4-12
 
 - **Whisper small isn't a good default for Japanese.** The Speech-model manager board marks it "recommended", but it was the least accurate in Japanese here. The board's "best for Japanese" label on Large v3 Turbo matches the results. Which model is the default is M4-12's call; this is the evidence for it.
-- **Partial results weren't measured.** Only the file path was measured: transcribe after you let go of the hotkey, so text appears in one go, 0.3–0.4 s after letting go on this Mac. whisper.cpp also has a [`whisper-stream` example](https://github.com/ggml-org/whisper.cpp/tree/v1.9.4#real-time-audio-input-example) that re-transcribes the microphone audio every half second. That would give live text at the cost of running the model repeatedly, and its accuracy and load weren't checked. Apple's transcriber streams partial text natively.
+- **Partial results weren't measured here.** M4-19 measured them later; see "Live text". Only the file path was measured: transcribe after you let go of the hotkey, so text appears in one go, 0.3–0.4 s after letting go on this Mac. whisper.cpp also has a [`whisper-stream` example](https://github.com/ggml-org/whisper.cpp/tree/v1.9.4#real-time-audio-input-example) that re-transcribes the microphone audio every half second. That would give live text at the cost of running the model repeatedly, and its accuracy and load weren't checked. Apple's transcriber streams partial text natively.
 - **Memory stays used while the model is loaded.** Large-v3-turbo holds about 1.9 GB until it is unloaded. Unloading after a while idle gives that back, at the cost of the 0.5 s load on the next use.
 - **Check the XCFramework before relying on it.** Its build script builds a static library with Metal built in and turns on Core ML with a fallback to Metal. The Homebrew library measured here loads its backends dynamically and has no Core ML. So the first step of M4-11 is to pin `whisper-b5130-xcframework.zip` by checksum, run one clip through it on macOS 26 and confirm it falls back to Metal when no Core ML encoder file sits next to the model.
 - **Load the ggml backends first with a dynamic build.** The Homebrew library aborts in `whisper_init_from_file_with_params` unless `ggml_backend_load_all()` runs first. `whisper-cli` does this itself. A static build like the XCFramework links its backends in, so this probably doesn't apply there, but that hasn't been checked.

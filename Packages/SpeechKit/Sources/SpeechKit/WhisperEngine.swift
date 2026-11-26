@@ -61,9 +61,27 @@ final class WhisperEngine: Engine, @unchecked Sendable {
         return words.prompt(fitting: budget, counting: tokenCount(of:)) ?? ""
     }
 
-    func transcribe(_ samples: [Float], languages: [String], words: SpeechWords) throws -> String {
+    func transcribe(
+        _ samples: [Float], languages: [String], words: SpeechWords
+    ) async throws -> String {
+        let abort = AbortFlag()
+        return try await withTaskCancellationHandler {
+            try transcribe(samples, languages: languages, words: words, abort: abort)
+        } onCancel: {
+            abort.raise()
+        }
+    }
+
+    private func transcribe(
+        _ samples: [Float], languages: [String], words: SpeechWords, abort: AbortFlag
+    ) throws -> String {
         var params = unsafe whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH)
         unsafe params.print_progress = false
+        unsafe params.abort_callback = { data in
+            guard let flag = unsafe data else { return false }
+            return unsafe Unmanaged<AbortFlag>.fromOpaque(flag).takeUnretainedValue().isRaised
+        }
+        unsafe params.abort_callback_user_data = unsafe Unmanaged.passUnretained(abort).toOpaque()
         let spoken = language(of: samples, among: languages, threads: unsafe params.n_threads)
         let prompt = initialPrompt(for: words)
         unsafe params.carry_initial_prompt = !prompt.isEmpty
@@ -71,11 +89,15 @@ final class WhisperEngine: Engine, @unchecked Sendable {
             prompt.withCString { prompt in
                 unsafe params.language = language
                 unsafe params.initial_prompt = prompt
-                return samples.withUnsafeBufferPointer { buffer in
-                    unsafe whisper_full(pointer, params, buffer.baseAddress, Int32(buffer.count))
+                return withExtendedLifetime(abort) {
+                    samples.withUnsafeBufferPointer { buffer in
+                        unsafe whisper_full(
+                            pointer, params, buffer.baseAddress, Int32(buffer.count))
+                    }
                 }
             }
         }
+        try Task.checkCancellation()
         guard code == 0 else { throw Transcriber.Failure.failed(code: code) }
         return Transcriber.text(
             unsafe (0..<whisper_full_n_segments(pointer)).map { index in

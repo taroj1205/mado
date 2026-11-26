@@ -19,6 +19,7 @@ public final class DictationPill: NSObject {
     private static let titleSize: CGFloat = 13
     private static let detailSize: CGFloat = 12
     private static let clockSize: CGFloat = 12.5
+    private static let captionWidth: CGFloat = 300
     private static let symbolSize: CGFloat = 14
     private static let haloSize: CGFloat = 16
     nonisolated private static let dotInset: CGFloat = 4
@@ -50,6 +51,7 @@ public final class DictationPill: NSObject {
     let title = FloatingCapsule.label(weight: .medium, color: .labelColor)
     let detail = NSTextField(labelWithString: "")
     let clock = NSTextField(labelWithString: "")
+    let caption = NSTextField(labelWithString: "")
     let fix = ChipButton()
     public private(set) var state: State?
     var failureDuration: Duration = .seconds(failureSeconds)
@@ -69,6 +71,10 @@ public final class DictationPill: NSObject {
         detail.textColor = .secondaryLabelColor
         clock.font = .monospacedDigitSystemFont(ofSize: Self.clockSize, weight: .regular)
         clock.textColor = .secondaryLabelColor
+        caption.font = .systemFont(ofSize: Self.detailSize)
+        caption.textColor = .secondaryLabelColor
+        caption.lineBreakMode = .byTruncatingHead
+        caption.widthAnchor.constraint(lessThanOrEqualToConstant: Self.captionWidth).isActive = true
         icon.symbolConfiguration = .init(pointSize: Self.symbolSize, weight: .medium)
         icon.setAccessibilityElement(false)
         dot.setAccessibilityElement(false)
@@ -77,7 +83,7 @@ public final class DictationPill: NSObject {
             self?.hide()
         }
         spinner.setAccessibilityElement(false)
-        for view in [icon, spinner, dot, meter, title, detail, clock, fix] {
+        for view in [icon, spinner, dot, meter, title, detail, clock, caption, fix] {
             stack.addView(view, in: .center)
         }
         stack.spacing = Self.gap
@@ -133,6 +139,7 @@ public final class DictationPill: NSObject {
         case .listening:
             meter.reset()
             clock.stringValue = Self.clock(.zero)
+            caption.stringValue = ""
             stack.setAccessibilityLabel("Listening")
             return [dot, meter, clock]
 
@@ -161,6 +168,14 @@ public final class DictationPill: NSObject {
         let text = Self.clock(since.duration(to: now))
         guard text != clock.stringValue else { return }
         clock.stringValue = text
+        morph(on: nil)
+    }
+
+    public func showLiveText(_ text: String) {
+        guard case .listening = state, text != caption.stringValue else { return }
+        caption.stringValue = text
+        caption.isHidden = text.isEmpty
+        stack.setAccessibilityLabel(text.isEmpty ? "Listening" : "Listening, \(text)")
         morph(on: nil)
     }
 
