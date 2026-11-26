@@ -96,7 +96,16 @@ import Testing
         #expect(KuGouLyrics.lyrics(fromKRC: live, title: "Low Tide") == nil)
         #expect(KuGouLyrics.lyrics(fromKRC: live, title: "Low Tide (Live)") != nil)
         let olive = Self.song.replacingOccurrences(of: "[ti:Low Tide]", with: "[ti:Olive Tree]")
-        #expect(KuGouLyrics.lyrics(fromKRC: olive, title: "Low Tide") != nil)
+        #expect(KuGouLyrics.lyrics(fromKRC: olive, title: "Olive Tree") != nil)
+    }
+
+    @Test func aFileTaggedWithAnotherSongIsLeftOut() {
+        let other = Self.song.replacingOccurrences(of: "[ti:Low Tide]", with: "[ti:High Tide]")
+        #expect(KuGouLyrics.lyrics(fromKRC: other, title: "Low Tide") == nil)
+        let noted = Self.song.replacingOccurrences(of: "[ti:Low Tide]", with: "[ti:Low Tide (潮)]")
+        #expect(KuGouLyrics.lyrics(fromKRC: noted, title: "Low Tide") != nil)
+        let untagged = Self.song.replacingOccurrences(of: "[ti:Low Tide]\n", with: "")
+        #expect(KuGouLyrics.lyrics(fromKRC: untagged, title: "Low Tide") != nil)
     }
 
     @Test func theWipeFollowsTheSungWordsAndWaitsBetweenThem() throws {

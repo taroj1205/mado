@@ -61,8 +61,10 @@ struct KuGouLyrics: Sendable {
 
     static func lyrics(fromKRC text: String, title: String) -> Lyrics? {
         let rows = text.split(whereSeparator: \.isNewline)
-        let named = rows.lazy.compactMap { $0.wholeMatch(of: /\[ti:(.*)\]/)?.1 }.first ?? ""
-        guard editions(of: String(named)).isSubset(of: editions(of: title)) else { return nil }
+        let named = String(rows.lazy.compactMap { $0.wholeMatch(of: /\[ti:(.*)\]/)?.1 }.first ?? "")
+        guard named.isEmpty || isSameSong(named, as: title),
+            editions(of: named).isSubset(of: editions(of: title))
+        else { return nil }
         let offset = rows.lazy.compactMap { $0.wholeMatch(of: /\[offset:(-?\d+)\]/)?.1 }.first
         let shift = offset.flatMap { Double($0) }.map { $0 / milliseconds } ?? 0
         let sung = rows.compactMap { line($0, shift: shift) }.drop(while: isCredit)
@@ -90,6 +92,10 @@ struct KuGouLyrics: Sendable {
     private static func bare(_ title: String) -> String {
         let suffix = title.firstRange(of: /\ - |\s*[(（\[【]/)?.lowerBound ?? title.endIndex
         return title[..<suffix].trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func isSameSong(_ name: String, as title: String) -> Bool {
+        bare(name).compare(bare(title), options: same) == .orderedSame
     }
 
     private static func editions(of name: String) -> Set<String> {
@@ -134,10 +140,9 @@ struct KuGouLyrics: Sendable {
                     "man": "yes", "hash": "",
                 ])
         else { return nil }
-        let title = Self.bare(track.title)
         let near = found.candidates.filter { candidate in
             abs(candidate.duration / Self.milliseconds - duration) <= Self.durationSlack
-                && Self.bare(candidate.song).compare(title, options: Self.same) == .orderedSame
+                && Self.isSameSong(candidate.song, as: track.title)
                 && Self.editions(of: candidate.song) == Self.editions(of: track.title)
                 && Self.sharesAnArtist(candidate.singer, with: track.artist)
         }
