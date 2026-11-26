@@ -4,11 +4,13 @@ public struct Lyrics: Equatable, Sendable {
     public enum Source: Equatable, Sendable {
         case lrclib
         case kuGou
+        case betterLyrics
 
         public var name: String {
             switch self {
             case .lrclib: "LRCLIB"
             case .kuGou: "KuGou"
+            case .betterLyrics: "Better Lyrics"
             }
         }
     }
