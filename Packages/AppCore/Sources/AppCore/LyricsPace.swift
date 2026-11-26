@@ -22,7 +22,15 @@ enum LyricsPace {
     ]
 
     static func morae(in text: String) -> Int {
-        Int(beats(of: text).reduce(0) { $0 + $1.morae }.rounded())
+        morae(of: beats(of: text))
+    }
+
+    static func morae(of beats: [Beat]) -> Int {
+        Int(beats.reduce(0) { $0 + $1.morae }.rounded())
+    }
+
+    static func width(of text: some StringProtocol) -> Double {
+        text.reduce(0) { $0 + width(of: $1) }
     }
 
     static func beats(of text: String) -> [Beat] {

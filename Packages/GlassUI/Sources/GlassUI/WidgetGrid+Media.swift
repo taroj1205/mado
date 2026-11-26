@@ -40,12 +40,13 @@ extension WidgetGrid {
         public let ahead: [Lyrics.Step]
         public let position: TimeInterval?
         public let duration: TimeInterval?
+        public let source: Lyrics.Source
 
         public init(
             title: String, artist: String, artwork: Data?, isPlaying: Bool, status: LyricsStatus,
             lines: [String] = [], current: Int? = nil, progress: Double = 0,
             remaining: Double? = nil, ahead: [Lyrics.Step] = [], position: TimeInterval? = nil,
-            duration: TimeInterval? = nil
+            duration: TimeInterval? = nil, source: Lyrics.Source = .lrclib
         ) {
             self.title = title
             self.artist = artist
@@ -59,6 +60,7 @@ extension WidgetGrid {
             self.ahead = ahead
             self.position = position
             self.duration = duration
+            self.source = source
         }
     }
 

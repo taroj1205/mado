@@ -1,7 +1,8 @@
+import AppCore
 import AppKit
 
 final class LyricsPane: NSView {
-    static let syncedBadge = "Synced · LRCLIB"
+    static let syncedPrefix = "Synced · "
     static let plainBadge = "Not synced"
     static let nothingPlaying = "Nothing is playing"
     private static let caption = "LYRICS"
@@ -66,7 +67,7 @@ final class LyricsPane: NSView {
         let hasLines = synced || next.status == .plain
         lines.isHidden = !hasLines
         badge.isHidden = !hasLines
-        badge.name.stringValue = synced ? Self.syncedBadge : Self.plainBadge
+        badge.name.stringValue = synced ? Self.syncedPrefix + next.source.name : Self.plainBadge
         note.show(next.status)
         hints.show(LyricsPaneHints.hints(for: next.status))
         guard hasLines else { return }
