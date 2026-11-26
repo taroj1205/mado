@@ -65,6 +65,7 @@ struct LyricsFeed {
             progress: moment?.progress ?? 0, remaining: moment?.remaining,
             ahead: moment?.ahead ?? [],
             position: status == .off ? nil : session.position(at: Self.now),
-            duration: track.duration ?? (status == .off ? nil : session.length))
+            duration: track.duration ?? (status == .off ? nil : session.length),
+            source: session.lyrics?.source ?? .lrclib)
     }
 }

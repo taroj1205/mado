@@ -2,6 +2,7 @@ import Foundation
 
 public actor LyricsLookup {
     typealias Load = @Sendable (URL) async throws -> Reply
+    typealias Source = @Sendable (MusicPlayer.Track) async -> Lyrics?
 
     struct Reply: Sendable {
         let data: Data
@@ -63,7 +64,7 @@ public actor LyricsLookup {
     private static let titleOnlySlack = 1.0
     private static let agent = "Mado (https://github.com/taroj1205/mado)"
 
-    private static let fromWeb: Load = { url in
+    static let fromWeb: Load = { url in
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue(agent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -75,18 +76,40 @@ public actor LyricsLookup {
     }
 
     private let load: Load
+    private let wordTimed: [Source]
     private let pause: TimeInterval
     private var cache: [String: Outcome] = [:]
     private var order: [String] = []
 
     public init() {
         load = Self.fromWeb
+        wordTimed = [KuGouLyrics(load: Self.fromWeb).lyrics]
         pause = 1
     }
 
     init(load: @escaping Load) {
+        self.init(load: load, wordTimed: [])
+    }
+
+    init(load: @escaping Load, wordTimed: [Source]) {
         self.load = load
+        self.wordTimed = wordTimed
         pause = 0
+    }
+
+    static func json<Body: Decodable>(
+        from load: Load, host: String, path: String, query: [String: String]
+    ) async throws -> Body {
+        var parts = URLComponents()
+        parts.scheme = "https"
+        parts.host = host
+        parts.path = path
+        parts.queryItems = query.sorted { $0.key < $1.key }
+            .map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let url = parts.url else { throw Failure.badResponse }
+        let reply = try await load(url)
+        guard reply.status == httpOK else { throw Failure.badResponse }
+        return try JSONDecoder().decode(Body.self, from: reply.data)
     }
 
     private static func match(
@@ -111,9 +134,21 @@ public actor LyricsLookup {
 
     public func lyrics(for track: MusicPlayer.Track) async throws -> Outcome {
         if let known = cache[track.id] { return known }
-        let outcome = try await find(track) ?? .missing
+        let outcome: Outcome
+        if let words = await firstWordTimed(track) {
+            outcome = .found(words)
+        } else {
+            outcome = try await find(track) ?? .missing
+        }
         remember(outcome, as: track.id)
         return outcome
+    }
+
+    private func firstWordTimed(_ track: MusicPlayer.Track) async -> Lyrics? {
+        for source in wordTimed {
+            if let words = await source(track) { return words }
+        }
+        return nil
     }
 
     private func find(_ track: MusicPlayer.Track) async throws -> Outcome? {

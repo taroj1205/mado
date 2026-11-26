@@ -52,19 +52,19 @@ import Testing
     }
 
     @Test func plainKanaAdvanceAtTheSameSpeedAsTheirWidth() {
-        let curve = LyricsPaceCurve("あいうえおかきく")
+        let curve = LyricsPaceCurve(LyricsPace.beats(of: "あいうえおかきく"))
         #expect(abs(curve.reach(at: 0.5) - 0.5) < 1e-9)
         #expect(curve.reach(at: 1) == 1)
     }
 
     @Test func aKanjiWithALongReadingTakesLongerThanItsWidth() {
-        let curve = LyricsPaceCurve("沈む")
+        let curve = LyricsPaceCurve(LyricsPace.beats(of: "沈む"))
         #expect(abs(curve.reach(at: 1.0 / 3) - 0.25) < 1e-9)
         #expect(abs(curve.reach(at: 2.0 / 3) - 0.5) < 1e-9)
     }
 
     @Test func punctuationIsPassedWithoutTakingTime() {
-        let curve = LyricsPaceCurve("あ、い")
+        let curve = LyricsPaceCurve(LyricsPace.beats(of: "あ、い"))
         #expect(abs(curve.reach(at: 0.5) - 2.0 / 3) < 1e-9)
     }
 
