@@ -83,7 +83,9 @@ public actor LyricsLookup {
 
     public init() {
         load = Self.fromWeb
-        wordTimed = [KuGouLyrics(load: Self.fromWeb).lyrics]
+        wordTimed = [
+            BetterLyrics(load: Self.fromWeb).lyrics, KuGouLyrics(load: Self.fromWeb).lyrics,
+        ]
         pause = 1
     }
 

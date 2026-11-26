@@ -5,6 +5,7 @@ import GlassUI
 extension LyricsSettings {
     private static let footerSize: CGFloat = 12
     private static let captionSize: CGFloat = 11
+    private static let appleSite = "betterlyrics.org"
     private static let wordSite = "kugou.com"
     private static let lineSite = "lrclib.net"
     private static let note = "Off until you turn it on"
@@ -12,14 +13,14 @@ extension LyricsSettings {
     private static var footer: NSAttributedString {
         let text = NSMutableAttributedString(
             string: "When a song starts, Mado sends its title, artist and length to "
-                + "\(wordSite) for lyrics timed word by word. If it has none, Mado sends them "
-                + "with the album to \(lineSite). Nothing else leaves your Mac, and nothing is "
-                + "sent while this is off.",
+                + "\(appleSite), then \(wordSite), for lyrics timed word by word. If neither "
+                + "has them, Mado sends them with the album to \(lineSite). Nothing else leaves "
+                + "your Mac, and nothing is sent while this is off.",
             attributes: [
                 .font: NSFont.systemFont(ofSize: footerSize),
                 .foregroundColor: NSColor.secondaryLabelColor,
             ])
-        for site in [wordSite, lineSite] {
+        for site in [appleSite, wordSite, lineSite] {
             guard let range = text.string.range(of: site) else { continue }
             text.addAttribute(
                 .link, value: "https://\(site)/", range: NSRange(range, in: text.string))
@@ -56,7 +57,7 @@ extension LyricsSettings {
                 "Lookup",
                 [
                     .init("Players", editor.playerChecks()),
-                    .init("Sources", caption("\(wordSite), then \(lineSite)")),
+                    .init("Sources", caption("\(appleSite), \(wordSite), then \(lineSite)")),
                     .init("Kept on this Mac", caption("in memory until you quit")),
                 ], footer: footer, accessory: nil),
         ]
