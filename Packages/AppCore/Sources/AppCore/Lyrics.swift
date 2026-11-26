@@ -33,7 +33,6 @@ public struct Lyrics: Equatable, Sendable {
     private static let timestampParts = 2
     private static let measuredLines = 8
     private static let shortestLine = 1.0
-    private static let paceSlack = 2.0
     private static let medianDivisor = 2
 
     public let lines: [Line]
@@ -99,7 +98,7 @@ public struct Lyrics: Equatable, Sendable {
         }
         let typical = rates.sorted()[rates.count / medianDivisor]
         return morae.map { count in
-            count > 0 ? max(Double(count) * typical * paceSlack, shortestLine) : .infinity
+            count > 0 ? max(Double(count) * typical, shortestLine) : .infinity
         }
     }
 

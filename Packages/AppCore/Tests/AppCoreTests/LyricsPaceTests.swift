@@ -24,15 +24,15 @@ import Testing
 
     @Test func aLineStopsFillingOnceItsSungLengthIsUp() throws {
         let lyrics = try song(lastGap: 20)
-        #expect(lyrics.moment(at: 20, duration: 100)?.progress == 0.5)
-        #expect(lyrics.moment(at: 22, duration: 100)?.progress == 1)
+        #expect(lyrics.moment(at: 19, duration: 100)?.progress == 0.5)
+        #expect(lyrics.moment(at: 20, duration: 100)?.progress == 1)
         #expect(lyrics.moment(at: 30, duration: 100)?.remaining == 0)
     }
 
-    @Test func aLineKeepsItsWholeGapWhenTheSongPaceIsSlowEnough() throws {
-        let lyrics = try song(lastGap: 4)
-        #expect(lyrics.moment(at: 20, duration: 100)?.progress == 0.5)
-        #expect(lyrics.moment(at: 22, duration: 100)?.progress == 0)
+    @Test func aLineSungFasterThanTheSongPaceKeepsItsWholeGap() throws {
+        let lyrics = try song(lastGap: 1)
+        #expect(lyrics.moment(at: 18.5, duration: 100)?.progress == 0.5)
+        #expect(lyrics.moment(at: 19, duration: 100)?.progress == 0)
     }
 
     @Test func shortSongsAreNotTrimmedBecauseTheirPaceIsGuesswork() throws {
@@ -70,8 +70,8 @@ import Testing
 
     @Test func aMomentListsWhereTheLineWillBeAtEachLaterCharacter() throws {
         let lyrics = try song(lastGap: 4)
-        let moment = try #require(lyrics.moment(at: 20, duration: 100))
-        #expect(moment.ahead.map(\.seconds) == [1, 2])
-        #expect(moment.ahead.last == Lyrics.Step(seconds: 2, reach: 1))
+        let moment = try #require(lyrics.moment(at: 19, duration: 100))
+        #expect(moment.ahead.map(\.seconds) == [0.5, 1])
+        #expect(moment.ahead.last == Lyrics.Step(seconds: 1, reach: 1))
     }
 }
