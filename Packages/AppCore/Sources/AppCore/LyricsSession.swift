@@ -84,6 +84,7 @@ public final class LyricsSession {
     }
 
     func untilNextLine(at now: TimeInterval) -> TimeInterval? {
+        guard clock.isPlaying else { return nil }
         let shown = clock.position(at: now) + Self.lead
         return lyrics?.nextLineStart(after: shown).map { $0 - shown }
     }

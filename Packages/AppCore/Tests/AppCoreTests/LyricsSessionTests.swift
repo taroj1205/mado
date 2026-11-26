@@ -62,6 +62,8 @@ import Testing
         let wait = try #require(session.untilNextLine(at: 101))
         #expect(abs(wait - 6.7) < 0.001)
         #expect(session.untilNextLine(at: 108) == nil)
+        session.moved(to: 19.69, isPlaying: false, at: 110)
+        #expect(session.untilNextLine(at: 111) == nil)
     }
 
     @Test func seekingMovesTheClock() async {

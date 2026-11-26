@@ -12,8 +12,7 @@ public final class NowPlaying {
     private static let followMilliseconds = 250
     private static let listen = Duration.seconds(listenSeconds)
     private static let follow = Duration.milliseconds(followMilliseconds)
-    private static let landingMilliseconds = 5
-    private static let landing = Duration.milliseconds(landingMilliseconds)
+    private static let landing: TimeInterval = 0.005
 
     public let session: LyricsSession
     public private(set) var track: MusicPlayer.Track?
@@ -58,6 +57,11 @@ public final class NowPlaying {
         self.changes = changes
         self.uptime = uptime
         session.onChange = { [weak self] in self?.onChange?() }
+    }
+
+    static func wake(in seconds: TimeInterval?, cappedAt cap: Duration) -> Duration {
+        guard let seconds else { return cap }
+        return .seconds(min(cap / .seconds(1), seconds + landing))
     }
 
     public func start(_ user: User) {
@@ -163,8 +167,7 @@ public final class NowPlaying {
     }
 
     private func nextWake() -> Duration {
-        guard let seconds = session.untilNextLine(at: uptime()) else { return rhythm.follow }
-        return min(rhythm.follow, .seconds(seconds) + Self.landing)
+        Self.wake(in: session.untilNextLine(at: uptime()), cappedAt: rhythm.follow)
     }
 
     private func advance() {

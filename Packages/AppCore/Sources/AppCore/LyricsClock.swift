@@ -3,7 +3,7 @@ public import Foundation
 public struct LyricsClock: Equatable, Sendable {
     private var anchor: TimeInterval
     private var anchoredAt: TimeInterval
-    private var isPlaying: Bool
+    private(set) var isPlaying: Bool
 
     public init() {
         anchor = 0

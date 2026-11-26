@@ -4,7 +4,7 @@ import Testing
 @testable import AppCore
 
 @MainActor
-@Suite struct NowPlayingRaceTests {
+@Suite struct NowPlayingTimingTests {
     private actor Racing: NowPlayingSource {
         let older: MusicPlayer.Track
         let newer: MusicPlayer.Track
@@ -58,6 +58,14 @@ import Testing
             try? await Task.sleep(for: .milliseconds(5))
         }
         return false
+    }
+
+    @Test func theWaitIsCappedBeforeItBecomesADuration() {
+        let cap = Duration.milliseconds(250)
+        #expect(NowPlaying.wake(in: nil, cappedAt: cap) == cap)
+        #expect(NowPlaying.wake(in: 1e100, cappedAt: cap) == cap)
+        #expect(NowPlaying.wake(in: .infinity, cappedAt: cap) == cap)
+        #expect(abs(NowPlaying.wake(in: 0.095, cappedAt: cap) / .seconds(1) - 0.1) < 1e-9)
     }
 
     @Test func anOlderPollThatFinishesLastDoesNotWin() async {
