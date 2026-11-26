@@ -9,6 +9,13 @@ public actor MusicPlayer {
     public enum Player: String, CaseIterable, Sendable {
         case music = "apple_music"
         case spotify = "spotify"
+
+        var changeNotification: Notification.Name {
+            switch self {
+            case .music: Notification.Name("com.apple.Music.playerInfo")
+            case .spotify: Notification.Name("com.spotify.client.PlaybackStateChanged")
+            }
+        }
     }
 
     public struct Track: Equatable, Sendable {

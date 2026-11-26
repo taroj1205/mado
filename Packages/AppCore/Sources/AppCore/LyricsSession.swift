@@ -83,6 +83,11 @@ public final class LyricsSession {
         lyrics?.moment(at: clock.position(at: now) + Self.lead, duration: duration)
     }
 
+    func untilNextLine(at now: TimeInterval) -> TimeInterval? {
+        let shown = clock.position(at: now) + Self.lead
+        return lyrics?.nextLineStart(after: shown).map { $0 - shown }
+    }
+
     public func start(ofLine line: Int) -> TimeInterval? {
         guard let lyrics, lyrics.isSynced, lyrics.lines.indices.contains(line) else { return nil }
         return lyrics.lines[line].time

@@ -64,7 +64,8 @@ import Testing
     init() {
         let session = LyricsSession(lookup: LyricsLookup { [server] url in server.answer(url) })
         nowPlaying = NowPlaying(
-            source: player, session: session, rhythm: (.milliseconds(10), .milliseconds(5))
+            source: player, session: session, rhythm: (.milliseconds(10), .milliseconds(5)),
+            changes: NotificationCenter()
         ) { ProcessInfo.processInfo.systemUptime }
     }
 
@@ -158,6 +159,64 @@ import Testing
             to: 19.99, isPlaying: true, at: ProcessInfo.processInfo.systemUptime)
         #expect(await until { lines.contains(1) })
         nowPlaying.stop(.stage)
+    }
+
+    @Test func eachLineChangesWhenItIsDueNotOnTheNextTick() async throws {
+        let stamps = ["10.00", "10.37", "10.74", "11.11", "11.48", "11.85"]
+        let starts = stamps.compactMap(Double.init)
+        let synced = stamps.enumerated().map { "[00:\($1)] Line \($0)" }.joined(separator: "\n")
+        let body = try JSONSerialization.data(withJSONObject: [
+            "duration": 200, "instrumental": false, "syncedLyrics": synced,
+        ])
+        let session = LyricsSession(
+            lookup: LyricsLookup { url in
+                .init(
+                    data: url.path == "/api/search" ? Data("[".utf8) + body + Data("]".utf8) : body,
+                    status: 200)
+            })
+        let ticking = NowPlaying(
+            source: player, session: session, rhythm: (.seconds(10), .milliseconds(500)),
+            changes: NotificationCenter()
+        ) { ProcessInfo.processInfo.systemUptime }
+        await player.play(song)
+        await player.set(position: 9.1)
+        ticking.lookup = true
+        var lateness: [Int: TimeInterval] = [:]
+        ticking.onChange = {
+            let now = ProcessInfo.processInfo.systemUptime
+            guard let index = session.moment(at: now)?.index, lateness[index] == nil else { return }
+            lateness[index] = session.position(at: now) + 0.3 - starts[index]
+        }
+        ticking.start(.stage)
+        defer { ticking.stop(.stage) }
+        for _ in 0..<100 where lateness.count < starts.count {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(lateness.count == starts.count)
+        #expect(lateness.values.allSatisfy { $0 > -0.01 && $0 < 0.15 })
+    }
+
+    @Test func aPlayerChangeIsPolledAtOnceWhileRunning() async {
+        let changes = NotificationCenter()
+        let spotifyChanged = MusicPlayer.Player.spotify.changeNotification
+        let listening = NowPlaying(
+            source: player,
+            session: LyricsSession(lookup: LyricsLookup { [server] url in server.answer(url) }),
+            rhythm: (.seconds(10), .seconds(10)), changes: changes
+        ) { ProcessInfo.processInfo.systemUptime }
+        changes.post(name: spotifyChanged, object: nil)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(await player.tracked == 0)
+        listening.start(.stage)
+        #expect(await until { await player.tracked == 1 })
+        await player.play(song)
+        changes.post(name: spotifyChanged, object: nil)
+        #expect(await until { listening.track == song })
+        listening.stop(.stage)
+        let settled = await player.tracked
+        changes.post(name: spotifyChanged, object: nil)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(await player.tracked == settled)
     }
 
     @Test func seekingToALineMovesThePlayerAndTheClock() async {

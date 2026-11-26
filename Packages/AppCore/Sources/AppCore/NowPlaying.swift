@@ -12,6 +12,8 @@ public final class NowPlaying {
     private static let followMilliseconds = 250
     private static let listen = Duration.seconds(listenSeconds)
     private static let follow = Duration.milliseconds(followMilliseconds)
+    private static let landingMilliseconds = 5
+    private static let landing = Duration.milliseconds(landingMilliseconds)
 
     public let session: LyricsSession
     public private(set) var track: MusicPlayer.Track?
@@ -27,8 +29,10 @@ public final class NowPlaying {
     private let source: any NowPlayingSource
     private let uptime: @MainActor () -> TimeInterval
     private let rhythm: (listen: Duration, follow: Duration)
+    private let changes: NotificationCenter
     private var users: Set<User> = []
     private var loops: [Task<Void, Never>] = []
+    private var observers: [any NSObjectProtocol] = []
     private var line: Int?
     private var latest = 0
 
@@ -38,18 +42,20 @@ public final class NowPlaying {
 
     public convenience init() {
         self.init(
-            source: MusicPlayer(), session: LyricsSession(), rhythm: (Self.listen, Self.follow)
+            source: MusicPlayer(), session: LyricsSession(), rhythm: (Self.listen, Self.follow),
+            changes: DistributedNotificationCenter.default()
         ) { ProcessInfo.processInfo.systemUptime }
     }
 
     init(
         source: any NowPlayingSource, session: LyricsSession,
-        rhythm: (listen: Duration, follow: Duration),
+        rhythm: (listen: Duration, follow: Duration), changes: NotificationCenter,
         uptime: @escaping @MainActor () -> TimeInterval
     ) {
         self.source = source
         self.session = session
         self.rhythm = rhythm
+        self.changes = changes
         self.uptime = uptime
         session.onChange = { [weak self] in self?.onChange?() }
     }
@@ -94,6 +100,11 @@ public final class NowPlaying {
     }
 
     private func begin() {
+        observers = players.map { player in
+            changes.addObserver(
+                forName: player.changeNotification, object: nil, queue: nil
+            ) { [weak self] _ in Task { await self?.poll() } }
+        }
         loops = [
             Task { [weak self] in
                 while !Task.isCancelled {
@@ -103,7 +114,7 @@ public final class NowPlaying {
             },
             Task { [weak self] in
                 while !Task.isCancelled {
-                    try? await Task.sleep(for: self?.rhythm.follow ?? Self.follow)
+                    try? await Task.sleep(for: self?.nextWake() ?? Self.follow)
                     self?.advance()
                 }
             },
@@ -113,6 +124,8 @@ public final class NowPlaying {
     private func end() {
         loops.forEach { $0.cancel() }
         loops = []
+        observers.forEach { changes.removeObserver($0) }
+        observers = []
     }
 
     private func allows(_ found: MusicPlayer.Track?) -> Bool {
@@ -138,6 +151,11 @@ public final class NowPlaying {
         session.update(found, position: position, enabled: enabled, at: uptime())
         line = session.moment(at: uptime())?.index
         onChange?()
+    }
+
+    private func nextWake() -> Duration {
+        guard let seconds = session.untilNextLine(at: uptime()) else { return rhythm.follow }
+        return min(rhythm.follow, .seconds(seconds) + Self.landing)
     }
 
     private func advance() {
