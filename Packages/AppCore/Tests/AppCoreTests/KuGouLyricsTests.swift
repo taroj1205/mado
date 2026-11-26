@@ -9,8 +9,11 @@ import Testing
         var candidates = "[]"
         var files: [String: String] = [:]
         var asked: [URL] = []
+        private let lock = NSLock()
 
         func answer(_ url: URL) -> LyricsLookup.Reply {
+            lock.lock()
+            defer { lock.unlock() }
             asked.append(url)
             let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
                 .first { $0.name == "id" }?.value
@@ -51,9 +54,18 @@ import Testing
     }
 
     private func candidate(
-        _ id: String, song: String = "Low Tide", length: Int = 201_000
+        _ id: String, song: String = "Low Tide", singer: String = "Harbour Lights",
+        length: Int = 201_000
     ) -> String {
-        "{\"id\":\"\(id)\",\"accesskey\":\"K\(id)\",\"song\":\"\(song)\",\"duration\":\(length)}"
+        "{\"id\":\"\(id)\",\"accesskey\":\"K\(id)\",\"song\":\"\(song)\","
+            + "\"singer\":\"\(singer)\",\"duration\":\(length)}"
+    }
+
+    private func downloaded() -> [String] {
+        server.asked.compactMap { url in
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "id" }?.value
+        }
     }
 
     @Test func aKRCFileIsUnscrambledAndInflated() throws {
@@ -124,11 +136,26 @@ import Testing
             id: "L", title: "Low Tide (Live)", artist: "Harbour Lights", isPlaying: true,
             album: "Salt", duration: 201.4)
         #expect(await KuGouLyrics(load: server.answer).lyrics(for: live) != nil)
-        let ids = server.asked.compactMap { url in
-            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
-                .first { $0.name == "id" }?.value
-        }
-        #expect(ids == ["3"])
+        #expect(downloaded() == ["3"])
+    }
+
+    @Test func anotherSingersRecordingIsSkipped() async throws {
+        server.candidates =
+            "[\(candidate("1", singer: "Someone Else")),"
+            + "\(candidate("2", singer: "harbour lights、Ayase"))]"
+        for id in ["1", "2"] { server.files[id] = try Self.encoded(Self.song) }
+        #expect(await KuGouLyrics(load: server.answer).lyrics(for: track) != nil)
+        #expect(downloaded() == ["2"])
+    }
+
+    @Test func theCandidatesAreFetchedTogetherAndTheBestRankedFileWins() async throws {
+        server.candidates = "[\(candidate("1")),\(candidate("2")),\(candidate("3"))]"
+        server.files["2"] = try Self.encoded(Self.song)
+        server.files["3"] = try Self.encoded(
+            Self.song.replacingOccurrences(of: "あ<1000,500,0>い", with: "か<1000,500,0>き"))
+        let lyrics = await KuGouLyrics(load: server.answer).lyrics(for: track)
+        #expect(lyrics?.lines.first?.text == "あい")
+        #expect(Set(downloaded()) == ["1", "2", "3"])
     }
 
     @Test func aTrackWithoutALengthIsNotLookedUp() async {
