@@ -56,6 +56,16 @@ import Testing
         #expect(session.moment(at: 100.25)?.index == 0)
     }
 
+    @Test func theWaitForTheNextLineCountsFromWhereLinesShow() async throws {
+        session.update(song, position: 12, enabled: true, at: 100)
+        await settle()
+        let wait = try #require(session.untilNextLine(at: 101))
+        #expect(abs(wait - 6.7) < 0.001)
+        #expect(session.untilNextLine(at: 108) == nil)
+        session.moved(to: 19.69, isPlaying: false, at: 110)
+        #expect(session.untilNextLine(at: 111) == nil)
+    }
+
     @Test func seekingMovesTheClock() async {
         session.update(song, position: 12, enabled: true, at: 100)
         await settle()

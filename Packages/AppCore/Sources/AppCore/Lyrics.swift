@@ -117,6 +117,11 @@ public struct Lyrics: Equatable, Sendable {
         return next == 0 ? nil : next - 1
     }
 
+    func nextLineStart(after time: TimeInterval) -> TimeInterval? {
+        guard isSynced else { return nil }
+        return lines.first { ($0.time ?? 0) > time }?.time
+    }
+
     public func moment(at time: TimeInterval, duration: TimeInterval?) -> Moment? {
         guard let index = index(at: time), let start = lines[index].time else { return nil }
         let following = lines.dropFirst(index + 1).first { ($0.time ?? start) > start }?.time
